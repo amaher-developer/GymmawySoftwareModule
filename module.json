@@ -1,0 +1,11 @@
+{
+    "name": "Software",
+    "alias": "software",
+    "description": "This is the description for the Software module.",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Software\\Providers\\SoftwareServiceProvider"
+    ],
+    "files": []
+}

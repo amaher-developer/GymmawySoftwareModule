@@ -1,0 +1,713 @@
+<?php
+
+namespace Modules\Software\Http\Controllers\Front;
+
+use Modules\Software\Classes\TypeConstants;
+use Modules\Software\Exports\RecordsExport;
+use Modules\Software\Http\Requests\GymPTMemberRequest;
+use Modules\Software\Models\GymActivity;
+use Modules\Software\Models\GymGroupDiscount;
+use Modules\Software\Models\GymMember;
+use Modules\Software\Models\GymMemberAttendee;
+use Modules\Software\Models\GymMemberSubscription;
+use Modules\Software\Models\GymMoneyBox;
+use Modules\Software\Models\GymPTClass;
+use Modules\Software\Models\GymPTMember;
+use Modules\Software\Models\GymPTMemberAttendee;
+use Modules\Software\Models\GymPTSubscription;
+use Modules\Software\Models\GymPTSubscriptionTrainer;
+use Modules\Software\Models\GymPTTrainer;
+use Modules\Software\Repositories\GymPTMemberRepository;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Mpdf\Mpdf;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+use Illuminate\Container\Container as Application;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\View;
+use Maatwebsite\Excel\Facades\Excel;
+
+class GymPTMemberFrontController extends GymGenericFrontController
+{
+    public $MemberRepository;
+    public $fileName;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->MemberRepository=new GymPTMemberRepository(new Application);
+        $this->MemberRepository=$this->MemberRepository->branch();
+    }
+
+
+    public function index()
+    {
+        $title = trans('sw.pt_members');
+        $this->request_array = ['search', 'from', 'to', 'pt_subscription', 'pt_trainer'];
+        $request_array = $this->request_array;
+        foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
+        if(request('trashed'))
+        {
+            $members = GymPTMember::branch()->with(['pt_subscription', 'pt_class', 'pt_trainer', 'member.member_subscription_info'])->onlyTrashed()->orderBy('id', 'DESC');
+        }
+        else
+        {
+            $members = GymPTMember::branch()->with(['pt_subscription'=> function($q){
+                $q->withTrashed();
+            }, 'pt_class'=> function($q){
+                $q->withTrashed();
+            }, 'pt_trainer'=> function($q){
+                $q->withTrashed();
+            },  'member' => function($q){
+                $q->withTrashed();
+            },'member.member_subscription_info'])->orderBy('id', 'DESC');
+        }
+        $members->whereHas('member', function ($q){
+            $q->whereNull('deleted_at');
+        });
+        //apply filters
+        $members->when(($from), function ($query) use ($from) {
+            $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
+        })->when(($to), function ($query) use ($to) {
+            $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($pt_subscription), function ($query) use ($pt_subscription) {
+            $query->whereHas('pt_subscription', function ($q) use ($pt_subscription){
+                $q->where('pt_subscription_id', $pt_subscription);
+            });
+        })->when(($pt_trainer), function ($query) use ($pt_trainer) {
+            $query->whereHas('pt_trainer', function ($q) use ($pt_trainer){
+                $q->where('pt_trainer_id', $pt_trainer);
+            });
+        })->when($search, function ($query) use ($search) {
+            $query->whereHas('member', function ($q) use ($search){
+                $q->where('code', 'like', "%" . $search . "%");
+                $q->orWhere('name', 'like', "%" . $search . "%");
+                $q->orWhere('phone', 'like', "%" . $search . "%");
+            });
+//            $query->orWhere('member.name','like', "%".$search."%");
+        });
+        $search_query = request()->query();
+
+        if ($this->limit) {
+            $members = $members->paginate($this->limit)->onEachSide(1);
+            $total = $members->total();
+        } else {
+            $members = $members->get();
+            $total = $members->count();
+        }
+        $pt_subscriptions = GymPTSubscription::branch()->get();
+        $pt_trainers = GymPTTrainer::branch()->get();
+        return view('software::Front.pt_member_front_list', compact('members', 'pt_trainers','pt_subscriptions','title', 'total', 'search_query'));
+    }
+
+
+    function exportExcel(){
+        $records = $this->MemberRepository->get();
+        $this->fileName = 'pt_members-' . Carbon::now()->toDateTimeString();
+
+//        $title = trans('sw.pt_members');
+//        $records = $this->prepareForExport($records);
+
+
+        $notes = trans('sw.export_excel_pt_members');
+        $this->userLog($notes, TypeConstants::ExportActivityExcel);
+
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+
+//        Excel::create($this->fileName, function($excel) use ($records, $title) {
+//            $excel->setTitle($title);
+////            $excel->setCreator($title)->setCompany($title);
+//            $excel->setDescription(trans('sw.pt_members_data'));
+//            $excel->sheet(trans('sw.pt_members_data'), function($sheet) use ($records) {
+//                $sheet->setRightToLeft(true);
+//                $sheet->fromArray($records, null, 'A1', false, false);
+//                $sheet->mergeCells('A1:B1');
+//                $sheet->cells('A1:B1', function ($cells) {
+//                    $cells->setBackground('#d8d8d8');
+//                    $cells->setFontWeight('bold');
+//                    $cells->setAlignment('center');
+//                });
+//            });
+//
+//        })->download('xlsx');
+
+    }
+
+    private function prepareForExport($data)
+    {
+        $name = [trans('sw.name'), trans('sw.price')];
+        $result = array_map(function ($row) {
+            return [
+                trans('sw.name') => $row['name'],
+                trans('sw.price') => $row['price']
+            ];
+        }, $data->toArray());
+        array_unshift($result, $name);
+        array_unshift($result, [trans('sw.pt_members')]);
+        return $result;
+    }
+    function exportPDF(){
+        $records = $this->PTMemberRepository->get();
+        $this->fileName = 'pt_members-' . Carbon::now()->toDateTimeString();
+
+        $keys = ['name', 'phone'];
+        if($this->lang == 'ar') $keys = array_reverse($keys);
+
+        $title = trans('sw.pt_members');
+        $customPaper = array(0,0,550,750);
+        
+        // Try mPDF for better Arabic support
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L', // Landscape
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+                
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records, 
+                    'title' => $title, 
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+                
+                $mpdf->WriteHTML($html);
+                
+                $notes = trans('sw.export_pdf_pt_members');
+                $this->userLog($notes, TypeConstants::ExportActivityPDF);
+                
+                return response($mpdf->Output($this->fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $this->fileName . '.pdf"'
+                ]);
+                
+            } catch (\Exception $e) {
+                // Fallback to DomPDF if mPDF fails
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+        
+        // Configure PDF for Arabic text using DomPDF
+        $pdf = PDF::loadView('software::Front.export_pdf', [
+            'records' => $records, 
+            'title' => $title, 
+            'keys' => $keys,
+            'lang' => $this->lang
+        ])
+        ->setPaper($customPaper, 'landscape')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+            'isPhpEnabled' => true,
+            'isJavascriptEnabled' => false
+        ]);
+
+        $notes = trans('sw.export_pdf_pt_members');
+        $this->userLog($notes, TypeConstants::ExportActivityPDF);
+
+        return $pdf->download($this->fileName.'.pdf');
+    }
+
+
+    public function create()
+    {
+        $title = trans('sw.pt_member_add');
+        $subscriptions = GymPTSubscription::branch()->whereHas('pt_classes', function ($q){
+            $q->having('id', '>', 0);
+        })->get();
+        $trainers = GymPTTrainer::branch()->get();
+        $discounts = GymGroupDiscount::branch()->where('is_pt_member', true)->get();
+        $classes = GymPTClass::branch()->isSystem()->with(['pt_subscription_trainer'])->get();
+        return view('software::Front.pt_member_front_create', ['member' => new GymPTMember(), 'discounts' => $discounts, 'subscriptions'=> $subscriptions, 'trainers'=> $trainers, 'classes'=> $classes,'title'=>$title]);
+    }
+
+    public function store(GymPTMemberRequest $request)
+    {
+        $vat = 0;
+        $member_inputs = $this->prepare_inputs($request->except(['_token', 'amount_paid']));
+        $memberSubscription = GymMember::branch()->with(['member_subscription_info'])->where('code', $member_inputs['member_id'])->orderBy('id', 'desc')->first();
+        if($memberSubscription->member_subscription_info->expire_date < Carbon::now()->toDateTimeString()){
+            return redirect(route('sw.createPTMember'))->withErrors(['member_id'=>trans('sw.membership_expired')]);
+        }
+
+        $class = GymPTClass::branch()->with(['pt_subscription'])->where('id', $member_inputs['pt_class_id'])->orderBy('id', 'desc')->first();
+
+        $amount_paid = round(@$request->amount_paid, 2);
+        $discount_value = round(@$request->discount_value, 2);
+        $vat = (($class->price - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100));
+        $class_price = $class->price - @$discount_value + $vat;
+        $class_price = round($class_price, 2);
+        if(@$amount_paid > $class_price){
+            return redirect(route('sw.createPTMember'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less')]);
+        }
+
+        $active_member_count = $this->classActiveMemberCount($member_inputs['pt_class_id']);
+        if(($class->member_limit != 0) && (@$active_member_count >= $class->member_limit)){
+            return redirect(route('sw.createPTMember'))->withErrors(['pt_class_id' => trans('sw.active_members_exceeds_available_members')]);
+        }
+
+        $member_inputs['classes'] = $class->classes;
+        $member_inputs['member_id'] = $memberSubscription->id;
+
+        $member_inputs['start_time_day'] = @$class->start_time_day;
+        $member_inputs['end_time_day'] = @$class->end_time_day;
+        $member_inputs['workouts_per_day'] = @$class->workouts_per_day;
+
+        $member_inputs['amount_paid'] = (float)$amount_paid;
+        $member_inputs['discount_value'] = (float)$discount_value;
+        $member_inputs['vat'] = $vat;
+        $member_inputs['amount_before_discount'] = $class->price;
+        $member_inputs['amount_remaining'] = (($class->price - (float)$amount_paid - @(float)$discount_value) + (($class->price - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100)));
+        $member_inputs['payment_type'] = (int)($request->payment_type);
+
+        if($member_inputs['joining_date']){ $member_inputs['joining_date'] = Carbon::parse($member_inputs['joining_date']); }else{  $member_inputs['joining_date'] = Carbon::now();}
+
+        $member = $this->MemberRepository->create($member_inputs);
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_added'),
+            'type' => 'success'
+        ]);
+
+
+        $amount_box = GymMoneyBox::branch()->latest()->first();
+        $amount_after = GymMoneyBoxFrontController::amountAfter( (float)@$amount_box->amount, (float)@$amount_box->amount_before, (int)@$amount_box->operation);
+        $notes = trans('sw.pt_member_moneybox_add_msg', ['subscription' => $class->pt_subscription->name." (".$class->classes.")", 'member' => $memberSubscription->name, 'amount_paid' => (float)($amount_paid), 'amount_remaining' => round($member_inputs['amount_remaining'], 2)]);
+        if($discount_value) {
+            $notes = $notes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
+        }
+        if($this->mainSettings->vat_details['vat_percentage']){
+            $notes = $notes.' - '.trans('sw.vat_added');
+        }
+        $moneyBox = GymMoneyBox::create([
+            'user_id' => Auth::guard('sw')->user()->id
+            , 'amount' => @(float)$amount_paid
+            , 'vat' => @$vat
+            , 'operation' => TypeConstants::Add
+            , 'amount_before' => $amount_after
+            , 'notes' => $notes
+            , 'type' => TypeConstants::CreatePTMember
+            , 'payment_type' => intval($request->payment_type)
+            , 'member_id' => @$member->member_id
+            , 'member_pt_subscription_id' => @$member->id
+            , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+        ]);
+
+        $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+//        return redirect(route('sw.listPTMember'));
+        return redirect(route('sw.showOrder', $moneyBox->id));
+    }
+    private function classActiveMember($class_id){
+        $member_count = GymPTMember::where('pt_class_id', $class_id)
+                                ->where(function($q) use ($class_id) {
+                                    $q->where('expire_date', '>=', Carbon::now()->toDateString());
+                                    $q->orWhere('visits', '<=', 'classes');
+                                })->count();
+        return "( ".$member_count." / ".""." )";
+    }
+    private function classActiveMemberCount($class_id){
+        $member_count = GymPTMember::where('pt_class_id', $class_id)
+                                ->where(function($q) use ($class_id) {
+                                    $q->where('expire_date', '>=', Carbon::now()->toDateString());
+                                    $q->orWhere('visits', '<=', 'classes');
+                                })->count();
+        return $member_count;
+    }
+    public function classActiveMemberAjax(){
+        $class_id = \request('pt_class_id');
+        $class = GymPTClass::where('id', $class_id)->first();
+        $class_limit_count = $class->member_limit;
+        $member_count = GymPTMember::where('pt_class_id', $class_id)
+                                ->where(function($q) use ($class_id) {
+                                    $q->where('expire_date', '>=', Carbon::now()->toDateString());
+                                    $q->orWhere('visits', '<=', 'classes');
+                                })->count();
+        return "( <b style='font-size: 18px;'>".$member_count."</b> / ". $class_limit_count ." )";
+    }
+    public function edit($id)
+    {
+        $member = $this->MemberRepository->with(['member.member_subscription_info.subscription' => function ($q){$q->withTrashed();}, 'pt_subscription', 'pt_class', 'pt_trainer'])->withTrashed()->find($id);
+        $subscriptions = GymPTSubscription::branch()->whereHas('pt_classes', function ($q){
+            $q->having('id', '>', 0);
+        })->get();
+        $trainers = GymPTTrainer::branch()->get();
+        $discounts = GymGroupDiscount::branch()->where('is_pt_member', true)->get();
+        $classes = GymPTClass::branch()->isSystem()->get();
+        $title = trans('sw.pt_member_edit');
+        return view('software::Front.pt_member_front_edit', ['member' => $member, 'discounts' => $discounts, 'subscriptions'=> $subscriptions, 'trainers'=> $trainers, 'classes'=> $classes,'title'=>$title]);
+    }
+
+    public function update(GymPTMemberRequest $request, $id)
+    {
+        $member = $this->MemberRepository->with(['member.member_subscription_info.subscription', 'pt_subscription', 'pt_class', 'pt_trainer'])->withTrashed()->find($id);
+        $differentPrice = @(float)$request->amount_paid - $member->amount_paid;
+        $member_inputs = $this->prepare_inputs($request->except(['_token']));
+        $class = GymPTClass::branch()->with(['pt_subscription'])->where('id', $member_inputs['pt_class_id'])->orderBy('id', 'desc')->first();
+        $vat = (($class->price - @$request->discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100));
+        $class_price = $class->price - @$request->discount_value + $vat;
+        if(@$request->amount_paid > $class_price){
+            return redirect(route('sw.editPTMember', $member->id))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less')]);
+        }
+//        if($member->member->member_subscription_info->expire_date < Carbon::now()->toDateTimeString()){
+//            return redirect(route('sw.editPTMember', $member->id))->withErrors(['member_id'=>trans('sw.member')]);
+//        }
+
+        $active_member_count = $this->classActiveMemberCount($member->pt_class_id);
+        if(($class->member_limit != 0) && (@($active_member_count-1) >= $class->member_limit)){
+            return redirect(route('sw.editPTMember', $member->id))->withErrors(['pt_class_id' => trans('sw.active_members_exceeds_available_members')]);
+        }
+        $member_inputs['classes'] = $class->classes;
+        $member_inputs['amount_paid'] = (float)$request->amount_paid;
+        //$member_inputs['amount_remaining'] = ($class->price - (float)$request->amount_paid - @(float)$request->discount_value);
+        $member_inputs['discount_value'] = @(float)$request->discount_value;
+        $member_inputs['vat'] = $vat;
+        $member_inputs['amount_before_discount'] = $class->price;
+        $member_inputs['amount_remaining'] = (($class->price - (float)$request->amount_paid - @(float)$request->discount_value) + (($class->price - @$request->discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100)));
+        $member_inputs['payment_type'] = (int)($request->payment_type);
+
+        if($member_inputs['joining_date']){ $member_inputs['joining_date'] = Carbon::parse($member_inputs['joining_date']); }else{  $member_inputs['joining_date'] = Carbon::now();}
+
+        $member->update($member_inputs);
+
+        $notes = str_replace(':name', $member['name'], trans('sw.edit_activity'));
+        $this->userLog($notes, TypeConstants::EditPTMember);
+
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_edited'),
+            'type' => 'success'
+        ]);
+
+        if($differentPrice != 0) {
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = GymMoneyBoxFrontController::amountAfter((float)@$amount_box->amount, (float)@$amount_box->amount_before, (int)@$amount_box->operation);
+            $notes = trans('sw.pt_member_moneybox_edit_msg', ['subscription' => $class->pt_subscription->name . " (" . $class->classes . ")", 'member' => $member->member->name, 'amount_paid' => ($differentPrice), 'amount_remaining' => round($member_inputs['amount_remaining'], 2)]);
+            if ($request->discount_value)
+                $notes = $notes . trans('sw.discount_msg', ['value' => (float)$request->discount_value]);
+
+            $moneyBox = GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id
+                , 'amount' => abs((int)$differentPrice)
+//                , 'vat' => $vat
+                , 'vat' => ((@$differentPrice * (@$this->mainSettings->vat_details['vat_percentage'] / 100)) / (1 + (@$this->mainSettings->vat_details['vat_percentage'] / 100)))
+                , 'operation' => $differentPrice > 0 ? TypeConstants::Add : TypeConstants::Sub
+                , 'amount_before' => $amount_after
+                , 'notes' => $notes
+                , 'type' => TypeConstants::EditPTMember
+                , 'member_id' => @$member->member_id
+                , 'member_pt_subscription_id' => @$member->id
+                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            ]);
+            $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+            return redirect(route('sw.showOrder', $moneyBox->id));
+        }
+        return redirect(route('sw.listPTMember'));
+    }
+
+    public function destroy($id)
+    {
+        $member = GymPTMember::branch()->with(['member', 'pt_subscription'])->withTrashed()->find($id);
+        if($member->trashed())
+        {
+            $member->restore();
+        }
+        else
+        {
+            $member->delete();
+
+            if(\request('refund')){
+                $amount_box = GymMoneyBox::branch()->latest()->first();
+                $amount_after = (int)GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
+
+                $vat = @$member->vat;
+                $amount = ($member->amount_paid);
+                if(\request('total_amount') && \request('amount') && (\request('total_amount') >= \request('amount') )){
+                    $amount = \request('amount');
+                }
+                $notes = trans('sw.member_moneybox_delete_msg', ['member' => $member->member->name, 'subscription' => $member->pt_subscription->name, 'amount_paid' => $amount]);
+                GymMoneyBox::create([
+                    'user_id' => Auth::guard('sw')->user()->id
+                    , 'amount' => $amount
+                    , 'vat' => @$vat
+                    , 'operation' => TypeConstants::Sub
+                    , 'amount_before' => $amount_after
+                    , 'notes' => $notes
+                    , 'type' => TypeConstants::DeletePTMember
+                    , 'member_id' => @$member->member_id
+                    , 'member_pt_subscription_id' => @$member->id
+                    , 'member_subscription_id' => @$member->member->member_subscription_info->id
+                    , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                ]);
+                $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
+            }
+            $notes = str_replace(':name', $member['name'], trans('sw.delete_activity'));
+            $this->userLog($notes, TypeConstants::DeletePTMember);
+        }
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_deleted'),
+            'type' => 'success'
+        ]);
+        return redirect(route('sw.listPTMember'));
+    }
+
+    public function getPTTrainerAjax(){
+        $trainers = request('trainers');
+        if($trainers){
+            $trainerIds = explode(',', $trainers);
+            $trainers = GymPTTrainer::branch()->whereIn('id', $trainerIds)->get()->toArray();
+            $option = '<option value="">'.trans('admin.choose').'...</option>';
+            foreach ($trainers as $trainer)
+                $option.="<option data-percentage='".$trainer['percentage']."' value='".$trainer['id']."'>".$trainer['name']."</option>";
+            return $option;
+        }
+        return '';
+    }
+
+    public function getPTMemberAjax(){
+        $member_id = request('member_id');
+        if($member_id){
+            $member = GymMember::branch()->with(['member_subscription_info.subscription'])->where('code', $member_id)->first();
+            $member->member_subscription_info->expire_date_str = @Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
+            return $member;
+        }
+        return [];
+    }
+
+    private function prepare_inputs($inputs)
+    {
+        // Handle text fields - convert null/empty values to empty strings to avoid null constraint violations
+        if (isset($inputs['content_ar'])) {
+            $inputs['content_ar'] = $inputs['content_ar'] !== null ? $inputs['content_ar'] : '';
+        } else {
+            $inputs['content_ar'] = '';
+        }
+        if (isset($inputs['content_en'])) {
+            $inputs['content_en'] = $inputs['content_en'] !== null ? $inputs['content_en'] : '';
+        } else {
+            $inputs['content_en'] = '';
+        }
+
+        if(@$this->user_sw->branch_setting_id){
+            $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+        }
+        return $inputs;
+    }
+
+    private function memberPTAttendeesById($id){
+        $id = $id;
+        $member = GymPTMember::branch()->with(['member', 'pt_subscription', 'pt_class'])->where('id', $id)->first();
+        if($member && ($member->classes > $member->visits)) {
+            $member->increment('visits');
+//            GymPTMemberAttendee::create(['user_id' => Auth::guard('sw')->user()->id, 'pt_member_id' => $member->member->id ]);
+            GymMemberAttendee::create(['user_id' => @Auth::guard('sw')->user()->id, 'member_id' => $member->member->id,'pt_subscription_id' => $member->id,'subscription_id' => @$member->member->member_subscription_info->id, 'type' => TypeConstants::ATTENDANCE_TYPE_PT, 'branch_setting_id' => @$this->user_sw->branch_setting_id ]);
+            $note = trans('sw.pt_member_used', ['subscription' => ' ( '.$member->pt_subscription->name.' - '.$member->pt_class->classes.' ) ', 'name' => $member->member->name]);
+            $this->userLog($note, TypeConstants::ScanPTMember);
+            return $member->pt_subscription->name.' ('.$member->visits.' / '.$member->classes.') ';
+        }
+        return '';
+    }
+    public function memberPTAttendees(Request $request){
+
+        if(@$request->id){
+            return $this->memberPTAttendeesById(@$request->id);
+        }
+
+
+        $code = preg_replace("/[^0-9]/", "",$request->code);
+        $enquiry =intval($request->enquiry);
+        $msg = '';
+        $member = GymPTMember::with(['member' => function ($query){
+            $query->orderBy('id', 'desc');
+        }, 'pt_subscription'])->withCount(['pt_member_attendees' => function($q){
+            $q->whereDate('created_at', Carbon::now()->toDateString());
+        }])->where('id', $code)
+            ->when(@$enquiry && (strlen(intval($code)) >= 5), function ($q) use ($code){
+                $q->orWhereHas('member', function ($q) use ($code){ $q->where('phone', 'like', '%' . $code . '%');});
+            });
+        if(@!$this->mainSettings->allow_member_in_branches){
+            $member = $member->branch();
+        }
+        $member = $member->first();
+        $status = false;
+        if($member) {
+            if(($member->workouts_per_day > 0) && ($member->pt_member_attendees_count >= $member->workouts_per_day)){
+                $msg = trans('sw.workouts_per_day_msg', ['visits' => $member->pt_member_attendees_count, 'classes' => $member->workouts_per_day]);
+                return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
+            }
+
+
+//            if(($member->start_time_day) && ($member->pt_member_attendees_count <= $member->workouts_per_day)){
+//                $msg = trans('sw.workouts_per_day_msg', ['visits' => $member->pt_member_attendees_count, 'classes' => $member->workouts_per_day]);
+//                return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
+//            }
+
+//            if ($member) {
+                $checkForMemberVisits = true;
+                if(($member->joining_date > Carbon::now()) && ($checkForMemberVisits)){
+                    $msg = trans('sw.membership_not_coming');
+                }elseif(($member->classes > 0) && ($member->classes >= $member->visits)
+                    && ($member->expire_date >= Carbon::now()) && ($checkForMemberVisits)){
+
+                    // time of membership
+                    if(($member->start_time_day) && ($member->end_time_day) &&
+                        ((Carbon::parse($member->start_time_day)->format('H:i:s') > Carbon::now()->format('H:i:s')) ||
+                            (Carbon::parse($member->end_time_day)->subMinute()->format('H:i:s') < Carbon::now()->format('H:i:s')))) {
+                        return Response::json(['msg' => trans('sw.failed_time',
+                            [
+                                'date_from' => '<span style="font-size: 14px;"> ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($member->start_time_day).' '
+                            , 'date_to' => ' ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($member->end_time_day).'</span>'
+                            ]), 'member' => $member, 'status' => $status], 200);
+                    }
+
+                    if(!$enquiry) {
+                        $member->increment('visits');
+//                        if ($member->member_subscription_info->status == TypeConstants::Freeze) {
+//                            $dateNow = Carbon::now();
+//                            $startFreezeDate = Carbon::parse($member->member_subscription_info->start_freeze_date);
+//                            $endFreezeDate = Carbon::parse($member->member_subscription_info->end_freeze_date);
+//                            $endExpireDate = Carbon::parse($member->member_subscription_info->expire_date);
+//                            if ($dateNow > $endFreezeDate)
+//                                $freezingDays = $startFreezeDate->diffInDays($endFreezeDate);
+//                            else
+//                                $freezingDays = $startFreezeDate->diffInDays($dateNow);
+//                            $member->member_subscription_info->end_freeze_date = Carbon::now();
+//                            $member->member_subscription_info->expire_date = $endExpireDate->addDays($freezingDays);
+//
+//                            $member->member->member_subscription_info->status = TypeConstants::Active;
+//                            $member->member->member_subscription_info->save();
+//                        }
+
+                        GymMemberAttendee::create(['user_id' => @Auth::guard('sw')->user()->id, 'member_id' => $member->member_id,'pt_subscription_id' => $member->id,'subscription_id' => @$member->member->member_subscription_info->id, 'type' => TypeConstants::ATTENDANCE_TYPE_PT, 'branch_setting_id' => @$this->user_sw->branch_setting_id ]);
+
+                        $note = str_replace(':name', $member->member->name, trans('sw.barcode_scan_note'));
+                        $this->userLog($note, TypeConstants::ScanMember);
+                    }
+                    $status = true;
+                }else{
+                    $msg = trans('sw.membership_expired');
+                }
+                $member['expire_date'] = Carbon::parse($member->expire_date)->format('d-m-Y');
+                $member['remain_workouts'] = $member->classes - $member->visits;
+                $member['amount_remaining'] = number_format($member->amount_remaining, 2);
+                return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
+//            }else{
+//                return Response::json(['member' => $member, 'status' => $status], 200);
+//            }
+        }
+
+        $msg = trans('sw.no_code_found');
+        return Response::json(['msg' => $msg, 'status' => $status], 200);
+    }
+
+    public function payAmountRemaining(){
+        $id = request('id');
+        $amountPaid = (float)request('amount_paid');
+        $payment_type = (int)request('payment_type');
+
+        $memberPTInfo = GymPTMember::branch()->with(['pt_subscription', 'member'])->where('id', $id)->orderBy('id', 'desc')->first();
+        if(@$memberPTInfo ){
+            $amount_remaining = round($memberPTInfo->amount_remaining, 2);
+
+            if($amountPaid == 0) return trans('sw.amount_paid_must_not_zero');
+            if($amount_remaining < $amountPaid) return str_replace(':amount_paid', $amount_remaining, trans('sw.amount_paid_must_less'));
+
+            $memberPTInfo->amount_remaining = ($amount_remaining - $amountPaid);
+            $memberPTInfo->amount_paid = ($memberPTInfo->amount_paid + $amountPaid);
+            $memberPTInfo->save();
+
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
+
+            $notes = trans('sw.pt_member_moneybox_remain_msg',['subscription'=> $memberPTInfo->pt_subscription->name, 'member' => $memberPTInfo->member->name, 'amount_paid' => $amountPaid, 'amount_remaining' => round($memberPTInfo->amount_remaining, 2)]);
+
+            GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id
+                , 'amount' => @abs((float)$amountPaid)
+                , 'operation' => $amountPaid > 0 ? TypeConstants::Add : TypeConstants::Sub
+                , 'amount_before' => $amount_after
+                , 'notes' => $notes
+                , 'type' => TypeConstants::CreatePTMemberPayAmountRemainingForm
+                , 'payment_type' => $payment_type
+                , 'member_id' => @$memberPTInfo->member->id
+                , 'member_pt_subscription_id' => @$memberPTInfo->id
+                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            ]);
+            $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+            return 1;
+        }
+        return trans('admin.operation_failed');
+    }
+
+    public function listPTMemberCalendar($member){
+        $result = [];
+            $pt_member = GymPTMember::where('id', $member)->first();
+            if($pt_member) {
+                $from = Carbon::parse($pt_member->joining_date);
+                $to = Carbon::parse($pt_member->expire_date);
+                $period = CarbonPeriod::create($from, $to)->toArray();
+                $reservation = @GymPTSubscriptionTrainer::where('pt_class_id', $pt_member->pt_class_id)->where('pt_trainer_id', $pt_member->pt_trainer_id)->orderBy('id', 'desc')->first();
+                $reservation_details = @$reservation->reservation_details;
+
+                if ($reservation_details && $reservation_details['work_days']) {
+                    $i = 0;
+                    $date_now = Carbon::now()->toDateString();
+                    foreach ($period as $index => $day) {
+                        if (@$reservation_details['work_days'][$day->dayOfWeek]) {
+                            $result[$i]['member_date'] = $day->toDateString();
+                            $result[$i]['member_time'] = @$reservation_details['work_days'][$day->dayOfWeek];
+                            $result[$i]['member_time_from'] = @Carbon::parse(@$reservation_details['work_days'][$day->dayOfWeek]['start'])->format('g:i A');
+                            $result[$i]['member_time_to'] = @Carbon::parse(@$reservation_details['work_days'][$day->dayOfWeek]['end'])->format('g:i A');
+                            $result[$i]['member_subscription'] = @$pt_member->pt_class->name;
+                            if ($day->toDateString() >= $date_now) {
+                                $result[$i]['date_status'] = 1;
+                            } else {
+                                $result[$i]['date_status'] = 0;
+                            }
+                            $i++;
+                        }
+                    }
+
+            }
+        }
+        return Response::json(['result' => $result], 200);
+
+
+    }
+    public function listPTMemberInClassCalendar($pt_class_id, $pt_trainer_id){
+        $pt_members = GymPTMember::select(['id', 'member_id'])
+                      ->with(['member' => function ($q){$q->select(['id', 'name', 'code']);}])
+                      ->where('pt_class_id', $pt_class_id)
+                      ->where('pt_trainer_id', $pt_trainer_id)
+                      ->whereDate('joining_date', '<=', Carbon::now()->toDateString())
+                      ->whereDate('expire_date', '>=', Carbon::now()->toDateString())
+                      ->limit(50)->get();
+        return Response::json(['result' => $pt_members], 200);
+    }
+
+
+    public function membersPTRefresh(){
+        //$this->updateSubscriptionsStatus([], true);
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_processed'),
+            'type' => 'success'
+        ]);
+        return  Response::json(['status' => true], 200);
+    }
+}
