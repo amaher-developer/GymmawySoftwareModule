@@ -513,20 +513,45 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
     public function editPaymentTypeOrder(){
         $id = request('id');
-        $payment_type = (int)request('payment_type');
-        $order = GymMoneyBox::branch()->where('id', $id)->first();
-        if($order ){
-
+        $payment_type = request('payment_type');
+        
+        // Validate required parameters
+        if (empty($id) || (empty($payment_type) && ($payment_type != 0))) {
+            return trans('admin.operation_failed');
+        }
+        
+        // Convert to integers
+        $id = (int)$id;
+        $payment_type = (int)$payment_type;
+        // Validate that payment_type is a valid positive integer
+        if ($payment_type < 0) {
+            return trans('admin.operation_failed');
+        }
+        
+        // Get authenticated user and branch_setting_id
+        $user = Auth::guard('sw')->user();
+        if (!$user) {
+            return trans('admin.operation_failed');
+        }
+        $branch_setting_id = $user->branch_setting_id ?? 1;
+        
+        // Find the order - use branch_setting_id directly to ensure it works
+        $order = GymMoneyBox::where('branch_setting_id', $branch_setting_id)
+            ->where('id', $id)
+            ->first();
+        
+        if($order){
             $order->payment_type = $payment_type;
             $order->save();
 
             session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_processed'),
-            'type' => 'success'
-        ]);
-            return 1;
+                'title' => trans('admin.done'),
+                'message' => trans('admin.successfully_processed'),
+                'type' => 'success'
+            ]);
+            return '1';
         }
+        
         return trans('admin.operation_failed');
     }
 

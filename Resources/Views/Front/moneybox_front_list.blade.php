@@ -587,19 +587,39 @@
         });
 
 
-        $('.btn-indigo').off('click').on('click', function (e) {
+        $(document).on('click', 'a[data-target="#modalEdit"]', function (e) {
             var that = $(this);
             var attr_id = that.attr('id');
             var payment_type = that.attr('payment_type');
-            document.getElementById("payment_type_"+payment_type).selected = "true";
+            
+            // Validate that we have the required attributes
+            if (!attr_id || !payment_type) {
+                console.error('Missing id or payment_type attribute');
+                return;
+            }
+            
+            var paymentTypeSelect = document.getElementById("payment_type_"+payment_type);
+            if (paymentTypeSelect) {
+                paymentTypeSelect.selected = true;
+            }
+            
             $('#modalEditResult').hide();
             $('#edit_id').remove();
             $('#form_edit').append('<input value="' + attr_id + '"  id="edit_id" name="edit_id"  hidden>');
         });
         $(document).on('click', '#form_edit_btn', function (event) {
             event.preventDefault();
-            id = $('#edit_id').val();
-            payment_type = $('#payment_type').val();
+            var id = $('#edit_id').val();
+            var payment_type = $('#payment_type').val();
+            
+            // Validate that both values are present
+            if (!id || !payment_type) {
+                $('#modalEditResult').show();
+                $('#modalEditResult').html('<div class="alert alert-danger">{{ trans('admin.operation_failed')}}: Missing required data</div>');
+                console.error('Missing id or payment_type. id:', id, 'payment_type:', payment_type);
+                return;
+            }
+            
             $('#modalEditResult').show();
             $.ajax({
                 url: '{{route('sw.editPaymentTypeOrderMoneybox')}}',
@@ -608,9 +628,11 @@
                 dataType: 'text',
                 data: {id: id, payment_type: payment_type},
                 success: function (response) {
-                    if (response == '1') {
+                    if (response == '1' || response.trim() == '1') {
                         $('#modalEditResult').html('<div class="alert alert-success">{{ trans('admin.successfully_paid')}}</div>');
-                        location.reload();
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1000);
                     } else {
                         $('#modalEditResult').html('<div class="alert alert-danger">' + response + '</div>');
                     }

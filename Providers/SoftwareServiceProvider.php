@@ -28,6 +28,22 @@ class SoftwareServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        $this->registerAuthGuard();
+    }
+    
+    /**
+     * Register custom auth guard for API token (SHA256 hashed)
+     */
+    protected function registerAuthGuard()
+    {
+        \Auth::extend('sha256-token', function ($app, $name, array $config) {
+            return new \Modules\Software\Auth\Sha256TokenGuard(
+                \Auth::createUserProvider($config['provider']),
+                $app['request'],
+                $config['input_key'] ?? 'api_token',
+                $config['storage_key'] ?? 'api_token'
+            );
+        });
     }
 
     /**

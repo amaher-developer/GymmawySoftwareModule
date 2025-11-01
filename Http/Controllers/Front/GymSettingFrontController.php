@@ -56,12 +56,29 @@ class GymSettingFrontController extends GymGenericFrontController
     public function update(GymSettingRequest $request)
     {
         $setting = Setting::branch()->first();
-        $setting_inputs = $this->prepare_inputs($request->only(['name_ar', 'name_en', 'facebook', 'twitter', 'instagram',  'tiktok',  'snapchat', 'address_ar', 'address_en',
+        
+        $setting_inputs = $this->prepare_inputs($request->only(['name_ar', 'name_en', 'facebook', 'twitter', 'instagram',  'tiktok',  'snapchat', 'youtube', 'address_ar', 'address_en',
             'latitude', 'longitude', 'phone', 'support_email', 'meta_keywords_ar', 'meta_keywords_en', 'meta_description_ar', 'meta_description_en',
             'about_ar', 'about_en', 'terms_ar', 'terms_en', 'sms_username', 'sms_email', 'sms_sms_sender_id'
             , 'images', 'vat_details', 'reservation_details']));
 
+        // Manually build social_media array from individual fields
+        $socialMediaData = [];
+        $socialKeys = ['facebook', 'twitter', 'instagram', 'youtube', 'snapchat', 'tiktok'];
+        foreach ($socialKeys as $key) {
+            if (isset($setting_inputs[$key])) {
+                $socialMediaData[$key] = $setting_inputs[$key];
+            }
+        }
+        
+        // Add social_media to inputs if we have data
+        if (!empty($socialMediaData)) {
+            $setting_inputs['social_media'] = $socialMediaData;
+        }
+        
+        // Update settings
         $setting->update($setting_inputs);
+        
         Cache::store('file')->clear();
         
         // Flash success message
@@ -151,6 +168,14 @@ class GymSettingFrontController extends GymGenericFrontController
 
         if(@$inputs['meta_keywords_ar']) $inputs['meta_keywords_ar'] = implode('&', $inputs['meta_keywords_ar']);
         if(@$inputs['meta_keywords_en']) $inputs['meta_keywords_en'] = implode('&', $inputs['meta_keywords_en']);
+        
+        // Handle social media - ensure empty strings don't become null
+        $socialKeys = ['facebook', 'instagram', 'twitter', 'youtube', 'snapchat', 'tiktok'];
+        foreach ($socialKeys as $key) {
+            if (!isset($inputs[$key]) || $inputs[$key] === null) {
+                $inputs[$key] = '';
+            }
+        }
         
         // Handle text fields - convert empty strings to avoid null constraint violations
         $inputs['about_ar'] = !empty($inputs['about_ar']) ? nl2br($inputs['about_ar'], false) : '';

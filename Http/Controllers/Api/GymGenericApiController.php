@@ -5,7 +5,8 @@ namespace Modules\Software\Http\Controllers\Api;
 use Modules\Generic\Classes\Constants;
 use Modules\Generic\Models\Contact;
 use Modules\Generic\Models\Setting;
-use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
+// Firebase integration - optional, loaded dynamically if available
+// use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
 use App\Modules\Notification\Models\PushNotification;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Resources\ActivityResource;
@@ -251,7 +252,8 @@ class GymGenericApiController extends GenericController
 
     public function get_settings()
     {
-        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select( 'phone','support_email', 'address_ar' ,'address_en', 'latitude', 'longitude' ,'facebook', 'twitter', 'instagram', 'tiktok', 'snapchat', 'ios_version', 'android_version', 'terms_ar', 'terms_en', 'facebook', 'twitter', 'instagram', 'youtube')->first());
+        // Select only columns that exist + JSON columns (social_media contains all social links)
+        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select('phone', 'support_email', 'address_ar', 'address_en', 'latitude', 'longitude', 'social_media', 'ios_version', 'android_version', 'terms_ar', 'terms_en')->first());
         return $this->return;
     }
 
@@ -282,7 +284,16 @@ class GymGenericApiController extends GenericController
                 'token' => $device_token,
                 'member_id' => @Auth::guard('api')->user()->id
             ]);
-            (new FirebaseApiController())->addTokenToTopic($device_token, $device_type);
+            
+            // Try to add token to Firebase topic if class exists
+            try {
+                if (class_exists('App\Modules\Notification\Http\Controllers\Api\FirebaseApiController')) {
+                    (new \App\Modules\Notification\Http\Controllers\Api\FirebaseApiController())->addTokenToTopic($device_token, $device_type);
+                }
+            } catch (\Exception $e) {
+                // Firebase integration not available - continue without it
+                \Log::info('Firebase integration not available', ['error' => $e->getMessage()]);
+            }
         } else {
             $record->update(['member_id' => @Auth::guard('api')->user()->id]);
         }
