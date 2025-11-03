@@ -136,6 +136,19 @@
                 </div>
             </div>
 
+            @if(@$mainSettings->active_loyalty)
+            <!--begin::Loyalty Points Earning Info-->
+            <div class="alert alert-dismissible bg-light-success border border-success border-dashed d-flex flex-column flex-sm-row p-4 mb-3" id="renew_loyalty_earning_info" style="display: none !important;">
+                <i class="ki-outline ki-gift fs-2hx text-success me-3 mb-3 mb-sm-0"></i>
+                <div class="d-flex flex-column pe-0 pe-sm-5">
+                    <h6 class="mb-1">{{ trans('sw.points_earning_info')}}</h6>
+                    <span class="text-gray-700 fs-7">{!! trans('sw.you_will_earn_points', ['points' => '<span id="renew_estimated_earning_points" class="fw-bold text-success">0</span>'])!!}</span>
+                    <span class="text-gray-600 fs-8" id="renew_loyalty_earning_rate"></span>
+                </div>
+            </div>
+            <!--end::Loyalty Points Earning Info-->
+            @endif
+
             <div style="clear: both;float: none"></div>
             <div class="modal-footer">
                 <input value=""  id="renew_member_id"   type="hidden">
@@ -278,6 +291,17 @@
                                 </a>
                             </div>
                         </div>
+                        @if(@$mainSettings->active_loyalty)
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <span class="fw-bold">
+                                    <i class="ki-outline ki-gift text-primary me-1"></i>
+                                    {{trans('sw.loyalty_points')}}:
+                                </span>
+                                <span id="client_loyalty_points" class="text-primary fw-bold fs-4">0</span>
+                            </div>
+                        </div>
+                        @endif
                         <div class="col-md-6">
                             <div class="d-flex flex-column">
                                 <span class="fw-bold">{{trans('sw.store_credit')}}:</span>
@@ -310,6 +334,17 @@
                     </div>
                 </div>
         </div>
+
+            <div class="modal-footer d-flex justify-content-center gap-2">
+                @if($swUser && (in_array('memberSubscriptionRenewStore', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))<div id="div_renew"></div>@endif
+                @if($swUser && (in_array('unfreezeMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))<div id="div_freeze"></div>@endif
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Attends with effects-->
+
+
 
             <div class="modal-footer d-flex justify-content-center gap-2">
                 @if($swUser && (in_array('memberSubscriptionRenewStore', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))<div id="div_renew"></div>@endif

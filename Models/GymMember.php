@@ -17,9 +17,25 @@ class GymMember extends GenericModel
 
     protected $table = 'sw_gym_members';
     protected $guarded = ['id'];
-    protected $appends = [];
+    protected $appends = ['loyalty_points_formatted'];
     public static $uploads_path='uploads/members/';
     public static $thumbnails_uploads_path='uploads/members/thumbnails/';
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'loyalty_points_balance' => 'integer',
+        'last_points_update' => 'datetime',
+    ];
+    
+    /**
+     * Get formatted loyalty points balance
+     */
+    public function getLoyaltyPointsFormattedAttribute()
+    {
+        return number_format($this->loyalty_points_balance ?? 0);
+    }
 
     public function scopeBranch($query)
     {
@@ -107,6 +123,24 @@ class GymMember extends GenericModel
     }
     public function member_zk_fingerprint(){
         return $this->hasOne(GymZKFingerprint::class, 'member_id')->orderBy('id', 'desc');
+    }
+
+    /**
+     * Get all loyalty transactions for this member
+     */
+    public function loyalty_transactions()
+    {
+        return $this->hasMany(LoyaltyTransaction::class, 'member_id');
+    }
+
+    /**
+     * Get active (non-expired) loyalty transactions
+     */
+    public function active_loyalty_transactions()
+    {
+        return $this->hasMany(LoyaltyTransaction::class, 'member_id')
+            ->where('is_expired', false)
+            ->where('points', '>', 0);
     }
     public function toArray()
     {

@@ -313,6 +313,11 @@
                                 <div class="fs-6 fw-bold text-white">
                                     <span class="d-block lh-1 mb-2">{{ trans('sw.subtotal')}}</span>
                                     <span class="d-block mb-2">{{ trans('sw.discount')}}</span>
+                                    @if(@$mainSettings->active_loyalty)
+                                    <span class="d-block mb-2" id="loyalty_discount_label" style="display: none;">
+                                        <i class="ki-outline ki-gift me-1"></i>{{ trans('sw.loyalty_discount')}}
+                                    </span>
+                                    @endif
                                     <span class="d-block mb-9">{{ trans('sw.vat')}} ({{ @$mainSettings->vat_details['vat_percentage'] ?? 0 }}%)</span>
                                     <span class="d-block fs-2qx lh-1">{{ trans('sw.total')}}</span>
                                 </div>
@@ -321,6 +326,9 @@
                                 <div class="fs-6 fw-bold text-white text-end">
                                     <span class="d-block lh-1 mb-2" id="subtotal_display">{{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}0.00</span>
                                     <span class="d-block mb-2" id="discount_display">-{{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}0.00</span>
+                                    @if(@$mainSettings->active_loyalty)
+                                    <span class="d-block mb-2" id="loyalty_discount_display" style="display: none;">-{{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}0.00</span>
+                                    @endif
                                     <span class="d-block mb-9" id="vat_display">{{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}0.00</span>
                                     <span class="d-block fs-2qx lh-1" id="total_display">{{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}0.00</span>
                                 </div>
@@ -328,18 +336,65 @@
                             </div>
                             <!--end::Summary-->
                             
+                            @if(@$mainSettings->active_loyalty)
+                            <!--begin::Loyalty Points Earning Info-->
+                            <div class="alert alert-dismissible bg-light-success border border-success border-dashed d-flex flex-column flex-sm-row p-5 mb-8" id="loyalty_earning_info" style="display: none !important;">
+                                <i class="ki-outline ki-gift fs-2hx text-success me-4 mb-5 mb-sm-0"></i>
+                                <div class="d-flex flex-column pe-0 pe-sm-10">
+                                    <h5 class="mb-1">{{ trans('sw.points_earning_info')}}</h5>
+                                    <span class="text-gray-700" id="loyalty_earning_text">{!! trans('sw.you_will_earn_points', ['points' => '<span id="estimated_earning_points" class="fw-bold text-success">0</span>'])!!}</span>
+                                    <span class="text-gray-600 fs-7" id="loyalty_earning_rate"></span>
+                                </div>
+                            </div>
+                            <!--end::Loyalty Points Earning Info-->
+                            @endif
+                            
                             <!--begin::Discount Input-->
                             <div class="mb-8">
                                 <label class="form-label fw-bold">{{ trans('sw.discount')}}</label>
                                 <div class="input-group">
-                                    <input type="number" name="discount_value" id="discount_value" class="form-control" value="0" min="0" onchange="calculateTotal()">
-                                    <select name="discount_type" id="discount_type" class="form-select w-100px" onchange="calculateTotal()">
+                                    <input type="number" name="discount_value" id="discount_value" class="form-control" value="0" min="0" onchange="calculateTotal(); calculateLoyaltyDiscount();">
+                                    <select name="discount_type" id="discount_type" class="form-select w-100px" onchange="calculateTotal(); calculateLoyaltyDiscount();">
                                         <option value="1">{{ trans('sw.percentage')}}</option>
                                         <option value="0">{{ trans('sw.fixed')}}</option>
                                     </select>
                                 </div>
                             </div>
                             <!--end::Discount Input-->
+                            
+                            @if(@$mainSettings->active_loyalty)
+                            <!--begin::Loyalty Points Redemption-->
+                            <div class="mb-8" id="loyalty_redemption_section" style="display: none;">
+                                <div class="card bg-light-primary border-primary border-dashed">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center mb-4">
+                                            <i class="ki-outline ki-gift fs-2x text-primary me-3"></i>
+                                            <div>
+                                                <h4 class="mb-0">{{ trans('sw.redeem_loyalty_points')}}</h4>
+                                                <p class="text-muted mb-0 fs-7">{{ trans('sw.available_points')}}: <span id="member_available_points" class="fw-bold text-primary">0</span></p>
+                                                <p class="text-muted mb-0 fs-7">{{ trans('sw.points_value')}}: <span id="points_value_rate" class="fw-bold">0</span> {{ trans('sw.points')}} = <span id="money_value_rate" class="fw-bold">1</span> {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">{{ trans('sw.points_to_redeem')}}</label>
+                                                <input type="number" name="loyalty_points_redeem" id="loyalty_points_redeem" class="form-control" value="0" min="0" max="0" onchange="calculateLoyaltyDiscount()">
+                                                <div class="form-text">{{ trans('sw.loyalty_points_redeem_help')}}</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">{{ trans('sw.discount_value')}}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">{{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}</span>
+                                                    <input type="text" id="loyalty_discount_value" class="form-control fw-bold" value="0.00" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--end::Loyalty Points Redemption-->
+                            @endif
                             
                             <!--begin::Payment Method-->
                             <div class="m-0">
@@ -520,6 +575,27 @@
         });
     }
     
+    let memberLoyaltyPoints = 0;
+    let loyaltyPointToMoneyRate = 0;
+    let loyaltyMoneyToPointRate = {{ @$mainSettings->active_loyalty ? '0' : '0' }}; // Will be loaded from server
+    
+    // Load loyalty earning rate on page load
+    @if(@$mainSettings->active_loyalty)
+    $(document).ready(function() {
+        $.ajax({
+            url: '{{ route('sw.getMemberLoyaltyInfo') }}',
+            type: 'GET',
+            data: { member_id: 0 }, // Get rule without member
+            success: function(response) {
+                if (response.success && response.point_to_money_rate) {
+                    loyaltyMoneyToPointRate = 1 / response.point_to_money_rate; // Convert to money_to_point_rate
+                    $('#loyalty_earning_rate').text('{{ trans('sw.earning_rate', ['rate' => '']) }}'.replace('1 نقطة', loyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.points') }}').replace('1 point', loyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.points') }}'));
+                }
+            }
+        });
+    });
+    @endif
+    
     function calculateTotal() {
         let subtotal = 0;
         
@@ -539,13 +615,27 @@
             discountAmount = discountValue;
         }
         
-        const afterDiscount = subtotal - discountAmount;
+        // Calculate loyalty discount
+        const loyaltyPointsRedeem = parseInt($('#loyalty_points_redeem').val()) || 0;
+        const loyaltyDiscountAmount = parseFloat($('#loyalty_discount_value').val()) || 0;
+        
+        const afterDiscount = subtotal - discountAmount - loyaltyDiscountAmount;
         const vatAmount = afterDiscount * vatRate;
         const total = afterDiscount + vatAmount;
         
         // Update display
         $('#subtotal_display').text(currencySymbol + subtotal.toFixed(2));
         $('#discount_display').text('-' + currencySymbol + discountAmount.toFixed(2));
+        
+        // Show/hide loyalty discount
+        if (loyaltyPointsRedeem > 0 && loyaltyDiscountAmount > 0) {
+            $('#loyalty_discount_label').show();
+            $('#loyalty_discount_display').text('-' + currencySymbol + loyaltyDiscountAmount.toFixed(2)).show();
+        } else {
+            $('#loyalty_discount_label').hide();
+            $('#loyalty_discount_display').hide();
+        }
+        
         $('#vat_display').text(currencySymbol + vatAmount.toFixed(2));
         $('#total_display').text(currencySymbol + total.toFixed(2));
         
@@ -553,7 +643,128 @@
         $('#amount_before_discount').val(subtotal.toFixed(2));
         $('#amount_paid').val(total.toFixed(2));
         $('#amount_remaining').val(0);
+        
+        // Calculate and display estimated loyalty points earning
+        @if(@$mainSettings->active_loyalty)
+        if (loyaltyMoneyToPointRate > 0 && total > 0) {
+            const estimatedPoints = Math.floor(total / loyaltyMoneyToPointRate);
+            if (estimatedPoints > 0) {
+                $('#estimated_earning_points').text(estimatedPoints);
+                $('#loyalty_earning_info').slideDown();
+            } else {
+                $('#loyalty_earning_info').slideUp();
+            }
+        } else {
+            $('#loyalty_earning_info').slideUp();
+        }
+        @endif
     }
+    
+    function calculateLoyaltyDiscount() {
+        let pointsToRedeem = parseInt($('#loyalty_points_redeem').val()) || 0;
+        
+        // Validate points availability
+        if (pointsToRedeem > memberLoyaltyPoints) {
+            alert('{{ trans('sw.insufficient_loyalty_points') }}');
+            $('#loyalty_points_redeem').val(memberLoyaltyPoints);
+            pointsToRedeem = memberLoyaltyPoints;
+        }
+        
+        if (pointsToRedeem < 0) {
+            $('#loyalty_points_redeem').val(0);
+            pointsToRedeem = 0;
+        }
+        
+        // Calculate maximum usable discount (subtotal after regular discount)
+        let subtotal = 0;
+        cart.forEach(item => {
+            subtotal += item.price * item.quantity;
+        });
+        
+        const discountValue = parseFloat($('#discount_value').val()) || 0;
+        const discountType = parseInt($('#discount_type').val());
+        
+        let discountAmount = 0;
+        if (discountType === 1) {
+            // Percentage
+            discountAmount = subtotal * (discountValue / 100);
+        } else {
+            // Fixed
+            discountAmount = discountValue;
+        }
+        
+        const maxUsableDiscount = Math.max(0, subtotal - discountAmount);
+        
+        // Calculate maximum redeemable points based on max discount
+        let maxRedeemablePoints = 0;
+        if (loyaltyPointToMoneyRate > 0 && maxUsableDiscount > 0) {
+            maxRedeemablePoints = Math.floor(maxUsableDiscount / loyaltyPointToMoneyRate);
+        }
+        
+        // Cap redemption points to maximum usable (can't redeem more than purchase amount)
+        if (pointsToRedeem > maxRedeemablePoints && maxRedeemablePoints > 0) {
+            pointsToRedeem = maxRedeemablePoints;
+            $('#loyalty_points_redeem').val(pointsToRedeem);
+            
+            // Show warning message
+            if (maxRedeemablePoints < memberLoyaltyPoints) {
+                alert('{{ trans('sw.loyalty_points_capped_to_purchase') }}');
+            }
+        }
+        
+        // Calculate discount value (capped to max usable)
+        let calculatedDiscountValue = loyaltyPointToMoneyRate > 0 ? (pointsToRedeem * loyaltyPointToMoneyRate) : 0;
+        if (calculatedDiscountValue > maxUsableDiscount) {
+            calculatedDiscountValue = maxUsableDiscount;
+        }
+        
+        $('#loyalty_discount_value').val(calculatedDiscountValue.toFixed(2));
+        
+        // Recalculate total
+        calculateTotal();
+    }
+    
+    // Load loyalty points and rate when member is selected
+    $('#member_id').on('change', function() {
+        const memberId = $(this).val();
+        
+        if (memberId && {{ @$mainSettings->active_loyalty ? 'true' : 'false' }}) {
+            // Load member loyalty points
+            $.ajax({
+                url: '{{ route('sw.getMemberLoyaltyInfo') }}',
+                type: 'GET',
+                data: { member_id: memberId },
+                success: function(response) {
+                    if (response.success) {
+                        memberLoyaltyPoints = response.points || 0;
+                        loyaltyPointToMoneyRate = response.point_to_money_rate || 0;
+                        
+                        $('#member_available_points').text(response.points_formatted || '0');
+                        $('#points_value_rate').text(response.points_for_one_currency || '0');
+                        $('#money_value_rate').text('1');
+                        $('#loyalty_points_redeem').attr('max', memberLoyaltyPoints);
+                        
+                        if (memberLoyaltyPoints > 0) {
+                            $('#loyalty_redemption_section').slideDown();
+                        } else {
+                            $('#loyalty_redemption_section').slideUp();
+                            $('#loyalty_points_redeem').val(0);
+                            calculateLoyaltyDiscount();
+                        }
+                    }
+                },
+                error: function() {
+                    console.log('Failed to load loyalty points');
+                }
+            });
+        } else {
+            $('#loyalty_redemption_section').slideUp();
+            $('#loyalty_points_redeem').val(0);
+            memberLoyaltyPoints = 0;
+            loyaltyPointToMoneyRate = 0;
+            calculateLoyaltyDiscount();
+        }
+    });
     
     // Form submission
     $('#store_order_form').on('submit', function(e) {

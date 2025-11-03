@@ -370,6 +370,19 @@
                 </div>
                 <!--end::Payment Information Card-->
                 
+                @if(@$mainSettings->active_loyalty)
+                <!--begin::Loyalty Points Earning Info-->
+                <div class="alert alert-dismissible bg-light-success border border-success border-dashed d-flex flex-column flex-sm-row p-5 mb-5" id="member_loyalty_earning_info" style="display: none !important;">
+                    <i class="ki-outline ki-gift fs-2hx text-success me-4 mb-5 mb-sm-0"></i>
+                    <div class="d-flex flex-column pe-0 pe-sm-10">
+                        <h5 class="mb-1">{{ trans('sw.points_earning_info')}}</h5>
+                        <span class="text-gray-700">{!! trans('sw.you_will_earn_points', ['points' => '<span id="member_estimated_earning_points" class="fw-bold text-success">0</span>'])!!}</span>
+                        <span class="text-gray-600 fs-7" id="member_loyalty_earning_rate"></span>
+                    </div>
+                </div>
+                <!--end::Loyalty Points Earning Info-->
+                @endif
+                
                 <!--begin::Form Actions-->
                 <div class="d-flex justify-content-end gap-3">
                     <button type="reset" class="btn btn-light">{{ trans('admin.reset')}}</button>
@@ -446,6 +459,10 @@
 {{--    <script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript"></script>--}}
 {{--    <script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-pickers.js"></script>--}}
     <script>
+        // Declare variables at the top
+        let selectedMembershipPrice = 0;
+        let selectedMembershipExpireDate = '';
+        let loyaltyMoneyToPointRate = 0;
 
         $("#membership").select2();
 
@@ -463,11 +480,47 @@
                 orientation: "bottom auto",
                 endDate: new Date() // Can't select future dates for birthdate
             });
+            
+            @if(@$mainSettings->active_loyalty)
+            // Load loyalty earning rate
+            $.ajax({
+                url: '{{ route('sw.getMemberLoyaltyInfo') }}',
+                type: 'GET',
+                data: { member_id: 0 },
+                success: function(response) {
+                    if (response.success && response.money_to_point_rate) {
+                        loyaltyMoneyToPointRate = response.money_to_point_rate;
+                        $('#member_loyalty_earning_rate').text('{{ trans('sw.earning_rate', ['rate' => '']) }}'.replace(':rate عملة', loyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.app_currency') }}').replace(':rate currency', loyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.app_currency') }}'));
+                        // Calculate initial points
+                        calculateMemberLoyaltyPoints();
+                    }
+                }
+            });
+            @endif
         });
-
-        let selectedMembershipPrice = 0;
-        let selectedMembershipExpireDate = '';
-            getPriceMemberShip();
+        
+        function calculateMemberLoyaltyPoints() {
+            if (loyaltyMoneyToPointRate > 0) {
+                const amountPaid = parseFloat($('#create_amount_paid').val()) || 0;
+                console.log('Calculating loyalty points:', amountPaid, 'Rate:', loyaltyMoneyToPointRate);
+                if (amountPaid > 0) {
+                    const estimatedPoints = Math.floor(amountPaid / loyaltyMoneyToPointRate);
+                    console.log('Estimated points:', estimatedPoints);
+                    if (estimatedPoints > 0) {
+                        $('#member_estimated_earning_points').text(estimatedPoints);
+                        $('#member_loyalty_earning_info').slideDown();
+                    } else {
+                        $('#member_loyalty_earning_info').slideUp();
+                    }
+                } else {
+                    $('#member_loyalty_earning_info').slideUp();
+                }
+            } else {
+                console.log('Loyalty rate not loaded yet or zero');
+            }
+        }
+        
+        getPriceMemberShip();
 
             // getRandomBarcode();
 
@@ -479,7 +532,9 @@
 
         }
 
-        $("#create_amount_paid").change(function () {
+        $("#create_amount_paid").on('change input keyup', function () {
+            console.log('Amount paid changed, current value:', $(this).val());
+            
             selectedMembershipPrice = 0;
             $.each($("#membership option:selected"), function () {
                 selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')));
@@ -487,7 +542,7 @@
 
             let vat = 0;
             let selectedMembershipPriceWithVat = 0;
-            let valueAmountPaid = $('#create_amount_paid').val();
+            let valueAmountPaid = parseFloat($('#create_amount_paid').val()) || 0;
 
             let valueDiscount = 0;
             valueDiscount = $('#discount_value').val();
@@ -498,7 +553,11 @@
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount) + vat;
 
             $('#create_amount_remaining').val(Number(selectedMembershipPriceWithVat - valueAmountPaid ).toFixed(2));
-            valueAmountPaid.attr('max', Number(selectedMembershipPriceWithVat - valueAmountPaid).toFixed(2));
+            $('#create_amount_paid').attr('max', Number(selectedMembershipPriceWithVat).toFixed(2));
+            
+            // Calculate loyalty points
+            console.log('Calling calculateMemberLoyaltyPoints from amount_paid change');
+            calculateMemberLoyaltyPoints();
         });
 
         $('#membership').change(function () {
@@ -524,6 +583,9 @@
             $('#editCustomStartDate').val('{{\Carbon\Carbon::now()->toDateString()}}');
 
             apply_discount_subscription();
+            
+            // Calculate loyalty points
+            calculateMemberLoyaltyPoints();
         });
 
         $('#editCustomStartDate').change(function () {
@@ -559,6 +621,9 @@
 
             $('#editCustomExpireDate').val(selectedMembershipExpireDate);
             $('#editCustomStartDate').val('{{\Carbon\Carbon::now()->toDateString()}}');
+            
+            // Calculate loyalty points
+            calculateMemberLoyaltyPoints();
 
         }
 
@@ -598,6 +663,9 @@
             $('#myTotalWithVat').text("{{ trans('sw.including_vat')}} = " + parseFloat(priceWithVat).toFixed(2));
             $('#create_amount_paid').val(parseFloat(priceWithVat).toFixed(2)).attr('max', parseFloat(priceWithVat).toFixed(2));
             $('#create_amount_remaining').val(0);
+            
+            // Calculate loyalty points
+            calculateMemberLoyaltyPoints();
 
             // });
         }

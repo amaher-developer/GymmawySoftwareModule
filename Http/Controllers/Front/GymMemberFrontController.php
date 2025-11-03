@@ -6,6 +6,7 @@ use Modules\Generic\Classes\Constants;
 use Modules\Generic\Models\Setting;
 use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
 use Modules\Software\Classes\ImportExcel;
+use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Classes\SMSFactory;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
@@ -627,6 +628,37 @@ class GymMemberFrontController extends GymGenericFrontController
 
             $notes = str_replace(':name', $member_inputs['name'], trans('sw.add_member'));
             $this->userLog($notes, TypeConstants::CreateMember);
+            
+            // Award loyalty points if member made a payment
+            $loyaltyPointsEarned = 0;
+            if ($member && $amount_paid > 0 && @$this->mainSettings->active_loyalty) {
+                try {
+                    $loyaltyService = new LoyaltyService();
+                    $transaction = $loyaltyService->earn(
+                        $member,
+                        $amount_paid,
+                        'member_subscription',
+                        $member_subscription
+                    );
+                    
+                    if ($transaction) {
+                        $loyaltyPointsEarned = $transaction->points;
+                        // Log::info('Loyalty points awarded for new member subscription', [
+                        //     'member_id' => $member->id,
+                        //     'subscription_id' => $member_subscription,
+                        //     'amount_paid' => $amount_paid,
+                        //     'points_earned' => $transaction->points,
+                        // ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to award loyalty points for new member subscription', [
+                        'member_id' => $member->id,
+                        'subscription_id' => $member_subscription,
+                        'amount_paid' => $amount_paid,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             if (@$member->email) {
                 $qrcodes_folder = base_path('uploads/barcodes/');
@@ -1099,6 +1131,9 @@ class GymMemberFrontController extends GymGenericFrontController
         $price_diff = round(@$price_diff, 2);
         $amount_remaining = ($get_subscription_price - $discount_value - $amount_paid) + (($get_subscription_price - $discount_value) * (@$this->mainSettings->vat_details['vat_percentage'] / 100));
         $amount_remaining = round(@$amount_remaining, 2);
+        
+        // Store old amount before updating
+        $oldAmountPaid = $member_subscription->amount_paid;
 
         $member_subscription->subscription_id = $subscription->id;
         $member_subscription->expire_date = $expire_date;
@@ -1119,6 +1154,83 @@ class GymMemberFrontController extends GymGenericFrontController
         $member_subscription->notes = $notes;
         $member_subscription->save();
 
+        // Handle loyalty points when amount changes
+        if ($price_diff != 0 && $member_subscription->member_id && @$this->mainSettings->active_loyalty) {
+            try {
+                $member = GymMember::find($member_subscription->member_id);
+                if ($member) {
+                    $loyaltyService = new LoyaltyService();
+                    
+                    if ($operation == TypeConstants::Add) {
+                        // Amount increased - award additional points
+                        $transaction = $loyaltyService->earn(
+                            $member,
+                            $price_diff,
+                            'member_subscription_edit',
+                            $member_subscription->id
+                        );
+                        
+                        if ($transaction) {
+                            Log::info('Loyalty points awarded for subscription edit (increase)', [
+                                'subscription_id' => $member_subscription->id,
+                                'member_id' => $member->id,
+                                'amount_increase' => $price_diff,
+                                'points_earned' => $transaction->points,
+                            ]);
+                        }
+                    } else {
+                        // Amount decreased - deduct points proportionally
+                        $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
+                            ->whereIn('source_type', ['member_subscription', 'member_subscription_renew', 'member_subscription_edit', 'member_subscription_remaining_payment'])
+                            ->where('source_id', $member_subscription->id)
+                            ->where('type', 'earn')
+                            ->where('is_expired', false)
+                            ->get();
+                        
+                        $totalPointsEarned = $loyaltyTransactions->sum('points');
+                        
+                        if ($totalPointsEarned > 0 && $oldAmountPaid > 0) {
+                            // Calculate points to deduct based on the amount reduction
+                            $reductionRatio = $price_diff / $oldAmountPaid;
+                            $pointsToDeduct = (int) round($totalPointsEarned * $reductionRatio);
+                            
+                            if ($pointsToDeduct > 0 && $member->loyalty_points_balance >= $pointsToDeduct) {
+                                $deductionTransaction = $loyaltyService->addManual(
+                                    $member,
+                                    -$pointsToDeduct,
+                                    trans('sw.points_deducted_for_subscription_amount_reduction', [
+                                        'subscription_id' => $member_subscription->id,
+                                        'old_amount' => $oldAmountPaid,
+                                        'new_amount' => $amount_paid
+                                    ]),
+                                    $this->user_sw->id ?? null
+                                );
+                                
+                                if ($deductionTransaction) {
+                                    $deductionTransaction->source_type = 'member_subscription_edit_reduction';
+                                    $deductionTransaction->source_id = $member_subscription->id;
+                                    $deductionTransaction->save();
+                                }
+                                
+                                Log::info('Loyalty points deducted for subscription edit (decrease)', [
+                                    'subscription_id' => $member_subscription->id,
+                                    'member_id' => $member->id,
+                                    'amount_decrease' => $price_diff,
+                                    'points_deducted' => $pointsToDeduct,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to adjust loyalty points for subscription edit', [
+                    'subscription_id' => $member_subscription->id,
+                    'member_id' => $member_subscription->member_id ?? null,
+                    'amount_difference' => $price_diff,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         if ($price_diff != 0) {
             $amount_box = GymMoneyBox::branch()->latest()->first();
@@ -1190,10 +1302,119 @@ class GymMemberFrontController extends GymGenericFrontController
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $vat = @$member->member_subscription_info->vat;
-                $amount = ($member->member_subscription_info->amount_paid);
+                $refundAmount = ($member->member_subscription_info->amount_paid);
+                $isPartialRefund = false;
+                
                 if(\request('total_amount') && \request('amount') && (\request('total_amount') >= \request('amount') )){
-                    $amount = \request('amount');
+                    $refundAmount = \request('amount');
+                    $isPartialRefund = ($refundAmount < $member->member_subscription_info->amount_paid);
                 }
+                
+                // Deduct loyalty points if they were awarded for this member's subscription
+                if ($member->id && $member->member_subscription_info && @$this->mainSettings->active_loyalty) {
+                    try {
+                        $subscriptionId = $member->member_subscription_info->id;
+                        $originalAmount = $member->member_subscription_info->amount_paid;
+                        
+                        // Find loyalty transactions for this member's active subscription
+                        $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::whereIn('source_type', ['member_subscription', 'member_subscription_renew', 'member_subscription_remaining_payment', 'member_subscription_edit'])
+                            ->where('source_id', $subscriptionId)
+                            ->where('type', 'earn')
+                            ->where('is_expired', false)
+                            ->get();
+                        
+                        $totalPointsEarned = $loyaltyTransactions->sum('points');
+                        
+                        if ($totalPointsEarned > 0 && $originalAmount > 0) {
+                            // Check how many points have already been deducted for this subscription (from previous refunds)
+                            $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
+                                ->where('type', 'manual')
+                                ->where('source_type', 'member_subscription_refund')
+                                ->where('source_id', $subscriptionId)
+                                ->where('points', '<', 0)
+                                ->sum('points')) ?? 0;
+                            
+                            $remainingDeductiblePoints = $totalPointsEarned - $alreadyDeductedPoints;
+                            
+                            // Calculate proportional points to deduct based on refund ratio
+                            $refundRatio = $refundAmount / $originalAmount;
+                            $pointsToDeduct = (int) round($totalPointsEarned * $refundRatio);
+                            
+                            // Don't deduct more than what's remaining
+                            if ($pointsToDeduct > $remainingDeductiblePoints) {
+                                $pointsToDeduct = max(0, $remainingDeductiblePoints);
+                            }
+                            
+                            if ($pointsToDeduct > 0) {
+                                if ($member->loyalty_points_balance >= $pointsToDeduct) {
+                                    $loyaltyService = new LoyaltyService();
+                                    
+                                    $reason = $isPartialRefund 
+                                        ? trans('sw.points_deducted_for_partial_refund_subscription', [
+                                            'subscription_id' => $subscriptionId, 
+                                            'refund_amount' => $refundAmount,
+                                            'original_amount' => $originalAmount
+                                        ])
+                                        : trans('sw.points_deducted_for_subscription_refund', ['subscription_id' => $subscriptionId]);
+                                    
+                                    $deductionTransaction = $loyaltyService->addManual(
+                                        $member,
+                                        -$pointsToDeduct,
+                                        $reason,
+                                        $this->user_sw->id ?? null
+                                    );
+                                    
+                                    if ($deductionTransaction) {
+                                        $deductionTransaction->source_type = 'member_subscription_refund';
+                                        $deductionTransaction->source_id = $subscriptionId;
+                                        $deductionTransaction->save();
+                                    }
+                                    
+                                    // Mark original transactions as expired only for full refunds
+                                    if (!$isPartialRefund) {
+                                        foreach ($loyaltyTransactions as $earnTransaction) {
+                                            $earnTransaction->is_expired = true;
+                                            $earnTransaction->save();
+                                        }
+                                    }
+                                    
+                                    Log::info('Loyalty points deducted for member deletion refund', [
+                                        'member_id' => $member->id,
+                                        'subscription_id' => $subscriptionId,
+                                        'points_deducted' => $pointsToDeduct,
+                                        'total_points_earned' => $totalPointsEarned,
+                                        'already_deducted_points' => $alreadyDeductedPoints,
+                                        'refund_amount' => $refundAmount,
+                                        'original_amount' => $originalAmount,
+                                        'is_partial' => $isPartialRefund,
+                                    ]);
+                                } else {
+                                    Log::warning('Cannot deduct loyalty points - insufficient balance', [
+                                        'member_id' => $member->id,
+                                        'subscription_id' => $subscriptionId,
+                                        'points_needed' => $pointsToDeduct,
+                                        'current_balance' => $member->loyalty_points_balance,
+                                    ]);
+                                    
+                                    // Mark transactions as expired only for full refunds
+                                    if (!$isPartialRefund) {
+                                        foreach ($loyaltyTransactions as $earnTransaction) {
+                                            $earnTransaction->is_expired = true;
+                                            $earnTransaction->save();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to deduct loyalty points on member deletion refund', [
+                            'member_id' => $member->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                
+                $amount = $refundAmount;
 
                 $notes = trans('sw.member_moneybox_delete_msg', ['member' => $member->name, 'subscription' => $member->member_subscription_info->subscription->name, 'amount_paid' => $amount]);
                 GymMoneyBox::create([
@@ -1241,6 +1462,72 @@ class GymMemberFrontController extends GymGenericFrontController
 
                 $vat = @$subscription->vat;
                 $amount = ($subscription->amount_paid);
+                
+                // Deduct loyalty points if they were awarded for this subscription
+                if ($subscription->member_id && @$this->mainSettings->active_loyalty) {
+                    try {
+                        $member = GymMember::find($subscription->member_id);
+                        if ($member) {
+                            // Find loyalty transactions for this subscription
+                            $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::whereIn('source_type', ['member_subscription', 'member_subscription_renew', 'member_subscription_remaining_payment'])
+                                ->where('source_id', $subscription->id)
+                                ->where('type', 'earn')
+                                ->where('is_expired', false)
+                                ->get();
+                            
+                            $totalPointsEarned = $loyaltyTransactions->sum('points');
+                            
+                            if ($totalPointsEarned > 0) {
+                                // Full refund - deduct all points
+                                if ($member->loyalty_points_balance >= $totalPointsEarned) {
+                                    $loyaltyService = new LoyaltyService();
+                                    $deductionTransaction = $loyaltyService->addManual(
+                                        $member,
+                                        -$totalPointsEarned,
+                                        trans('sw.points_deducted_for_subscription_refund', ['subscription_id' => $subscription->id]),
+                                        $this->user_sw->id ?? null
+                                    );
+                                    
+                                    if ($deductionTransaction) {
+                                        $deductionTransaction->source_type = 'member_subscription_refund';
+                                        $deductionTransaction->source_id = $subscription->id;
+                                        $deductionTransaction->save();
+                                    }
+                                    
+                                    // Mark original transactions as expired
+                                    foreach ($loyaltyTransactions as $earnTransaction) {
+                                        $earnTransaction->is_expired = true;
+                                        $earnTransaction->save();
+                                    }
+                                    
+                                    Log::info('Loyalty points deducted for subscription refund', [
+                                        'subscription_id' => $subscription->id,
+                                        'member_id' => $member->id,
+                                        'points_deducted' => $totalPointsEarned,
+                                    ]);
+                                } else {
+                                    Log::warning('Cannot deduct loyalty points - insufficient balance', [
+                                        'subscription_id' => $subscription->id,
+                                        'member_id' => $member->id,
+                                        'points_needed' => $totalPointsEarned,
+                                        'current_balance' => $member->loyalty_points_balance,
+                                    ]);
+                                    
+                                    // Mark transactions as expired anyway
+                                    foreach ($loyaltyTransactions as $earnTransaction) {
+                                        $earnTransaction->is_expired = true;
+                                        $earnTransaction->save();
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to deduct loyalty points on subscription refund', [
+                            'subscription_id' => $subscription->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
 
                 $notes = trans('sw.member_moneybox_delete_msg', ['member' => @$subscription->member->name, 'subscription' => @$subscription->subscription->name, 'amount_paid' => $amount]);
                 GymMoneyBox::create([
@@ -1287,6 +1574,35 @@ class GymMemberFrontController extends GymGenericFrontController
             $memberInfo->amount_remaining = ($amount_remaining - $amountPaid);
             $memberInfo->amount_paid = ($memberInfo->amount_paid + $amountPaid);
             $memberInfo->save();
+            
+            // Award loyalty points for the payment
+            if ($memberInfo->member && $amountPaid > 0 && @$this->mainSettings->active_loyalty) {
+                try {
+                    $loyaltyService = new LoyaltyService();
+                    $transaction = $loyaltyService->earn(
+                        $memberInfo->member,
+                        $amountPaid,
+                        'member_subscription_remaining_payment',
+                        $memberInfo->id
+                    );
+                    
+                    if ($transaction) {
+                        Log::info('Loyalty points awarded for member subscription remaining payment', [
+                            'member_id' => $memberInfo->member->id,
+                            'subscription_id' => $memberInfo->id,
+                            'amount_paid' => $amountPaid,
+                            'points_earned' => $transaction->points,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to award loyalty points for member subscription remaining payment', [
+                        'member_id' => $memberInfo->member->id ?? null,
+                        'subscription_id' => $memberInfo->id,
+                        'amount_paid' => $amountPaid,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             $amount_box = GymMoneyBox::branch()->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
@@ -1539,6 +1855,9 @@ class GymMemberFrontController extends GymGenericFrontController
                 $member['member_subscription_info']['remain_workouts'] = $member->member_subscription_info->workouts - $member->member_subscription_info->visits;
                 $member['member_subscription_info']['amount_remaining'] = number_format($member->member_subscription_info->amount_remaining, 2);
                 $member['member_subscription_info']['activities'] = @$member->member_subscription_info->activities;
+                
+                // loyalty_points_formatted is automatically appended by GymMember model
+                
                 return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status, 'renew_status' => $renew_status], 200);
             } else {
                 return Response::json(['member' => $member, 'status' => $status, 'renew_status' => $renew_status], 200);
@@ -1688,6 +2007,37 @@ class GymMemberFrontController extends GymGenericFrontController
         ]);
 
         $this->userLog($notes, TypeConstants::RenewMember);
+        
+        // Award loyalty points if member made a payment
+        $loyaltyPointsEarned = 0;
+        if ($member && $amount_paid > 0 && @$this->mainSettings->active_loyalty) {
+            try {
+                $loyaltyService = new LoyaltyService();
+                $transaction = $loyaltyService->earn(
+                    $member,
+                    $amount_paid,
+                    'member_subscription_renew',
+                    $member_subscription
+                );
+                
+                if ($transaction) {
+                    $loyaltyPointsEarned = $transaction->points;
+                    Log::info('Loyalty points awarded for subscription renewal', [
+                        'member_id' => $member->id,
+                        'subscription_id' => $member_subscription,
+                        'amount_paid' => $amount_paid,
+                        'points_earned' => $transaction->points,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to award loyalty points for subscription renewal', [
+                    'member_id' => $member->id,
+                    'subscription_id' => $member_subscription,
+                    'amount_paid' => $amount_paid,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         // set this member to machine
         if ($member->fp_id) {

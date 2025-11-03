@@ -184,6 +184,13 @@
         <th class="total ">{{number_format(($order['amount_paid'] - @$order['vat']), 2)}} {{@trans('sw.app_currency')}}</th>
     </tr>
 
+    @if(@$order['loyalty_redemption'])
+    <tr>
+        <th colspan="3" class="total text" style="color: #007bff;">{{ trans('sw.loyalty_discount') }} ({{ abs($order['loyalty_redemption']['points']) }} {{ trans('sw.points')}})</th>
+        <th class="total " style="color: #007bff;">-{{number_format(abs($order['loyalty_redemption']['points']) * (@$order['loyalty_redemption']['rule']['point_to_money_rate'] ?? 0), 2)}} {{@trans('sw.app_currency')}}</th>
+    </tr>
+    @endif
+
     <tr>
         <th colspan="3" class="total text">{{ trans('sw.vat')}} ({{@$mainSettings->vat_details['vat_percentage'].'%'}})</th>
         <th class="total ">{{@number_format($order['vat'], 2)}}</th>

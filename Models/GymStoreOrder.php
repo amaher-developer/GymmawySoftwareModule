@@ -36,6 +36,13 @@ class GymStoreOrder extends GenericModel
         return $this->belongsTo(GymPaymentType::class, 'payment_type', 'payment_id');
     }
 
+    public function loyaltyRedemption()
+    {
+        return $this->hasOne(LoyaltyTransaction::class, 'source_id')
+            ->where('source_type', 'store_order_redemption')
+            ->where('type', 'redeem');
+    }
+
     public function toArray()
     {
         return parent::toArray();

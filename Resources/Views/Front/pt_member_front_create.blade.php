@@ -280,6 +280,19 @@
             </div>
             <!--end::Payment Details-->
 
+            @if(@$mainSettings->active_loyalty)
+            <!--begin::Loyalty Points Earning Info-->
+            <div class="alert alert-dismissible bg-light-success border border-success border-dashed d-flex flex-column flex-sm-row p-5 mb-5" id="pt_member_loyalty_earning_info" style="display: none !important;">
+                <i class="ki-outline ki-gift fs-2hx text-success me-4 mb-5 mb-sm-0"></i>
+                <div class="d-flex flex-column pe-0 pe-sm-10">
+                    <h5 class="mb-1">{{ trans('sw.points_earning_info')}}</h5>
+                    <span class="text-gray-700">{!! trans('sw.you_will_earn_points', ['points' => '<span id="pt_member_estimated_earning_points" class="fw-bold text-success">0</span>'])!!}</span>
+                    <span class="text-gray-600 fs-7" id="pt_member_loyalty_earning_rate"></span>
+                </div>
+            </div>
+            <!--end::Loyalty Points Earning Info-->
+            @endif
+
             <!--begin::Form actions-->
             <div class="d-flex justify-content-end">
                 <button type="reset" class="btn btn-light me-5">{{ trans('admin.reset')}}</button>
@@ -295,6 +308,9 @@
 @section('scripts')
     @parent
     <script>
+        // Declare variables at the top
+        let loyaltyMoneyToPointRate = 0;
+        
         $(document).ready(function() {
             let amount_paid_manually_edited = {{ isset($member->id) ? 'true' : 'false' }};
 
@@ -302,6 +318,26 @@
                 format: 'yyyy-mm-dd',
                 autoclose: true
         });
+        
+        @if(@$mainSettings->active_loyalty)
+        // Load loyalty earning rate
+        $.ajax({
+            url: '{{ route('sw.getMemberLoyaltyInfo') }}',
+            type: 'GET',
+            data: { member_id: 0 },
+            success: function(response) {
+                if (response.success && response.money_to_point_rate) {
+                    loyaltyMoneyToPointRate = response.money_to_point_rate;
+                    $('#pt_member_loyalty_earning_rate').text('{{ trans('sw.earning_rate', ['rate' => '']) }}'.replace(':rate عملة', loyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.app_currency') }}').replace(':rate currency', loyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.app_currency') }}'));
+                    // Calculate initial points if amount exists
+                    var initialAmount = parseFloat($('#create_amount_paid').val()) || 0;
+                    if (initialAmount > 0) {
+                        calculatePTMemberLoyaltyPoints(initialAmount);
+                    }
+                }
+            }
+        });
+        @endif
 
         pt_subscription_id = $("#pt_subscription_id").val();
         $("#pt_class_id option").hide();
@@ -350,7 +386,7 @@
             );
         });
 
-        $("#create_amount_paid").change(function () {
+        $("#create_amount_paid").on('change input keyup', function () {
                 amount_paid_manually_edited = true;
                 calculate_price(false);
             });
@@ -420,7 +456,25 @@
                 
                 let amount_remaining = total_with_vat - amount_paid;
                 $('#create_amount_remaining').val(amount_remaining.toFixed(2));
+                
+                // Calculate loyalty points
+                calculatePTMemberLoyaltyPoints(amount_paid);
             }
+        
+        function calculatePTMemberLoyaltyPoints(amountPaid) {
+            if (loyaltyMoneyToPointRate > 0 && amountPaid > 0) {
+                const estimatedPoints = Math.floor(amountPaid / loyaltyMoneyToPointRate);
+                console.log('PT Loyalty - Amount:', amountPaid, 'Rate:', loyaltyMoneyToPointRate, 'Points:', estimatedPoints);
+                if (estimatedPoints > 0) {
+                    $('#pt_member_estimated_earning_points').text(estimatedPoints);
+                    $('#pt_member_loyalty_earning_info').slideDown();
+                } else {
+                    $('#pt_member_loyalty_earning_info').slideUp();
+                }
+            } else {
+                $('#pt_member_loyalty_earning_info').slideUp();
+            }
+        }
 
         function class_limit_member(pt_class_id){
             if(pt_class_id){

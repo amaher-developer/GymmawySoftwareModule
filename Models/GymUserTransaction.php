@@ -8,7 +8,7 @@ class GymUserTransaction extends GenericModel
 {
     protected $table = 'sw_gym_user_transactions';
     protected $guarded = ['id'];
-    protected $appends = ['transaction_type_name', 'financial_month_formatted'];
+    protected $appends = ['transaction_type_name', 'financial_month_formatted', 'deduction_month'];
 
     const TRANSACTION_TYPES = [
         'monthly_salary' => 'monthly_salary',
@@ -39,6 +39,11 @@ class GymUserTransaction extends GenericModel
         return $this->belongsTo(GymUserTransaction::class, 'related_transaction_id');
     }
 
+    public function moneyBox()
+    {
+        return $this->hasOne(GymMoneyBox::class, 'user_transaction_id');
+    }
+
     public function getTransactionTypeNameAttribute()
     {
         return trans('sw.' . $this->transaction_type);
@@ -53,5 +58,10 @@ class GymUserTransaction extends GenericModel
         $date = \Carbon\Carbon::createFromFormat('Y-m', $this->financial_month);
         return $date->format('F Y');
     }
-}
 
+    public function getDeductionMonthAttribute()
+    {
+        // Map advance_discount_month to deduction_month for form compatibility
+        return $this->attributes['advance_discount_month'] ?? null;
+    }
+}

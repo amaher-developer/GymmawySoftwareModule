@@ -761,9 +761,9 @@
 </div><!--end:Menu sub-->
 </div>
 
-<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*')) show @endif">
+<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
     <!--begin:Menu link-->
-    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*')) show @endif">
+    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
         <span class="menu-icon">
             <i class="ki-outline ki-graph-up  fs-2"></i>
         </span>
@@ -1024,6 +1024,21 @@
         <!--end:Menu link-->
     </div>
     <!--end:Menu item-->
+
+    @if ($swUser && @$mainSettings->active_loyalty && ($swUser->is_super_user || in_array('listLoyaltyTransaction', (array) ($swUser->permissions ?? []))))
+        <!--begin:Menu item-->
+        <div class="menu-item">
+            <!--begin:Menu link-->
+            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) active @endif" href="{{ route('sw.loyalty_transactions.index') }}">
+                <span class="menu-bullet">
+                    <span class="bullet bullet-dot"></span>
+                </span>
+                <span class="menu-title">{{ trans('sw.loyalty_transactions') }}</span>
+            </a>
+            <!--end:Menu link-->
+        </div>
+        <!--end:Menu item-->
+    @endif
 
     @if ($swUser && ($swUser->is_super_user || count(array_intersect(@(array) ($swUser->permissions ?? []), ['aiReportsDashboard','aiReportsJobs','aiReportsInsights'])) > 0))
         <!--begin:Menu item-->
@@ -1346,13 +1361,17 @@
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
-                Request::is(($lang ?? 'ar') . '/user*') ) show @endif">
+                Request::is(($lang ?? 'ar') . '/user*') ||
+                Request::is(($lang ?? 'ar') . '/loyalty/rules*') ||
+                Request::is(($lang ?? 'ar') . '/loyalty/campaigns*') ) show @endif">
         <!--begin:Menu link-->
         <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
-                Request::is(($lang ?? 'ar') . '/user*') ) show @endif">
+                Request::is(($lang ?? 'ar') . '/user*') || 
+                Request::is(($lang ?? 'ar') . '/loyalty/rules*') ||
+                Request::is(($lang ?? 'ar') . '/loyalty/campaigns*')) show @endif">
             <span class="menu-icon">
                 <i class="ki-outline ki-setting-2 fs-2"></i>
             </span>
@@ -1513,6 +1532,38 @@
                 <!--end:Menu link-->
             </div>
             <!--end:Menu item-->
+
+            @if (@$mainSettings->active_loyalty && ($swUser->is_super_user || in_array('listLoyaltyPointRule', (array) ($swUser->permissions ?? []))))
+                <!--begin:Menu item-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/loyalty/rules*')) active @endif"
+                        href="{{ route('sw.loyalty_point_rules.index') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.loyalty_point_rules') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
+            @endif
+
+            @if (@$mainSettings->active_loyalty && ($swUser->is_super_user || in_array('listLoyaltyCampaign', (array) ($swUser->permissions ?? []))))
+                <!--begin:Menu item-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/loyalty/campaigns*')) active @endif"
+                        href="{{ route('sw.loyalty_campaigns.index') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.loyalty_campaigns') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
+            @endif
 
 
         </div><!--end:Menu sub-->

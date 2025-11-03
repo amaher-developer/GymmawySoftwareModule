@@ -119,9 +119,8 @@
                         <span class="input-group-text">
                             <i class="ki-outline ki-calendar fs-3"></i>
                         </span>
-                        <input type="text" name="financial_month_display" id="financial_month_filter" class="form-control" 
-                               placeholder="{{ trans('sw.all_months')}}" value="{{ request('financial_month') }}" readonly>
-                        <input type="hidden" name="financial_month" id="financial_month_hidden_filter" value="{{ request('financial_month') }}">
+                        <input type="month" name="financial_month" id="financial_month_filter" class="form-control" 
+                               placeholder="{{ trans('sw.all_months')}}" value="{{ request('financial_month') }}">
                     </div>
                 </div>
                 <!--end::Financial Month Filter-->
@@ -232,7 +231,12 @@
                                     
                                     @if(in_array('deleteUserTransaction', (array)$swUser->permissions) || $swUser->is_super_user)
                                         <a href="{{route('sw.deleteUserTransaction',$transaction->id)}}"
-                                           class="btn btn-icon btn-bg-light btn-active-color-danger btn-sm" title="{{ trans('admin.delete')}}">
+                                           class="btn btn-icon btn-bg-light btn-active-color-danger btn-sm delete-transaction-btn" 
+                                           title="{{ trans('admin.delete')}}"
+                                           data-transaction-id="{{ $transaction->id }}"
+                                           data-employee-name="{{ $transaction->employee->name ?? 'N/A' }}"
+                                           data-amount="{{ number_format($transaction->amount, 2) }}"
+                                           data-type="{{ $transaction->transaction_type_name }}">
                                             <i class="ki-outline ki-trash fs-2"></i>
                                         </a>
                                     @endif
@@ -283,45 +287,39 @@
         // Initialize Select2 for employee filter
         $('select[name="employee_id"]').select2();
 
-        // Initialize Month/Year Picker for Filter
-        const monthYearFormat = 'YYYY-MM';
-        const displayFormat = '{{ $lang == "ar" ? "MMMM YYYY" : "MMMM YYYY" }}';
-        
-        $('#financial_month_filter').daterangepicker({
-            singleDatePicker: true,
-            showDropdowns: true,
-            autoUpdateInput: false,
-            minYear: 2020,
-            maxYear: parseInt(moment().format('YYYY'), 10) + 1,
-            locale: {
-                format: displayFormat,
-                cancelLabel: '{{ trans('sw.clear') }}',
-                @if($lang == 'ar')
-                applyLabel: '{{ trans('sw.apply') }}',
-                monthNames: [
-                    'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
-                    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-                ],
-                @else
-                applyLabel: '{{ trans('sw.apply') }}',
-                @endif
-            },
-            @if(request('financial_month'))
-            startDate: moment('{{ request('financial_month') }}', monthYearFormat),
-            @endif
-        }).on('apply.daterangepicker', function(ev, picker) {
-            $(this).val(picker.startDate.format(displayFormat));
-            $('#financial_month_hidden_filter').val(picker.startDate.format(monthYearFormat));
-        }).on('cancel.daterangepicker', function(ev, picker) {
-            $(this).val('');
-            $('#financial_month_hidden_filter').val('');
+        // Delete confirmation
+        $('.delete-transaction-btn').on('click', function(e) {
+            e.preventDefault();
+            
+            const deleteUrl = $(this).attr('href');
+            const employeeName = $(this).data('employee-name');
+            const amount = $(this).data('amount');
+            const type = $(this).data('type');
+            const currency = '{{ $lang == "ar" ? (env("APP_CURRENCY_AR") ?? "") : (env("APP_CURRENCY_EN") ?? "") }}';
+            
+            Swal.fire({
+                title: '{{ trans("admin.are_you_sure") }}',
+                html: '<div class="text-start">' +
+                      '<p class="mb-2"><strong>{{ trans("sw.employee") }}:</strong> ' + employeeName + '</p>' +
+                      '<p class="mb-2"><strong>{{ trans("sw.transaction_type") }}:</strong> ' + type + '</p>' +
+                      '<p class="mb-2"><strong>{{ trans("sw.amount") }}:</strong> ' + currency + amount + '</p>' +
+                      '</div>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: '{{ trans("admin.yes_delete") }}',
+                cancelButtonText: '{{ trans("admin.no_cancel") }}',
+                customClass: {
+                    confirmButton: 'btn btn-danger',
+                    cancelButton: 'btn btn-secondary'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = deleteUrl;
+                }
+            });
         });
-
-        // Set initial display value if filter is set
-        @if(request('financial_month'))
-        var filterDate = moment('{{ request('financial_month') }}', monthYearFormat);
-        $('#financial_month_filter').val(filterDate.format(displayFormat));
-        @endif
     });
 </script>
 @endsection

@@ -370,6 +370,11 @@
                             <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.amount_remaining')}}
                             </th>
+                            @if(@$mainSettings->active_loyalty)
+                            <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-gift fs-6 me-2"></i>{{ trans('sw.loyalty_points')}}
+                            </th>
+                            @endif
                             <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.date')}}
                             </th>
@@ -543,6 +548,17 @@
                                     <span class="text-muted fs-7">{{ trans('sw.total_amount_remaining')}}: <span id="span_total_amount_remaining_{{@$member->member_subscription_info->id}}">{{@number_format($member->member_remain_amount_subscriptions->sum('amount_remaining'), 2)}}</span></span>
                                 </div>
                             </td>
+                            @if(@$mainSettings->active_loyalty)
+                            <td class="pe-0">
+                                <div class="d-flex align-items-center">
+                                    <i class="ki-outline ki-gift fs-3 text-primary me-2"></i>
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-bold text-primary fs-6"><a href="{{ route('sw.loyalty_transactions.member_history', $member->id) }}"  title="{{ trans('sw.view_full_history') }}">{{ number_format($member->loyalty_points_balance ?? 0) }}</a></span>
+                                        <span class="text-muted fs-7">{{ trans('sw.points') }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            @endif
                             <td class="pe-0">
                                 <div class="d-flex flex-column">
                                     <div class="text-muted fw-bold d-flex align-items-center">
@@ -795,6 +811,20 @@
                                 </select>
                             </div><!-- end pay qty  -->
                         </div>
+                        
+                        @if(@$mainSettings->active_loyalty)
+                        <!--begin::Loyalty Points Earning Info-->
+                        <div class="alert alert-dismissible bg-light-success border border-success border-dashed d-flex flex-column flex-sm-row p-4 mb-3 mt-3" id="pay_loyalty_earning_info" style="display: none !important;">
+                            <i class="ki-outline ki-gift fs-2hx text-success me-3 mb-3 mb-sm-0"></i>
+                            <div class="d-flex flex-column pe-0 pe-sm-5">
+                                <h6 class="mb-1">{{ trans('sw.points_earning_info')}}</h6>
+                                <span class="text-gray-700 fs-7">{!! trans('sw.you_will_earn_points', ['points' => '<span id="pay_estimated_earning_points" class="fw-bold text-success">0</span>'])!!}</span>
+                                <span class="text-gray-600 fs-8" id="pay_loyalty_earning_rate"></span>
+                            </div>
+                        </div>
+                        <!--end::Loyalty Points Earning Info-->
+                        @endif
+                        
                         <br/>
                         <button class="btn ripple btn-primary rounded-3" id="form_pay_btn"
                                 type="submit">{{ trans('sw.pay')}}</button>
@@ -1142,6 +1172,41 @@
 {{--    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>--}}
     <script type="text/javascript" src="{{asset('resources/assets/admin/global/plugins/pick-hours-availability-calendar/mark-your-calendar.js')}}"></script>
     <script type="text/javascript">
+        // Loyalty Points Variables for Pay Remaining Modal
+        var payLoyaltyMoneyToPointRate = 0;
+        
+        @if(@$mainSettings->active_loyalty)
+        // Load loyalty earning rate on page load
+        $(document).ready(function() {
+            $.ajax({
+                url: '{{ route('sw.getMemberLoyaltyInfo') }}',
+                type: 'GET',
+                data: { member_id: 0 },
+                success: function(response) {
+                    if (response.success && response.money_to_point_rate) {
+                        payLoyaltyMoneyToPointRate = response.money_to_point_rate;
+                        $('#pay_loyalty_earning_rate').text('{{ trans('sw.earning_rate', ['rate' => '']) }}'.replace(':rate عملة', payLoyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.app_currency') }}').replace(':rate currency', payLoyaltyMoneyToPointRate.toFixed(2) + ' {{ trans('sw.app_currency') }}'));
+                    }
+                }
+            });
+            
+            // Add event listener for amount_paid in pay modal
+            $('#amount_paid').on('change input keyup', function() {
+                const amountPaid = parseFloat($(this).val()) || 0;
+                if (payLoyaltyMoneyToPointRate > 0 && amountPaid > 0) {
+                    const estimatedPoints = Math.floor(amountPaid / payLoyaltyMoneyToPointRate);
+                    if (estimatedPoints > 0) {
+                        $('#pay_estimated_earning_points').text(estimatedPoints);
+                        $('#pay_loyalty_earning_info').slideDown();
+                    } else {
+                        $('#pay_loyalty_earning_info').slideUp();
+                    }
+                } else {
+                    $('#pay_loyalty_earning_info').slideUp();
+                }
+            });
+        });
+        @endif
 
         function create_reservation(){
 

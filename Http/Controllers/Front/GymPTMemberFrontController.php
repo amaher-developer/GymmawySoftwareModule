@@ -3,6 +3,7 @@
 namespace Modules\Software\Http\Controllers\Front;
 
 use Modules\Software\Classes\TypeConstants;
+use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Exports\RecordsExport;
 use Modules\Software\Http\Requests\GymPTMemberRequest;
 use Modules\Software\Models\GymActivity;
@@ -275,9 +276,40 @@ class GymPTMemberFrontController extends GymGenericFrontController
         if($member_inputs['joining_date']){ $member_inputs['joining_date'] = Carbon::parse($member_inputs['joining_date']); }else{  $member_inputs['joining_date'] = Carbon::now();}
 
         $member = $this->MemberRepository->create($member_inputs);
+        
+        // Award loyalty points if member made a payment
+        $loyaltyPointsEarned = 0;
+        if ($memberSubscription && $amount_paid > 0) {
+            try {
+                $loyaltyService = new LoyaltyService();
+                $transaction = $loyaltyService->earn(
+                    $memberSubscription,
+                    $amount_paid,
+                    'pt_member',
+                    $member->id
+                );
+                
+                if ($transaction) {
+                    $loyaltyPointsEarned = $transaction->points;
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to award loyalty points for PT member', [
+                    'pt_member_id' => $member->id,
+                    'member_id' => $memberSubscription->id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        // Success message with loyalty points info
+        $successMessage = trans('admin.successfully_added');
+        if ($loyaltyPointsEarned > 0) {
+            $successMessage .= ' - ' . trans('sw.earned_loyalty_points', ['points' => $loyaltyPointsEarned]);
+        }
+        
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_added'),
+            'message' => $successMessage,
             'type' => 'success'
         ]);
 
@@ -384,10 +416,89 @@ class GymPTMemberFrontController extends GymGenericFrontController
 
         $notes = str_replace(':name', $member['name'], trans('sw.edit_activity'));
         $this->userLog($notes, TypeConstants::EditPTMember);
+        
+        // Handle loyalty points when amount changes
+        $loyaltyPointsChange = 0;
+        if ($differentPrice != 0 && $member->member_id && @$this->mainSettings->active_loyalty) {
+            try {
+                $gymMember = GymMember::find($member->member_id);
+                if ($gymMember) {
+                    $loyaltyService = new LoyaltyService();
+                    
+                    if ($differentPrice > 0) {
+                        // Amount increased - award additional points
+                        $transaction = $loyaltyService->earn(
+                            $gymMember,
+                            abs($differentPrice),
+                            'pt_member_edit',
+                            $member->id
+                        );
+                        
+                        if ($transaction) {
+                            $loyaltyPointsChange = $transaction->points;
+                        }
+                    } else {
+                        // Amount decreased - deduct points proportionally
+                        // Find original earn transactions for this PT member
+                        $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::where('member_id', $gymMember->id)
+                            ->whereIn('source_type', ['pt_member', 'pt_member_edit'])
+                            ->where('source_id', $member->id)
+                            ->where('type', 'earn')
+                            ->where('is_expired', false)
+                            ->get();
+                        
+                        $totalPointsEarned = $loyaltyTransactions->sum('points');
+                        $oldAmountPaid = $member->amount_paid; // Before update
+                        
+                        if ($totalPointsEarned > 0 && $oldAmountPaid > 0) {
+                            // Calculate points to deduct based on the amount reduction
+                            $amountReduction = abs($differentPrice);
+                            $reductionRatio = $amountReduction / $oldAmountPaid;
+                            $pointsToDeduct = (int) round($totalPointsEarned * $reductionRatio);
+                            
+                            if ($pointsToDeduct > 0 && $gymMember->loyalty_points_balance >= $pointsToDeduct) {
+                                $deductionTransaction = $loyaltyService->addManual(
+                                    $gymMember,
+                                    -$pointsToDeduct,
+                                    trans('sw.points_deducted_for_pt_amount_reduction', [
+                                        'pt_member_id' => $member->id,
+                                        'old_amount' => $oldAmountPaid,
+                                        'new_amount' => $member_inputs['amount_paid']
+                                    ]),
+                                    $this->user_sw->id ?? null
+                                );
+                                
+                                if ($deductionTransaction) {
+                                    $deductionTransaction->source_type = 'pt_member_edit_reduction';
+                                    $deductionTransaction->source_id = $member->id;
+                                    $deductionTransaction->save();
+                                    $loyaltyPointsChange = -$pointsToDeduct;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to adjust loyalty points for PT member edit', [
+                    'pt_member_id' => $member->id,
+                    'member_id' => $member->member_id ?? null,
+                    'amount_difference' => $differentPrice,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        // Success message with loyalty points info
+        $successMessage = trans('admin.successfully_edited');
+        if ($loyaltyPointsChange > 0) {
+            $successMessage .= ' - ' . trans('sw.earned_loyalty_points', ['points' => $loyaltyPointsChange]);
+        } elseif ($loyaltyPointsChange < 0) {
+            $successMessage .= ' - ' . trans('sw.deducted_loyalty_points', ['points' => abs($loyaltyPointsChange)]);
+        }
 
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_edited'),
+            'message' => $successMessage,
             'type' => 'success'
         ]);
 
@@ -433,11 +544,131 @@ class GymPTMemberFrontController extends GymGenericFrontController
                 $amount_box = GymMoneyBox::branch()->latest()->first();
                 $amount_after = (int)GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
+                // Calculate refund amount (full or partial)
                 $vat = @$member->vat;
-                $amount = ($member->amount_paid);
+                $refundAmount = $member->amount_paid; // Default to full refund
+                $isPartialRefund = false;
+                
                 if(\request('total_amount') && \request('amount') && (\request('total_amount') >= \request('amount') )){
-                    $amount = \request('amount');
+                    $refundAmount = \request('amount');
+                    $isPartialRefund = ($refundAmount < $member->amount_paid);
                 }
+                
+                // Deduct loyalty points if they were awarded for this PT member
+                if ($member->member_id && @$this->mainSettings->active_loyalty) {
+                    try {
+                        $gymMember = GymMember::find($member->member_id);
+                        if ($gymMember) {
+                            // Find loyalty transactions for this PT member
+                            $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::where('source_type', 'pt_member')
+                                ->where('source_id', $member->id)
+                                ->where('type', 'earn')
+                                ->where('is_expired', false)
+                                ->get();
+                            
+                            $totalPointsEarned = $loyaltyTransactions->sum('points');
+                            
+                            if ($totalPointsEarned > 0 && $member->amount_paid > 0) {
+                                // Check how many points have already been deducted for this PT member (from previous refunds)
+                                $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::where('member_id', $gymMember->id)
+                                    ->where('type', 'manual')
+                                    ->where('source_type', 'pt_member_refund')
+                                    ->where('source_id', $member->id)
+                                    ->where('points', '<', 0)
+                                    ->sum('points')) ?? 0; // sum of negative values, so we get positive amount deducted
+                                
+                                $remainingDeductiblePoints = $totalPointsEarned - $alreadyDeductedPoints;
+                                
+                                // Calculate proportional points to deduct based on refund ratio
+                                $refundRatio = $refundAmount / $member->amount_paid;
+                                $pointsToDeduct = (int) round($totalPointsEarned * $refundRatio);
+                                
+                                // Don't deduct more than what's remaining
+                                if ($pointsToDeduct > $remainingDeductiblePoints) {
+                                    $pointsToDeduct = max(0, $remainingDeductiblePoints);
+                                }
+                                
+                                if ($pointsToDeduct > 0) {
+                                    // Check if member has enough points
+                                    if ($gymMember->loyalty_points_balance >= $pointsToDeduct) {
+                                        // Deduct points using manual adjustment
+                                        $loyaltyService = new LoyaltyService();
+                                        
+                                        $reason = $isPartialRefund 
+                                            ? trans('sw.points_deducted_for_partial_refund_pt', [
+                                                'pt_member_id' => $member->id, 
+                                                'refund_amount' => $refundAmount,
+                                                'original_amount' => $member->amount_paid
+                                            ])
+                                            : trans('sw.points_deducted_for_refund_pt', ['pt_member_id' => $member->id]);
+                                        
+                                        // Create the deduction transaction with source tracking
+                                        $deductionTransaction = $loyaltyService->addManual(
+                                            $gymMember,
+                                            -$pointsToDeduct,
+                                            $reason,
+                                            $this->user_sw->id ?? null
+                                        );
+                                        
+                                        // Update source_type and source_id to track refunds properly
+                                        if ($deductionTransaction) {
+                                            $deductionTransaction->source_type = 'pt_member_refund';
+                                            $deductionTransaction->source_id = $member->id;
+                                            $deductionTransaction->save();
+                                        }
+                                        
+                                        // Mark original transactions as expired only for full refunds
+                                        if (!$isPartialRefund) {
+                                            foreach ($loyaltyTransactions as $earnTransaction) {
+                                                $earnTransaction->is_expired = true;
+                                                $earnTransaction->save();
+                                            }
+                                        }
+                                        
+                                        \Log::info('Loyalty points deducted for PT member refund', [
+                                            'pt_member_id' => $member->id,
+                                            'member_id' => $gymMember->id,
+                                            'points_deducted' => $pointsToDeduct,
+                                            'total_points_earned' => $totalPointsEarned,
+                                            'already_deducted_points' => $alreadyDeductedPoints,
+                                            'remaining_deductible_points' => $remainingDeductiblePoints,
+                                            'refund_amount' => $refundAmount,
+                                            'original_amount' => $member->amount_paid,
+                                            'refund_ratio' => $refundRatio,
+                                            'is_partial' => $isPartialRefund,
+                                        ]);
+                                    } else {
+                                        // Member doesn't have enough points
+                                        \Log::warning('Cannot deduct loyalty points - insufficient balance', [
+                                            'pt_member_id' => $member->id,
+                                            'member_id' => $gymMember->id,
+                                            'points_needed' => $pointsToDeduct,
+                                            'current_balance' => $gymMember->loyalty_points_balance,
+                                            'refund_amount' => $refundAmount,
+                                        ]);
+                                        
+                                        // Mark transactions as expired only for full refunds
+                                        if (!$isPartialRefund) {
+                                            foreach ($loyaltyTransactions as $earnTransaction) {
+                                                $earnTransaction->is_expired = true;
+                                                $earnTransaction->save();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to deduct loyalty points on PT member refund', [
+                            'pt_member_id' => $member->id,
+                            'refund_amount' => $refundAmount,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                
+                $amount = $refundAmount;
+                
                 $notes = trans('sw.member_moneybox_delete_msg', ['member' => $member->member->name, 'subscription' => $member->pt_subscription->name, 'amount_paid' => $amount]);
                 GymMoneyBox::create([
                     'user_id' => Auth::guard('sw')->user()->id
@@ -629,6 +860,35 @@ class GymPTMemberFrontController extends GymGenericFrontController
             $memberPTInfo->amount_remaining = ($amount_remaining - $amountPaid);
             $memberPTInfo->amount_paid = ($memberPTInfo->amount_paid + $amountPaid);
             $memberPTInfo->save();
+            
+            // Award loyalty points for the payment
+            if ($memberPTInfo->member && $amountPaid > 0 && @$this->mainSettings->active_loyalty) {
+                try {
+                    $loyaltyService = new LoyaltyService();
+                    $transaction = $loyaltyService->earn(
+                        $memberPTInfo->member,
+                        $amountPaid,
+                        'pt_member_remaining_payment',
+                        $memberPTInfo->id
+                    );
+                    
+                    if ($transaction) {
+                        \Log::info('Loyalty points awarded for PT member remaining payment', [
+                            'pt_member_id' => $memberPTInfo->id,
+                            'member_id' => $memberPTInfo->member->id,
+                            'amount_paid' => $amountPaid,
+                            'points_earned' => $transaction->points,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to award loyalty points for PT member remaining payment', [
+                        'pt_member_id' => $memberPTInfo->id,
+                        'member_id' => $memberPTInfo->member->id ?? null,
+                        'amount_paid' => $amountPaid,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             $amount_box = GymMoneyBox::branch()->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);

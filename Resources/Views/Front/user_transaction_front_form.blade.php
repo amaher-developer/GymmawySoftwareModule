@@ -122,10 +122,10 @@
                                         <span class="input-group-text">
                                             <i class="ki-outline ki-calendar fs-2"></i>
                                         </span>
-                                        <input type="text" name="financial_month" id="financial_month" class="form-control" 
+                                        <input type="month" name="financial_month" id="financial_month" class="form-control" 
                                                placeholder="{{ trans('sw.select_month_year')}}"
                                                value="{{ old('financial_month', $transaction->financial_month) }}" 
-                                               readonly required />
+                                               required />
                                     </div>
                                 </div>
                             </div>
@@ -139,10 +139,9 @@
                                         <span class="input-group-text">
                                             <i class="ki-outline ki-calendar fs-2"></i>
                                         </span>
-                                        <input type="text" name="deduction_month" id="deduction_month" class="form-control" 
+                                        <input type="month" name="deduction_month" id="deduction_month" class="form-control" 
                                                placeholder="{{ trans('sw.select_month_year')}}"
-                                               value="{{ old('deduction_month', $transaction->deduction_month) }}" 
-                                               readonly />
+                                               value="{{ old('deduction_month', $transaction->deduction_month) }}" />
                                     </div>
                                     <div class="form-text text-muted">{{ trans('sw.deduction_month_help')}}</div>
                                 </div>
@@ -185,101 +184,11 @@
         // Initialize Select2
         $('#employee_id').select2();
 
-        // Initialize Month/Year Pickers
-        const monthYearFormat = 'YYYY-MM';
-        const displayFormat = '{{ $lang == "ar" ? "MMMM YYYY" : "MMMM YYYY" }}';
-        
-        $('#financial_month').daterangepicker({
-            singleDatePicker: true,
-            showDropdowns: true,
-            minYear: 2020,
-            maxYear: parseInt(moment().format('YYYY'), 10) + 5,
-            locale: {
-                format: displayFormat,
-                @if($lang == 'ar')
-                applyLabel: '{{ trans('sw.apply') }}',
-                cancelLabel: '{{ trans('sw.cancel') }}',
-                monthNames: [
-                    'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
-                    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-                ],
-                @else
-                applyLabel: '{{ trans('sw.apply') }}',
-                cancelLabel: '{{ trans('sw.cancel') }}',
-                @endif
-            },
-            @if(old('financial_month', $transaction->financial_month))
-            startDate: moment('{{ old('financial_month', $transaction->financial_month) }}', monthYearFormat),
-            @else
-            startDate: moment(),
-            @endif
-        }).on('apply.daterangepicker', function(ev, picker) {
-            $(this).val(picker.startDate.format(displayFormat));
-            // Store the YYYY-MM format in a hidden field for submission
-            var monthYear = picker.startDate.format(monthYearFormat);
-            if (!$('#financial_month_hidden').length) {
-                $(this).after('<input type="hidden" name="financial_month" id="financial_month_hidden">');
-                $(this).removeAttr('name');
-            }
-            $('#financial_month_hidden').val(monthYear);
-        });
-
-        $('#deduction_month').daterangepicker({
-            singleDatePicker: true,
-            showDropdowns: true,
-            minYear: 2020,
-            maxYear: parseInt(moment().format('YYYY'), 10) + 5,
-            locale: {
-                format: displayFormat,
-                @if($lang == 'ar')
-                applyLabel: '{{ trans('sw.apply') }}',
-                cancelLabel: '{{ trans('sw.cancel') }}',
-                monthNames: [
-                    'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
-                    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-                ],
-                @else
-                applyLabel: '{{ trans('sw.apply') }}',
-                cancelLabel: '{{ trans('sw.cancel') }}',
-                @endif
-            },
-            @if(old('deduction_month', $transaction->deduction_month))
-            startDate: moment('{{ old('deduction_month', $transaction->deduction_month) }}', monthYearFormat),
-            @else
-            startDate: moment(),
-            @endif
-        }).on('apply.daterangepicker', function(ev, picker) {
-            $(this).val(picker.startDate.format(displayFormat));
-            // Store the YYYY-MM format in a hidden field for submission
-            var monthYear = picker.startDate.format(monthYearFormat);
-            if (!$('#deduction_month_hidden').length) {
-                $(this).after('<input type="hidden" name="deduction_month" id="deduction_month_hidden">');
-                $(this).removeAttr('name');
-            }
-            $('#deduction_month_hidden').val(monthYear);
-        });
-
-        // Set initial display values if data exists
-        @if(old('financial_month', $transaction->financial_month))
-        var financialDate = moment('{{ old('financial_month', $transaction->financial_month) }}', monthYearFormat);
-        $('#financial_month').val(financialDate.format(displayFormat));
-        $('#financial_month').after('<input type="hidden" name="financial_month" id="financial_month_hidden" value="{{ old('financial_month', $transaction->financial_month) }}">');
-        $('#financial_month').removeAttr('name');
-        @endif
-
-        @if(old('deduction_month', $transaction->deduction_month))
-        var deductionDate = moment('{{ old('deduction_month', $transaction->deduction_month) }}', monthYearFormat);
-        $('#deduction_month').val(deductionDate.format(displayFormat));
-        $('#deduction_month').after('<input type="hidden" name="deduction_month" id="deduction_month_hidden" value="{{ old('deduction_month', $transaction->deduction_month) }}">');
-        $('#deduction_month').removeAttr('name');
-        @endif
-
         // Show/Hide deduction month based on transaction type
         function toggleDeductionMonth() {
             const transactionType = $('#transaction_type').val();
             const deductionContainer = $('#deduction_month_container');
             const deductionInput = $('#deduction_month');
-            const deductionHidden = $('#deduction_month_hidden');
             
             if (transactionType === 'advance') {
                 deductionContainer.show();
@@ -288,7 +197,6 @@
                 deductionContainer.hide();
                 deductionInput.attr('required', false);
                 deductionInput.val('');
-                deductionHidden.val('');
             }
         }
 

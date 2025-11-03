@@ -48,6 +48,23 @@ class GymMoneyBox extends GenericModel
         return $this->belongsTo(GymPTMember::class, 'member_pt_subscription_id');
     }
 
+    public function user_transaction(){
+        return $this->belongsTo(GymUserTransaction::class, 'user_transaction_id');
+    }
+
+    public function loyaltyRedemption()
+    {
+        return $this->hasOneThrough(
+            LoyaltyTransaction::class,
+            GymStoreOrder::class,
+            'id', // Foreign key on store_orders table
+            'source_id', // Foreign key on loyalty_transactions table
+            'store_order_id', // Local key on money_boxes table
+            'id' // Local key on store_orders table
+        )->where('sw_loyalty_transactions.source_type', 'store_order_redemption')
+         ->where('sw_loyalty_transactions.type', 'redeem');
+    }
+
     public function getOperationNameAttribute()
     {
         $operation = $this->getRawOriginal('operation');

@@ -1051,6 +1051,8 @@
     var lang = '{{$lang}}';
     var isRtl = (lang === 'ar');
     var path_mp3 = '{{asset(\Modules\Software\Models\GymSubscription::$uploads_path)}}';
+    var current_lang = '{{$lang}}';
+    var active_loyalty = {{ @$mainSettings->active_loyalty ? 'true' : 'false' }};
 
 </script>
 @if((\Request::route()->getName() !=  'sw.editMember') && (\Request::route()->getName() !=  'sw.listMember'))

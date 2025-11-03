@@ -262,6 +262,17 @@
                                         <td class="text-end">{{number_format(($order['discount_value']),2)}} {{@trans('sw.app_currency')}}</td>
                                     </tr>
                                     @endif
+                                    @if(@$order['loyalty_redemption'])
+                                    <tr>
+                                        <td colspan="4" class="text-end">
+                                            <i class="ki-outline ki-gift text-primary me-1"></i>{{ trans('sw.loyalty_discount') }}
+                                            <span class="text-muted fs-7">({{ abs($order['loyalty_redemption']['points']) }} {{ trans('sw.points')}})</span>
+                                        </td>
+                                        <td class="text-end text-primary fw-bold">
+                                            {{number_format(abs($order['loyalty_redemption']['points']) * (@$order['loyalty_redemption']['rule']['point_to_money_rate'] ?? 0), 2)}} {{@trans('sw.app_currency')}}
+                                        </td>
+                                    </tr>
+                                    @endif
                                     <tr>
                                         <td colspan="4" class="text-end">{{ trans('sw.invoice_total') }}</td>
                                         <td class="text-end">{{number_format(($order['amount_paid'] - @$order['vat']),2)}} {{@trans('sw.app_currency')}}</td>

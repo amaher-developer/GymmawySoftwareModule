@@ -48,7 +48,9 @@ Route::prefix('store/order')
 
         Route::name('sw.getStoreMemberAjax')
             ->get('get-store-member-ajax', 'Front\GymStoreOrderFrontController@getStoreMemberAjax');
-
+        
+        Route::name('sw.getMemberLoyaltyInfo')
+            ->get('get-member-loyalty-info', 'Front\GymStoreOrderFrontController@getMemberLoyaltyInfo');
 
         Route::name('sw.deleteStoreOrder')
             ->get('{order}/delete', 'Front\GymStoreOrderFrontController@destroy');

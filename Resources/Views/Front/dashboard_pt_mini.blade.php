@@ -215,36 +215,92 @@
 
 
 
-    <!-- Modal Attends with effects -->
-    <div class="modal effect-newspaper" id="modalPTAttends"  data-easein="tada"  tabindex="-1" role="dialog" aria-labelledby="costumModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable " role="document">
+    <!-- Modal PT Attends with modern styling -->
+    <div class="modal fade effect-newspaper" id="modalPTAttends" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ trans('sw.pt_member_attendance_status') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Status Banner -->
+                    <div id="status_banner_pt" class="text-center p-4 mb-4 text-white bg-success rounded">
+                        <h3 id="p_messages" class="mb-0"></h3>
+                    </div>
 
-            <div class="modal-content modal-content-demo card">
-                <img id="client_img" class="client_img" src="{{asset('uploads/settings/default.jpg')}}"  >
-                <h4 class="mg-b-20" id="p_messages"></h4>
-                <div id="myData">
-                    <h3 id="client_name"></h3>
-                    <p class="title" id="client_code"></p>
-                    <ul class="col-md-12 row" >
-                        <li class="col-md-6" ><b>{{ trans('sw.phone')}}:</b> <span id="client_phone"></span></li>
-                        <li class="col-md-6"><b>{{ trans('sw.amount_remaining')}}:</b> <span id="client_amount_remaining"></span></li>
-{{--                        <li class="col-md-6"><b>{{ trans('sw.total_amount_remaining')}}:</b> <span id="client_total_amount_remaining"></span></li>--}}
-                        <li class="col-md-6"><b>{{ trans('sw.expire_date')}}:</b> <span id="client_expire_date"></span></li>
-                        <li class="col-md-6"><b>{{ trans('sw.remaining_classes')}}:</b> <span id="client_workouts"></span></li>
-                        <li class="col-md-6"><b>{{ trans('sw.membership')}}:</b> <span id="client_membership"></span></li>
-                        <li class="col-md-6"><b>{{ trans('sw.pt_classes')}}:</b> <span id="client_classes"></span></li>
-                    </ul>
+                    <div class="text-center mb-5">
+                        <img id="client_img" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;" src="{{asset('uploads/settings/default.jpg')}}">
+                        <h3 id="client_name" class="mt-3 mb-0"></h3>
+                        <p class="text-muted" id="client_code"></p>
+                    </div>
+
+                    <!-- Key Stats -->
+                    <div class="row g-2 text-center mb-5">
+                        <div class="col-4">
+                            <div class="bg-light-primary p-3 rounded">
+                                <div class="fs-7 text-muted">{{ trans('sw.membership') }}</div>
+                                <div class="fs-6 fw-bold" id="client_membership"></div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-light-danger p-3 rounded">
+                                <div class="fs-7 text-muted">{{ trans('sw.amount_remaining') }}</div>
+                                <div class="fs-6 fw-bold" id="client_amount_remaining"></div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-light-info p-3 rounded">
+                                <div class="fs-7 text-muted">{{ trans('sw.expire_date') }}</div>
+                                <div class="fs-6 fw-bold" id="client_expire_date"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="myData">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold">{{trans('sw.phone')}}:</span>
+                                    <span id="client_phone" class="text-muted"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold">{{trans('sw.remaining_classes')}}:</span>
+                                    <span id="client_workouts" class="text-muted"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold">{{trans('sw.pt_classes')}}:</span>
+                                    <span id="client_classes" class="text-muted"></span>
+                                </div>
+                            </div>
+                            @if(@$mainSettings->active_loyalty)
+                            <div class="col-md-6">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold">
+                                        <i class="ki-outline ki-gift text-primary me-1"></i>
+                                        {{trans('sw.loyalty_points')}}:
+                                    </span>
+                                    <span id="client_loyalty_points_pt" class="text-primary fw-bold fs-4">0</span>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
                 </div>
 
-                <div class="clearfix"></div>
-
-
-                @if(in_array('memberSubscriptionRenewStore', (array)$swUser->permissions) || $swUser->is_super_user)<p id="div_renew"></p>@endif
+                <div class="modal-footer d-flex justify-content-center gap-2">
+                    @if(in_array('memberSubscriptionRenewStore', (array)$swUser->permissions) || $swUser->is_super_user)
+                    <div id="div_renew"></div>
+                    @endif
+                </div>
             </div>
-
         </div>
     </div>
-    <!-- Modal Attends with effects-->
+    <!-- Modal PT Attends with effects-->
 
 
 
@@ -511,6 +567,14 @@
                     $('#client_img').attr('src',  data.member.member.image);
                     $('#client_amount_remaining').text(data.member.amount_remaining);
                     $('#client_total_amount_remaining').text(data.member.total_amount_remaining);
+                    
+                    // Display loyalty points if available
+                    if (data.member.member && data.member.member.loyalty_points_formatted !== undefined) {
+                        $('#client_loyalty_points_pt').text(data.member.member.loyalty_points_formatted);
+                    } else {
+                        $('#client_loyalty_points_pt').text('0');
+                    }
+                    
                     // var partsDate = data.member.member_subscriptions.expire_date.split('T');
                     $('#client_expire_date').text(data.member.expire_date);
                     $('#client_workouts').text(data.member.remain_workouts);
@@ -520,17 +584,19 @@
                     $('#client_membership').text(subscription_name);
 
                     if(data.status === true){
-                        $('#p_messages').html('');
+                        $('#p_messages').html(data.msg || '<i class="ki-outline ki-check-circle fs-2x"></i>');
+                        $('#status_banner_pt').removeClass('bg-danger').addClass('bg-success');
                         if(data.renew_status === true)
-                            $('#div_renew').html('<a class=" mg-t-10 btn btn-primary btn-block  text-white" id="' + data.member.id + '" membership_id="' + data.member.member_subscription_info.id + '"  >'+ trans_renew_membership +'</a>');
+                            $('#div_renew').html('<a class="btn btn-primary text-white" id="' + data.member.id + '" membership_id="' + data.member.member_subscription_info.id + '">'+ trans_renew_membership +'</a>');
                         else
                             $('#div_renew').html('');
-                        $('#icon_model').html(' <i class="fa fa-check\n mg-b-20 tx-30 text-success"></i>');
-                        $('.client_img').css("color", "#4caf50b8");
                     }else{
-                        $('#p_messages').html('<i class="fa fa-times mg-b-20 tx-30 text-danger " ></i> ' + data.msg);
-                        $('.client_img').css("color", "#f44336c9");
-                        $('#icon_model').html(' <i class="fa fa-times mg-b-20 tx-30 text-danger " ></i>');
+                        $('#p_messages').html('<i class="ki-outline ki-cross-circle fs-2x me-2"></i>' + data.msg);
+                        $('#status_banner_pt').removeClass('bg-success').addClass('bg-danger');
+                        if(data.renew_status === true)
+                            $('#div_renew').html('<a class="btn btn-primary text-white" id="' + data.member.id + '" membership_id="' + data.member.member_subscription_info.id + '">'+ trans_renew_membership +'</a>');
+                        else
+                            $('#div_renew').html('');
                     }
 
                     if(data.member.pt_members && (data.member.pt_members.length > 0)){

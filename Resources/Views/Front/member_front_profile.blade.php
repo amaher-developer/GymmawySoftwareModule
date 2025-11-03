@@ -172,6 +172,20 @@
                     <div class="fw-bold fs-5">{{ trans('sw.store_credit') }}</div>
                     <div class="fw-semibold @if(@$member->store_balance > 0) text-success @else text-danger @endif fs-5">{{ @number_format(@$member->store_balance, 2)  }}</div>
                 </div>
+                @if(@$mainSettings->active_loyalty)
+                <div class="d-flex flex-stack py-4 border-top bg-light-primary" style="border-radius: 0.475rem; margin: 0 -1.5rem; padding: 1rem 1.5rem !important;">
+                    <div class="d-flex align-items-center">
+                        <i class="ki-outline ki-gift fs-2 text-primary me-3"></i>
+                        <div class="fw-bold fs-5">{{ trans('sw.loyalty_points') }}</div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="fw-bold text-primary fs-3">{{ number_format($member->loyalty_points_balance ?? 0) }}</span>
+                        <a target="_blank" href="{{ route('sw.loyalty_transactions.member_history', $member->id) }}" class="btn btn-sm btn-light-primary ms-3" title="{{ trans('sw.view_full_history') }}">
+                            <i class="ki-outline ki-eye fs-6"></i>
+                        </a>
+                    </div>
+                </div>
+                @endif
             </div>
             <!--end::Card footer-->
         </div>

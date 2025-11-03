@@ -3,6 +3,7 @@
 namespace Modules\Software\Http\Controllers\Front;
 
 use Modules\Software\Classes\TypeConstants;
+use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Exports\RecordsExport;
 use Modules\Software\Http\Requests\GymStoreOrderRequest;
 use Modules\Software\Models\GymGroupDiscount;
@@ -161,7 +162,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     public function show($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrder::branch()->with('member')->where('id', $id)->first()->toArray();
+        $order = GymStoreOrder::branch()->with(['member', 'loyaltyRedemption.rule'])->where('id', $id)->first()->toArray();
 
         foreach ($order['products'] as $i => $product_id){
             $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
@@ -195,7 +196,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     public function showPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrder::branch()->with(['pay_type', 'member'])->where('id', $id)->first()->toArray();
+        $order = GymStoreOrder::branch()->with(['pay_type', 'member', 'loyaltyRedemption.rule'])->where('id', $id)->first()->toArray();
 
         foreach ($order['products'] as $i => $product_id){
             $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
@@ -264,7 +265,6 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
     public function storePOS(GymStoreOrderRequest $request)
     {
-
         $vat = 0;
         $order_inputs = $this->prepare_inputs($request->except(['_token']));
         $input_products = $request->products;
@@ -285,21 +285,89 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 //        }
         $order_inputs['amount_before_discount'] = $amount_before_discount;
         $order_inputs['discount_value'] = $request->discount_value ? @$request->discount_value : 0;
-        if(@$this->mainSettings->vat_details['vat_percentage']) {
-            $vat = ($order_inputs['amount_before_discount'] -  $order_inputs['discount_value']) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
-            $order_inputs['vat'] = round($vat, 2);
-        }
-        $order_inputs['amount_remaining'] = ($order_inputs['amount_before_discount'] + $vat - $order_inputs['amount_paid'] - $order_inputs['discount_value']) > 0 ? round(($order_inputs['amount_before_discount'] + $vat - $order_inputs['amount_paid'] - $order_inputs['discount_value']), 2) : 0;
 
         if($request->member_id){
-            $member = GymMember::branch()->where('code', (int)@$request->member_id)->first();
+            if(!isset($member)) {
+                $member = GymMember::branch()->where('id', (int)@$request->member_id)->first();
+            }
             $order_inputs['member_id'] = @$member->id;
 
             if(@$request->store_member_use_balance && ((@$member->member_balance() < $order_inputs['amount_paid'] ) && (!@$this->mainSettings->store_postpaid))){
-                return redirect(route('sw.createStoreOrder'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
+                return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
             }
 
         }
+
+        // Handle loyalty points redemption - MUST BE BEFORE VAT CALCULATION
+        $loyaltyDiscountValue = 0;
+        $loyaltyPointsRedeemed = 0;
+        $redemptionTransaction = null;
+        if($request->member_id && $request->loyalty_points_redeem && @$this->mainSettings->active_loyalty){
+            if(!isset($member)) {
+                $member = GymMember::find($request->member_id);
+            }
+            $loyaltyPointsRedeemed = (int)$request->loyalty_points_redeem;
+            
+            if($member && $loyaltyPointsRedeemed > 0){
+                try {
+                    // Get active loyalty rule to calculate conversion rate
+                    $loyaltyRule = \Modules\Software\Models\LoyaltyPointRule::active()
+                        ->where('branch_setting_id', $member->branch_setting_id ?? 1)
+                        ->first();
+                    
+                    if (!$loyaltyRule) {
+                        throw new \Exception(trans('sw.no_active_loyalty_rule'));
+                    }
+                    
+                    // Calculate maximum usable discount (subtotal after regular discount)
+                    $maxUsableDiscount = $order_inputs['amount_before_discount'] - $order_inputs['discount_value'];
+                    $maxUsableDiscount = max(0, $maxUsableDiscount); // Ensure non-negative
+                    
+                    // Calculate maximum redeemable points based on max discount
+                    $maxRedeemablePoints = 0;
+                    if ($loyaltyRule->point_to_money_rate > 0) {
+                        $maxRedeemablePoints = (int) floor($maxUsableDiscount / $loyaltyRule->point_to_money_rate);
+                    }
+                    
+                    // Cap redemption points to maximum usable
+                    if ($loyaltyPointsRedeemed > $maxRedeemablePoints && $maxRedeemablePoints > 0) {
+                        $loyaltyPointsRedeemed = $maxRedeemablePoints;
+                    }
+                    
+                    // Only redeem if we have valid points
+                    if($loyaltyPointsRedeemed > 0){
+                        $loyaltyService = new LoyaltyService();
+                        $redemptionResult = $loyaltyService->redeem(
+                            $member,
+                            $loyaltyPointsRedeemed,
+                            trans('sw.redeemed_for_store_order'),
+                            'store_order_redemption',
+                            null // Will update with order ID after creation
+                        );
+                        
+                        if($redemptionResult){
+                            $loyaltyDiscountValue = $redemptionResult['value'];
+                            // Cap discount value to maximum usable (safety check)
+                            if ($loyaltyDiscountValue > $maxUsableDiscount) {
+                                $loyaltyDiscountValue = $maxUsableDiscount;
+                            }
+                            // Update the redemption transaction with the order ID after order creation
+                            $redemptionTransaction = $redemptionResult['transaction'];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    return redirect(route('sw.createStoreOrderPOS'))->withErrors(['loyalty_points_redeem' => $e->getMessage()]);
+                }
+            }
+        }
+        
+        // Calculate VAT after applying both regular discount and loyalty discount
+        if(@$this->mainSettings->vat_details['vat_percentage']) {
+            $vat = ($order_inputs['amount_before_discount'] - $order_inputs['discount_value'] - $loyaltyDiscountValue) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
+            $order_inputs['vat'] = round($vat, 2);
+        }
+        
+        $order_inputs['amount_remaining'] = ($order_inputs['amount_before_discount'] + $vat - $order_inputs['amount_paid'] - $order_inputs['discount_value'] - $loyaltyDiscountValue) > 0 ? round(($order_inputs['amount_before_discount'] + $vat - $order_inputs['amount_paid'] - $order_inputs['discount_value'] - $loyaltyDiscountValue), 2) : 0;
 //        $order_inputs['amount_paid'] = @(float)$request->amount_paid+@(float)$request->vat;
 //        $order_inputs['vat'] = @(float)$request->vat;
         $order_inputs['products'] = ($this->remapProducts($order_inputs['products']));
@@ -323,6 +391,13 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
         $order = GymStoreOrder::create($order_inputs);
         $order_id = $order->id;
+        
+        // Update redemption transaction with order ID if points were redeemed
+        if (isset($redemptionTransaction) && $redemptionTransaction) {
+            $redemptionTransaction->source_id = $order->id;
+            $redemptionTransaction->save();
+        }
+        
         foreach($order_inputs['products'] as $product) {
             GymStoreOrderProduct::create(['order_id' => $order->id, 'product_id' => $product['id'], 'quantity' => $product['quantity'], 'price' => ($product['quantity'] * $product['price']), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
 
@@ -331,9 +406,45 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                     'quantity' => DB::raw('quantity - '.$product['quantity'])
                 ]);
         }
+        // Award loyalty points if member made the purchase
+        $loyaltyPointsEarned = 0;
+        if (isset($member) && $order->amount_paid > 0 && @$this->mainSettings->active_loyalty) {
+            try {
+                $loyaltyService = new LoyaltyService();
+                $transaction = $loyaltyService->earn(
+                    $member,
+                    $order->amount_paid,
+                    'store_order',
+                    $order->id
+                );
+                
+                if ($transaction) {
+                    $loyaltyPointsEarned = $transaction->points;
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to award loyalty points for store order', [
+                    'order_id' => $order->id,
+                    'member_id' => $member->id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Success message with loyalty points info
+        $successMessage = trans('admin.successfully_added');
+        if ($loyaltyPointsRedeemed > 0) {
+            $successMessage .= ' - ' . trans('sw.redeemed_loyalty_points', [
+                'points' => $loyaltyPointsRedeemed,
+                'value' => number_format($loyaltyDiscountValue, 2)
+            ]);
+        }
+        if ($loyaltyPointsEarned > 0) {
+            $successMessage .= ' - ' . trans('sw.earned_loyalty_points', ['points' => $loyaltyPointsEarned]);
+        }
+
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_added'),
+            'message' => $successMessage,
             'type' => 'success'
         ]);
 
@@ -374,7 +485,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             , 'is_store_balance' => $is_store_balance
         ]);
         $this->userLog($notes, TypeConstants::CreateStoreOrder);
-        return redirect(route('sw.createStoreOrder'));
+        return redirect(route('sw.createStoreOrderPOS'));
     }
 
     private function remapProducts($products){
@@ -435,7 +546,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $order->delete();
 
             $orders = GymStoreOrderProduct::where('order_id', $order->id)->get();
-            if (is_array($$orders) && count($$orders) > 0) {
+            if (count($orders) > 0) {
                 foreach ($orders as $ord) {
                     GymStoreProduct::where('id', $ord->product_id)->increment('quantity', $ord->quantity);
                 }
@@ -446,11 +557,130 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                 $amount_box = GymMoneyBox::branch()->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
+                // Calculate refund amount (full or partial)
                 $vat = @$order->vat;
-                $amount = ($order->amount_paid);
+                $refundAmount = $order->amount_paid; // Default to full refund
+                $isPartialRefund = false;
+                
                 if(\request('total_amount') && \request('amount') && (\request('total_amount') >= \request('amount') )){
-                    $amount = \request('amount');
+                    $refundAmount = \request('amount');
+                    $isPartialRefund = ($refundAmount < $order->amount_paid);
                 }
+                
+                // Deduct loyalty points if they were awarded for this order
+                if ($order->member_id && @$this->mainSettings->active_loyalty) {
+                    try {
+                        $member = GymMember::find($order->member_id);
+                        if ($member) {
+                            // Find loyalty transactions for this order
+                            $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::where('source_type', 'store_order')
+                                ->where('source_id', $order->id)
+                                ->where('type', 'earn')
+                                ->where('is_expired', false)
+                                ->get();
+                            
+                            $totalPointsEarned = $loyaltyTransactions->sum('points');
+                            
+                            if ($totalPointsEarned > 0 && $order->amount_paid > 0) {
+                                // Check how many points have already been deducted for this order (from previous refunds)
+                                $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
+                                    ->where('type', 'manual')
+                                    ->where('source_type', 'store_order_refund')
+                                    ->where('source_id', $order->id)
+                                    ->where('points', '<', 0)
+                                    ->sum('points')) ?? 0; // sum of negative values, so we get positive amount deducted
+                                
+                                $remainingDeductiblePoints = $totalPointsEarned - $alreadyDeductedPoints;
+                                
+                                // Calculate proportional points to deduct based on refund ratio
+                                $refundRatio = $refundAmount / $order->amount_paid;
+                                $pointsToDeduct = (int) round($totalPointsEarned * $refundRatio);
+                                
+                                // Don't deduct more than what's remaining
+                                if ($pointsToDeduct > $remainingDeductiblePoints) {
+                                    $pointsToDeduct = max(0, $remainingDeductiblePoints);
+                                }
+                                
+                                if ($pointsToDeduct > 0) {
+                                    // Check if member has enough points
+                                    if ($member->loyalty_points_balance >= $pointsToDeduct) {
+                                        // Deduct points using manual adjustment
+                                        $loyaltyService = new LoyaltyService();
+                                        
+                                        $reason = $isPartialRefund 
+                                            ? trans('sw.points_deducted_for_partial_refund', [
+                                                'order_id' => $order->id, 
+                                                'refund_amount' => $refundAmount,
+                                                'original_amount' => $order->amount_paid
+                                            ])
+                                            : trans('sw.points_deducted_for_refund', ['order_id' => $order->id]);
+                                        
+                                        // Create the deduction transaction with source tracking
+                                        $deductionTransaction = $loyaltyService->addManual(
+                                            $member,
+                                            -$pointsToDeduct,
+                                            $reason,
+                                            $this->user_sw->id ?? null
+                                        );
+                                        
+                                        // Update source_type and source_id to track refunds properly
+                                        if ($deductionTransaction) {
+                                            $deductionTransaction->source_type = 'store_order_refund';
+                                            $deductionTransaction->source_id = $order->id;
+                                            $deductionTransaction->save();
+                                        }
+                                        
+                                        // Mark original transactions as expired only for full refunds
+                                        if (!$isPartialRefund) {
+                                            foreach ($loyaltyTransactions as $earnTransaction) {
+                                                $earnTransaction->is_expired = true;
+                                                $earnTransaction->save();
+                                            }
+                                        }
+                                        
+                                        // \Log::info('Loyalty points deducted for refund', [
+                                        //     'order_id' => $order->id,
+                                        //     'member_id' => $member->id,
+                                        //     'points_deducted' => $pointsToDeduct,
+                                        //     'total_points_earned' => $totalPointsEarned,
+                                        //     'already_deducted_points' => $alreadyDeductedPoints,
+                                        //     'remaining_deductible_points' => $remainingDeductiblePoints,
+                                        //     'refund_amount' => $refundAmount,
+                                        //     'original_amount' => $order->amount_paid,
+                                        //     'refund_ratio' => $refundRatio,
+                                        //     'is_partial' => $isPartialRefund,
+                                        // ]);
+                                    } else {
+                                        // Member doesn't have enough points
+                                        // \Log::warning('Cannot deduct loyalty points - insufficient balance', [
+                                        //     'order_id' => $order->id,
+                                        //     'member_id' => $member->id,
+                                        //     'points_needed' => $pointsToDeduct,
+                                        //     'current_balance' => $member->loyalty_points_balance,
+                                        //     'refund_amount' => $refundAmount,
+                                        // ]);
+                                        
+                                        // Mark transactions as expired only for full refunds
+                                        if (!$isPartialRefund) {
+                                            foreach ($loyaltyTransactions as $earnTransaction) {
+                                                $earnTransaction->is_expired = true;
+                                                $earnTransaction->save();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to deduct loyalty points on refund', [
+                            'order_id' => $order->id,
+                            'refund_amount' => $refundAmount,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                
+                $amount = $refundAmount;
 
                 $notes = trans('sw.store_order_delete', ['id' => $order->id,'amount' => $amount]);
                 GymMoneyBox::create([
@@ -466,6 +696,8 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                     , 'store_order_id' => @$order->id
                 ]);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
+                
+                
             }
 
             $notes =  trans('sw.delete_order', ['name' => $order['name']]);
@@ -511,6 +743,56 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             return $member;
         }
         return [];
+    }
+    
+    public function getMemberLoyaltyInfo(){
+        $member_id = (int)@request('member_id');
+        
+        // Get active loyalty rule
+        $rule = \Modules\Software\Models\LoyaltyPointRule::active()
+            ->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
+            ->first();
+        
+        if (!$rule) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active loyalty rule found',
+                'points' => 0,
+                'points_formatted' => '0'
+            ]);
+        }
+        
+        // Calculate how many points equal 1 currency unit
+        $pointsForOneCurrency = $rule->point_to_money_rate > 0 ? (1 / $rule->point_to_money_rate) : 0;
+        
+        // If no member_id, just return rule info
+        if (!$member_id) {
+            return response()->json([
+                'success' => true,
+                'points' => 0,
+                'points_formatted' => '0',
+                'point_to_money_rate' => (float)$rule->point_to_money_rate,
+                'money_to_point_rate' => (float)$rule->money_to_point_rate,
+                'points_for_one_currency' => round($pointsForOneCurrency, 2),
+                'rule_name' => $rule->name,
+            ]);
+        }
+        
+        $member = GymMember::find($member_id);
+        
+        if (!$member) {
+            return response()->json(['success' => false, 'message' => 'Member not found'], 404);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'points' => $member->loyalty_points_balance ?? 0,
+            'points_formatted' => number_format($member->loyalty_points_balance ?? 0),
+            'point_to_money_rate' => (float)$rule->point_to_money_rate,
+            'money_to_point_rate' => (float)$rule->money_to_point_rate,
+            'points_for_one_currency' => round($pointsForOneCurrency, 2),
+            'rule_name' => $rule->name,
+        ]);
     }
 
 }

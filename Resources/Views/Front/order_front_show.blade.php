@@ -256,6 +256,17 @@
                                             <td colspan="2" class="text-end">{{ trans('sw.invoice_total') }}</td>
                                             <td class="text-end">{{$order->operation == \Modules\Software\Classes\TypeConstants::Add ? '' : '-'}} {{number_format(($order->amount - @$order->vat),2)}} {{@trans('sw.app_currency')}}</td>
                                         </tr>
+                                        @if(@$order->store_order && @$order->store_order->loyaltyRedemption)
+                                        <tr>
+                                            <td colspan="2" class="text-end">
+                                                <i class="ki-outline ki-gift text-primary me-1"></i>{{ trans('sw.loyalty_discount') }}
+                                                <span class="text-muted fs-7">({{ abs($order->store_order->loyaltyRedemption->points) }} {{ trans('sw.points')}})</span>
+                                            </td>
+                                            <td class="text-end text-primary fw-bold">
+                                                -{{number_format(abs($order->store_order->loyaltyRedemption->points) * (@$order->store_order->loyaltyRedemption->rule->point_to_money_rate ?? 0), 2)}} {{@trans('sw.app_currency')}}
+                                            </td>
+                                        </tr>
+                                        @endif
                                         @if(@$order->vat)
                                         <tr>
                                             <td colspan="2" class="text-end">{{ trans('sw.vat_total') }} ({{@$mainSettings->vat_details['vat_percentage'].'%'}})</td>

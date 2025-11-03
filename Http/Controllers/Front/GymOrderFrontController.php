@@ -78,7 +78,7 @@ class GymOrderFrontController extends GymGenericFrontController
 
     public function show($id)
     {
-        $order = GymMoneyBox::branch()->with(['member', 'member_subscription'])->where('id', $id)->first();
+        $order = GymMoneyBox::branch()->with(['member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
         $transaction_value = 1;
         if(in_array($order->type, [TypeConstants::DeleteMember, TypeConstants::DeleteStoreOrder, TypeConstants::DeleteNonMember, TypeConstants::DeletePTMember, TypeConstants::DeleteSubscription, TypeConstants::DeleteStorePurchaseOrder]))
         {
@@ -129,7 +129,7 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymMoneyBox::branch()->with(['pay_type', 'member', 'member_subscription'])->where('id', $id)->first();
+        $order = GymMoneyBox::branch()->with(['pay_type', 'member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
         if(@$this->mainSettings->vat_details['saudi']){
             $qrcodes_folder = public_path('uploads/invoices/');
             if (!File::exists($qrcodes_folder)) {
