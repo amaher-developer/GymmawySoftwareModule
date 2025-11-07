@@ -39,9 +39,65 @@
         .actions-column .d-flex {
             gap: 0.25rem;
         }
+
+        .barcode-cell {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .barcode-badge {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            padding: 0.35rem 0.45rem;
+            background: #f9f9fb;
+            border: 1px dashed #e4e6ef;
+            border-radius: 6px;
+            min-width: 95px;
+        }
+
+        .barcode-badge img {
+            max-height: 32px;
+            width: auto;
+            display: block;
+            filter: contrast(115%);
+        }
+
+        .barcode-badge span {
+            font-size: 0.65rem;
+            color: #5e6278;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
     </style>
 @endsection
 @section('page_body')
+    @php
+        $storeListScannerIndex = $products->mapWithKeys(function ($product) {
+            $code = (string) $product->code;
+            $normalized = ltrim($code, '0');
+            $padded = str_pad($normalized !== '' ? $normalized : $code, 14, '0', STR_PAD_LEFT);
+            $keys = array_unique(array_filter([
+                $code,
+                $normalized !== '' ? $normalized : null,
+                $padded,
+                strtoupper($code),
+                strtoupper($normalized),
+                strtoupper($padded),
+            ]));
+
+            $map = [];
+            foreach ($keys as $key) {
+                $map[$key] = $code;
+            }
+            return $map;
+        });
+    @endphp
 
 <!--begin::Store Products-->
 <div class="card card-flush">
@@ -75,8 +131,8 @@
         <!--begin::Search-->
         <div class="d-flex align-items-center position-relative my-1 mb-5">
             <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
-            <form class="d-flex" action="" method="get" style="max-width: 400px;">
-                <input type="text" name="search" class="form-control form-control-solid ps-12" value="{{ request('search') }}" placeholder="{{ trans('sw.search_on')}}">
+            <form id="store_products_search_form" class="d-flex" action="" method="get" style="max-width: 400px;">
+                <input type="text" name="search" id="store_products_search_input" class="form-control form-control-solid ps-12" value="{{ request('search') }}" placeholder="{{ trans('sw.search_on')}}">
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
                 </button>
@@ -104,8 +160,11 @@
                 <table class="table align-middle table-row-dashed fs-6 gy-5" id="kt_store_products_table">
                 <thead>
                     <tr class="text-gray-500 fw-bold fs-7 text-uppercase gs-0">
-                        <th class="min-w-200px text-nowrap">
+                        <th class="min-w-220px text-nowrap">
                             <i class="ki-outline ki-tag fs-6 me-2"></i>{{ trans('sw.name')}}
+                        </th>
+                        <th class="min-w-160px text-nowrap">
+                            <i class="ki-outline ki-barcode fs-6 me-2"></i>{{ trans('sw.code')}}
                         </th>
                         <th class="min-w-150px text-nowrap">
                             <i class="ki-outline ki-category fs-6 me-2"></i>{{ trans('sw.store_category')}}
@@ -143,6 +202,22 @@
                                         </div>
                                         <!--end::Title-->
                                     </div>
+                                </div>
+                            </td>
+                            <td class="pe-0">
+                                <div class="barcode-cell">
+                                    @if($product->barcode_image)
+                                        <div class="barcode-badge">
+                                            <a href="{{ route('sw.downloadStoreProductBarcode', $product->id) }}" download>
+                                                <img src="{{ $product->barcode_image }}" alt="{{ $product->code }}" loading="lazy">
+                                            </a>
+                                            <span><i class="ki-outline ki-barcode fs-6 me-1"></i>{{ $product->code }}</span>
+                                        </div>
+                                    @else
+                                        <span class="badge badge-light-dark fw-semibold px-3 py-2">
+                                            <i class="ki-outline ki-barcode fs-5 me-2"></i>{{ $product->code }}
+                                        </span>
+                                    @endif
                                 </div>
                             </td>
                             <td class="pe-0">
@@ -397,114 +472,54 @@
     @parent
 
     <script>
-
-        $(document).on('click', '#export', function (event) {
-            event.preventDefault();
-            $.ajax({
-                url: $(this).attr('url'),
-                cache: false,
-                type: 'GET',
-                dataType: 'json',
-                success: function (response) {
-                    var a = document.createElement("a");
-                    a.href = response.file;
-                    a.download = response.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                },
-                error: function (request, error) {
-                    swal("Operation failed", "Something went wrong.", "error");
-                    console.error("Request: " + JSON.stringify(request));
-                    console.error("Error: " + JSON.stringify(error));
-                }
-            });
-
-        });
-
-        $("#filter_form").slideUp();
-        $(".filter_trigger_button").click(function () {
-            $("#filter_form").slideToggle(300);
-        });
-
-        $(document).on('click', '.remove_filter', function (event) {
-            event.preventDefault();
-            var filter = $(this).attr('id');
-            $("#" + filter).val('');
-            $("#filter_form").submit();
-        });
-
-        $(document).on('click', '#form_vendor_btn', function (event) {
-            event.preventDefault();
-            let product_id = $('#vendor_product_id').val();
-            let amount = $('#vendor_amount').val();
-            let vendor_is_vat = 0;
-            if ($('#vendor_is_vat').is(':checked')) {
-                vendor_is_vat = 1;
-            }
-            let quantity = $('#vendor_quantity').val();
-            let payment_type = $('#vendor_payment_type').val();
-            let vendor_name = $('#vendor_name').val();
-            let vendor_phone = $('#vendor_phone').val();
-            let vendor_address = $('#vendor_address').val();
-            let notes = $('#vendor_notes').val();
-            $('#modalVendorResult').show();
-            if(!product_id || !amount || !quantity || !payment_type){
-                $('#modalVendorResult').html('<div class="alert alert-danger">{{ trans('sw.error_login')}}</div>');
-            }else {
-                $.ajax({
-                    url: '{{route('sw.storePurchasesBill')}}',
-                    cache: false,
-                    type: 'POST',
-                    dataType: 'text',
-                    data: {
-                        product_id: product_id
-                        , amount: amount
-                        , vendor_is_vat: vendor_is_vat
-                        , payment_type: payment_type
-                        , quantity: quantity
-                        , vendor_name: vendor_name
-                        , vendor_phone: vendor_phone
-                        , vendor_address: vendor_address
-                        , notes: notes
-                        , _token: "{{csrf_token()}}"
-                    },
-                    success: function (response) {
-                        if (response == 1) {
-                            // $("#global-loader").hide();
-                            $('#modalVendor').modal('hide');
-
-                            swal({
-                                title: trans_done,
-                                text: '{{ trans('admin.successfully_edited')}}',
-                                type: "success",
-                                timer: 2000,
-                                confirmButtonText: '{{ trans('admin.done')}}',
-                            }).then(() => {
-                                // This will reload the page when the user clicks "OK"
-                                window.location.reload();
-                            });
-
-
-                        }else{
-                            $('#modalVendorResult').html('<div class="alert alert-danger">' + response + '</div>');
-                        }
-
-                    },
-                    error: function (request, error) {
-                        swal("Operation failed", "Something went wrong.", "error");
-                        console.error("Request: " + JSON.stringify(request));
-                        console.error("Error: " + JSON.stringify(error));
-                    }
-                });
-            }
-        });
-
-        function vendorModel(product_id, product_name){
-            $('#vendor_product_id').val(product_id);
-            $('#vendor_product_name').html(product_name);
-            $('#modalVendor').show();
+        if (typeof window.originalBarcodeScanner === 'undefined') {
+            window.originalBarcodeScanner = window.barcode_scanner;
         }
+
+        window.barcodeScannerOverride = true;
+        window.handleBarcodeOverride = function(rawValue) {
+            const trimmed = (rawValue || '').toString().trim();
+            if (!trimmed || !window.storeProductsSearch) {
+                window.originalBarcodeScanner(rawValue);
+                return;
+            }
+
+            const candidates = Array.from(new Set([
+                trimmed,
+                trimmed.toUpperCase(),
+                /^\d+$/.test(trimmed) ? trimmed.padStart(14, '0') : null,
+                /^\d+$/.test(trimmed.toUpperCase()) ? trimmed.toUpperCase().padStart(14, '0') : null,
+            ].filter(Boolean)));
+
+            let matchedCode = null;
+            if (window.storeListScannerIndex) {
+                for (const key of candidates) {
+                    if (window.storeListScannerIndex[key]) {
+                        matchedCode = window.storeListScannerIndex[key];
+                        break;
+                    }
+                }
+            }
+
+            const searchInput = document.querySelector(window.storeProductsSearch.input);
+            const searchForm = document.querySelector(window.storeProductsSearch.form);
+            if (searchInput && searchForm) {
+                const value = matchedCode || trimmed;
+                searchInput.value = (value || '').replaceAll('undefined', '');
+                searchForm.submit();
+                return;
+            }
+
+            window.originalBarcodeScanner(rawValue);
+        };
+
+        window.storeProductsScanner = true;
+        window.disableMemberScanner = true;
+        window.storeProductsSearch = {
+            form: '#store_products_search_form',
+            input: '#store_products_search_input'
+        };
+        window.storeListScannerIndex = @json($storeListScannerIndex);
     </script>
 
 @endsection

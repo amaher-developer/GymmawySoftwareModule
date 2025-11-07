@@ -23,10 +23,24 @@ class GymStoreProductRequest extends FormRequest
      */
     public function rules()
     {
+        $productId = $this->route('product')
+            ?? $this->route('store_product')
+            ?? $this->route('storeProduct')
+            ?? $this->route('id')
+            ?? request('product_id')
+            ?? request('id');
+
+        $codeRule = 'required|string|max:191|unique:sw_gym_store_products,code';
+        if ($productId) {
+            $codeRule .= ',' . intval($productId);
+        }
+
         return [
             'name_ar' => 'required',
             'name_en' => 'required',
             'price' => 'required',
+            'sku' => 'nullable|string|max:191',
+            'code' => $codeRule,
 //            'quantity' => 'required',
             'image' => 'mimes:jpeg,jpg,png,gif|max:500',
             'content_ar' => 'max:250',

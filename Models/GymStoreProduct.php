@@ -3,6 +3,9 @@
 namespace Modules\Software\Models;
 
 use Modules\Generic\Models\GenericModel;
+use Modules\Software\Classes\TypeConstants;
+use Milon\Barcode\DNS1D;
+use Illuminate\Support\Facades\Log;
 
 class GymStoreProduct extends GenericModel
 {
@@ -65,6 +68,29 @@ class GymStoreProduct extends GenericModel
             return @env('APP_WEBSITE').'placeholder_black.png';
 
         return asset('resources/assets/front/img/blank-image.svg');
+    }
+
+    public function getBarcodeImageAttribute()
+    {
+        $value = $this->code;
+        if (!$value) {
+            return null;
+        }
+
+        try {
+            $generator = new DNS1D();
+            $barcode = $generator->getBarcodePNG((string)$value, TypeConstants::BarcodeType, 2, 60);
+
+            return $barcode ? 'data:image/png;base64,' . $barcode : null;
+        } catch (\Throwable $exception) {
+            Log::error('Failed to render store product barcode', [
+                'product_id' => $this->id,
+                'barcode_value' => $value,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
     }
     public function getContentAttribute()
     {

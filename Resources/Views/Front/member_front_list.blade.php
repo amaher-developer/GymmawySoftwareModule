@@ -399,7 +399,7 @@
                                     <div class="d-flex gap-1 mt-1">
                                         @if(@$member->code)
                                             <a download="{{@$member->code}}.png"
-                                               href="{{route('sw.downloadCode', 'code='.@$member->code)}}" 
+                                               href="{{route('sw.downloadMemberBarcode', $member->id)}}"
                                                class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm d-flex align-items-center justify-content-center"
                                                style="overflow: hidden; padding: 4px;"
                                                title="{{ trans('sw.download_barcode')}}">

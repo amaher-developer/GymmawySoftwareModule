@@ -2276,6 +2276,31 @@ class GymMemberFrontController extends GymGenericFrontController
         return redirect()->back();
     }
 
+    public function downloadMemberBarcode(GymMember $member)
+    {
+        $value = $member->code;
+        if (!$value) {
+            return redirect()->back();
+        }
+
+        $barcodesFolder = base_path('uploads/member-barcodes/');
+        if (!File::exists($barcodesFolder)) {
+            File::makeDirectory($barcodesFolder, 0755, true, true);
+        }
+
+        $generator = new DNS1D();
+        $generator->setStorPath($barcodesFolder);
+        $imgPath = $generator->getBarcodePNGPath((string)$value, TypeConstants::BarcodeType, 2, 80, [0, 0, 0], true);
+
+        $fullPath = realpath($imgPath);
+
+        if (!$fullPath || !file_exists($fullPath)) {
+            return redirect()->back();
+        }
+
+        return Response::download($fullPath, sprintf('member-%s.png', $value));
+    }
+
     public function downloadQRCode()
     {
         $code = \request('code');

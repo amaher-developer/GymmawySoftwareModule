@@ -43,6 +43,9 @@ Route::prefix('member')
             ->get('/barcode-generate', 'Front\GymMemberFrontController@generateBarcode');
         Route::name('sw.downloadCode')
             ->get('/download-code', 'Front\GymMemberFrontController@downloadCode');
+
+        Route::name('sw.downloadMemberBarcode')
+            ->get('/members/{member}/download-barcode', 'Front\GymMemberFrontController@downloadMemberBarcode');
         Route::name('sw.downloadQRCode')
             ->get('/download-qr-code', 'Front\GymMemberFrontController@downloadQRCode');
         Route::name('sw.downloadCard')

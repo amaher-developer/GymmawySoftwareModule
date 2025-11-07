@@ -38,6 +38,48 @@
 @endsection
 
 @section('page_body')
+    @php
+        $productScannerList = $products->map(function ($product) {
+            $code = (string) $product->code;
+            $normalized = ltrim($code, '0');
+            $padded = str_pad($normalized !== '' ? $normalized : $code, 14, '0', STR_PAD_LEFT);
+            $keys = array_unique(array_filter([
+                $code,
+                $normalized !== '' ? $normalized : null,
+                $padded,
+                strtoupper($code),
+                strtoupper($normalized),
+                strtoupper($padded),
+            ]));
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => (float) $product->price,
+                'image' => $product->image,
+                'code' => $code,
+                'normalized_code' => $normalized !== '' ? $normalized : $code,
+                'padded_code' => $padded,
+                'keys' => $keys,
+            ];
+        });
+
+        $productScannerIndex = $productScannerList->flatMap(function ($product) {
+            $map = [];
+            foreach ($product['keys'] as $key) {
+                $map[$key] = [
+                    'id' => $product['id'],
+                    'name' => $product['name'],
+                    'price' => $product['price'],
+                    'image' => $product['image'],
+                    'code' => $product['code'],
+                    'normalized_code' => $product['normalized_code'],
+                    'padded_code' => $product['padded_code'],
+                ];
+            }
+            return $map;
+        });
+    @endphp
     <!--begin::Container-->
     <div id="kt_content_container" class="container-xxl">
         <!--begin::Layout-->
@@ -456,10 +498,37 @@
 
 @section('scripts')
 <script>
+    window.storePosScanner = true;
+    window.disableMemberScanner = true;
+    window.productsIndexByCode = @json($productScannerIndex);
+    window.productsIndexList = @json($productScannerList);
+</script>
+<script>
     let cart = [];
     const vatRate = {{ @$mainSettings->vat_details['vat_percentage'] ?? 0 }} / 100;
     const currencySymbol = '{{ $lang == "ar" ? (env("APP_CURRENCY_AR") ?? "") : (env("APP_CURRENCY_EN") ?? "") }}';
     
+    function addProductData(productData) {
+        if (!productData || !productData.id) {
+            return;
+        }
+
+        const existingItem = cart.find(item => item.id === productData.id);
+        if (existingItem) {
+            existingItem.quantity++;
+        } else {
+            cart.push({
+                id: productData.id,
+                name: productData.name,
+                price: parseFloat(productData.price),
+                image: productData.image,
+                quantity: 1
+            });
+        }
+
+        updateCart();
+    }
+
     function addToCart(element) {
         const productId = $(element).data('product-id');
         const productName = $(element).data('product-name');
@@ -482,6 +551,64 @@
         }
         
         updateCart();
+    }
+
+    window.handleStorePosScan = function(rawCode) {
+        if (!rawCode) {
+            return;
+        }
+
+        const trimmed = rawCode.trim();
+        if (!trimmed) {
+            return;
+        }
+
+        const upper = trimmed.toUpperCase();
+        const candidates = Array.from(new Set([
+            trimmed,
+            upper,
+        ]));
+
+        if (/^\d+$/.test(trimmed)) {
+            candidates.push(trimmed.padStart(14, '0'));
+        }
+
+        if (/^\d+$/.test(upper)) {
+            candidates.push(upper.padStart(14, '0'));
+        }
+
+        let product = null;
+        if (window.productsIndexByCode) {
+            for (const key of candidates) {
+                if (window.productsIndexByCode[key]) {
+                    product = window.productsIndexByCode[key];
+                    break;
+                }
+            }
+        }
+
+        if (!product && Array.isArray(window.productsIndexList)) {
+            product = window.productsIndexList.find(p =>
+                candidates.includes(p.code) ||
+                candidates.includes(p.normalized_code) ||
+                candidates.includes(p.padded_code)
+            );
+        }
+
+        if (!product) {
+            Swal.fire({
+                text: "{{ trans('sw.code_not_found') ?? trans('sw.no_record_found') }}",
+                icon: "warning",
+                buttonsStyling: false,
+                confirmButtonText: "{{ trans('sw.ok') ?? 'OK' }}",
+                customClass: {
+                    confirmButton: "btn btn-primary"
+                }
+            });
+            return;
+        }
+
+        addProductData(product);
     }
     
     function removeFromCart(productId) {

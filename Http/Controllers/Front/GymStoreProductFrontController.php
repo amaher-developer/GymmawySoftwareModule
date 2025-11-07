@@ -19,9 +19,11 @@ use Illuminate\Container\Container as Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\File;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Maatwebsite\Excel\Facades\Excel;
+use Milon\Barcode\DNS1D;
 
 class GymStoreProductFrontController extends GymGenericFrontController
 {
@@ -57,6 +59,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
             $query->where(function($query) use ($search) {
                 $query->where('id', '=', $search);
                 $query->orWhere('name_' . $this->lang, 'like', "%" . $search . "%");
+                $query->orWhere('code',  (int)$search );
             });
         });
         $search_query = request()->query();
@@ -202,7 +205,12 @@ class GymStoreProductFrontController extends GymGenericFrontController
         $product_inputs = $this->prepare_inputs($request->except(['_token', 'vendor_name', 'vendor_phone', 'vendor_address', 'vendor_amount', 'vendor_payment_type']));
         $product_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $product_inputs['user_id'] = $this->user_sw->id;
-        $product_inputs['code'] = str_pad((GymStoreProduct::withTrashed()->max('code')+1), 14, 0, STR_PAD_LEFT);
+
+        $nextCode = str_pad((GymStoreProduct::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
+        $product_inputs['code'] = $product_inputs['code'] ?? null;
+        if (empty($product_inputs['code'])) {
+            $product_inputs['code'] = $nextCode;
+        }
 
         $product = $this->StoreProductRepository->create($product_inputs);
 
@@ -316,6 +324,33 @@ class GymStoreProductFrontController extends GymGenericFrontController
          return redirect(route('sw.listStoreProducts'));
     }
 
+    public function downloadBarcode(GymStoreProduct $product)
+    {
+        $value = $product->code;
+        if (!$value) {
+            return redirect()->back();
+        }
+
+        $barcodesFolder = base_path('uploads/store-product-barcodes/');
+
+        if (!File::exists($barcodesFolder)) {
+            File::makeDirectory($barcodesFolder, 0755, true, true);
+        }
+
+        $generator = new DNS1D();
+        $generator->setStorPath($barcodesFolder);
+
+        $imgPath = $generator->getBarcodePNGPath((string)$value, TypeConstants::BarcodeType, 2, 80, [0, 0, 0], true);
+
+        $fullPath = realpath($imgPath);
+
+        if (!$fullPath || !file_exists($fullPath)) {
+            return redirect()->back();
+        }
+
+        return Response::download($fullPath, sprintf('product-%s.png', $value));
+    }
+
     private function prepare_inputs($inputs)
     {
         $input_file = 'image';
@@ -362,6 +397,22 @@ class GymStoreProductFrontController extends GymGenericFrontController
         // Handle text fields - convert empty strings to avoid null constraint violations
         $inputs['content_ar'] = isset($inputs['content_ar']) && $inputs['content_ar'] !== null ? $inputs['content_ar'] : '';
         $inputs['content_en'] = isset($inputs['content_en']) && $inputs['content_en'] !== null ? $inputs['content_en'] : '';
+
+        if (array_key_exists('sku', $inputs)) {
+            $inputs['sku'] = trim((string)$inputs['sku']);
+            if ($inputs['sku'] === '') {
+                $inputs['sku'] = null;
+            }
+        }
+
+        if (array_key_exists('code', $inputs)) {
+            $inputs['code'] = trim((string)$inputs['code']);
+            if ($inputs['code'] === '') {
+                $inputs['code'] = null;
+            } elseif (ctype_digit($inputs['code'])) {
+                $inputs['code'] = str_pad($inputs['code'], 14, '0', STR_PAD_LEFT);
+            }
+        }
         
         return $inputs;
     }

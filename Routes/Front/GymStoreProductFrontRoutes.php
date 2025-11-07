@@ -11,6 +11,9 @@ Route::prefix('store/product')
         Route::name('sw.createStoreProduct')
             ->post('create', 'Front\GymStoreProductFrontController@store');
 
+        Route::name('sw.downloadStoreProductBarcode')
+            ->get('download-barcode/{product}', 'Front\GymStoreProductFrontController@downloadBarcode');
+
 
         Route::name('sw.editStoreProduct')
             ->get('{product}/edit', 'Front\GymStoreProductFrontController@edit');

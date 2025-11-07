@@ -46,7 +46,7 @@ class SwPermission
             , 'memberActivityMembershipAttendees'
             , 'memberInvitationAttendees', 'editUserProfile', 'listUserJson'
             , 'listReservation', 'getReservationMemberAjax', 'createReservationMemberAjax', 'deleteReservationMemberAjax'
-            , 'listUserLog', 'downloadCard', 'memberSubscriptionRenew', 'downloadQRCode', 'downloadCode'
+            , 'listUserLog', 'downloadCard', 'memberSubscriptionRenew', 'downloadQRCode', 'downloadCode', 'downloadStoreProductBarcode', 'downloadMemberBarcode'
             , 'showOrderSubscription', 'showOrderSubscriptionPOS'
             , 'showOrderPTSubscription', 'showOrderPTSubscriptionPOS'
             , 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS'

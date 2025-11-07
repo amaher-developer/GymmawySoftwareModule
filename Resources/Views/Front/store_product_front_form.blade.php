@@ -19,7 +19,46 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('form_title') {{ @$title }} @endsection
+@section('styles')
+    <style>
+        .code-input {
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: 2px dashed rgba(0, 0, 0, 0.1);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .code-input:focus {
+            border-color: rgba(13, 110, 253, 0.45);
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+    </style>
+@endsection
 @section('page_body')
+    @php
+        $productScannerIndex = isset($products)
+            ? $products->mapWithKeys(function ($product) {
+                $code = (string) $product->code;
+                $normalized = ltrim($code, '0');
+                $padded = str_pad($normalized !== '' ? $normalized : $code, 14, '0', STR_PAD_LEFT);
+                $keys = array_unique(array_filter([
+                    $code,
+                    $normalized !== '' ? $normalized : null,
+                    $padded,
+                    strtoupper($code),
+                    strtoupper($normalized),
+                    strtoupper($padded),
+                ]));
+
+                $map = [];
+                foreach ($keys as $key) {
+                    $map[$key] = $code;
+                }
+                return $map;
+            })
+            : collect();
+    @endphp
     <!--begin::Store Product Form-->
     <form method="post" action="" class="form d-flex flex-column flex-lg-row" enctype="multipart/form-data">
         {{csrf_field()}}
@@ -76,6 +115,27 @@
                                value="{{ old('price', $product->price) }}" 
                                id="price" step="0.01" required />
                         <!--end::Input-->
+                    </div>
+                    <!--end::Input group-->
+
+                    <!--begin::Input group-->
+                    <div class="mb-10 fv-row">
+                        <label class="form-label">{{ trans('sw.sku') }}</label>
+                        <input type="text" name="sku" class="form-control mb-2"
+                               placeholder="{{ trans('sw.sku')}}"
+                               value="{{ old('sku', $product->sku) }}" />
+                    </div>
+                    <!--end::Input group-->
+
+                    <!--begin::Input group-->
+                    <div class="mb-10 fv-row">
+                        <label class="required form-label">{{ trans('sw.code') }}</label>
+                        <div class="position-relative">
+                            <input type="text" name="code" class="form-control mb-2 code-input"
+                                   placeholder="{{ trans('sw.code')}}"
+                                   value="{{ old('code', $product->code) }}" required/>
+                            <div class="form-text text-muted">{{ trans('sw.code_hint') }}</div>
+                        </div>
                     </div>
                     <!--end::Input group-->
                     
@@ -325,6 +385,46 @@
 @endsection
 
 @section('scripts')
+    <script>
+        const codeInput = document.querySelector('input[name="code"]');
+        if (typeof window.originalBarcodeScanner === 'undefined') {
+            window.originalBarcodeScanner = window.barcode_scanner;
+        }
+
+        if (codeInput) {
+            window.barcodeScannerOverride = true;
+            window.handleBarcodeOverride = function(rawValue) {
+                const trimmed = (rawValue || '').toString().trim();
+                if (!trimmed) {
+                    return;
+                }
+
+                const candidates = Array.from(new Set([
+                    trimmed,
+                    trimmed.toUpperCase(),
+                    /^\d+$/.test(trimmed) ? trimmed.padStart(14, '0') : null,
+                    /^\d+$/.test(trimmed.toUpperCase()) ? trimmed.toUpperCase().padStart(14, '0') : null,
+                ].filter(Boolean)));
+
+                let matchedCode = null;
+                if (window.productScannerIndex) {
+                    for (const key of candidates) {
+                        if (window.productScannerIndex[key]) {
+                            matchedCode = window.productScannerIndex[key];
+                            break;
+                        }
+                    }
+                }
+
+                codeInput.value = (matchedCode || trimmed).replaceAll('undefined', '');
+                const event = new Event('input', { bubbles: true });
+                codeInput.dispatchEvent(event);
+            };
+
+            window.productScannerIndex = @json($productScannerIndex);
+            window.disableMemberScanner = true;
+        }
+    </script>
     <script>
         $(document).ready(function() {
             // Initialize Select2 for category dropdown
