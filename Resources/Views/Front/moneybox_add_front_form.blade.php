@@ -30,6 +30,10 @@
 @endsection
 @section('form_title') {{ @$title }} @endsection
 @section('page_body')
+    @php
+        $invoice = $order->zatcaInvoice ?? null;
+        $zatcaEnabled = config('sw_billing.zatca_enabled') && config('sw_billing.auto_invoice') && data_get($billingSettings ?? [], 'sections.money_boxes', true);
+    @endphp
     <!--begin::Moneybox Form-->
     <form method="post" action="" class="form d-flex flex-column flex-lg-row" enctype="multipart/form-data">
         {{csrf_field()}}
@@ -74,6 +78,15 @@
                             @endforeach
                         </select>
                     </div>
+                    @if($zatcaEnabled)
+                    <div class="mb-10 fv-row">
+                        <label class="form-check form-check-custom form-check-solid">
+                            <input name="send_to_zatca" class="form-check-input" type="checkbox" value="1" checked>
+                            <span class="form-check-label fw-semibold text-gray-700">{{ trans('sw.send_to_zatca') }}</span>
+                        </label>
+                        <span class="text-muted fs-8">{{ trans('sw.send_to_zatca_help') ?? '' }}</span>
+                    </div>
+                    @endif
                     @if(@$mainSettings->vat_details['vat_percentage'])
                     <div class="fv-row">
                         <label class="form-check form-check-custom form-check-solid">
@@ -153,6 +166,34 @@
                 </button>
             </div>
             <!--end::Form actions-->
+            @if($zatcaEnabled && $order->id && $invoice)
+                <div class="card bg-light-primary p-5">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+                        <div class="d-flex flex-column">
+                            <h4 class="text-primary mb-2">{{ trans('sw.zatca_invoice_details') }}</h4>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.invoice_number') }}:</strong> {{ $invoice->invoice_number }}</p>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.total_amount') }}:</strong> {{ number_format($invoice->total_amount, 2) }}</p>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.vat_amount') }}:</strong> {{ number_format($invoice->vat_amount, 2) }}</p>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.status') }}:</strong>
+                                <span class="badge {{ $invoice->zatca_status === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase">{{ $invoice->zatca_status }}</span>
+                            </p>
+                            @if($invoice->zatca_sent_at)
+                                <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.sent_at') }}:</strong> {{ $invoice->zatca_sent_at->format('Y-m-d H:i') }}</p>
+                            @endif
+                        </div>
+                        @if(!empty($invoice->zatca_qr_code))
+                            @php
+                                $qrCode = \Illuminate\Support\Str::startsWith($invoice->zatca_qr_code, 'data:image')
+                                    ? $invoice->zatca_qr_code
+                                    : 'data:image/png;base64,' . $invoice->zatca_qr_code;
+                            @endphp
+                            <div class="flex-shrink-0">
+                                <img src="{{ $qrCode }}" alt="ZATCA QR Code" width="120" height="120" class="img-thumbnail">
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
         </div>
         <!--end::Main column-->
     </form>

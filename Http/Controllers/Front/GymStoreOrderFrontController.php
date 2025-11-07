@@ -162,7 +162,13 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     public function show($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrder::branch()->with(['member', 'loyaltyRedemption.rule'])->where('id', $id)->first()->toArray();
+        $orderModel = GymStoreOrder::branch()
+            ->with(['member', 'loyaltyRedemption.rule', 'zatcaInvoice'])
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $order = $orderModel->toArray();
+        $invoice = $orderModel->zatcaInvoice;
 
         foreach ($order['products'] as $i => $product_id){
             $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
@@ -190,13 +196,24 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
             $qr_img_invoice = str_replace(public_path(), '', $qr_img_invoice);
         }
-        return view('software::Front.store_order_front_show', ['order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title]);
+        return view('software::Front.store_order_front_show', [
+            'order' => $order,
+            'invoice' => $invoice,
+            'qr_img_invoice' => @$qr_img_invoice,
+            'title' => $title,
+        ]);
     }
 
     public function showPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrder::branch()->with(['pay_type', 'member', 'loyaltyRedemption.rule'])->where('id', $id)->first()->toArray();
+        $orderModel = GymStoreOrder::branch()
+            ->with(['pay_type', 'member', 'loyaltyRedemption.rule', 'zatcaInvoice'])
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $order = $orderModel->toArray();
+        $invoice = $orderModel->zatcaInvoice;
 
         foreach ($order['products'] as $i => $product_id){
             $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
@@ -222,7 +239,12 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
             $qr_img_invoice = str_replace(public_path(), '', $qr_img_invoice);
         }
-        return view('software::Front.store_order_front_pos_show', ['order' => $order, 'qr_img_invoice' => @$qr_img_invoice,  'title'=>$title]);
+        return view('software::Front.store_order_front_pos_show', [
+            'order' => $order,
+            'invoice' => $invoice,
+            'qr_img_invoice' => @$qr_img_invoice,
+            'title' => $title,
+        ]);
     }
 
     public function create()
@@ -485,6 +507,37 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             , 'is_store_balance' => $is_store_balance
         ]);
         $this->userLog($notes, TypeConstants::CreateStoreOrder);
+
+        // ✅ Create ZATCA Invoice if enabled (Phase 2)
+        if (config('sw_billing.zatca_enabled') && config('sw_billing.auto_invoice')) {
+            try {
+                \Log::info('Attempting to create ZATCA invoice', [
+                    'order_id' => $order->id,
+                    'zatca_enabled' => config('sw_billing.zatca_enabled'),
+                    'auto_invoice' => config('sw_billing.auto_invoice'),
+                ]);
+                
+                $invoice = \Modules\Billing\Services\SwBillingService::createInvoiceFromStoreOrder($order);
+                
+                // if ($invoice) {
+                //     \Log::info('ZATCA invoice created successfully', [
+                //         'invoice_id' => $invoice->id,
+                //         'order_id' => $order->id,
+                //     ]);
+                // } else {
+                //     \Log::warning('ZATCA invoice creation returned null', [
+                //         'order_id' => $order->id,
+                //     ]);
+                // }
+            } catch (\Exception $e) {
+                \Log::error('Failed to create ZATCA invoice for store order', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        }
+
         return redirect(route('sw.createStoreOrderPOS'));
     }
 

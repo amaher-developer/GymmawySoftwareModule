@@ -4,6 +4,7 @@ namespace Modules\Software\Models;
 
 use App\Modules\Access\Models\User;
 use Modules\Generic\Models\GenericModel;
+use Modules\Billing\Models\SwBillingInvoice;
 use Modules\Software\Classes\TypeConstants;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -108,6 +109,23 @@ class GymMember extends GenericModel
         return $this->hasMany(GymMemberSubscription::class,'member_id');
     }
 
+    public function moneyBoxes()
+    {
+        return $this->hasMany(GymMoneyBox::class, 'member_id');
+    }
+
+    public function billingInvoices()
+    {
+        return $this->hasManyThrough(
+            \Modules\Billing\Models\SwBillingInvoice::class,
+            GymMoneyBox::class,
+            'member_id',
+            'money_box_id',
+            'id',
+            'id'
+        );
+    }
+
     public function member_attendees()
     {
         return $this->hasMany(GymMemberAttendee::class,'member_id');
@@ -141,6 +159,11 @@ class GymMember extends GenericModel
         return $this->hasMany(LoyaltyTransaction::class, 'member_id')
             ->where('is_expired', false)
             ->where('points', '>', 0);
+    }
+
+    public function zatcaInvoice()
+    {
+        return $this->hasOne(SwBillingInvoice::class, 'member_id')->latest('id');
     }
     public function toArray()
     {

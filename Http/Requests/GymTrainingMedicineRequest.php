@@ -24,11 +24,25 @@ class GymTrainingMedicineRequest extends FormRequest
     public function rules()
     {
         return [
-//            'member_id' => 'required',
-//            'notes' => 'required',
-//            'weight' => 'required',
-//            'height' => 'required',
-//            'date' => 'required|date'
+            'name_ar' => 'required_without:name_en|string|max:255',
+            'name_en' => 'required_without:name_ar|string|max:255',
+            'dose' => 'nullable|string|max:255',
+            'status' => 'nullable|boolean',
+        ];
+    }
+
+    /**
+     * Get custom attribute names for validator errors.
+     *
+     * @return array
+     */
+    public function attributes()
+    {
+        return [
+            'name_ar' => trans('sw.medicine_name_ar'),
+            'name_en' => trans('sw.medicine_name_en'),
+            'dose' => trans('sw.medicine_dose'),
+            'status' => trans('sw.status'),
         ];
     }
 }

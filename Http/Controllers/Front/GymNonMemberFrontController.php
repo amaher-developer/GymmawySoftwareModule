@@ -20,6 +20,7 @@ use Modules\Software\Models\GymSaleChannel;
 use Modules\Software\Models\GymUserLog;
 use Modules\Software\Repositories\GymActivityRepository;
 use Modules\Software\Repositories\GymNonMemberRepository;
+use Modules\Billing\Services\SwBillingService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Carbon\Carbon;
@@ -253,19 +254,22 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $discounts = GymGroupDiscount::branch()->where('is_non_member', true)->get();
         $activities = GymActivity::branch()->isSystem()->get();
         $selectedActivities = []; // Empty array for new non-member
-        
+        $billingSettings = SwBillingService::getSettings();
+
         return view('software::Front.nonmember_front_form', [
             'activities' => $activities,
             'channels' => $channels,
             'discounts' => $discounts,
             'selectedActivities' => $selectedActivities,
             'member' => new GymNonMember(),
-            'title' => $title
+            'title' => $title,
+            'billingSettings' => $billingSettings,
         ]);
     }
 
     public function store(GymNonMemberRequest $request)
     {
+        $billingSettings = SwBillingService::getSettings();
         $vat = 0;
         $non_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $activities = GymActivity::branch()->whereIn('id', $request->activities);
@@ -307,7 +311,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         if ($this->mainSettings->vat_details['vat_percentage']) {
             $notes = $notes . ' - ' . trans('sw.vat_added');
         }
-        GymMoneyBox::create([
+        $moneyBoxEntry = GymMoneyBox::create([
             'user_id' => Auth::guard('sw')->user()->id
             ,'amount' => $non_member_inputs['price']
             ,'vat' => @$non_member_inputs['vat']
@@ -321,6 +325,26 @@ class GymNonMemberFrontController extends GymGenericFrontController
         ]);
 
         $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+        if (config('sw_billing.zatca_enabled') && config('sw_billing.auto_invoice') && !empty($billingSettings['sections']['non_members'])) {
+            try {
+                \Log::info('Attempting to create non-member ZATCA invoice', [
+                    'non_member_id' => $non_member->id,
+                ]);
+                $invoice = SwBillingService::createInvoiceFromNonMember($non_member, $moneyBoxEntry);
+                if ($invoice) {
+                    \Log::info('Non-member ZATCA invoice processed', [
+                        'invoice_id' => $invoice->id,
+                        'non_member_id' => $non_member->id,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to create ZATCA invoice for non-member', [
+                    'non_member_id' => $non_member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         $notes = str_replace(':name', $non_member_inputs['name'], trans('sw.add_non_member'));
         $this->userLog($notes, TypeConstants::CreateNonMember);
@@ -336,6 +360,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
     public function edit($id)
     {
         $member = $this->NonMemberRepository->withTrashed()->find($id);
+        $member->load('zatcaInvoice');
 
         $selectedActivities = @array_filter(array_map(function ($activity){
             return  $activity['name_'.$this->lang];
@@ -345,15 +370,19 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $channels = GymSaleChannel::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_non_member', true)->get();
         $title = trans('sw.non_member_edit');
+        $billingSettings = SwBillingService::getSettings();
         return view('software::Front.nonmember_front_form', ['member' => $member,
             'channels' => $channels,
             'discounts' => $discounts,
-            'activities' => $activities, 'title'=>$title, 'selectedActivities' => $selectedActivities]);
+            'activities' => $activities, 'title'=>$title, 'selectedActivities' => $selectedActivities,
+            'billingSettings' => $billingSettings,
+        ]);
     }
 
     public function update(GymNonMemberRequest $request, $id)
     {
         $member = $this->NonMemberRepository->withTrashed()->find($id);
+        $billingSettings = SwBillingService::getSettings();
         $non_member_inputs = $this->prepare_inputs($request->except(['_token', 'diff_amount_paid_input']));
         $activities = GymActivity::branch()->whereIn('id', $request->activities);
         $vat = 0;
@@ -413,6 +442,27 @@ class GymNonMemberFrontController extends GymGenericFrontController
 
 
         $member->update($non_member_inputs);
+        $member->refresh();
+
+        if (config('sw_billing.zatca_enabled') && config('sw_billing.auto_invoice') && !empty($billingSettings['sections']['non_members'])) {
+            try {
+                \Log::info('Attempting to update non-member ZATCA invoice', [
+                    'non_member_id' => $member->id,
+                ]);
+                $invoice = SwBillingService::createInvoiceFromNonMember($member);
+                if ($invoice) {
+                    \Log::info('Non-member ZATCA invoice updated', [
+                        'invoice_id' => $invoice->id,
+                        'non_member_id' => $member->id,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to update ZATCA invoice for non-member', [
+                    'non_member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         $notes = str_replace(':name', $member['name'], trans('sw.edit_non_member'));
         $this->userLog($notes, TypeConstants::EditNonMember);

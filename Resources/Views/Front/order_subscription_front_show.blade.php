@@ -136,6 +136,10 @@
 @endsection
 @section('form_title') {{ @$title }} @endsection
 @section('page_body')
+    @php
+        $invoice = $invoice ?? null;
+        $hasInvoice = $invoice && !empty($invoice->invoice_number);
+    @endphp
     {{--    {!! \DNS2D::getBarcodeHTML('AQVTYWxsYQIKMTIzNDU2Nzg5MQMUMjAyMS0wNy0xMlQxNDoyNTowOVoEBjEwMC4wMAUFMTUuMDA=', 'QRCODE') !!}--}}
 
     <!-- begin::Invoice 3-->
@@ -203,6 +207,13 @@
                                 <span class="text-muted"><i class="ki-outline ki-bill fs-6 me-1"></i>{{ trans('sw.invoice_total_required') }}</span>
                                 <span class="fs-5">{{number_format($order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</span>
                             </div>
+                            @if($hasInvoice)
+                                <div class="flex-root d-flex flex-column">
+                                    <span class="text-muted"><i class="ki-outline ki-receipt fs-6 me-1"></i>{{ trans('sw.invoice_number') ?? __('Invoice Number') }}</span>
+                                    <span class="fs-5">{{ $invoice->invoice_number }}</span>
+                                    <span class="badge {{ $invoice->zatca_status === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase mt-2">{{ $invoice->zatca_status }}</span>
+                                </div>
+                            @endif
                         </div>
                         <!--end::Order details-->
                         <!--begin::Buyer & VAT Info-->
@@ -417,10 +428,19 @@
                         @endif
                     </div>
                     <!-- end::Actions-->
-                    @if(@$mainSettings->vat_details['saudi'] && @$qr_img_invoice)
+                    @php
+                        $qr_src = $qr_img_invoice ?? null;
+                        if($qr_src && !\Illuminate\Support\Str::startsWith($qr_src, 'data:image')) {
+                            $qr_src = asset($qr_src);
+                        }
+                    @endphp
+                    @if(@$mainSettings->vat_details['saudi'] && $qr_src)
                     <!-- begin::QR Code-->
                     <div class="my-1 d-flex flex-column align-items-center">
-                        <img class="well" src="{{asset($qr_img_invoice)}}" style="height: 60px; width: 60px;" alt="QR Code"/>
+                        <img class="well" src="{{$qr_src}}" style="height: 60px; width: 60px;" alt="QR Code"/>
+                        @if($hasInvoice)
+                            <div class="fs-8 text-muted mt-2">{{ $invoice->invoice_number }}</div>
+                        @endif
                     </div>
                     <!-- end::QR Code-->
                     @endif

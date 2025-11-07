@@ -138,6 +138,13 @@
     </style>
 </head>
 <body onload="window.print()">
+@php
+    $invoice = $invoice ?? null;
+    $qr_src = $qr_img_invoice ?? null;
+    if($qr_src && !\Illuminate\Support\Str::startsWith($qr_src, 'data:image')) {
+        $qr_src = asset($qr_src);
+    }
+@endphp
 <header>
     <div id="logo" class="media" data-src="{{$mainSettings->logo}}" src="{{$mainSettings->logo}}"><img src="{{$mainSettings->logo}}" style="width: 120px;height: 120px;object-fit: contain;"/></div>
 </header>
@@ -233,9 +240,12 @@
     </tbody>
 </table>
 <section>
-    @if(@$mainSettings->vat_details['saudi'] && @$qr_img_invoice)
+    @if(@$mainSettings->vat_details['saudi'] && $qr_src)
         <div class="col-lg-12 " style="text-align: center">
-            <img   width="50" src="{{asset($qr_img_invoice)}}"/>
+            <img width="90" src="{{$qr_src}}" alt="QR Code"/>
+            @if($invoice)
+                <div style="margin-top:4px;font-size:10px;color:#555;">{{ $invoice->invoice_number }}</div>
+            @endif
         </div>
     @endif
 {{--    <p style="text-align:center">--}}

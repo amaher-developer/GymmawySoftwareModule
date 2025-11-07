@@ -72,6 +72,10 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 @endsection
 @section('page_body')
+    @php
+        $billingSettings = $billingSettings ?? [];
+        $invoice = $invoice ?? (isset($member) && $member->id ? optional($member->billingInvoices()->latest()->first()) : null);
+    @endphp
     <!--begin::Member Create Form-->
     <form method="post" action="" class="form" enctype="multipart/form-data">
         {{csrf_field()}}
@@ -234,6 +238,11 @@
                                        value="{{ old('invitations', $member->invitations) }}"
                                        type="number">
                             </div>
+                        <!-- Additional Information -->
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.additional_information')}}</label>
+                            <textarea class="form-control" placeholder="{{ trans('sw.additional_information')}}" name="additional_info" rows="3">{{ old('additional_info', $member->additional_info) }}</textarea>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -369,6 +378,40 @@
                     </div>
                 </div>
                 <!--end::Payment Information Card-->
+
+              @if(config('sw_billing.zatca_enabled') && data_get($billingSettings, 'sections.members', true) && $member->id && $invoice)
+                <div class="card bg-light-primary border border-dashed border-primary mb-7">
+                    <div class="card-body py-5">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-5">
+                            <div>
+                                <div class="text-muted fw-semibold">{{ trans('sw.invoice_number') ?? __('Invoice Number') }}</div>
+                                <div class="fw-bold fs-5">{{ $invoice->invoice_number }}</div>
+                            </div>
+                            <div>
+                                <div class="text-muted fw-semibold">{{ trans('sw.status') ?? __('Status') }}</div>
+                                <span class="badge {{ $invoice->zatca_status === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase">
+                                    {{ $invoice->zatca_status }}
+                                </span>
+                            </div>
+                            <div>
+                                <div class="text-muted fw-semibold">{{ trans('sw.invoice_total_required') }}</div>
+                                <div class="fw-bold fs-5">{{ number_format($invoice->total_amount, 2) }} {{ trans('sw.app_currency') }}</div>
+                            </div>
+                            @if(!empty($invoice->zatca_qr_code))
+                                <div class="text-center">
+                                    <div class="text-muted fw-semibold mb-2">{{ __('QR Code') }}</div>
+                                    <img src="data:image/png;base64,{{ $invoice->zatca_qr_code }}" alt="ZATCA QR" style="height:100px;width:100px;"/>
+                                </div>
+                            @endif
+                        </div>
+                        @if(optional($member->member_subscription_info)->id)
+                            <a href="{{ route('sw.showOrderSubscription', $member->member_subscription_info->id) }}" class="btn btn-sm btn-light-primary mt-4">
+                                <i class="ki-outline ki-eye fs-3"></i> {{ trans('global.view') ?? __('View') }} {{ trans('sw.invoice') }}
+                            </a>
+                        @endif
+                    </div>
+                </div>
+                @endif
                 
                 @if(@$mainSettings->active_loyalty)
                 <!--begin::Loyalty Points Earning Info-->

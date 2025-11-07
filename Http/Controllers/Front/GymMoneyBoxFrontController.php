@@ -388,7 +388,10 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $title = trans('sw.add_to_money_box');
 
         return view('software::Front.moneybox_add_front_form', [
-            'order' => new GymMoneyBox(), 'title' => $title]);
+            'order' => new GymMoneyBox(),
+            'title' => $title,
+            'billingSettings' => config('sw_billing') ? \Modules\Billing\Services\SwBillingService::getSettings() : [],
+        ]);
     }
     private function calculateVat($amount){
         return (($amount * (@(float)$this->mainSettings->vat_details['vat_percentage'] / 100)) / (1 + (@(float)$this->mainSettings->vat_details['vat_percentage'] / 100)));
@@ -396,7 +399,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function store(GymMoneyBoxRequest $request)
     {
         $gymMoneyBox = GymMoneyBox::branch()->latest()->first();
-        $money_box_inputs = $request->except(['_token', 'is_vat']);
+        $money_box_inputs = $request->except(['_token', 'is_vat', 'send_to_zatca']);
         $money_box_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $money_box_inputs['operation'] = 0;
         $money_box_inputs['type'] = TypeConstants::CreateMoneyBoxAdd;
@@ -406,10 +409,26 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $money_box_inputs['amount_before'] = self::amountAfter((float)@$gymMoneyBox->amount, (float)@$gymMoneyBox->amount_before, @$gymMoneyBox->operation);
 
-        $this->GymMoneyBoxRepository->create($money_box_inputs);
+        $moneyBox = $this->GymMoneyBoxRepository->create($money_box_inputs);
 
         $notes = trans('sw.add_money_to_money_box', ['price' => (float)$request->amount, 'notes' => $request->notes]);
         $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+        $sendToZatca = $request->boolean('send_to_zatca', true);
+
+        if ($sendToZatca && config('sw_billing.zatca_enabled') && config('sw_billing.auto_invoice')) {
+            $billingSettings = \Modules\Billing\Services\SwBillingService::getSettings();
+            if (!empty($billingSettings['sections']['money_boxes'])) {
+                try {
+                    \Modules\Billing\Services\SwBillingService::createInvoiceFromMoneyBox($moneyBox);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to create ZATCA invoice for money box', [
+                        'money_box_id' => $moneyBox->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),

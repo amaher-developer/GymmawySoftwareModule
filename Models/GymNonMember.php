@@ -26,6 +26,14 @@ class GymNonMember extends GenericModel
     {
         return $this->hasMany(GymNonMemberTime::class, 'non_member_id');
     }
+
+    /**
+     * Get the ZATCA invoice associated with the non-member purchase.
+     */
+    public function zatcaInvoice()
+    {
+        return $this->hasOne(\Modules\Billing\Models\SwBillingInvoice::class, 'non_member_id');
+    }
     public function getSignatureFileAttribute()
     {
         $signature_file = $this->getRawOriginal('signature_file');

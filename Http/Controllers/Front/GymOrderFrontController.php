@@ -402,7 +402,7 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscriptionNonMember($id)
     {
         $title = trans('sw.invoice');
-        $order = GymNonMember::branch()->where('id', $id)->first();
+        $order = GymNonMember::branch()->with('zatcaInvoice')->where('id', $id)->first();
         $money_box = GymMoneyBox::branch()->where('non_member_subscription_id', $order->id)->get();
         $payment_types = GymPaymentType::get();
         $order->member = (object)["name" => $order->name];
@@ -430,16 +430,18 @@ class GymOrderFrontController extends GymGenericFrontController
 //        $online_payment = $order->payment_type == TypeConstants::ONLINE_PAYMENT ? $order->amount_paid : 0;
 //        $bank_transfer_payment = $order->payment_type == TypeConstants::BANK_TRANSFER_PAYMENT ? $order->amount_paid : 0;
 
-        if(@$this->mainSettings->vat_details['saudi']){
-                $qrcodes_folder = public_path('uploads/invoices/');
-                File::cleanDirectory($qrcodes_folder.'*.png');
-                $generatedQRString = GenerateQrCode::fromArray([
-                new Seller(@$this->mainSettings->name), // seller name
-                new TaxNumber(@$this->mainSettings->vat_details['vat_number']), // seller tax number
-                new InvoiceDate(Carbon::parse($order['created_at'])->format('c')), // invoice date as Zulu ISO8601 @see https://en.wikipedia.org/wiki/ISO_8601
-                new InvoiceTotalAmount(number_format($order['price'],2)), // invoice total amount
-                new InvoiceTaxAmount(number_format(@$vat,2)) // invoice tax amount
-                // TODO :: Support others tags
+        $invoice = $order->zatcaInvoice;
+        if ($invoice && $invoice->zatca_qr_code) {
+            $qr_img_invoice = 'data:image/png;base64,' . $invoice->zatca_qr_code;
+        } elseif (@$this->mainSettings->vat_details['saudi']) {
+            $qrcodes_folder = public_path('uploads/invoices/');
+            File::cleanDirectory($qrcodes_folder.'*.png');
+            $generatedQRString = GenerateQrCode::fromArray([
+                new Seller(@$this->mainSettings->name),
+                new TaxNumber(@$this->mainSettings->vat_details['vat_number']),
+                new InvoiceDate(Carbon::parse($order['created_at'])->format('c')),
+                new InvoiceTotalAmount(number_format($order['price'],2)),
+                new InvoiceTaxAmount(number_format(@$vat,2))
             ])->toBase64();
 
             $d = new DNS2D();
@@ -447,7 +449,7 @@ class GymOrderFrontController extends GymGenericFrontController
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
             $qr_img_invoice = str_replace(public_path(), '', $qr_img_invoice);
         }
-        return view('software::Front.order_subscription_front_show', ['order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'vat' => $vat
+        return view('software::Front.order_subscription_front_show', ['order' => $order, 'invoice' => $invoice, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'vat' => $vat
 //            ,'cash_payment' => $cash_payment, 'online_payment' => $online_payment, 'bank_transfer_payment' => $bank_transfer_payment
         , 'payments' => $payments
         ]);
@@ -456,13 +458,16 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscriptionPOSNonMember($id)
     {
         $title = trans('sw.invoice');
-        $order = GymNonMember::branch()->where('id', $id)->first();
+        $order = GymNonMember::branch()->with('zatcaInvoice')->where('id', $id)->first();
         $order->member = (object)["name" => $order->name];
         $order->subscription = (object)["name" => implode(', ', $order->activities[$this->lang = 'ar' ? 0 : 1])];
         $order->amount_paid = $order->price;
         $order->amount_remaining = 0;
         $vat = $order->vat;
-        if(@$this->mainSettings->vat_details['saudi']){
+        $invoice = $order->zatcaInvoice;
+        if ($invoice && $invoice->zatca_qr_code) {
+            $qr_img_invoice = 'data:image/png;base64,' . $invoice->zatca_qr_code;
+        } elseif (@$this->mainSettings->vat_details['saudi']) {
             $qrcodes_folder = public_path('uploads/invoices/');
             if (!File::exists($qrcodes_folder)) {
                 File::makeDirectory($qrcodes_folder, 0755, true, true);
@@ -482,7 +487,7 @@ class GymOrderFrontController extends GymGenericFrontController
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
             $qr_img_invoice = str_replace(public_path(), '', $qr_img_invoice);
         }
-        return view('software::Front.order_subscription_front_pos_show', ['order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'vat'=>$vat]);
+        return view('software::Front.order_subscription_front_pos_show', ['order' => $order, 'invoice' => $invoice, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'vat'=>$vat]);
     }
     public function create()
     {

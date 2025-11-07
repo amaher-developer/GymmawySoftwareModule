@@ -30,6 +30,7 @@ use Modules\Software\Models\GymSaleChannel;
 use Modules\Software\Models\GymSubscription;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymWALog;
+use Modules\Billing\Services\SwBillingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -506,6 +507,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $users = GymUser::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
         $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
+        $billingSettings = SwBillingService::getSettings();
 //        $this->mainSettings->last_barcode_number = $this->mainSettings->last_barcode_number + 1;
 //        $maxId = str_pad(($this->mainSettings->last_barcode_number), 14, 0, STR_PAD_LEFT);
 
@@ -516,7 +518,9 @@ class GymMemberFrontController extends GymGenericFrontController
             'discounts' => $discounts,
             'channels' => $channels,
             'users' => $users,
-            'title' => $title]);
+            'title' => $title,
+            'billingSettings' => $billingSettings,
+        ]);
     }
 
 
@@ -525,6 +529,28 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->mainSettings->last_barcode_number = $this->mainSettings->last_barcode_number + $qty;
         $this->mainSettings->save();
         Cache::store('file')->clear();
+    }
+
+    protected function createZatcaInvoiceForMoneyBox(?GymMoneyBox $moneyBox): void
+    {
+        if (!$moneyBox || !config('sw_billing.zatca_enabled') || !config('sw_billing.auto_invoice')) {
+            return;
+        }
+
+        $settings = SwBillingService::getSettings();
+        if (empty($settings['sections']['money_boxes'])) {
+            return;
+        }
+
+        try {
+            SwBillingService::createInvoiceFromMoneyBox($moneyBox);
+        } catch (\Exception $e) {
+            Log::error('Failed to process ZATCA invoice for member money box', [
+                'money_box_id' => $moneyBox->id,
+                'member_id' => $moneyBox->member_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
 
@@ -625,6 +651,8 @@ class GymMemberFrontController extends GymGenericFrontController
             ]);
 
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+            $this->createZatcaInvoiceForMoneyBox($moneyBox);
 
             $notes = str_replace(':name', $member_inputs['name'], trans('sw.add_member'));
             $this->userLog($notes, TypeConstants::CreateMember);
@@ -837,7 +865,7 @@ class GymMemberFrontController extends GymGenericFrontController
     public function update(GymMemberRequest $request, $id)
     {
         $member = $this->MemberRepository->with('member_subscription_info.subscription')->withTrashed()->find($id);
-        $member_inputs = $this->prepare_inputs($request->only(['image', 'code', 'name', 'gender', 'phone', 'address', 'dob', 'national_id', 'fp_id', 'invitations', 'sale_channel_id', 'sale_user_id']));
+        $member_inputs = $this->prepare_inputs($request->only(['image', 'code', 'name', 'gender', 'phone', 'address', 'dob', 'national_id', 'fp_id', 'invitations', 'sale_channel_id', 'sale_user_id', 'additional_info']));
         if (!$member_inputs['image']) unset($member_inputs['image']);
 //        if(@$request->expire_date &&
 //            (@Carbon::parse($request->expire_date)->toDateString() != @Carbon::parse($member->member_subscription_info->expire_date)->toDateString())
@@ -1248,7 +1276,7 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($this->mainSettings->vat_details['vat_percentage']) {
                 $notes = $notes . ' - ' . trans('sw.vat_added');
             }
-            GymMoneyBox::create([
+            $moneyBoxAdjustment = GymMoneyBox::create([
                 'user_id' => Auth::guard('sw')->user()->id
                 , 'amount' => @$price_diff
 //                , 'vat' => @$vat
@@ -1262,6 +1290,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'member_subscription_id' => @$member_subscription->id
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
             ]);
+            $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
         }
 
         if ($expire_date >= Carbon::now()->toDateString() && @$member_subscription->member->fp_id && (@$member_subscription->member->fp_check != TypeConstants::ZK_NEW_MEMBER)) {
@@ -1417,7 +1446,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 $amount = $refundAmount;
 
                 $notes = trans('sw.member_moneybox_delete_msg', ['member' => $member->name, 'subscription' => $member->member_subscription_info->subscription->name, 'amount_paid' => $amount]);
-                GymMoneyBox::create([
+                $moneyBoxAdjustment = GymMoneyBox::create([
                     'user_id' => Auth::guard('sw')->user()->id
                     , 'amount' => $amount
                     , 'vat' => @$vat
@@ -1429,6 +1458,7 @@ class GymMemberFrontController extends GymGenericFrontController
                     , 'member_subscription_id' => $member->member_subscription_info->id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
                 ]);
+                $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
             }
 
@@ -1530,7 +1560,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
 
                 $notes = trans('sw.member_moneybox_delete_msg', ['member' => @$subscription->member->name, 'subscription' => @$subscription->subscription->name, 'amount_paid' => $amount]);
-                GymMoneyBox::create([
+                $moneyBoxAdjustment = GymMoneyBox::create([
                     'user_id' => Auth::guard('sw')->user()->id
                     , 'amount' => $amount
                     , 'vat' => @$vat
@@ -1542,6 +1572,7 @@ class GymMemberFrontController extends GymGenericFrontController
                     , 'member_subscription_id' => $subscription->id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
                 ]);
+                $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
             }
 

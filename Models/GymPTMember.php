@@ -2,8 +2,10 @@
 
 namespace Modules\Software\Models;
 
+use Modules\Billing\Models\SwBillingInvoice;
 use Modules\Generic\Models\GenericModel;
 use Modules\Software\Classes\TypeConstants;
+use Modules\Software\Models\GymMoneyBox;
 use Carbon\Carbon;
 
 class GymPTMember extends GenericModel
@@ -50,6 +52,16 @@ class GymPTMember extends GenericModel
     public function pt_trainer()
     {
         return $this->belongsTo(GymPTTrainer::class, 'pt_trainer_id');
+    }
+
+    public function moneyBox()
+    {
+        return $this->hasOne(GymMoneyBox::class, 'member_pt_subscription_id');
+    }
+
+    public function zatcaInvoice()
+    {
+        return $this->hasOne(SwBillingInvoice::class, 'member_pt_subscription_id')->latest('id');
     }
 
     public function getSignatureFileAttribute()

@@ -50,4 +50,12 @@ class GymTrainingPlan extends GenericModel
         return $to_array_attributes;
     }
 
+    /**
+     * Get the tasks for the training plan
+     */
+    public function tasks()
+    {
+        return $this->hasMany(GymTrainingTask::class, 'plan_id', 'id');
+    }
+
 }

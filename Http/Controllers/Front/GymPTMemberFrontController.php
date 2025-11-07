@@ -18,6 +18,7 @@ use Modules\Software\Models\GymPTMemberAttendee;
 use Modules\Software\Models\GymPTSubscription;
 use Modules\Software\Models\GymPTSubscriptionTrainer;
 use Modules\Software\Models\GymPTTrainer;
+use Modules\Billing\Services\SwBillingService;
 use Modules\Software\Repositories\GymPTMemberRepository;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
@@ -231,7 +232,39 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $trainers = GymPTTrainer::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_pt_member', true)->get();
         $classes = GymPTClass::branch()->isSystem()->with(['pt_subscription_trainer'])->get();
-        return view('software::Front.pt_member_front_create', ['member' => new GymPTMember(), 'discounts' => $discounts, 'subscriptions'=> $subscriptions, 'trainers'=> $trainers, 'classes'=> $classes,'title'=>$title]);
+        $billingSettings = SwBillingService::getSettings();
+        return view('software::Front.pt_member_front_create', [
+            'member' => new GymPTMember(),
+            'discounts' => $discounts,
+            'subscriptions'=> $subscriptions,
+            'trainers'=> $trainers,
+            'classes'=> $classes,
+            'title'=>$title,
+            'billingSettings' => $billingSettings,
+        ]);
+    }
+
+    protected function processZatcaInvoiceForPtMember(GymPTMember $ptMember, float $amountPaid, float $vatAmount, ?GymMoneyBox $moneyBox = null): void
+    {
+        if (!config('sw_billing.zatca_enabled') || !config('sw_billing.auto_invoice')) {
+            return;
+        }
+
+        $settings = SwBillingService::getSettings();
+        if (empty($settings['sections']['pt_members'])) {
+            return;
+        }
+
+        try {
+            SwBillingService::createInvoiceFromPtMember($ptMember, $amountPaid, $vatAmount, $moneyBox);
+        } catch (\Exception $e) {
+            \Log::error('Failed to process PT member ZATCA invoice', [
+                'pt_member_id' => $ptMember->id,
+                'member_id' => $ptMember->member_id,
+                'money_box_id' => $moneyBox?->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function store(GymPTMemberRequest $request)
@@ -339,6 +372,8 @@ class GymPTMemberFrontController extends GymGenericFrontController
 
         $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
+        $this->processZatcaInvoiceForPtMember($member, (float) $amount_paid, (float) $vat, $moneyBox);
+
 //        return redirect(route('sw.listPTMember'));
         return redirect(route('sw.showOrder', $moneyBox->id));
     }
@@ -379,7 +414,17 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $discounts = GymGroupDiscount::branch()->where('is_pt_member', true)->get();
         $classes = GymPTClass::branch()->isSystem()->get();
         $title = trans('sw.pt_member_edit');
-        return view('software::Front.pt_member_front_edit', ['member' => $member, 'discounts' => $discounts, 'subscriptions'=> $subscriptions, 'trainers'=> $trainers, 'classes'=> $classes,'title'=>$title]);
+        $member->loadMissing('zatcaInvoice');
+        $billingSettings = SwBillingService::getSettings();
+        return view('software::Front.pt_member_front_edit', [
+            'member' => $member,
+            'discounts' => $discounts,
+            'subscriptions'=> $subscriptions,
+            'trainers'=> $trainers,
+            'classes'=> $classes,
+            'title'=>$title,
+            'billingSettings' => $billingSettings,
+        ]);
     }
 
     public function update(GymPTMemberRequest $request, $id)
@@ -524,8 +569,12 @@ class GymPTMemberFrontController extends GymGenericFrontController
             ]);
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
+            $this->processZatcaInvoiceForPtMember($member->fresh(), (float) $member_inputs['amount_paid'], (float) $member_inputs['vat'], $moneyBox);
+
             return redirect(route('sw.showOrder', $moneyBox->id));
         }
+
+        $this->processZatcaInvoiceForPtMember($member->fresh(), (float) $member_inputs['amount_paid'], (float) $member_inputs['vat']);
         return redirect(route('sw.listPTMember'));
     }
 

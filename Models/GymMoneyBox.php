@@ -65,6 +65,11 @@ class GymMoneyBox extends GenericModel
          ->where('sw_loyalty_transactions.type', 'redeem');
     }
 
+    public function swInvoice()
+    {
+        return $this->hasOne(\Modules\Billing\Models\SwBillingInvoice::class, 'money_box_id');
+    }
+
     public function getOperationNameAttribute()
     {
         $operation = $this->getRawOriginal('operation');

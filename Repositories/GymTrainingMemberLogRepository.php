@@ -1,10 +1,10 @@
 <?php
+
 namespace Modules\Software\Repositories;
 
 use Modules\Generic\Repositories\GenericRepository;
 use Modules\Software\Models\GymTrainingMemberLog;
 use Prettus\Repository\Criteria\RequestCriteria;
-
 
 class GymTrainingMemberLogRepository extends GenericRepository
 {
@@ -18,8 +18,6 @@ class GymTrainingMemberLogRepository extends GenericRepository
         return GymTrainingMemberLog::class;
     }
 
-
-
     /**
      * Boot up the repository, pushing criteria
      */
@@ -27,5 +25,6 @@ class GymTrainingMemberLogRepository extends GenericRepository
     {
         $this->pushCriteria(app(RequestCriteria::class));
     }
-
 }
+
+

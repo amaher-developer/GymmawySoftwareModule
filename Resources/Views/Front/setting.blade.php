@@ -451,7 +451,13 @@
 				</div>
 				<!--end:::Tab pane-->
 				<!--begin:::Tab pane-->
-				<div class="tab-pane fade" id="vat" role="tabpanel">
+                <div class="tab-pane fade" id="vat" role="tabpanel">
+@php
+    $billingSettings = $billingSettings ?? ($mainSettings->billing ?? []);
+    $billingSections = data_get($billingSettings, 'sections', []);
+    $billingBindings = data_get($billingSettings, 'bindings', []);
+    $autoInvoice = config('sw_billing.auto_invoice');
+@endphp
 					<!--begin::Section Header-->
                             <div class="mb-10">
                         <h4 class="text-dark fw-bold mb-5">
@@ -521,6 +527,91 @@
                             </div>
                                 </div>
                     <!--end::Row-->
+
+                    @if(config('sw_billing.zatca_enabled'))
+                        @if($autoInvoice)
+                            <div class="separator separator-dashed my-10"></div>
+
+                            <div class="mb-10">
+                                <h4 class="text-dark fw-bold mb-5">
+                                    <i class="ki-outline ki-abstract-26 fs-2 me-2 text-primary"></i>
+                                    {{ trans('sw.billing_settings') ?? 'Billing & ZATCA Settings' }}
+                                </h4>
+                                <p class="text-muted fs-6">{{ trans('sw.billing_settings_description') ?? 'Control which sections trigger automatic invoice generation and the identifiers stored with each invoice.' }}</p>
+                            </div>
+
+                            <div class="row fv-row mb-10">
+                                <div class="col-md-6">
+                                    <div class="card border-dashed border-secondary">
+                                        <div class="card-header pb-0">
+                                            <h5 class="card-title fw-bold mb-0">{{ trans('sw.billing_sections') ?? 'Enabled Sections' }}</h5>
+                                        </div>
+                                        <div class="card-body pt-2">
+                                            <p class="text-muted fs-7 mb-4">{{ trans('sw.billing_sections_help') ?? 'Choose which areas of the system should create ZATCA invoices automatically.' }}</p>
+                                            <div class="d-flex flex-column gap-4">
+                                                @foreach([
+                                                    'store_orders' => trans('sw.store_orders') ?? 'Store Orders',
+                                                    'non_members' => trans('sw.non_members') ?? 'Non Members',
+                                                    'members' => trans('sw.members') ?? 'Members',
+                                                    'pt_members' => trans('sw.pt_members') ?? 'PT Members',
+                                                    'money_boxes' => trans('sw.money_boxes') ?? 'Money Boxes',
+                                                ] as $sectionKey => $label)
+                                                    <label class="form-check form-switch form-check-custom form-check-solid">
+                                                        <input class="form-check-input" type="checkbox" name="billing[sections][{{ $sectionKey }}]" value="1" @checked(data_get($billingSections, $sectionKey, false))>
+                                                        <span class="form-check-label">{{ $label }}</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card border-dashed border-secondary h-100">
+                                        <div class="card-header pb-0">
+                                            <h5 class="card-title fw-bold mb-0">{{ trans('sw.billing_bindings') ?? 'Invoice Bindings' }}</h5>
+                                        </div>
+                                        <div class="card-body pt-2">
+                                            <p class="text-muted fs-7 mb-4">{{ trans('sw.billing_bindings_help') ?? 'Select which identifiers are stored on the invoice when the section is enabled.' }}</p>
+                                            <div class="d-flex flex-column gap-4">
+                                                @foreach([
+                                                    'store_order_id' => trans('sw.store_orders') ?? 'Store Orders',
+                                                    'non_member_id' => trans('sw.non_members') ?? 'Non Members',
+                                                    'member_id' => trans('sw.members') ?? 'Members',
+                                                    'member_pt_subscription_id' => trans('sw.pt_members') ?? 'PT Members',
+                                                    'money_box_id' => trans('sw.money_boxes') ?? 'Money Boxes',
+                                                ] as $bindingKey => $label)
+                                                    @php $bindingEnabled = data_get($billingBindings, $bindingKey, false); @endphp
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>{{ $label }}</span>
+                                                        <span class="badge {{ $bindingEnabled ? 'badge-light-success' : 'badge-light-secondary' }}">
+                                                            {{ $bindingEnabled ? (trans('sw.enabled') ?? __('Enabled')) : (trans('sw.disabled') ?? __('Disabled')) }}
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-dismissible bg-light-info border border-info border-dashed d-flex flex-column flex-sm-row p-5">
+                                <i class="ki-outline ki-information fs-2hx text-info me-4 mb-5 mb-sm-0"></i>
+                                <div class="d-flex flex-column pe-0 pe-sm-10">
+                                    <h5 class="mb-1">{{ trans('sw.billing_auto_invoice_status') ?? 'Automatic Invoice Status' }}</h5>
+                                    <span class="text-gray-700">{{ trans('sw.billing_auto_invoice_env_help') ?? 'Automatic invoice creation is controlled by the SW_ZATCA_AUTO_INVOICE environment variable.' }}</span>
+                                    <span class="fw-bold mt-2">{{ trans('sw.status') ?? 'Status' }}: <span class="badge {{ $autoInvoice ? 'badge-light-success' : 'badge-light-danger' }}">{{ $autoInvoice ? (trans('sw.enabled') ?? __('Enabled')) : (trans('sw.disabled') ?? __('Disabled')) }}</span></span>
+                                </div>
+                            </div>
+                        @else
+                            <div class="alert alert-dismissible bg-light-warning border border-warning border-dashed d-flex flex-column flex-sm-row p-5">
+                                <i class="ki-outline ki-information-5 fs-2hx text-warning me-4 mb-5 mb-sm-0"></i>
+                                <div class="d-flex flex-column pe-0 pe-sm-10">
+                                    <h5 class="mb-1">{{ trans('sw.billing_auto_invoice_disabled_title') ?? 'Automatic invoicing is disabled' }}</h5>
+                                    <span class="text-gray-700">{{ trans('sw.billing_auto_invoice_disabled_help') ?? 'Enable SW_ZATCA_AUTO_INVOICE in your environment file to manage billing sections from here.' }}</span>
+                                </div>
+                            </div>
+                        @endif
+                    @endif
                                 </div>
 				<!--end:::Tab pane-->
 				<!--begin:::Tab pane-->

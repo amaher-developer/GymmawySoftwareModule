@@ -39,6 +39,7 @@ class GymMemberRequest extends FormRequest
 //            'fp_id'=> 'unique:sw_gym_members'.$fp_id,
             'code'=> 'numeric|unique:sw_gym_members'.$code,
             'address'=> 'required',
+            'additional_info' => 'nullable|string',
 //            'dob'=> 'required|date',
 //            'amount_paid'=> 'required|numeric',
         ];

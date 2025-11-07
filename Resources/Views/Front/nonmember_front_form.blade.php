@@ -129,6 +129,37 @@
                             </div>
                             <!--end::Summary-->
 
+                            @php $invoice = $member->zatcaInvoice ?? null; @endphp
+                            @if(config('sw_billing.zatca_enabled') && data_get($billingSettings ?? [], 'sections.non_members', true) && $member->id && $invoice)
+                                <div class="card bg-light-primary p-5 mt-5">
+                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+                                        <div>
+                                            <div class="text-muted fw-semibold">{{ trans('sw.invoice_number') ?? __('Invoice Number') }}</div>
+                                            <div class="fw-bold fs-5">{{ $invoice->invoice_number }}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-muted fw-semibold">{{ trans('sw.status') ?? __('Status') }}</div>
+                                            <span class="badge {{ $invoice->zatca_status === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase">
+                                                {{ $invoice->zatca_status }}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <div class="text-muted fw-semibold">{{ trans('sw.invoice_total_required') }}</div>
+                                            <div class="fw-bold fs-5">{{ number_format($invoice->total_amount, 2) }} {{ trans('sw.app_currency') }}</div>
+                                        </div>
+                                        @if(!empty($invoice->zatca_qr_code))
+                                            <div class="text-center">
+                                                <div class="text-muted fw-semibold mb-2">{{ __('QR Code') }}</div>
+                                                <img src="data:image/png;base64,{{ $invoice->zatca_qr_code }}" alt="ZATCA QR" style="height:100px;width:100px;"/>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <a href="{{ route('sw.showOrderSubscriptionNonMember', $member->id) }}" class="btn btn-sm btn-light-primary mt-4">
+                                        <i class="ki-outline ki-eye fs-3"></i> {{ trans('global.view') ?? __('View') }} {{ trans('sw.invoice') }}
+                                    </a>
+                                </div>
+                            @endif
+
                              @if((is_array($swUser->permissions) && in_array('editNonMemberDiscount', $swUser->permissions)) || $swUser->is_super_user)
                              <!--begin::Input group-->
                             <div class="mb-10 fv-row mt-5">

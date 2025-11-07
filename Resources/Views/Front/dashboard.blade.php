@@ -144,7 +144,7 @@
                         @endif
                         @if($swUser && (in_array('listTrainingPlan', (array)($swUser->permissions ?? [])) || $swUser->is_super_user) && $mainSettings->active_training)
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
-                                <a href="{{route('sw.listTrainingPlan')}}" class="btn btn-light-info btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
+                                <a href="{{route('sw.listTrainingMemberLog')}}" class="btn btn-light-info btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
                                     <i class="ki-outline ki-calendar fs-1 mb-2"></i>
                                     <span class="fw-bold fs-7 text-center">{{ trans('sw.training')}}</span>
                                 </a>

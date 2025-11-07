@@ -7,44 +7,47 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GymTrainingMemberLog extends GenericModel
 {
-
-    protected $dates = ['deleted_at'];
-
+    use SoftDeletes;
+    
     protected $table = 'sw_gym_training_member_logs';
     protected $guarded = ['id'];
-    protected $appends = [];
-    public static $uploads_path='uploads/gymtrainingmembers/';
-    public static $thumbnails_uploads_path='uploads/gymtrainingmembers/thumbnails/';
+    protected $dates = ['deleted_at'];
 
-    public function scopeBranch($query)
-    {
-        return $query->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
-    }
-//    public function diet_plan()
-//    {
-//        return $this->belongsTo(GymTrainingPlan::class, 'diet_plan_id');
-//    }
-//    public function training_plan()
-//    {
-//        return $this->belongsTo(GymTrainingPlan::class, 'training_plan_id');
-//    }
-//
+    protected $fillable = [
+        'branch_setting_id',
+        'member_id',
+        'training_id',
+        'training_type',
+        'action',
+        'notes',
+        'reference_id',
+        'meta',
+        'created_by',
+    ];
+
+    /**
+     * Get the member
+     */
     public function member()
     {
         return $this->belongsTo(GymMember::class, 'member_id');
     }
 
-    public function toArray()
+    /**
+     * Get the user who created the log
+     */
+    public function creator()
     {
-        return parent::toArray();
-        $to_array_attributes = [];
-        foreach ($this->relations as $key => $relation) {
-            $to_array_attributes[$key] = $relation;
-        }
-        foreach ($this->appends as $key => $append) {
-            $to_array_attributes[$key] = $append;
-        }
-        return $to_array_attributes;
+        return $this->belongsTo(GymUser::class, 'created_by');
     }
 
+    /**
+     * Scope for branch filtering
+     */
+    public function scopeBranch($query)
+    {
+        $user_sw = auth('sw')->user();
+        return $query->where('branch_setting_id', $user_sw->branch_setting_id ?? 1);
+    }
 }
+

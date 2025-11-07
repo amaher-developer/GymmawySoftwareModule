@@ -288,6 +288,15 @@
                     </div>
                     <!--end::Invitations-->
 
+                    <!--begin::Additional Info-->
+                    <div class="row mb-5">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.additional_information')}} </label>
+                        <div class="col-md-9">
+                            <textarea class="form-control" placeholder="{{ trans('sw.additional_information')}}" name="additional_info" rows="3">{{ old('additional_info', $member->additional_info) }}</textarea>
+                        </div>
+                    </div>
+                    <!--end::Additional Info-->
+
                     <!--begin::Separator-->
                     <div class="separator separator-dashed my-10"></div>
                     <!--end::Separator-->

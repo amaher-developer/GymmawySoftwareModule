@@ -3,6 +3,7 @@
 namespace Modules\Software\Http\Controllers\Front;
 
 
+use Modules\Billing\Services\SwBillingService;
 use Modules\Generic\Classes\SMSGymmawy;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Requests\GymGroupDiscountRequest;
@@ -50,7 +51,14 @@ class GymSettingFrontController extends GymGenericFrontController
         }
         $max_messages = TypeConstants::WA_ULTRA_MAX_MESSAGE;
 
-        return view('software::Front.setting', ['title'=>$title, 'smsPoints' => $smsPoints, 'max_messages' => $max_messages, 'mainSettings' => $mainSettings, 'imagePath' => asset(Setting::$uploads_path.'gyms/')]);
+        return view('software::Front.setting', [
+            'title'=>$title,
+            'smsPoints' => $smsPoints,
+            'max_messages' => $max_messages,
+            'mainSettings' => $mainSettings,
+            'billingSettings' => $mainSettings->billing ?? [],
+            'imagePath' => asset(Setting::$uploads_path.'gyms/'),
+        ]);
     }
 
     public function update(GymSettingRequest $request)
@@ -61,6 +69,26 @@ class GymSettingFrontController extends GymGenericFrontController
             'latitude', 'longitude', 'phone', 'support_email', 'meta_keywords_ar', 'meta_keywords_en', 'meta_description_ar', 'meta_description_en',
             'about_ar', 'about_en', 'terms_ar', 'terms_en', 'sms_username', 'sms_email', 'sms_sms_sender_id'
             , 'images', 'vat_details', 'reservation_details']));
+
+        $billingInput = $request->input('billing');
+        if ($billingInput !== null) {
+            $currentBilling = $setting->billing ?? [];
+
+            $sectionsInput = data_get($billingInput, 'sections', []);
+
+            $sections = array_merge($currentBilling['sections'] ?? [], [
+                'store_orders' => array_key_exists('store_orders', $sectionsInput),
+                'non_members' => array_key_exists('non_members', $sectionsInput),
+                'money_boxes' => array_key_exists('money_boxes', $sectionsInput),
+                'members' => array_key_exists('members', $sectionsInput),
+                'pt_members' => array_key_exists('pt_members', $sectionsInput),
+            ]);
+
+            $setting_inputs['billing'] = [
+                'sections' => $sections,
+                'bindings' => $currentBilling['bindings'] ?? [],
+            ];
+        }
 
         // Manually build social_media array from individual fields
         $socialMediaData = [];
@@ -78,6 +106,8 @@ class GymSettingFrontController extends GymGenericFrontController
         
         // Update settings
         $setting->update($setting_inputs);
+
+        SwBillingService::flushSettingsCache();
         
         Cache::store('file')->clear();
         

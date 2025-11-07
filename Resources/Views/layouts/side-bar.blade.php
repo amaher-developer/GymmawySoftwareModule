@@ -642,7 +642,7 @@
         @if ($swUser && (in_array('listTrainingPlan', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
             <!--begin:Menu sub-->
             <div class="menu-sub menu-sub-accordion">
-                <!--begin:Menu item-->
+                <!--begin:Menu item - Training Plans-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/plan*')) active @endif"
@@ -655,42 +655,37 @@
                     <!--end:Menu link-->
                 </div>
                 <!--end:Menu item-->
-        @endif
 
-        @if ($swUser && (in_array('listTrainingMember', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-            <!--begin:Menu item-->
-            <div class="menu-item">
-                <!--begin:Menu link-->
-                <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/member*') && !Request::is(($lang ?? 'ar') . '/training/member-log*')) active @endif"
-                    href="{{ route('sw.listTrainingMember') }}">
-                    <span class="menu-bullet">
-                        <span class="bullet bullet-dot"></span>
-                    </span>
-                    <span class="menu-title">{{ trans('sw.training_members') }}</span>
-                </a>
-                <!--end:Menu link-->
+                <!--begin:Menu item - Member Training Management-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/member-log*')) active @endif"
+                        href="{{ route('sw.listTrainingMemberLog') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.training_member_logs') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
+
+                <!--begin:Menu item - Medicines-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/medicine*')) active @endif"
+                        href="{{ route('sw.listTrainingMedicine') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.training_medicines') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
             </div>
-            <!--end:Menu item-->
+            <!--end:Menu sub-->
         @endif
-
-        @if ($swUser && (in_array('listTrainingTrack', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-            <!--begin:Menu item-->
-            <div class="menu-item">
-                <!--begin:Menu link-->
-                <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/track*')) active @endif"
-                    href="{{ route('sw.listTrainingTrack') }}">
-                    <span class="menu-bullet">
-                        <span class="bullet bullet-dot"></span>
-                    </span>
-                    <span class="menu-title">{{ trans('sw.training_tracks') }}</span>
-                </a>
-                <!--end:Menu link-->
-            </div>
-            <!--end:Menu item-->
-        @endif
-
-
-    </div><!--end:Menu sub-->
     </div>
     <!--end:Menu item-->
 @endif

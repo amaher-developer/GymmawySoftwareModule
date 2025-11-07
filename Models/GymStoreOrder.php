@@ -43,6 +43,14 @@ class GymStoreOrder extends GenericModel
             ->where('type', 'redeem');
     }
 
+    /**
+     * Get the ZATCA invoice for this store order
+     */
+    public function zatcaInvoice()
+    {
+        return $this->hasOne(\Modules\Billing\Models\SwBillingInvoice::class, 'store_order_id');
+    }
+
     public function toArray()
     {
         return parent::toArray();

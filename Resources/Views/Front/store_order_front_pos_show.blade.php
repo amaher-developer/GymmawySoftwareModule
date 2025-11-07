@@ -141,6 +141,21 @@
     <div id="logo" class="media" data-src="{{$mainSettings->logo}}" src="{{$mainSettings->logo}}"><img src="{{$mainSettings->logo}}" style="width: 120px;height: 120px;object-fit: contain;"/></div>
 </header>
 <p>{{ trans('sw.order_number')}} : {{$order['id']}}</p>
+@php
+    $invoiceData = $invoice ?? ($order['zatca_invoice'] ?? null);
+    $sentAt = $invoiceData ? data_get($invoiceData, 'zatca_sent_at') : null;
+    $sentAtFormatted = $sentAt ? \Carbon\Carbon::parse($sentAt)->format('Y-m-d H:i') : null;
+
+    $rawQr = $invoiceData ? data_get($invoiceData, 'zatca_qr_code') : null;
+    if (!empty($rawQr)) {
+        $baseQr = \Illuminate\Support\Str::startsWith($rawQr, 'data:image') ? $rawQr : 'data:image/png;base64,' . $rawQr;
+    } elseif (!empty($qr_img_invoice)) {
+        $baseQr = asset($qr_img_invoice);
+    } else {
+        $baseQr = null;
+    }
+@endphp
+
 <table class="bill-details">
     <tbody>
     <tr>
@@ -154,6 +169,32 @@
     <tr>
         <th class="center-align" colspan="2"><span class="receipt">{{ trans('sw.invoice')}}</span></th>
     </tr>
+    @if(config('sw_billing.zatca_enabled') && $invoiceData)
+        <tr>
+            <td colspan="2">{{ trans('sw.invoice_number') }} : <span>{{ data_get($invoiceData, 'invoice_number') }}</span></td>
+        </tr>
+        <tr>
+            <td>{{ trans('sw.total_amount') }} : <span>{{ number_format((float) data_get($invoiceData, 'total_amount', 0), 2) }}</span></td>
+            <td>{{ trans('sw.vat_amount') }} : <span>{{ number_format((float) data_get($invoiceData, 'vat_amount', 0), 2) }}</span></td>
+        </tr>
+        <tr>
+            <td colspan="2">{{ trans('sw.status') }} :
+                <span class="badge {{ data_get($invoiceData, 'zatca_status') === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase">{{ data_get($invoiceData, 'zatca_status') }}</span>
+            </td>
+        </tr>
+        @if($sentAtFormatted)
+            <tr>
+                <td colspan="2">{{ trans('sw.sent_at') }} : <span>{{ $sentAtFormatted }}</span></td>
+            </tr>
+        @endif
+        @if($baseQr)
+            <tr>
+                <td colspan="2" class="center-align">
+                    <img src="{{ $baseQr }}" alt="ZATCA QR" style="height:100px;width:100px;object-fit:contain;" />
+                </td>
+            </tr>
+        @endif
+    @endif
     </tbody>
 </table>
 
@@ -205,9 +246,12 @@
     </tbody>
 </table>
 <section>
-    @if(@$mainSettings->vat_details['saudi'] && @$qr_img_invoice)
+    @php
+        $footerQrSrc = $baseQr ?? null;
+    @endphp
+    @if(@$mainSettings->vat_details['saudi'] && $footerQrSrc)
         <div class="col-lg-12 " style="text-align: center">
-            <img   width="50" src="{{asset($qr_img_invoice)}}"/>
+            <img width="80" src="{{$footerQrSrc}}" style="height:80px;object-fit:contain;"/>
         </div>
     @endif
     @if(@$order->pay_type)

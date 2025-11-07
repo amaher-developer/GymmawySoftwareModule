@@ -191,6 +191,45 @@
                         </div>
                     </div>
                     <!--end::Order details-->
+                    @php
+                        $invoiceData = $invoice ?? ($order['zatca_invoice'] ?? null);
+                        $sentAt = $invoiceData ? data_get($invoiceData, 'zatca_sent_at') : null;
+                        $sentAtFormatted = $sentAt ? \Carbon\Carbon::parse($sentAt)->format('Y-m-d H:i') : null;
+
+                        $rawQr = $invoiceData ? data_get($invoiceData, 'zatca_qr_code') : null;
+                        if (!empty($rawQr)) {
+                            $baseQr = \Illuminate\Support\Str::startsWith($rawQr, 'data:image') ? $rawQr : 'data:image/png;base64,' . $rawQr;
+                        } elseif (!empty($qr_img_invoice)) {
+                            $baseQr = asset($qr_img_invoice);
+                        } else {
+                            $baseQr = null;
+                        }
+                    @endphp
+                    @if(config('sw_billing.zatca_enabled') && $invoiceData)
+                        <div class="card bg-light-primary p-5 mb-7">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+                                <div class="d-flex flex-column">
+                                    <h4 class="text-primary mb-2">{{ trans('sw.zatca_invoice_details') }}</h4>
+                                    <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.invoice_number') }}:</strong> {{ data_get($invoiceData, 'invoice_number') }}</p>
+                                    <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.total_amount') }}:</strong> {{ number_format((float) data_get($invoiceData, 'total_amount', 0), 2) }}</p>
+                                    <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.vat_amount') }}:</strong> {{ number_format((float) data_get($invoiceData, 'vat_amount', 0), 2) }}</p>
+                                    <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.status') }}:</strong>
+                                        <span class="badge {{ data_get($invoiceData, 'zatca_status') === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase">{{ data_get($invoiceData, 'zatca_status') }}</span>
+                                    </p>
+                                    @if($sentAtFormatted)
+                                        <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.sent_at') }}:</strong> {{ $sentAtFormatted }}</p>
+                                    @endif
+                                </div>
+                                @if($baseQr)
+                                    <div class="flex-shrink-0 text-center">
+                                        <img src="{{ $baseQr }}" alt="ZATCA QR" width="120" height="120" class="img-thumbnail">
+                                        <div class="fs-8 text-muted mt-2">{{ data_get($invoiceData, 'invoice_number') }}</div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
                     <!--begin::Buyer & VAT Info-->
                     @if(@$mainSettings->vat_details['seller_name'] || @$mainSettings->vat_details['vat_number'] || @$order['member'])
                     <div class="d-flex flex-column flex-sm-row gap-7 gap-md-10 fw-bold">
@@ -313,10 +352,13 @@
                     <!-- end::POS View-->
                 </div>
                 <!-- end::Actions-->
-                @if(@$mainSettings->vat_details['saudi'] && @$qr_img_invoice)
+                @php
+                    $footerQrSrc = $baseQr ?? null;
+                @endphp
+                @if(@$mainSettings->vat_details['saudi'] && $footerQrSrc)
                 <!-- begin::QR Code-->
                 <div class="my-1 d-flex flex-column align-items-center">
-                    <img class="well" src="{{asset($qr_img_invoice)}}" style="height: 60px; width: 60px;" alt="QR Code"/>
+                    <img class="well" src="{{$footerQrSrc}}" style="height: 60px; width: 60px;" alt="QR Code"/>
                 </div>
                 <!-- end::QR Code-->
                 @endif

@@ -280,6 +280,29 @@
             </div>
             <!--end::Payment Details-->
 
+            @php $invoice = $member->zatcaInvoice ?? null; @endphp
+            @if(config('sw_billing.zatca_enabled') && data_get($billingSettings ?? [], 'sections.pt_members') && $member->id && $invoice)
+                <div class="card bg-light-primary p-5 mb-5">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+                        <div class="d-flex flex-column">
+                            <h4 class="text-primary mb-2">{{ trans('sw.zatca_invoice_details') }}</h4>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.invoice_number') }}:</strong> {{ $invoice->invoice_number }}</p>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.total_amount') }}:</strong> {{ number_format($invoice->total_amount, 2) }}</p>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.vat_amount') }}:</strong> {{ number_format($invoice->vat_amount, 2) }}</p>
+                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.status') }}:</strong> {{ $invoice->zatca_status }}</p>
+                            @if($invoice->zatca_sent_at)
+                                <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.sent_at') }}:</strong> {{ $invoice->zatca_sent_at->format('Y-m-d H:i') }}</p>
+                            @endif
+                        </div>
+                        @if($invoice->zatca_qr_code)
+                            <div class="flex-shrink-0">
+                                <img src="data:image/png;base64,{{ $invoice->zatca_qr_code }}" alt="ZATCA QR Code" width="120" height="120" class="img-thumbnail">
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             @if(@$mainSettings->active_loyalty)
             <!--begin::Loyalty Points Earning Info-->
             <div class="alert alert-dismissible bg-light-success border border-success border-dashed d-flex flex-column flex-sm-row p-5 mb-5" id="pt_member_loyalty_earning_info" style="display: none !important;">
