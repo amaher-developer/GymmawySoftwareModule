@@ -90,6 +90,20 @@
                         </div>
                     </a>
                 @endif
+                @if(config('sw_billing.zatca_enabled') && (in_array('reportZatcaInvoices', (array)$swUser->permissions) || $swUser->is_super_user))
+                    <a href="{{ route('sw.reportZatcaInvoices') }}">
+                        <div class="tile bg-blue-hoki">
+                            <div class="tile-body">
+                                <i class="fa fa-file-text"></i>
+                            </div>
+                            <div class="tile-object">
+                                <div class="name">
+                                    {{ trans('sw.zatca_invoices_report') }}
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                @endif
                 @if(in_array('listUserLog', (array)$swUser->permissions) || $swUser->is_super_user)
 
                     <a href="{{route('sw.listUserLog')}}">

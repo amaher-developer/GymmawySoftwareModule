@@ -4,6 +4,7 @@ namespace Modules\Software\Http\Controllers\Front;
 
 use Modules\Generic\Http\Controllers\Front\GenericFrontController;
 use Modules\Software\Classes\TypeConstants;
+use Modules\Billing\Models\SwBillingInvoice;
 use Modules\Software\Exports\MembersAttendanceExport;
 use Modules\Software\Exports\MembersExport;
 use Modules\Software\Exports\MoneyBoxExport;
@@ -1221,6 +1222,117 @@ class GymUserLogFrontController extends GymGenericFrontController
         $logs = $logs->paginate($this->limit);
         $total = $logs->total();
         return view('software::Front.report_user_attendees_front_list', compact('logs', 'search_query','title', 'total'));
+    }
+
+    public function reportZatcaInvoices()
+    {
+        if (!config('sw_billing.zatca_enabled')) {
+            abort(404);
+        }
+
+        $title = trans('sw.zatca_invoices_report');
+        $search_query = request()->query();
+
+        $this->request_array = ['number', 'status', 'type', 'from', 'to', 'buyer', 'source', 'search'];
+        $request_array = $this->request_array;
+        foreach ($request_array as $item) {
+            $$item = request()->has($item) ? request()->$item : null;
+        }
+
+        $invoicesQuery = SwBillingInvoice::query()
+            ->with([
+                'moneyBox.member',
+                'storeOrder.member',
+                'nonMember',
+                'member',
+                'memberSubscription',
+                'ptMember',
+            ])
+            ->orderByDesc('created_at');
+
+        if ($from) {
+            $invoicesQuery->whereDate('created_at', '>=', Carbon::parse($from)->toDateString());
+        }
+
+        if ($to) {
+            $invoicesQuery->whereDate('created_at', '<=', Carbon::parse($to)->toDateString());
+        }
+
+        if ($status) {
+            $invoicesQuery->where('zatca_status', $status);
+        }
+
+        if ($type) {
+            $invoicesQuery->where('invoice_type', $type);
+        }
+
+        if ($number) {
+            $invoicesQuery->where('invoice_number', 'like', '%' . $number . '%');
+        }
+
+        if ($buyer) {
+            $invoicesQuery->where(function ($query) use ($buyer) {
+                $query->where('buyer_name', 'like', '%' . $buyer . '%')
+                    ->orWhere('buyer_tax_number', 'like', '%' . $buyer . '%');
+            });
+        }
+
+        if ($source) {
+            $invoicesQuery->where(function ($query) use ($source) {
+                switch ($source) {
+                    case 'money_box':
+                        $query->whereNotNull('money_box_id');
+                        break;
+                    case 'store_order':
+                        $query->whereNotNull('store_order_id');
+                        break;
+                    case 'non_member':
+                        $query->whereNotNull('non_member_id');
+                        break;
+                    case 'member':
+                        $query->where(function ($subQuery) {
+                            $subQuery->whereNotNull('member_subscription_id')
+                                ->orWhereNotNull('member_id');
+                        });
+                        break;
+                    case 'pt_member':
+                        $query->whereNotNull('member_pt_subscription_id');
+                        break;
+                }
+            });
+        }
+
+        if ($search) {
+            $invoicesQuery->where(function ($query) use ($search) {
+                $query->where('invoice_number', 'like', '%' . $search . '%')
+                    ->orWhere('buyer_name', 'like', '%' . $search . '%')
+                    ->orWhere('buyer_tax_number', 'like', '%' . $search . '%')
+                    ->orWhere('zatca_uuid', 'like', '%' . $search . '%');
+            });
+        }
+
+        $invoices = $invoicesQuery->paginate($this->limit)->onEachSide(1);
+        $total = $invoices->total();
+
+        $statuses = SwBillingInvoice::select('zatca_status')->distinct()->pluck('zatca_status')->filter()->values();
+        $types = SwBillingInvoice::select('invoice_type')->distinct()->pluck('invoice_type')->filter()->values();
+        $sources = [
+            'money_box' => trans('sw.source_money_box'),
+            'store_order' => trans('sw.source_store_order'),
+            'non_member' => trans('sw.source_non_member'),
+            'member' => trans('sw.source_member'),
+            'pt_member' => trans('sw.source_pt_member'),
+        ];
+
+        return view('software::Front.report_zatca_invoices_front_list', compact(
+            'title',
+            'search_query',
+            'invoices',
+            'statuses',
+            'types',
+            'sources',
+            'total'
+        ));
     }
 
 

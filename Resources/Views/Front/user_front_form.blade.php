@@ -25,7 +25,7 @@
     <link href="{{asset('/')}}resources/assets/admin/global/scripts/css/fileupload.css" rel="stylesheet"
           type="text/css"/>
 
-        <style>
+    <style>
         .tag-orange {
             background-color: #fd7e14 !important;
             color: #fff;
@@ -54,6 +54,48 @@
         }
         .ckbox span{
             vertical-align: text-top;
+        }
+        .permission-mode-card {
+            border: 1px solid #eef2f7;
+            border-radius: 1rem;
+            background-color: #fff;
+        }
+        .permission-mode-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background-color: rgba(29, 102, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1d66ff;
+        }
+        .permission-mode-summary {
+            background-color: rgba(29, 102, 255, 0.08);
+            color: #1d66ff;
+            border-radius: 999px;
+            font-weight: 600;
+            padding: 6px 14px;
+            font-size: 0.875rem;
+        }
+        .permission-mode-hints {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .permission-mode-hints .hint-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #5e6278;
+            font-size: 0.9rem;
+        }
+        .permission-mode-hints .hint-bullet {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: #1d66ff;
+            flex-shrink: 0;
         }
     </style>
 
@@ -261,7 +303,65 @@
             </div>
             <!--end::User Details-->
 
-
+            <!--begin::Permission Mode Selection-->
+            <div class="card card-flush permission-mode-card mb-10">
+                <div class="card-header flex-wrap gap-4 py-5">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="permission-mode-icon">
+                            <i class="ki-outline ki-shield-search fs-3"></i>
+                        </span>
+                        <div>
+                            <h3 class="fw-bold text-gray-900 mb-1">{{ trans('sw.use_permission_group') }}</h3>
+                            <div class="text-muted">{{ trans('sw.leave_empty_for_custom') }}</div>
+                        </div>
+                    </div>
+                    <span class="permission-mode-summary" id="permission_mode_summary" data-label="{{ trans('sw.custom_permissions') }}">
+                        {{ trans('sw.custom_permissions') }}
+                    </span>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="row g-5 align-items-center">
+                        <div class="col-lg-6">
+                            <label class="form-label fw-semibold">{{ trans('sw.permission_template') ?? trans('sw.use_permission_group') }}</label>
+                            <select
+                                name="permission_group_id"
+                                id="permission_group_id"
+                                class="form-select form-select-solid"
+                                data-control="select2"
+                                data-placeholder="{{ trans('sw.select_permission_group') }}"
+                            >
+                                <option value="" data-label="{{ trans('sw.custom_permissions') }}">
+                                    {{ trans('sw.custom_permissions') }}
+                                </option>
+                                @foreach(\Modules\Software\Models\GymUserPermission::branch()->get() as $group)
+                                    <option
+                                        value="{{ $group->id }}"
+                                        data-permissions="{{ json_encode($group->permissions) }}"
+                                        data-label="{{ $group->title }}"
+                                        @if(old('permission_group_id', $user->permission_group_id) == $group->id) selected @endif
+                                    >
+                                        {{ $group->title }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">{{ trans('sw.leave_empty_for_custom') }}</div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="permission-mode-hints">
+                                <div class="hint-item">
+                                    <span class="hint-bullet"></span>
+                                    <span>{{ trans('sw.permission_group_apply_hint') ?? __('Apply saved permission sets instantly to keep roles consistent.') }}</span>
+                                </div>
+                                <div class="hint-item">
+                                    <span class="hint-bullet"></span>
+                                    <span>{{ trans('sw.switch_back_custom_info') ?? __('Choose “Custom permissions” to fine-tune access manually.') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--end::Permission Mode Selection-->
 
             @include('software::layouts.permissions')
        <div class="clearfix"><br/></div>
@@ -356,30 +456,85 @@
         });
         
         // Permission group selector handler
-        $(document).ready(function() {
-            $('#permission_group_id').select2({
-                placeholder: "{{ trans('sw.select_permission_group')}}",
-                allowClear: true,
-                width: '100%'
-            });
-            
-            $('#permission_group_id').on('change', function() {
-                var selectedOption = $(this).find('option:selected');
-                var permissions = selectedOption.data('permissions');
-                
-                if (permissions && permissions.length > 0) {
-                    // Uncheck all permissions first
-                    $('input[name="permissions[]"]').prop('checked', false);
-                    
-                    // Check permissions from the group
-                    permissions.forEach(function(permission) {
-                        $('input[name="permissions[]"][value="' + permission + '"]').prop('checked', true);
-                    });
-                } else {
-                    // If "Custom Permissions" is selected, keep current selections
-                    // User can manually check/uncheck as needed
+        $(function() {
+            const $permissionSelect = $('#permission_group_id');
+            const $summary = $('#permission_mode_summary');
+            const defaultLabel = "{{ trans('sw.custom_permissions') }}";
+            const permissionsWord = "{{ trans('sw.permissions') }}";
+
+            if (!$permissionSelect.length || !$summary.length) {
+                return;
+            }
+
+            if (typeof $permissionSelect.select2 === 'function' && !$permissionSelect.hasClass('select2-hidden-accessible')) {
+                $permissionSelect.select2({
+                    placeholder: "{{ trans('sw.select_permission_group')}}",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+
+            const refreshSummary = (label) => {
+                const checkedCount = $('.perm-grid input[name="permissions[]"]:checked').length;
+                const baseLabel = label || $summary.data('label') || defaultLabel;
+                $summary.data('label', baseLabel);
+                $summary.text(`${baseLabel} • ${checkedCount} ${permissionsWord}`);
+            };
+
+            const applyPermissionsFromOption = (option) => {
+                if (!option || !option.value) {
+                    refreshSummary(defaultLabel);
+                    return;
                 }
+
+                const label = option.getAttribute('data-label') || defaultLabel;
+                let permissions = [];
+                const raw = option.getAttribute('data-permissions');
+
+                if (raw) {
+                    try {
+                        permissions = JSON.parse(raw);
+                    } catch (error) {
+                        console.warn('Unable to parse permission group JSON', error);
+                    }
+                }
+
+                const $checkboxes = $('.perm-grid input[name="permissions[]"]');
+                if ($checkboxes.length) {
+                    $checkboxes.prop('checked', false);
+                    if (Array.isArray(permissions) && permissions.length) {
+                        permissions.forEach((permission) => {
+                            $checkboxes.filter(`[value="${permission}"]`).prop('checked', true);
+                        });
+                    }
+                }
+
+                if (typeof window.swUpdatePermissionSelectedCount === 'function') {
+                    window.swUpdatePermissionSelectedCount();
+                }
+
+                refreshSummary(label);
+            };
+
+            $permissionSelect.on('change', function() {
+                const option = this.options[this.selectedIndex] || null;
+                if (!option || !option.value) {
+                    refreshSummary(defaultLabel);
+                    return;
+                }
+                applyPermissionsFromOption(option);
             });
+
+            $(document).on('change', '.perm-grid input[name="permissions[]"]', function() {
+                refreshSummary();
+            });
+
+            const initialOption = $permissionSelect.get(0)?.options[$permissionSelect.prop('selectedIndex')] || null;
+            if (initialOption && initialOption.value) {
+                applyPermissionsFromOption(initialOption);
+            } else {
+                refreshSummary(defaultLabel);
+            }
         });
     </script>
 

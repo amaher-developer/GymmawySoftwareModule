@@ -69,6 +69,7 @@ if(!isset($permission_group->permissions)){
                         <i class="fa fa-gift me-2"></i>
                         <h2>{{ trans('sw.permissions')}}</h2>
                     </div>
+                    
                     <div class="card-toolbar">
                         <div class="permission-toolbar">
                             <input type="text" id="permission_search" class="form-control permission-search" placeholder="{{ trans('sw.search_on') }}" />
@@ -626,6 +627,14 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('reportMoneyboxTax', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.moneybox_tax')}}</span></label>
                                             </div>
+                                            @if(config('sw_billing.zatca_enabled'))
+                                                <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                    <label class="ckbox"><input name="permissions[]"
+                                                                                value="reportZatcaInvoices"
+                                                                                @if(@in_array('reportZatcaInvoices', $permission_group->permissions)) checked @endif
+                                                                                type="checkbox"> <span>{{ trans('sw.zatca_invoices_report')}}</span></label>
+                                                </div>
+                                            @endif
 
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -1242,6 +1251,14 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('reportMoneyboxTax', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.moneybox_tax') }}</span></label>
                                             </div>
+                                            @if(config('sw_billing.zatca_enabled'))
+                                                <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                    <label class="ckbox"><input name="permissions[]"
+                                                                                value="reportZatcaInvoices"
+                                                                                @if(@in_array('reportZatcaInvoices', $permission_group->permissions)) checked @endif
+                                                                                type="checkbox"> <span>{{ trans('sw.zatca_invoices_report') }}</span></label>
+                                                </div>
+                                            @endif
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="reportRenewMemberList"

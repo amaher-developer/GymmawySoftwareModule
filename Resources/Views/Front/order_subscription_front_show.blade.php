@@ -138,7 +138,20 @@
 @section('page_body')
     @php
         $invoice = $invoice ?? null;
-        $hasInvoice = $invoice && !empty($invoice->invoice_number);
+        $invoiceRecord = $invoice ?? ($order->zatcaInvoice ?? null);
+        $hasInvoice = $invoiceRecord && !empty(data_get($invoiceRecord, 'invoice_number'));
+
+        $sentAt = $invoiceRecord ? data_get($invoiceRecord, 'zatca_sent_at') : null;
+        $sentAtFormatted = $sentAt ? \Carbon\Carbon::parse($sentAt)->format('Y-m-d H:i') : null;
+
+        $rawQr = $invoiceRecord ? data_get($invoiceRecord, 'zatca_qr_code') : null;
+        if (!empty($rawQr)) {
+            $baseQr = \Illuminate\Support\Str::startsWith($rawQr, 'data:image') ? $rawQr : 'data:image/png;base64,' . $rawQr;
+        } elseif (!empty($qr_img_invoice)) {
+            $baseQr = \Illuminate\Support\Str::startsWith($qr_img_invoice, 'data:image') ? $qr_img_invoice : asset($qr_img_invoice);
+        } else {
+            $baseQr = null;
+        }
     @endphp
     {{--    {!! \DNS2D::getBarcodeHTML('AQVTYWxsYQIKMTIzNDU2Nzg5MQMUMjAyMS0wNy0xMlQxNDoyNTowOVoEBjEwMC4wMAUFMTUuMDA=', 'QRCODE') !!}--}}
 
@@ -207,15 +220,36 @@
                                 <span class="text-muted"><i class="ki-outline ki-bill fs-6 me-1"></i>{{ trans('sw.invoice_total_required') }}</span>
                                 <span class="fs-5">{{number_format($order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</span>
                             </div>
-                            @if($hasInvoice)
-                                <div class="flex-root d-flex flex-column">
-                                    <span class="text-muted"><i class="ki-outline ki-receipt fs-6 me-1"></i>{{ trans('sw.invoice_number') ?? __('Invoice Number') }}</span>
-                                    <span class="fs-5">{{ $invoice->invoice_number }}</span>
-                                    <span class="badge {{ $invoice->zatca_status === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase mt-2">{{ $invoice->zatca_status }}</span>
-                                </div>
-                            @endif
+                            
                         </div>
                         <!--end::Order details-->
+                        @if(config('sw_billing.zatca_enabled') && $invoiceRecord)
+                            <div class="card bg-light-primary p-5 mb-7">
+                                <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+                                    <div class="d-flex flex-column">
+                                        <h4 class="text-primary mb-2">{{ trans('sw.zatca_invoice_details') }}</h4>
+                                        <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.invoice_number') }}:</strong> {{ data_get($invoiceRecord, 'invoice_number') }}</p>
+                                        <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.total_amount') }}:</strong> {{ number_format((float) data_get($invoiceRecord, 'total_amount', 0), 2) }}</p>
+                                        <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.vat_amount') }}:</strong> {{ number_format((float) data_get($invoiceRecord, 'vat_amount', 0), 2) }}</p>
+                                        <p class="fs-6 text-gray-800 mb-1">
+                                            <strong>{{ trans('sw.status') }}:</strong>
+                                            <span class="badge {{ data_get($invoiceRecord, 'zatca_status') === 'approved' ? 'badge-light-success' : 'badge-light-warning' }} fw-bold text-uppercase">
+                                                {{ data_get($invoiceRecord, 'zatca_status') }}
+                                            </span>
+                                        </p>
+                                        @if($sentAtFormatted)
+                                            <p class="fs-6 text-gray-800 mb-1"><strong>{{ trans('sw.sent_at') }}:</strong> {{ $sentAtFormatted }}</p>
+                                        @endif
+                                    </div>
+                                    @if($baseQr)
+                                        <div class="flex-shrink-0 text-center">
+                                            <img src="{{ $baseQr }}" alt="ZATCA QR Code" width="120" height="120" class="img-thumbnail">
+                                            <div class="fs-8 text-muted mt-2">{{ data_get($invoiceRecord, 'invoice_number') }}</div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                         <!--begin::Buyer & VAT Info-->
                         @if(@$mainSettings->vat_details['seller_name'] || @$mainSettings->vat_details['vat_number'] || @$order->member)
                         <div class="d-flex flex-column flex-sm-row gap-7 gap-md-10 fw-bold">

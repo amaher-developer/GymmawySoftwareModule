@@ -976,6 +976,17 @@
         </div>
         <!--end:Menu item-->
     @endif
+    @if ($swUser && config('sw_billing.zatca_enabled') && (in_array('reportZatcaInvoices', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+        <div class="menu-item">
+            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user/log/zatca-invoices')) active @endif"
+                href="{{ route('sw.reportZatcaInvoices') }}">
+                <span class="menu-bullet">
+                    <span class="bullet bullet-dot"></span>
+                </span>
+                <span class="menu-title">{{ trans('sw.zatca_invoices_report') }}</span>
+            </a>
+        </div>
+    @endif
     @if ($swUser && (in_array('reportOnlinePaymentTransactionList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
         <!--begin:Menu item-->
         <div class="menu-item">

@@ -84,6 +84,9 @@ Route::prefix('user/log')
         Route::name('sw.reportStoreList')
             ->get('store', 'Front\GymUserLogFrontController@reportStoreList');
 
+        Route::name('sw.reportZatcaInvoices')
+            ->get('zatca-invoices', 'Front\GymUserLogFrontController@reportZatcaInvoices');
+
         Route::name('sw.reportMoneyboxTax')
             ->get('moneybox-tax', 'Front\GymUserLogFrontController@reportMoneyboxTax');
 
