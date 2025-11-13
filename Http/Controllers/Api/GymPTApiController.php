@@ -2,7 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Api;
 
-
+   
 
 use Modules\Software\Http\Resources\PTClassResource;
 use Modules\Software\Http\Resources\PTContentResource;
