@@ -307,10 +307,12 @@
                                                 </tr>
                                             </thead>
                                             <tbody class="fw-semibold text-gray-600">
-                                                @php $remain_amount_subscriptions_check = false @endphp
-                                                @if(@count($log->member->pt_member_remain_amount_subscriptions) > 0)
-                                                    @php $remain_amount_subscriptions_check = true @endphp
-                                                    @foreach($log->member->pt_member_remain_amount_subscriptions as $member_remain_amount)
+                                                @php
+                                                    $remain_amounts = collect($log->member->pt_member_remain_amount_subscriptions ?? []);
+                                                    $remain_amount_subscriptions_check = $remain_amounts->count() > 0;
+                                                @endphp
+                                                @if($remain_amount_subscriptions_check)
+                                                    @foreach($remain_amounts as $member_remain_amount)
                                                     <tr id="tr_pay_{{$member_remain_amount->id}}">
                                                         <td>{{@$member_remain_amount->pt_subscription->name}}</td>
                                                         <td id="td_pay_amount_remaining_{{$member_remain_amount->id}}">{{@number_format($member_remain_amount->amount_remaining, 2)}}</td>

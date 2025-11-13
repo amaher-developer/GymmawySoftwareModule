@@ -49,8 +49,35 @@ class GymSubscription extends GenericModel
     public function getImageAttribute()
     {
         $image = $this->getRawOriginal('image');
-        if($image)
-            return asset(self::$uploads_path.$image);
+
+        if (!$image) {
+            return asset('resources/assets/front/img/blank-image.svg');
+        }
+
+        if (filter_var($image, FILTER_VALIDATE_URL)) {
+            return $image;
+        }
+
+        $normalized = str_replace('\\', '/', $image);
+
+        if (str_starts_with($normalized, '/')) {
+            return asset(ltrim($normalized, '/'));
+        }
+
+        if (str_starts_with($normalized, self::$uploads_path)) {
+            return asset($normalized);
+        }
+
+        $basename = basename($normalized);
+        if ($basename && $basename !== '.' && $basename !== '..') {
+            $relativePath = self::$uploads_path.$basename;
+            $absolutePath = asset($relativePath);
+
+            if (file_exists($absolutePath)) {
+                return asset($relativePath);
+            }
+            return asset($relativePath);
+        }
 
         return asset('resources/assets/front/img/blank-image.svg');
     }

@@ -145,7 +145,10 @@
                                     
                                     @if(in_array('deleteUserPermission', (array)$swUser->permissions) || $swUser->is_super_user)
                                         <a href="{{route('sw.deleteUserPermission',$permission->id)}}"
-                                           class="btn btn-icon btn-bg-light btn-active-color-danger btn-sm" title="{{ trans('admin.delete')}}">
+                                           class="btn btn-icon btn-bg-light btn-active-color-danger btn-sm js-permission-delete"
+                                           data-confirm-title="{{ trans('sw.are_you_sure') }}"
+                                           data-confirm-text="{{ trans('sw.delete_permission_group', ['name' => $permission->title]) }}"
+                                           title="{{ trans('admin.delete')}}">
                                             <i class="ki-outline ki-trash fs-2"></i>
                                         </a>
                                     @endif
@@ -178,3 +181,92 @@
 
 @endsection
 
+@section('scripts')
+    @parent
+    <script>
+        (function () {
+            function initPermissionDeleteConfirm() {
+                var deleteButtons = document.querySelectorAll('.js-permission-delete');
+                if (!deleteButtons.length) {
+                    return;
+                }
+                deleteButtons.forEach(function (button) {
+                    if (button.dataset.confirmBound === 'true') {
+                        return;
+                    }
+                    button.dataset.confirmBound = 'true';
+
+                    button.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        var url = button.getAttribute('href');
+                        if (!url) {
+                            return;
+                        }
+                        var title = button.getAttribute('data-confirm-title') || '{{ trans('sw.are_you_sure') }}';
+                        var text = button.getAttribute('data-confirm-text') || '{{ trans('sw.delete_permission_group', ['name' => '']) }}';
+
+                        var options = {
+                            title: title,
+                            text: text,
+                            type: "warning",
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonColor: "#DD6B55",
+                            confirmButtonText: "{{ trans('sw.yes') }}",
+                            cancelButtonText: "{{ trans('sw.no') }}"
+                        };
+
+                        if (window.Swal && typeof window.Swal.fire === 'function') {
+                            window.Swal.fire(options).then(function (result) {
+                                if (result && (result.isConfirmed || result.value === true)) {
+                                    window.location.href = url;
+                                }
+                            });
+                        } else if (typeof swal === 'function') {
+                            if (typeof swal.fire === 'function') {
+                                swal.fire(options).then(function (result) {
+                                    if (result && (result.isConfirmed || result.value === true)) {
+                                        window.location.href = url;
+                                    }
+                                });
+                            } else {
+                                var promiseLike;
+                                try {
+                                    promiseLike = swal(options);
+                                } catch (error) {
+                                    promiseLike = null;
+                                }
+
+                                if (promiseLike && typeof promiseLike.then === 'function') {
+                                    promiseLike.then(function (result) {
+                                        // SweetAlert 2 style promise
+                                        if (result && (result.isConfirmed || result.value === true)) {
+                                            window.location.href = url;
+                                        }
+                                    });
+                                } else {
+                                    // SweetAlert (original) callback style
+                                    swal(options, function (isConfirm) {
+                                        if (isConfirm) {
+                                            window.location.href = url;
+                                        }
+                                    });
+                                }
+                            }
+                        } else if (window.confirm(text)) {
+                            window.location.href = url;
+                        }
+                    });
+                });
+            }
+
+            window.initPermissionDeleteConfirm = initPermissionDeleteConfirm;
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initPermissionDeleteConfirm);
+            } else {
+                initPermissionDeleteConfirm();
+            }
+        })();
+    </script>
+@endsection

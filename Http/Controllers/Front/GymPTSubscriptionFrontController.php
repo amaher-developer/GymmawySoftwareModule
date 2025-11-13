@@ -256,14 +256,22 @@ class GymPTSubscriptionFrontController extends GymGenericFrontController
         $input_file = 'image';
         if (request()->hasFile($input_file)) {
             $file = request()->file($input_file);
-            $filename = rand(0, 20000) . time() . '.' . $file->getClientOriginalExtension();
-            $destinationPath = base_path(GymPTSubscription::$uploads_path);
+            if ($file->isValid()) {
+                $extension = $file->getClientOriginalExtension();
+                $filename = uniqid() . time() . ($extension ? '.' . $extension : '.jpg');
+                $destinationPath = base_path(GymPTSubscription::$uploads_path);
 
-            $upload_success = $this->imageManager->read($file)->scale(width: 320)->toJpeg()->save($destinationPath.$filename);
+                if (!File::exists($destinationPath)) {
+                    File::makeDirectory($destinationPath, 0777, true, true);
+                }
 
-//            $upload_success = $file->move($destinationPath, $filename);
-            if ($upload_success) {
-                $inputs[$input_file] = $filename;
+                try {
+                    $img = $this->imageManager->read($file->getRealPath());
+                    $img->scaleDown(320)->toJpeg(90)->save($destinationPath . DIRECTORY_SEPARATOR . $filename);
+                    $inputs[$input_file] = $filename;
+                } catch (\Throwable $e) {
+                    report($e);
+                }
             }
         } else {
             unset($inputs[$input_file]);

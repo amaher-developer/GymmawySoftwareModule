@@ -100,6 +100,61 @@
 @endsection
 
 
+@section('scripts')
+    @parent
+    <script>
+        (function () {
+            function attachPermissionDeleteConfirm() {
+                if (typeof window.initPermissionDeleteConfirm === 'function') {
+                    window.initPermissionDeleteConfirm();
+                    return;
+                }
 
- 
+                var deleteButtons = document.querySelectorAll('.js-permission-delete');
+                if (!deleteButtons.length) {
+                    return;
+                }
+                deleteButtons.forEach(function (button) {
+                    if (button.dataset.confirmBound === 'true') {
+                        return;
+                    }
+                    button.dataset.confirmBound = 'true';
 
+                    button.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        var url = button.getAttribute('href');
+                        if (!url) {
+                            return;
+                        }
+                        var title = button.getAttribute('data-confirm-title') || '{{ trans('sw.are_you_sure') }}';
+                        var text = button.getAttribute('data-confirm-text') || '{{ trans('sw.delete_permission_group', ['name' => '']) }}';
+
+                        if (typeof swal === 'function') {
+                            swal({
+                                title: title,
+                                text: text,
+                                type: "warning",
+                                showCancelButton: true,
+                                confirmButtonColor: "#DD6B55",
+                                confirmButtonText: "{{ trans('sw.yes') }}",
+                                cancelButtonText: "{{ trans('sw.no') }}"
+                            }).then(function (result) {
+                                if (result && (result.value || result.isConfirmed)) {
+                                    window.location.href = url;
+                                }
+                            });
+                        } else if (window.confirm(text)) {
+                            window.location.href = url;
+                        }
+                    });
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', attachPermissionDeleteConfirm);
+            } else {
+                attachPermissionDeleteConfirm();
+            }
+        })();
+    </script>
+@endsection

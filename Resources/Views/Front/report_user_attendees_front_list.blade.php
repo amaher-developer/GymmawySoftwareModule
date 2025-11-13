@@ -170,6 +170,7 @@
         </div>
         <!--end::Total count-->
 
+        @php $userAttendanceModals = []; @endphp
         @if(count($logs) > 0)
             <!--begin::Table-->
             <div class="table-responsive">
@@ -198,6 +199,9 @@
                     </thead>
                     <tbody class="fw-semibold text-gray-600">
                         @foreach($logs as $key=> $log)
+                            @php
+                                $attendanceEntries = collect($log->user_attendees ?? []);
+                            @endphp
                             <tr>
                                 <td>
                                     <span class="fw-bold">{{ @$log->id }}</span>
@@ -236,6 +240,9 @@
                                     <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
                                         <!--begin::View-->
                                         <button class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
+                                                type="button"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#userAttendeesModal_{{ $log->id }}"
                                                 title="{{ trans('admin.view')}}">
                                             <i class="ki-outline ki-eye fs-2"></i>
                                         </button>
@@ -243,11 +250,60 @@
                                     </div>
                                 </td>
                             </tr>
+                            @php
+                                ob_start();
+                            @endphp
+                            <div class="modal fade" id="userAttendeesModal_{{ $log->id }}" tabindex="-1" aria-labelledby="userAttendeesModalLabel_{{ $log->id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title d-flex align-items-center gap-2" id="userAttendeesModalLabel_{{ $log->id }}">
+                                                <i class="ki-outline ki-calendar fs-2 text-primary"></i>
+                                                <span>{{ trans('sw.attendance_times') }} - {{ @$log->name }}</span>
+                                            </h5>
+                                            <button type="button" class="btn btn-sm btn-icon btn-light" data-bs-dismiss="modal" aria-label="{{ trans('sw.close') }}">
+                                                <i class="ki-outline ki-cross fs-2"></i>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            @if($attendanceEntries->count() > 0)
+                                                <div class="list-group list-group-flush">
+                                                    @foreach($attendanceEntries as $attendance)
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div class="d-flex flex-column">
+                                                                <span class="fw-semibold text-gray-900">{{ optional($attendance->created_at)->format('Y-m-d') }}</span>
+                                                                <span class="text-muted fs-7">{{ optional($attendance->created_at)->format('h:i a') }}</span>
+                                                            </div>
+                                                            @if(!empty($attendance->updated_at) && $attendance->updated_at != $attendance->created_at)
+                                                                <div class="text-end">
+                                                                    <span class="badge badge-light-primary fw-semibold">{{ trans('sw.last_update') }}</span>
+                                                                    <div class="text-muted fs-7">{{ optional($attendance->updated_at)->format('Y-m-d h:i a') }}</div>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <p class="text-center text-muted mb-0">{{ trans('admin.no_records') }}</p>
+                                            @endif
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                                                <i class="ki-outline ki-cross fs-4 me-1"></i>{{ trans('sw.close') }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @php
+                                $userAttendanceModals[] = ob_get_clean();
+                            @endphp
                         @endforeach
                     </tbody>
                 </table>
             </div>
             <!--end::Table-->
+            {!! implode('', $userAttendanceModals) !!}
             
             <!--begin::Pagination-->
             <div class="d-flex flex-stack flex-wrap pt-10">

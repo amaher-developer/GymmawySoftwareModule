@@ -587,22 +587,6 @@
                 <!--end:Menu item-->
             @endif
 
-            @if ($swUser && (in_array('listPTTrainer', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <!--begin:Menu item-->
-                <div class="menu-item">
-                    <!--begin:Menu link-->
-                    <a class="menu-link   @if (Request::is(($lang ?? 'ar') . '/pt/trainer*')) active @endif "
-                        href="{{ route('sw.listPTTrainer') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.pt_trainers') }}</span>
-                    </a>
-                    <!--end:Menu link-->
-                </div>
-                <!--end:Menu item-->
-            @endif
-
             @if ($swUser && (in_array('listPTMember', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
                 <!--begin:Menu item-->
                 <div class="menu-item">
@@ -1368,6 +1352,7 @@
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
                 Request::is(($lang ?? 'ar') . '/user*') ||
+                Request::is(($lang ?? 'ar') . '/pt/trainer*') ||
                 Request::is(($lang ?? 'ar') . '/loyalty/rules*') ||
                 Request::is(($lang ?? 'ar') . '/loyalty/campaigns*') ) show @endif">
         <!--begin:Menu link-->
@@ -1376,6 +1361,7 @@
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
                 Request::is(($lang ?? 'ar') . '/user*') || 
+                Request::is(($lang ?? 'ar') . '/pt/trainer*') ||
                 Request::is(($lang ?? 'ar') . '/loyalty/rules*') ||
                 Request::is(($lang ?? 'ar') . '/loyalty/campaigns*')) show @endif">
             <span class="menu-icon">
@@ -1413,6 +1399,18 @@
                             <span class="bullet bullet-dot"></span>
                         </span>
                         <span class="menu-title">{{ trans('sw.users') }}</span>
+                    </a>
+                </div>
+            @endif
+           
+            @if ($mainSettings->active_pt && $swUser && (in_array('listPTTrainer', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/trainer*')) active @endif"
+                        href="{{ route('sw.listPTTrainer') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.pt_trainers') }}</span>
                     </a>
                 </div>
             @endif
@@ -1492,10 +1490,8 @@
                 <!--end:Menu item-->
             @endif
 
-            @if ($swUser && (in_array('listStoreGroup', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <!--begin:Menu item-->
+            <!-- @if ($swUser && (in_array('listStoreGroup', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
                 <div class="menu-item">
-                    <!--begin:Menu link-->
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/setting/store-group*')) active @endif "
                         href="{{ route('sw.listStoreGroup') }}">
                         <span class="menu-bullet">
@@ -1503,10 +1499,8 @@
                         </span>
                         <span class="menu-title">{{ trans('sw.store_groups') }}</span>
                     </a>
-                    <!--end:Menu link-->
                 </div>
-                <!--end:Menu item-->
-            @endif
+            @endif -->
 
 
             @if ($swUser && (in_array('listSaleChannel', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))

@@ -174,7 +174,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
         }
 
-        $qrcodes_folder = public_path('uploads/invoices/');
+        $qrcodes_folder = base_path('uploads/invoices/');
         if (!File::exists($qrcodes_folder)) {
             File::makeDirectory($qrcodes_folder, 0755, true, true);
         }
@@ -194,7 +194,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $d = new DNS2D();
             $d->setStorPath($qrcodes_folder);
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
-            $qr_img_invoice = str_replace(public_path(), '', $qr_img_invoice);
+            $qr_img_invoice = str_replace(base_path(), '', $qr_img_invoice);
         }
         return view('software::Front.store_order_front_show', [
             'order' => $order,
@@ -220,7 +220,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         }
 
         if(@$this->mainSettings->vat_details['saudi']){
-            $qrcodes_folder = public_path('uploads/invoices/');
+            $qrcodes_folder = base_path('uploads/invoices/');
             if (!File::exists($qrcodes_folder)) {
                 File::makeDirectory($qrcodes_folder, 0755, true, true);
             }
@@ -237,7 +237,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $d = new DNS2D();
             $d->setStorPath($qrcodes_folder);
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
-            $qr_img_invoice = str_replace(public_path(), '', $qr_img_invoice);
+            $qr_img_invoice = str_replace(base_path(), '', $qr_img_invoice);
         }
         return view('software::Front.store_order_front_pos_show', [
             'order' => $order,

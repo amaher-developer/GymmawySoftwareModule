@@ -498,9 +498,15 @@ class GymMemberFrontController extends GymGenericFrontController
     {
         $title = trans('sw.member_add');
         $member =  new GymMember();
+        $invoice = null;
         if(\request('reservation_id')){
             $member = GymPotentialMember::where('id', \request('reservation_id'))->first();
-            if(@!$member)    $member = new GymMember();
+            if(!@$member){
+                $member = new GymMember();
+            }
+        }
+        if ($member instanceof GymMember && $member->id) {
+            $invoice = optional($member->billingInvoices()->latest()->first());
         }
         $subscriptions = GymSubscription::branch()->isSystem()->get();
         $channels = GymSaleChannel::branch()->get();
@@ -520,6 +526,7 @@ class GymMemberFrontController extends GymGenericFrontController
             'users' => $users,
             'title' => $title,
             'billingSettings' => $billingSettings,
+            'invoice' => $invoice,
         ]);
     }
 
@@ -2367,8 +2374,8 @@ class GymMemberFrontController extends GymGenericFrontController
     {
         $code = \request('code');
         $member = GymMember::branch()->where('code', $code)->first();
-        $qrcodes_folder = public_path('uploads/barcodes/');
-        $cards_folder = public_path('uploads/cards/');
+        $qrcodes_folder = base_path('uploads/barcodes/');
+        $cards_folder = base_path('uploads/cards/');
         // ensure required folders exist
         if (!File::exists($qrcodes_folder)) {
             File::makeDirectory($qrcodes_folder, 0755, true, true);
@@ -2384,7 +2391,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
 
             // open background card template or create a blank canvas if missing
-            $cardTemplatePathPublic = public_path('uploads/card.png');
+            $cardTemplatePathPublic = base_path('uploads/card.png');
             $cardTemplatePathRoot = base_path('uploads/card.png');
             if (File::exists($cardTemplatePathPublic)) {
                 $img = $this->imageManager->read($cardTemplatePathPublic);
@@ -2394,7 +2401,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 $img = $this->imageManager->create(1000, 600)->fill('#ffffff');
             }
             // add logo on image (top-right area)
-            $logoPath = public_path(ltrim($setting->logo_thumb, '/'));
+            $logoPath = base_path(ltrim($setting->logo_thumb, '/'));
             if (File::exists($logoPath)) {
                 $img->place($logoPath, 'top-right', 40, 40);
             }
@@ -2451,8 +2458,8 @@ class GymMemberFrontController extends GymGenericFrontController
     public function memberCard($code)
     {
         $member = GymMember::branch()->where('code', $code)->first();
-        $qrcodes_folder = public_path('uploads/barcodes/');
-        $cards_folder = public_path('uploads/cards/');
+        $qrcodes_folder = base_path('uploads/barcodes/');
+        $cards_folder = base_path('uploads/cards/');
         // ensure required folders exist
         if (!File::exists($qrcodes_folder)) {
             File::makeDirectory($qrcodes_folder, 0755, true, true);
@@ -2468,7 +2475,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
 
             // open background card template or create a blank canvas if missing
-            $cardTemplatePathPublic = public_path('uploads/card.png');
+            $cardTemplatePathPublic = base_path('uploads/card.png');
             $cardTemplatePathRoot = base_path('uploads/card.png');
             if (File::exists($cardTemplatePathPublic)) {
                 $img = $this->imageManager->read($cardTemplatePathPublic);
@@ -2481,11 +2488,11 @@ class GymMemberFrontController extends GymGenericFrontController
 
             // add logo on image
 //            $img->insert($logo, 'top-left', 30, 40);
-            $img->place(public_path($setting->logo_thumb), 'top-left', 30, 40);
+            $img->place(base_path($setting->logo_thumb), 'top-left', 30, 40);
             // add barcode on image
-            $img->place(public_path('uploads/barcodes/' . $code . '.png'), 'bottom-left', 100, 200);
+            $img->place(base_path('uploads/barcodes/' . $code . '.png'), 'bottom-left', 100, 200);
             $img->text(($code), 200, 320, function ($font) {
-                $font->file(public_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
                 $font->align('center');
@@ -2498,7 +2505,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
             // add member name on image
             $img->text($name, 650, 105, function ($font) {
-                $font->file(public_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
                 $font->align('center');
@@ -2507,13 +2514,13 @@ class GymMemberFrontController extends GymGenericFrontController
             });
             // add gym phone on image
             $img->text($setting->phone, 500, 220, function ($font) {
-                $font->file(public_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
             // add gym email on image
             $img->text($setting->support_email, 500, 300, function ($font) {
-                $font->file(public_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });

@@ -149,7 +149,7 @@
                     <div class="card-body d-flex align-items-center">
                         <div class="symbol symbol-50px me-5">
                             <div class="symbol-label bg-light-success">
-                                <i class="ki-outline ki-barbell fs-2x text-success"></i>
+                                <i class="la la-dumbbell fs-2x text-success"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
@@ -211,7 +211,7 @@
                                     <!--begin::Icon-->
                                     <div class="symbol symbol-50px me-3">
                                         <div class="symbol-label {{ $plan->type == 1 ? 'bg-light-success' : 'bg-light-warning' }}">
-                                            <i class="ki-outline {{ $plan->type == 1 ? 'ki-barbell' : 'ki-apple' }} fs-2x {{ $plan->type == 1 ? 'text-success' : 'text-warning' }}"></i>
+                                            <i class="{{ $plan->type == 1 ? 'la la-dumbbell text-success' : 'la la-apple text-warning' }} fs-2x"></i>
                                         </div>
                                     </div>
                                     <!--end::Icon-->
@@ -226,7 +226,7 @@
                             <td>
                                 @if($plan->type == 1)
                                 <span class="badge badge-success">
-                                    <i class="ki-outline ki-barbell fs-7"></i> {{ trans('sw.training_plan')}}
+                                    <i class="la la-dumbbell fs-7"></i> {{ trans('sw.training_plan')}}
                                 </span>
                                 @else
                                 <span class="badge badge-warning">

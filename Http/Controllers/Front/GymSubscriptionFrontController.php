@@ -499,20 +499,37 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     {
 
         $input_file = $file;
-        if (request()->hasFile($input_file)) {
-            $file = request()->file($input_file);
-            $filename = rand(0, 20000) . time() . '.' . $file->getClientOriginalExtension();
-            $destinationPath = base_path(GymSubscription::$uploads_path);
+        if (!request()->hasFile($input_file)) {
+            unset($inputs[$input_file]);
+            return $inputs;
+        }
 
-            $upload_success = $this->imageManager->read($file)->scale(width: 240)->toJpeg()->save($destinationPath.$filename);
+        $file = request()->file($input_file);
 
-//            $upload_success = $file->move($destinationPath, $filename);
-            if ($upload_success) {
-                $inputs[$input_file] = $filename;
-            }
-        } else {
+        if (!$file->isValid()) {
+            unset($inputs[$input_file]);
+            return $inputs;
+        }
+
+        $destinationPath = base_path(GymSubscription::$uploads_path);
+
+        if (!File::exists($destinationPath)) {
+            File::makeDirectory($destinationPath, 0777, true, true);
+        }
+
+        $extension = $file->getClientOriginalExtension();
+        $filename = uniqid() . time() . ($extension ? '.'.$extension : '.jpg');
+
+        try {
+            $image = $this->imageManager->read($file);
+            $image->scaleDown(1200, 1200)->toJpeg(90)->save($destinationPath.$filename);
+
+            $inputs[$input_file] = $filename;
+        } catch (\Throwable $e) {
+            report($e);
             unset($inputs[$input_file]);
         }
+
         return $inputs;
     }
 }

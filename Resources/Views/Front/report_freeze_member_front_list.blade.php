@@ -460,11 +460,11 @@
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-1">
                                         <!--begin::View Profile-->
-                                        <a href="{{route('sw.showMemberProfile', $member->id)}}" target="_blank" 
+                                        <!-- <a href="{{route('sw.showMemberProfile', $member->id)}}" target="_blank" 
                                            class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
                                            title="{{ trans('sw.member_profile')}}">
                                             <i class="ki-outline ki-eye fs-2"></i>
-                                        </a>
+                                        </a> -->
                                         <!--end::View Profile-->
                                         
                                         <!--begin::WhatsApp-->

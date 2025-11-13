@@ -119,6 +119,7 @@
 
     <!--begin::Card body-->
     <div class="card-body pt-0">
+        @php $storeOrderModals = []; @endphp
         <!--begin::Filter-->
         <div class="collapse" id="kt_store_orders_report_filter_collapse">
             <div class="card card-body mb-5">
@@ -190,40 +191,60 @@
                     </thead>
                     <tbody class="fw-semibold text-gray-600">
                         @foreach($orders as $key=> $order)
+                            @php
+                                $member = $order->member ?? null;
+                                $customerImage = $member && !empty($member->image) ? $member->image : asset('resources/assets/front/img/blank-image.svg');
+                                $customerName = $member->name ?? ($order->customer_name ?? 'N/A');
+                                $customerPhone = $member->phone ?? ($order->customer_phone ?? trans('sw.not_specified'));
+                                $orderProducts = collect($order->order_product ?? []);
+                                $amountPaid = (float) ($order->amount_paid ?? 0);
+                                $amountRemaining = (float) ($order->amount_remaining ?? 0);
+                                $amountBeforeDiscount = (float) ($order->amount_before_discount ?? 0);
+                                $discountValue = (float) ($order->discount_value ?? 0);
+                                $vatValue = (float) ($order->vat ?? 0);
+                                $isPaid = $amountRemaining <= 0.0001;
+                                $statusClass = $isPaid ? 'badge-light-success' : 'badge-light-warning';
+                                $statusLabel = trans($isPaid ? 'sw.completed' : 'sw.pending');
+                                $paymentTypeName = optional($order->pay_type)->name ?? trans('sw.not_specified');
+                                $orderDate = $order->created_at ? Carbon\Carbon::parse($order->created_at) : ($order->updated_at ? Carbon\Carbon::parse($order->updated_at) : null);
+                                $orderId = $order->id ?? null;
+                                $invoiceLink = $orderId ? route('sw.showStoreOrder', $orderId) : null;
+                                $loyaltyRedemption = $order->loyaltyRedemption ?? null;
+                            @endphp
                             <tr>
                                 <td>
-                                    <span class="fw-bold">{{ @$order->order_number }}</span>
+                                    <span class="fw-bold">#{{ $orderId ?? 'N/A' }}</span>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="symbol symbol-50px me-3">
-                                            <img alt="avatar" class="rounded-circle" src="{{@$order->customer->image ?? '/assets/media/avatars/blank.png'}}">
+                                            <img alt="avatar" class="rounded-circle" src="{{ $customerImage }}">
                                         </div>
                                         <div>
                                             <div class="text-gray-800 text-hover-primary fs-5 fw-bold">
-                                                {{ @$order->customer->name ?? 'N/A' }}
+                                                {{ $customerName }}
                                             </div>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="fw-bold">{{ @$order->customer->phone ?? 'N/A' }}</span>
+                                    <span class="fw-bold">{{ $customerPhone }}</span>
                                 </td>
                                 <td>
-                                    <span class="fw-bold">{{ @$order->total_amount }}</span>
+                                    <span class="fw-bold">{{ number_format($amountPaid, 2) }}</span>
                                 </td>
                                 <td>
-                                    <span class="badge badge-success">{{ trans('sw.completed')}}</span>
+                                    <span class="badge {{ $statusClass }}">{{ $statusLabel }}</span>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column">
                                         <div class="text-muted fw-bold d-flex align-items-center">
                                             <i class="ki-outline ki-calendar fs-6 text-muted me-2"></i>
-                                            <span>{{ @$order->created_at ? Carbon\Carbon::parse($order->created_at)->format('Y-m-d') : Carbon\Carbon::parse($order->updated_at)->format('Y-m-d')}}</span>
+                                            <span>{{ $orderDate ? $orderDate->format('Y-m-d') : '—' }}</span>
                                         </div>
                                         <div class="text-muted fs-7 d-flex align-items-center">
                                             <i class="ki-outline ki-time fs-6 text-muted me-2"></i>
-                                            <span>{{ @$order->created_at ? Carbon\Carbon::parse($order->created_at)->format('h:i a') : Carbon\Carbon::parse($order->updated_at)->format('h:i a') }}</span>
+                                            <span>{{ $orderDate ? $orderDate->format('h:i a') : '—' }}</span>
                                         </div>
                                     </div>
                                 </td>
@@ -231,18 +252,185 @@
                                     <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
                                         <!--begin::View-->
                                         <button class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
+                                                type="button"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#storeOrderModal_{{ $orderId }}"
                                                 title="{{ trans('admin.view')}}">
                                             <i class="ki-outline ki-eye fs-2"></i>
                                         </button>
                                         <!--end::View-->
+                                        @if($invoiceLink)
+                                            <a href="{{ $invoiceLink }}"
+                                               target="_blank"
+                                               class="btn btn-icon btn-bg-light btn-active-color-success btn-sm"
+                                               title="{{ trans('sw.invoice') }}">
+                                                <i class="ki-outline ki-printer fs-2"></i>
+                                            </a>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
+                            @php
+                                ob_start();
+                            @endphp
+                            <div class="modal fade" id="storeOrderModal_{{ $orderId }}" tabindex="-1" aria-labelledby="storeOrderModalLabel_{{ $orderId }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered modal-xl">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title d-flex align-items-center gap-2" id="storeOrderModalLabel_{{ $orderId }}">
+                                                <i class="ki-outline ki-shop fs-2 text-primary"></i>
+                                                <span>{{ trans('sw.order_number') }} #{{ $orderId }}</span>
+                                            </h5>
+                                            <button type="button" class="btn btn-sm btn-icon btn-light" data-bs-dismiss="modal" aria-label="{{ trans('sw.close') }}">
+                                                <i class="ki-outline ki-cross fs-2"></i>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row g-4 mb-6">
+                                                <div class="col-md-4">
+                                                    <div class="card border-light shadow-none h-100">
+                                                        <div class="card-body">
+                                                            <h6 class="fw-semibold text-gray-700 mb-3">{{ trans('sw.customer') }}</h6>
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="symbol symbol-45px me-3">
+                                                                    <img src="{{ $customerImage }}" alt="avatar" class="rounded-circle">
+                                                                </div>
+                                                                <div class="d-flex flex-column">
+                                                                    <span class="fw-bold text-gray-900">{{ $customerName }}</span>
+                                                                    <span class="text-muted fs-7">{{ $customerPhone }}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <div class="card border-light shadow-none h-100">
+                                                        <div class="card-body">
+                                                            <h6 class="fw-semibold text-gray-700 mb-3">{{ trans('sw.invoice_details') }}</h6>
+                                                            <div class="row g-3">
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.date') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ $orderDate ? $orderDate->format('Y-m-d') : '—' }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.time') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ $orderDate ? $orderDate->format('h:i a') : '—' }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.payment_type') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ $paymentTypeName }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.amount_before_discount') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ number_format($amountBeforeDiscount, 2) }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.discount') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ number_format($discountValue, 2) }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.vat') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ number_format($vatValue, 2) }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.amount_paid') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ number_format($amountPaid, 2) }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-sm-6 col-lg-4">
+                                                                    <div class="d-flex flex-column">
+                                                                        <span class="text-muted fs-7">{{ trans('sw.amount_remaining') }}</span>
+                                                                        <span class="fw-semibold text-gray-900">{{ number_format(max($amountRemaining, 0), 2) }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                @if($loyaltyRedemption)
+                                                                    <div class="col-sm-6 col-lg-4">
+                                                                        <div class="d-flex flex-column">
+                                                                            <span class="text-muted fs-7">{{ trans('sw.loyalty_points') }}</span>
+                                                                            <span class="fw-semibold text-gray-900">{{ number_format($loyaltyRedemption->points ?? 0) }}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="card border shadow-none">
+                                                <div class="card-body p-0">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-striped align-middle mb-0">
+                                                            <thead class="bg-light">
+                                                                <tr class="fw-semibold text-gray-600 text-uppercase fs-7">
+                                                                    <th>{{ trans('sw.product') }}</th>
+                                                                    <th class="text-center">{{ trans('sw.quantity') }}</th>
+                                                                    <th class="text-center">{{ trans('sw.price') }}</th>
+                                                                    <th class="text-end">{{ trans('sw.total') }}</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @if($orderProducts->count() > 0)
+                                                                    @foreach($orderProducts as $item)
+                                                                        @php
+                                                                            $productName = optional($item->product)->name ?? trans('sw.not_specified');
+                                                                            $quantity = (float) ($item->quantity ?? 0);
+                                                                            $unitPrice = (float) ($item->price ?? 0);
+                                                                            $lineTotal = $unitPrice * $quantity;
+                                                                        @endphp
+                                                                        <tr>
+                                                                            <td>{{ $productName }}</td>
+                                                                            <td class="text-center">{{ number_format($quantity, 2) }}</td>
+                                                                            <td class="text-center">{{ number_format($unitPrice, 2) }}</td>
+                                                                            <td class="text-end">{{ number_format($lineTotal, 2) }}</td>
+                                                                        </tr>
+                                                                    @endforeach
+                                                                @else
+                                                                    <tr>
+                                                                        <td colspan="4" class="text-center text-muted py-6">{{ trans('admin.no_records') }}</td>
+                                                                    </tr>
+                                                                @endif
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                                                <i class="ki-outline ki-cross fs-4 me-1"></i>{{ trans('sw.close') }}
+                                            </button>
+                                            @if($invoiceLink)
+                                                <a href="{{ $invoiceLink }}" target="_blank" class="btn btn-primary">
+                                                    <i class="ki-outline ki-printer fs-4 me-1"></i>{{ trans('sw.view_invoice') }}
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @php
+                                $storeOrderModals[] = ob_get_clean();
+                            @endphp
                         @endforeach
                     </tbody>
                 </table>
             </div>
             <!--end::Table-->
+            {!! implode('', $storeOrderModals) !!}
             
             <!--begin::Pagination-->
             <div class="d-flex flex-stack flex-wrap pt-10">

@@ -96,15 +96,26 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
     }
 
     public function updatePotentialMember(){
-        $potential_members= GymPotentialMember::branch()->select('id', 'phone', 'status')->where("status", TypeConstants::NotFound)->get();
-        if (is_array($$potential_members) && count($$potential_members) > 0){
-            $potential_member_phones = collect($potential_members)->pluck('phone')->toArray();
-            $members = GymMember::branch()->select('id', 'phone')->whereIn('phone', $potential_member_phones)->count();
-            if($members > 0){
-                foreach ($potential_members as $potential_member){
-                    if(GymMember::branch()->where('phone', $potential_member->phone)->first()){
-                        $potential_member->status = TypeConstants::Found;
-                        $potential_member->save();
+        $potential_members = GymPotentialMember::branch()
+            ->select('id', 'phone', 'status')
+            ->where("status", TypeConstants::NotFound)
+            ->get();
+        if ($potential_members->isNotEmpty()){
+            $potential_member_phones = $potential_members->pluck('phone')->filter()->unique()->toArray();
+            if(!empty($potential_member_phones)){
+                $memberPhones = GymMember::branch()
+                    ->select('phone')
+                    ->whereIn('phone', $potential_member_phones)
+                    ->pluck('phone')
+                    ->toArray();
+
+                if(!empty($memberPhones)){
+                    $memberPhones = array_flip($memberPhones);
+                    foreach ($potential_members as $potential_member){
+                        if(isset($memberPhones[$potential_member->phone])){
+                            $potential_member->status = TypeConstants::Found;
+                            $potential_member->save();
+                        }
                     }
                 }
             }

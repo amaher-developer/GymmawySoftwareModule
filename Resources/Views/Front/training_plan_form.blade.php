@@ -62,7 +62,7 @@
                     <div class="d-flex align-items-start mb-7">
                         <div class="symbol symbol-40px me-5">
                             <span class="symbol-label bg-light-success">
-                                <i class="ki-outline ki-barbell fs-1 text-success"></i>
+                                <i class="la la-dumbbell fs-1 text-success"></i>
                             </span>
                         </div>
                         <div class="flex-grow-1">

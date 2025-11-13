@@ -1338,30 +1338,77 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     public function reportStoreList(){
         $title = trans('sw.store_report');
-        $products = GymStoreOrderProduct::branch()->selectRaw('product_id, sum(price) price, sum(quantity) products')
-            ->with(['product' => function ($q){
+        $search_query = request()->query();
+        $from = request('from');
+        $to = request('to');
+        $search = request('search');
+
+        $productsQuery = GymStoreOrderProduct::branch()
+            ->selectRaw('product_id, SUM(price) AS price, SUM(quantity) AS products')
+            ->with(['product' => function ($q) {
                 $q->withTrashed();
             }])
             ->groupBy('product_id')
-            ->orderBy('products', 'desc')
-                ->get();
+            ->orderByDesc('products');
 
-        $orders = GymStoreOrder::branch()->selectRaw('year(created_at) year, month(created_at) month_number, sum(amount_paid) amount_paid, count(id) invoice_count')
-            ->groupBy('year', 'month_number')
-            ->orderBy('year', 'desc')
-            ->orderBy('month_number', 'asc')
-            ->having('year', '>=', Carbon::now()->toDateString());
-            
-        if($this->limit) {
-            $orders = $orders->paginate($this->limit);
+        $ordersQuery = GymStoreOrder::branch()
+            ->with([
+                'member' => function ($q) {
+                    $q->withTrashed();
+                },
+                'order_product.product' => function ($q) {
+                    $q->withTrashed();
+                },
+                'pay_type',
+                'loyaltyRedemption',
+                'zatcaInvoice',
+            ])
+            ->orderByDesc('created_at');
+
+        if ($from) {
+            $fromDate = Carbon::parse($from)->format('Y-m-d');
+            $productsQuery->whereDate('created_at', '>=', $fromDate);
+            $ordersQuery->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($to) {
+            $toDate = Carbon::parse($to)->format('Y-m-d');
+            $productsQuery->whereDate('created_at', '<=', $toDate);
+            $ordersQuery->whereDate('created_at', '<=', $toDate);
+        }
+
+        if ($search) {
+            $ordersQuery->where(function ($query) use ($search) {
+                $searchValue = trim($search);
+
+                if (str_starts_with($searchValue, '#')) {
+                    $query->where('id', (int) ltrim($searchValue, '#'));
+                    return;
+                }
+
+                if (is_numeric($searchValue)) {
+                    $numericValue = (int) $searchValue;
+                    $query->where('id', $numericValue);
+                } else {
+                    $query->whereHas('member', function ($memberQuery) use ($searchValue) {
+                        $memberQuery->where('name', 'like', '%' . $searchValue . '%')
+                            ->orWhere('phone', 'like', '%' . $searchValue . '%');
+                    });
+                }
+            });
+        }
+
+        $products = $productsQuery->get();
+
+        if ($this->limit) {
+            $orders = $ordersQuery->paginate($this->limit)->onEachSide(1);
             $total = $orders->total();
         } else {
-            $orders = $orders->get();
+            $orders = $ordersQuery->get();
             $total = $orders->count();
         }
 
-        $search_query = request()->query();
-        return view('software::Front.report_store_front_list', compact('search_query', 'orders','products','title', 'total'));
+        return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'title', 'total'));
 
     }
 

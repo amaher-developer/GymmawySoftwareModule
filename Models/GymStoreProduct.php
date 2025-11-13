@@ -62,10 +62,39 @@ class GymStoreProduct extends GenericModel
     public function getImageAttribute()
     {
         $image = $this->getRawOriginal('image');
-        if($image)
-            return asset(self::$uploads_path.$image);
-        elseif(@env('APP_WEBSITE'))
-            return @env('APP_WEBSITE').'placeholder_black.png';
+        if (!$image) {
+            if (@env('APP_WEBSITE')) {
+                return @env('APP_WEBSITE') . 'placeholder_black.png';
+            }
+            return asset('resources/assets/front/img/blank-image.svg');
+        }
+
+        if (filter_var($image, FILTER_VALIDATE_URL)) {
+            return $image;
+        }
+
+        $normalized = str_replace('\\', '/', $image);
+
+        if (str_starts_with($normalized, '/')) {
+            return asset(ltrim($normalized, '/'));
+        }
+
+        $basename = basename($normalized);
+        if ($basename && $basename !== '.' && $basename !== '..') {
+            $relativePath = self::$uploads_path.$basename;
+            $absolutePublicPath = asset($relativePath);
+            $absoluteBasePath = base_path($relativePath);
+
+            if (file_exists($absolutePublicPath) || file_exists($absoluteBasePath)) {
+                return asset($relativePath);
+            }
+
+            return asset($relativePath);
+        }
+
+        if (@env('APP_WEBSITE')) {
+            return @env('APP_WEBSITE') . 'placeholder_black.png';
+        }
 
         return asset('resources/assets/front/img/blank-image.svg');
     }

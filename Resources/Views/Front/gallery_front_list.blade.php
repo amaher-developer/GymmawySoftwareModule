@@ -21,7 +21,14 @@
 @endsection
 @section('styles')
     <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/daterangepicker-bs3.css"/>
-@endsection
+<style>
+    .setting-images {
+        height: 200px;
+        max-width: 200px;
+        object-fit: cover;
+    }
+    </style>
+    @endsection
 @section('page_body')
 
 <!--begin::Gallery-->

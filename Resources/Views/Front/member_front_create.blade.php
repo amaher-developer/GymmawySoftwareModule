@@ -74,7 +74,7 @@
 @section('page_body')
     @php
         $billingSettings = $billingSettings ?? [];
-        $invoice = $invoice ?? (isset($member) && $member->id ? optional($member->billingInvoices()->latest()->first()) : null);
+        $invoice = $invoice ?? null;
     @endphp
     <!--begin::Member Create Form-->
     <form method="post" action="" class="form" enctype="multipart/form-data">

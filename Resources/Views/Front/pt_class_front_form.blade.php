@@ -35,7 +35,12 @@
     <!-- BEGIN PAGE LEVEL PLUGINS -->
     <link href="{{asset('resources/assets/admin/global/plugins/bootstrap-colorpicker/css/colorpicker.css')}}" rel="stylesheet" type="text/css" />
     <link href="{{asset('resources/assets/admin/global/plugins/jquery-minicolors/jquery.minicolors.css')}}" rel="stylesheet" type="text/css" />
-@endsection
+<style>
+    .form-check-custom {
+        padding-bottom: 10px;
+    }
+    </style>
+    @endsection
 @section('form_title') {{ @$title }} @endsection
 @section('page_body')
     <!--begin::PT Class Form-->

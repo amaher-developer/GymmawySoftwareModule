@@ -84,8 +84,8 @@
                         <!--begin::File input-->
                         <input type="file" name="image" class="form-control mb-2" id="gym_image" />
                         <label for="gym_image" style="cursor: pointer;">
-                            <img id="preview" src="https://gymmawy.com/resources/assets/front/img/blank-image.svg"
-                                 style="height: 120px;width: 320px;object-fit: contain;border: 1px solid #c2cad8;object-fit: cover"
+                            <img id="preview" src="{{ $subscription->image ?? asset('resources/assets/front/img/blank-image.svg') }}"
+                                 style="height: 120px;width: 120px;object-fit: contain;border: 1px solid #c2cad8;object-fit: cover"
                                  alt="preview image"/>
                         </label>
                         <!--end::File input-->

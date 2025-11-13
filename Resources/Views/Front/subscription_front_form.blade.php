@@ -148,7 +148,7 @@
                 <div class="card-body pt-0">
                     <div class="row g-5">
                         <!--begin::Price-->
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="fv-row">
                                 <label class="required form-label">{{ trans('sw.price')}}</label>
                                 <input type="number" name="price" class="form-control" 
@@ -160,7 +160,7 @@
                         <!--end::Price-->
                         
                         <!--begin::Discount-->
-                        <div class="col-md-4">
+                        <!-- <div class="col-md-4">
                             <div class="fv-row">
                                 <label class="form-label">{{ trans('sw.discount')}}</label>
                                 <input type="number" name="discount" class="form-control" 
@@ -168,11 +168,11 @@
                                        value="{{ old('discount', $subscription->discount) }}" 
                                        step="0.01" min="0" />
                             </div>
-                        </div>
+                        </div> -->
                         <!--end::Discount-->
                         
                         <!--begin::Period-->
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="fv-row">
                                 <label class="required form-label">{{ trans('sw.period')}} ({{ trans('sw.days')}})</label>
                                 <input type="number" name="period" class="form-control" 
@@ -312,7 +312,18 @@
                                             'thursday' => trans('sw.thursday'),
                                             'friday' => trans('sw.friday'),
                                         ];
-                                        $selectedDays = old('time_week', $subscription->time_week ? json_decode($subscription->time_week, true) : []);
+                                        $timeWeekValue = $subscription->time_week;
+                                        if (is_string($timeWeekValue)) {
+                                            $decodedTimeWeek = $timeWeekValue !== '' ? json_decode($timeWeekValue, true) : [];
+                                        } elseif (is_array($timeWeekValue)) {
+                                            $decodedTimeWeek = $timeWeekValue;
+                                        } else {
+                                            $decodedTimeWeek = [];
+                                        }
+                                        if (!is_array($decodedTimeWeek)) {
+                                            $decodedTimeWeek = [];
+                                        }
+                                        $selectedDays = old('time_week', $decodedTimeWeek ?: []);
                                     @endphp
                                     @foreach($weekDays as $key => $day)
                                         <div class="form-check form-check-custom form-check-solid day-checkbox-item">

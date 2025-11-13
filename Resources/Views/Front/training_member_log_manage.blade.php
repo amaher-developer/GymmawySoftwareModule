@@ -279,7 +279,7 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center p-3 bg-light-success rounded">
-                                        <i class="ki-outline {{ $log->details->type == 1 ? 'ki-barbell' : 'ki-apple' }} fs-2x text-success me-3"></i>
+                                        <i class="{{ $log->details->type == 1 ? 'la la-dumbbell text-success' : 'la la-apple text-warning' }} fs-2x me-3"></i>
                                         <div>
                                             <div class="text-muted fs-7">{{ trans('sw.plan_title') }}</div>
                                             <div class="fw-bold text-gray-900">{{ $log->details->title }}</div>
