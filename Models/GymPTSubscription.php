@@ -65,18 +65,44 @@ class GymPTSubscription extends GenericModel
         return asset('resources/assets/front/img/blank-image.svg');
     }
 
-    public function pt_classes()
+    public function classes()
     {
         return $this->hasMany(GymPTClass::class, 'pt_subscription_id');
     }
+
+    public function pt_classes()
+    {
+        return $this->classes();
+    }
+
     public function pt_members()
     {
         return $this->hasMany(GymPTMember::class, 'member_id');
     }
 
+    public function classTrainers()
+    {
+        return $this->hasManyThrough(
+            GymPTClassTrainer::class,
+            GymPTClass::class,
+            'pt_subscription_id',
+            'class_id'
+        );
+    }
+
+    public function assignedTrainers()
+    {
+        return $this->classTrainers()->with('trainer')->get()->pluck('trainer')->filter()->unique('id')->values();
+    }
+
     public function pt_trainers()
     {
-        return $this->belongsToMany(GymPTTrainer::class,'sw_gym_pt_subscription_trainer', 'pt_subscription_id', 'pt_trainer_id')->withTimestamps();
+        return $this->belongsToMany(
+            GymPTTrainer::class,
+            'sw_gym_pt_subscription_trainer',
+            'pt_subscription_id',
+            'pt_trainer_id'
+        )->withTimestamps();
     }
     
     public function getTrainerAttribute()

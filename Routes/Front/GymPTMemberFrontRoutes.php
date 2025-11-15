@@ -8,13 +8,13 @@ Route::prefix('pt/member')
             ->get('/', 'Front\GymPTMemberFrontController@index');
         Route::name('sw.createPTMember')
             ->get('create', 'Front\GymPTMemberFrontController@create');
-        Route::name('sw.createPTMember')
+        Route::name('sw.storePTMember')
             ->post('create', 'Front\GymPTMemberFrontController@store');
 
         Route::name('sw.editPTMember')
             ->get('{member}/edit', 'Front\GymPTMemberFrontController@edit');
-        Route::name('sw.editPTMember')
-            ->post('{member}/edit', 'Front\GymPTMemberFrontController@update');
+        Route::name('sw.updatePTMember')
+            ->match(['put', 'post'], '{member}/edit', 'Front\GymPTMemberFrontController@update');
         Route::name('sw.deletePTMember')
             ->get('{member}/delete', 'Front\GymPTMemberFrontController@destroy');
 

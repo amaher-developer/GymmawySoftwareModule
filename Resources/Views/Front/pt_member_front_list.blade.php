@@ -230,8 +230,8 @@
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-user-tick fs-6 me-2"></i>{{ trans('sw.pt_trainer')}}
                             </th>
-                            <th class="min-w-100px text-nowrap">
-                                <i class="ki-outline ki-chart-simple fs-6 me-2"></i>{{ trans('sw.pt_classes')}}
+                            <th class="min-w-120px text-nowrap">
+                                <i class="ki-outline ki-chart-simple fs-6 me-2"></i>{{ trans('sw.sessions_used')}}
                             </th>
                             <th class="min-w-120px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.joining_date')}}
@@ -282,7 +282,17 @@
                                 @endif
                             </td>
                             <td> {{ @$member->pt_trainer->name}}</td>
-                            <td> <span style="vertical-align: baseline;height: 10px;padding: 3px 4px;" class="badge @if(@$member->member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Coming) badge-gray  @elseif(@$member->classes > $member->visits) badge-success @else badge-danger @endif"> </span> {{ $member->visits }} / {{ $member->classes }}</td>
+                            @php
+                                $sessionsTotal = $member->sessions_total ?? $member->classes ?? 0;
+                                $sessionsUsed = $member->sessions_used;
+                                $sessionsRemaining = $member->sessions_remaining ?? max($sessionsTotal - $sessionsUsed, 0);
+                            @endphp
+                            <td>
+                                <span style="vertical-align: baseline;height: 10px;padding: 3px 4px;"
+                                      class="badge @if(@$member->status == \Modules\Software\Classes\TypeConstants::Coming) badge-gray  @elseif($sessionsRemaining > 0) badge-success @else badge-danger @endif">
+                                </span>
+                                {{ $sessionsUsed }} / {{ $sessionsTotal ?: '-' }}
+                            </td>
                             <td><i class="fa fa-calendar text-muted"></i> {{ \Carbon\Carbon::parse($member->joining_date)->format('Y-m-d') }}
                             </td>
                             <td><i class="fa fa-calendar text-muted"></i> {{ \Carbon\Carbon::parse(@$member->expire_date)->format('Y-m-d')  }}

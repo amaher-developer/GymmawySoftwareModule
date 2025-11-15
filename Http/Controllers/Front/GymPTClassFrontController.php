@@ -8,24 +8,35 @@ use Modules\Software\Http\Requests\GymActivityRequest;
 use Modules\Software\Http\Requests\GymPTClassRequest;
 use Modules\Software\Models\GymActivity;
 use Modules\Software\Models\GymPTClass;
+use Modules\Software\Models\GymPTClassTrainer;
 use Modules\Software\Models\GymPTSubscription;
+use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Repositories\GymPTClassRepository;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Carbon\Carbon;
 use Illuminate\Container\Container as Application;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Schema;
 
 class GymPTClassFrontController extends GymGenericFrontController
 {
     public $ClassRepository;
     public $fileName;
 
+    protected bool $classTrainerHasScheduleColumn;
+    protected bool $classTrainerHasDateFromColumn;
+    protected bool $classTrainerHasDateToColumn;
+
     public function __construct()
     {
         parent::__construct();
         $this->ClassRepository=new GymPTClassRepository(new Application);
         $this->ClassRepository=$this->ClassRepository->branch();
+
+        $this->classTrainerHasScheduleColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'schedule');
+        $this->classTrainerHasDateFromColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'date_from');
+        $this->classTrainerHasDateToColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'date_to');
     }
 
 
@@ -190,14 +201,25 @@ class GymPTClassFrontController extends GymGenericFrontController
     {
         $title = trans('sw.pt_class_add');
         $subscriptions = GymPTSubscription::branch()->get();
-        return view('software::Front.pt_class_front_form', ['class' => new GymPTClass(), 'subscriptions' => $subscriptions,'title'=>$title]);
+        $trainers = GymPTTrainer::branch()->withTrashed()->orderBy('name')->get();
+
+        $class = new GymPTClass();
+        $class->setRelation('classTrainers', collect());
+
+        return view('software::Front.pt_class_front_form', [
+            'class' => $class,
+            'subscriptions' => $subscriptions,
+            'trainers' => $trainers,
+            'title' => $title,
+            'mainSettings' => $this->mainSettings,
+        ]);
     }
 
     public function store(GymPTClassRequest $request)
     {
         $class_inputs = $this->prepare_inputs($request->except(['_token']));
-        $class_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $class = $this->ClassRepository->create($class_inputs);
+        $this->syncClassTrainers($class, $request->input('class_trainers', []));
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_added'),
@@ -211,21 +233,36 @@ class GymPTClassFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $class =$this->ClassRepository->withTrashed()->find($id);
+        $class = $this->ClassRepository
+            ->with(['classTrainers.trainer' => function ($query) {
+                $query->withTrashed();
+            }])
+            ->withTrashed()
+            ->find($id);
         $title = trans('sw.pt_class_edit');
 
         $subscriptions = GymPTSubscription::branch()->get();
-        return view('software::Front.pt_class_front_form', ['class' => $class,'title'=>$title, 'subscriptions'=>$subscriptions]);
+        $trainers = GymPTTrainer::branch()->withTrashed()->orderBy('name')->get();
+
+        if ($class) {
+            $class->loadMissing('classTrainers.trainer');
+        }
+
+        return view('software::Front.pt_class_front_form', [
+            'class' => $class,
+            'title' => $title,
+            'subscriptions' => $subscriptions,
+            'trainers' => $trainers,
+            'mainSettings' => $this->mainSettings,
+        ]);
     }
 
     public function update(GymPTClassRequest $request, $id)
     {
         $class =$this->ClassRepository->withTrashed()->find($id);
         $class_inputs = $this->prepare_inputs($request->except(['_token']));
-        $class_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
-        $class_inputs['is_web'] = @(int)$class_inputs['is_web'];
-        $class_inputs['is_mobile'] = @(int)$class_inputs['is_mobile'];
         $class->update($class_inputs);
+        $this->syncClassTrainers($class, $request->input('class_trainers', []));
 
         $notes = trans('sw.edit_pt_class', ['name' => $class->pt_subscription->name]);
 
@@ -266,6 +303,39 @@ class GymPTClassFrontController extends GymGenericFrontController
         // Handle text fields - convert null/empty values to empty strings to avoid null constraint violations
         $inputs['content_ar'] = isset($inputs['content_ar']) && $inputs['content_ar'] !== null ? $inputs['content_ar'] : '';
         $inputs['content_en'] = isset($inputs['content_en']) && $inputs['content_en'] !== null ? $inputs['content_en'] : '';
+
+        $inputs['is_system'] = array_key_exists('is_system', $inputs) ? 1 : 0;
+        $inputs['is_mobile'] = array_key_exists('is_mobile', $inputs) ? 1 : 0;
+        $inputs['is_web'] = array_key_exists('is_web', $inputs) ? 1 : 0;
+
+        $totalSessions = (int) ($inputs['total_sessions'] ?? 0);
+        if ($totalSessions <= 0 && isset($inputs['classes'])) {
+            $totalSessions = (int) $inputs['classes'];
+        }
+        $inputs['total_sessions'] = $totalSessions;
+        $inputs['classes'] = $totalSessions;
+
+        $inputs['max_members'] = isset($inputs['max_members']) && $inputs['max_members'] !== ''
+            ? (int) $inputs['max_members']
+            : null;
+        $inputs['member_limit'] = $inputs['max_members'];
+
+        $classType = $inputs['class_type'] ?? 'private';
+        $inputs['is_mixed'] = $classType === 'mixed';
+        $inputs['pricing_type'] = $inputs['pricing_type'] ?? 'per_member';
+        $inputs['is_active'] = array_key_exists('is_active', $inputs) ? (bool)$inputs['is_active'] : true;
+
+        if (isset($inputs['schedule'])) {
+            if (is_string($inputs['schedule'])) {
+                $decoded = json_decode($inputs['schedule'], true) ?: [];
+            } elseif (is_array($inputs['schedule'])) {
+                $decoded = $inputs['schedule'];
+            } else {
+                $decoded = [];
+            }
+            $inputs['schedule'] = $decoded;
+            $inputs['reservation_details'] = $decoded;
+        }
         
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
@@ -273,4 +343,75 @@ class GymPTClassFrontController extends GymGenericFrontController
         return $inputs;
     }
 
+    private function syncClassTrainers(GymPTClass $class, array $trainerPayloads): void
+    {
+        $existing = $class->classTrainers()->withTrashed()->get()->keyBy('id');
+        $processedIds = [];
+        $hasMeaningfulRow = false;
+
+        foreach ($trainerPayloads as $payload) {
+            $assignmentId = $payload['id'] ?? null;
+            $trainerId = $payload['trainer_id'] ?? null;
+            $shouldDelete = !empty($payload['_delete']);
+
+            if (!$trainerId && !$assignmentId) {
+                continue;
+            }
+
+            $hasMeaningfulRow = true;
+
+            if ($assignmentId && isset($existing[$assignmentId])) {
+                $assignment = $existing[$assignmentId];
+                if ($shouldDelete) {
+                    $assignment->delete();
+                    continue;
+                }
+                if ($assignment->trashed()) {
+                    $assignment->restore();
+                }
+            } else {
+                if ($shouldDelete || !$trainerId) {
+                    continue;
+                }
+                $assignment = new GymPTClassTrainer();
+                $assignment->class_id = $class->id;
+                $assignment->branch_setting_id = $class->branch_setting_id ?? ($this->user_sw->branch_setting_id ?? null);
+            }
+
+            $assignment->trainer_id = $trainerId;
+            $assignment->session_type = $payload['session_type'] ?? null;
+            $assignment->session_count = (int) ($payload['session_count'] ?? 0);
+            $assignment->commission_rate = (float) ($payload['commission_rate'] ?? 0);
+            $assignment->is_active = array_key_exists('is_active', $payload) ? (bool) $payload['is_active'] : true;
+
+            if ($this->classTrainerHasScheduleColumn && array_key_exists('schedule', $payload)) {
+                $schedule = $payload['schedule'];
+                if (is_string($schedule) && $schedule !== '') {
+                    $schedule = json_decode($schedule, true) ?: [];
+                }
+                $assignment->schedule = $schedule ?: null;
+            }
+
+            if ($this->classTrainerHasDateFromColumn && array_key_exists('date_from', $payload)) {
+                $assignment->date_from = $payload['date_from'] ?: null;
+            }
+
+            if ($this->classTrainerHasDateToColumn && array_key_exists('date_to', $payload)) {
+                $assignment->date_to = $payload['date_to'] ?: null;
+            }
+
+            $assignment->save();
+            $processedIds[] = $assignment->id;
+        }
+
+        if ($hasMeaningfulRow) {
+            if (!empty($processedIds)) {
+                $class->classTrainers()
+                    ->whereNotIn('id', $processedIds)
+                    ->delete();
+            } else {
+                $class->classTrainers()->delete();
+            }
+        }
+    }
 }

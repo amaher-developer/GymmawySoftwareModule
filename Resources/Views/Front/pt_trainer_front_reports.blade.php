@@ -305,11 +305,9 @@
                     eventLimit: true, // allow "more" link when too many events
                     // Delete event
                     eventClick: function (arg) {
-
-
                         let url  = "{{route('sw.listPTMemberInClassCalendar', ['pt_class_id' => '@@pt_class_id', 'pt_trainer_id' => '@@pt_trainer_id'])}}";
-                        url = url.replace('@@pt_class_id', arg.pt_class_id);
-                        url = url.replace('@@pt_trainer_id', arg.pt_trainer_id);
+                        url = url.replace('@@pt_class_id', arg.pt_class_id ?? '');
+                        url = url.replace('@@pt_trainer_id', arg.pt_trainer_id ?? '');
                         $.ajax({
                             url: url,
                             cache: false,
@@ -322,11 +320,13 @@
                                 let result = '';
                                 let date_status = '';
                                 let response_data = $.parseJSON(response);
-                                if(response_data.result.length > 0){
+                                if(response_data.result && response_data.result.length > 0){
                                     for (let i = 0; i < response_data.result.length; i++){
+                                        var item = response_data.result[i];
+                                        var memberName = item.member && item.member.name ? item.member.name : '';
                                         result+= '<tr>';
                                         result+= '<td>' + (i+1) + '</td>';
-                                        result+= '<td><i class="fa fa-user text-muted"></i> ' + (response_data.result[i].member.name || '' )+ '</td>';
+                                        result+= '<td><i class="fa fa-user text-muted"></i> ' + memberName + '</td>';
                                         result+= '<td>' + arg.title + '</td>';
                                         result+= '</tr>';
                                     }
@@ -348,11 +348,12 @@
 
                     },
                     events: [
-                            @foreach($reservations as $reservation)
+                        @foreach($reservations as $reservation)
                         {
                             title: '{{$reservation['title']}}',
                             pt_class_id: '{{$reservation['pt_class_id']}}',
                             pt_trainer_id: '{{$reservation['pt_trainer_id']}}',
+                            session_token: '{{$reservation['session_token'] ?? ''}}',
                             start: '{{$reservation['start']}}',
                             end: '{{$reservation['end']}}',
                             backgroundColor: '{{$reservation['background_color']}}',

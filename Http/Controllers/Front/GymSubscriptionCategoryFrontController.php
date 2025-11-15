@@ -229,7 +229,11 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
             $filename = rand(0, 20000) . time() . '.' . $file->getClientOriginalExtension();
             $destinationPath = base_path(GymSubscriptionCategory::$uploads_path);
 
-            $upload_success = $this->imageManager->read($file)->scale(width: 360))->save($destinationPath.$filename);
+            $upload_success = $this->imageManager
+                ->read($file)
+                ->scale(width: 360)
+                ->toJpeg()
+                ->save($destinationPath . $filename);
 
             if ($upload_success) {
                 $inputs[$input_file] = $filename;

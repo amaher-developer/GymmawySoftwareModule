@@ -18,6 +18,9 @@ Route::prefix('pt/trainer')
         Route::name('sw.deletePTTrainer')
             ->get('{trainer}/delete', 'Front\GymPTTrainerFrontController@destroy');
 
+        Route::name('sw.pendingPTTrainerCommissions')
+            ->get('{trainer}/pending-commissions', 'Front\GymPTTrainerFrontController@pendingCommissions');
+
         // PT Trainer Subscription routes
         Route::name('sw.createPTTrainerSubscription')
             ->get('subscription/create', 'Front\GymPTTrainerFrontController@createSubscription');

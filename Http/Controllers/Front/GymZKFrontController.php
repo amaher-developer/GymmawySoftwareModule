@@ -15,15 +15,20 @@ class GymZKFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->bio_base_url = 'http://127.0.0.1:8088';
+
+        if (app()->runningInConsole()) {
+            $this->token = null;
+            return;
+        }
+
         $this->token = $this->login();
     }
 
     public function login(){
         $endpoint = $this->bio_base_url . "/jwt-api-token-auth/";
         $headers = [
-            "Accept: application/json",
-            "Content-Type: application/json",
-//            "X-CSRF-TOKEN: ".csrf_token(),
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
         ];
         $data = [
             "username"=>"admin",

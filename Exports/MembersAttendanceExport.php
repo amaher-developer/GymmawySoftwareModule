@@ -87,9 +87,11 @@ class MembersAttendanceExport implements FromCollection, WithHeadings, WithMappi
             else if($key == 'pt_subscription')
                 $arr[] = $data['pt_subscription']['name'];
             else if($key == 'pt_classes')
-                $arr[] =  $data['pt_member_subscription']['classes'];
+                $arr[] =  $data['pt_member_subscription']['sessions_total'] ?? $data['pt_member_subscription']['classes'];
+            else if($key == 'pt_sessions_used')
+                $arr[] =  $data['pt_member_subscription']['sessions_used'] ?? $data['pt_member_subscription']['visits'];
             else if($key == 'pt_visits')
-                $arr[] =  $data['pt_member_subscription']['visits'];
+                $arr[] =  $data['pt_member_subscription']['sessions_used'] ?? $data['pt_member_subscription']['visits'];
             else if($key == 'pt_amount_remaining')
                 $arr[] =  $data['pt_member_subscription']['amount_remaining'];
             else if($key == 'pt_joining_date')

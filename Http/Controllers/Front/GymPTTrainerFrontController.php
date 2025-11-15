@@ -5,27 +5,27 @@ namespace Modules\Software\Http\Controllers\Front;
 use Modules\Generic\Http\Controllers\Front\GenericFrontController;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Exports\RecordsExport;
-use Modules\Software\Http\Requests\GymActivityRequest;
 use Modules\Software\Http\Requests\GymPTTrainerRequest;
-use Modules\Software\Models\GymActivity;
 use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymPTClass;
-use Modules\Software\Models\GymPTMember;
 use Modules\Software\Models\GymPTSubscription;
-use Modules\Software\Models\GymPTSubscriptionTrainer;
 use Modules\Software\Models\GymPTTrainer;
+use Modules\Software\Models\GymPTClassTrainer;
+use Modules\Software\Models\GymPTMemberAttendee;
+use Modules\Software\Models\GymPTCommission;
 use Modules\Software\Models\GymUserLog;
 use Modules\Software\Repositories\GymPTTrainerRepository;
-use Modules\Software\Repositories\GymTrainerRepository;
+use Modules\Software\Services\PT\PTCommissionService;
+use Modules\Software\Services\PT\PTSessionService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use Illuminate\Container\Container as Application;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Maatwebsite\Excel\Facades\Excel;
@@ -35,6 +35,8 @@ class GymPTTrainerFrontController extends GymGenericFrontController
     public $TrainerRepository;
     private $imageManager;
     public $fileName;
+    protected PTCommissionService $commissionService;
+    protected PTSessionService $sessionService;
 
     public function __construct()
     {
@@ -42,42 +44,90 @@ class GymPTTrainerFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
         $this->TrainerRepository=new GymPTTrainerRepository(new Application);
         $this->TrainerRepository=$this->TrainerRepository->branch();
+        $this->commissionService = app(PTCommissionService::class);
+        $this->sessionService = app(PTSessionService::class);
     }
 
 
     public function index()
     {
         $title = trans('sw.pt_trainers');
-        $this->request_array = ['search'];
-        $request_array = $this->request_array;
-        foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
-        if(request('trashed'))
-        {
-            $trainers = $this->TrainerRepository->with(['pt_subscriptions', 'pt_members.pt_class.pt_subscription' => function($q){ $q->withTrashed();}, 'pt_members.member' => function($q){ $q->withTrashed();}, 'pt_members_trainer_amount_status_false.member' => function ($q){$q->withTrashed();},  'pt_members_trainer_amount_status_false' => function ($q){ $q->withTrashed();}])->onlyTrashed()->orderBy('id', 'DESC');
+        $this->request_array = ['search', 'from', 'to', 'class_id'];
+        $search = request('search');
+        $trashed = request()->boolean('trashed');
+
+        $commissionFilters = [
+            'class_id' => request('class_id') ?: null,
+            'from' => request('from') ?: null,
+            'to' => request('to') ?: null,
+        ];
+        if (@$this->user_sw->branch_setting_id) {
+            $commissionFilters['branch_setting_id'] = $this->user_sw->branch_setting_id;
         }
-        else
-        {
-            $trainers = $this->TrainerRepository->with(['pt_subscriptions', 'pt_members.pt_class.pt_subscription' => function($q){ $q->withTrashed();}, 'pt_members.member' => function($q){ $q->withTrashed();}, 'pt_members_trainer_amount_status_false.member' => function ($q){$q->withTrashed();}, 'pt_members_trainer_amount_status_false.pt_class' => function ($q){ $q->withTrashed();}])->orderBy('id', 'DESC');
+        $commissionFilters = array_filter($commissionFilters, static function ($value) {
+            return !is_null($value) && $value !== '';
+        });
+
+        $pendingSummary = $this->commissionService->summarizePending($commissionFilters);
+        $groupedPending = $pendingSummary['grouped'] instanceof \Illuminate\Support\Collection
+            ? $pendingSummary['grouped']
+            : collect($pendingSummary['grouped']);
+        $pendingTotals = [
+            'amount' => round($pendingSummary['total_amount'], 2),
+            'count' => $pendingSummary['total_count'],
+        ];
+
+        $trainersQuery = $this->TrainerRepository
+            ->orderBy('id', 'DESC');
+
+        if ($trashed) {
+            $trainersQuery->onlyTrashed();
         }
 
-        //apply filters
-        $trainers->when($search, function ($query) use ($search) {
-            $query->where(function($query) use ($search) {
-                $query->where('id', '=', (int)$search);
-                $query->orWhere('name', 'like', "%" . $search . "%");
+        $trainersQuery->when($search, function ($query) use ($search) {
+            $query->where(function($innerQuery) use ($search) {
+                $innerQuery->where('id', '=', (int) $search)
+                    ->orWhere('name', 'like', "%" . $search . "%");
             });
         });
+
         $search_query = request()->query();
 
         if ($this->limit) {
-            $trainers = $trainers->paginate($this->limit);
-            $total = $trainers->total();
+            $trainers = $trainersQuery->paginate($this->limit);
+            $collection = collect($trainers->items());
         } else {
-            $trainers = $trainers->get();
-            $total = $trainers->count();
+            $collection = $trainersQuery->get();
+            $trainers = $collection;
         }
 
-        return view('software::Front.pt_trainer_front_list', compact('trainers','title', 'total', 'search_query'));
+        $collection = $collection->map(function (GymPTTrainer $trainer) use ($groupedPending) {
+            $summary = $groupedPending->get($trainer->id);
+            $trainer->pending_commission_total = round(data_get($summary, 'total_amount', 0), 2);
+            $trainer->pending_commission_count = data_get($summary, 'total_count', 0);
+            return $trainer;
+        });
+
+        if ($trainers instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator) {
+            $trainers->setCollection($collection);
+            $total = $trainers->total();
+        } else {
+            $trainers = $collection;
+            $total = $collection->count();
+        }
+
+        $classes = GymPTClass::branch()
+            ->orderBy('name_' . $this->lang, 'asc')
+            ->get();
+
+        return view('software::Front.pt_trainer_front_list', [
+            'trainers' => $trainers,
+            'title' => $title,
+            'total' => $total,
+            'search_query' => $search_query,
+            'pendingTotals' => $pendingTotals,
+            'classes' => $classes,
+        ]);
     }
 
 
@@ -202,46 +252,17 @@ class GymPTTrainerFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.pt_trainer_add');
-        $subscriptions = GymPTSubscription::branch()->with('pt_classes')->get();
-        return view('software::Front.pt_trainer_front_form', ['trainer' => new GymPTTrainer(), 'subscriptions' => $subscriptions, 'title'=>$title]);
+        return view('software::Front.pt_trainer_front_form', [
+            'trainer' => new GymPTTrainer(),
+            'title' => $title,
+        ]);
     }
 
     public function store(GymPTTrainerRequest $request)
     {
-        $reservation_details = @$request->reservation_details;
-        $class_ids = @$request->class_ids;
-        $trainer_inputs = $this->prepare_inputs($request->except(['_token', 'reservation_details', 'class_ids']));
+        $trainer_inputs = $this->prepare_inputs($request->except(['_token']));
         $trainer = $this->TrainerRepository->create($trainer_inputs);
 
-        if((is_array($reservation_details) && count($reservation_details) > 0) && (is_array($class_ids) && count($class_ids) > 0) && @$trainer->id){
-            foreach ($reservation_details as $key => $reservation_detail){
-
-                $reservation_detail_split = explode('@@', $reservation_detail);
-                $reservation_detail_split = array_filter($reservation_detail_split);
-                $reservation_detail_data = [];
-
-                foreach($reservation_detail_split as $i => $get_reservation_detail) {
-                    $get_reservation_detail_split = explode(',,', $get_reservation_detail);
-                    $get_reservation_day = $get_reservation_detail_split[0];
-                    $get_reservation_start = $get_reservation_detail_split[1];
-                    $get_reservation_end = $get_reservation_detail_split[2];
-
-                    $reservation_detail_data[$get_reservation_day]['start'] = $get_reservation_start;
-                    $reservation_detail_data[$get_reservation_day]['end'] = $get_reservation_end;
-                    $reservation_detail_data[$get_reservation_day]['status'] = true;
-
-                }
-
-                if (is_array($$reservation_detail_data) && count($$reservation_detail_data) > 0) {
-                    $reservation_detail_result = ['work_days' => $reservation_detail_data];
-                    GymPTSubscriptionTrainer::branch()->where('pt_class_id', $class_ids[$key])->where('pt_trainer_id', @$trainer->id)->forceDelete();
-                    GymPTSubscriptionTrainer::create(
-                        ['pt_class_id' => $class_ids[$key], 'pt_trainer_id' => @$trainer->id, 'reservation_details' => $reservation_detail_result, 'branch_setting_id' => $this->user_sw->branch_setting_id]
-                    );
-                }
-            }
-        }
-//        $trainer->pt_subscriptions()->sync($request->pt_subscriptions);
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_added'),
@@ -255,54 +276,19 @@ class GymPTTrainerFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $trainer = $this->TrainerRepository->with(['pt_subscription_trainer.pt_class.pt_subscription'])->withTrashed()->find($id);
-        $subscriptions = GymPTSubscription::branch()->get();
-        $selectedPTSubscriptions = @array_filter(array_map(function ($subscription){
-            return  $subscription['id'];
-        }, $trainer->pt_subscriptions->toArray()));
+        $trainer = $this->TrainerRepository->withTrashed()->find($id);
         $title = trans('sw.pt_trainer_edit');
-        return view('software::Front.pt_trainer_front_form', ['trainer' => $trainer, 'selectedPTSubscriptions' => $selectedPTSubscriptions,'subscriptions' => $subscriptions,'title'=>$title]);
+        return view('software::Front.pt_trainer_front_form', [
+            'trainer' => $trainer,
+            'title' => $title,
+        ]);
     }
 
     public function update(GymPTTrainerRequest $request, $id)
     {
-        $reservation_details = @$request->reservation_details;
-        $class_ids = @$request->class_ids;
         $trainer =$this->TrainerRepository->withTrashed()->find($id);
-        $trainer_inputs = $this->prepare_inputs($request->except(['_token', 'reservation_details', 'class_ids']));
+        $trainer_inputs = $this->prepare_inputs($request->except(['_token']));
         $trainer->update($trainer_inputs);
-        if((is_array($reservation_details) && count($reservation_details) > 0) && (is_array($class_ids) && count($class_ids) > 0) && @$trainer->id){
-            $class_ids = array_filter($class_ids);
-            $x = 0;
-            foreach ($reservation_details as $key => $reservation_detail){
-                if(@$class_ids[$x]) {
-                    $reservation_detail_split = explode('@@', $reservation_detail);
-                    $reservation_detail_split = array_filter($reservation_detail_split);
-                    $reservation_detail_data = [];
-
-                    foreach ($reservation_detail_split as $i => $get_reservation_detail) {
-                        $get_reservation_detail_split = explode(',,', $get_reservation_detail);
-                        $get_reservation_day = $get_reservation_detail_split[0];
-                        $get_reservation_start = $get_reservation_detail_split[1];
-                        $get_reservation_end = $get_reservation_detail_split[2];
-
-                        $reservation_detail_data[$get_reservation_day]['start'] = $get_reservation_start;
-                        $reservation_detail_data[$get_reservation_day]['end'] = $get_reservation_end;
-                        $reservation_detail_data[$get_reservation_day]['status'] = true;
-
-                    }
-
-                    if (is_array($$reservation_detail_data) && count($$reservation_detail_data) > 0) {
-                        $reservation_detail_result = ['work_days' => $reservation_detail_data];
-                        GymPTSubscriptionTrainer::branch()->where('pt_class_id', $class_ids[$key])->where('pt_trainer_id', @$trainer->id)->forceDelete();
-                        GymPTSubscriptionTrainer::create(
-                            ['pt_class_id' => $class_ids[$key], 'pt_trainer_id' => @$trainer->id, 'reservation_details' => $reservation_detail_result, 'branch_setting_id' => $this->user_sw->branch_setting_id]
-                        );
-                    }
-                }
-            }
-        }
-//        $trainer->pt_subscriptions()->sync($request->pt_subscriptions);
 
         $notes = str_replace(':name', $trainer['name'], trans('sw.edit_activity'));
         $this->userLog($notes, TypeConstants::EditPTTrainer);
@@ -381,297 +367,326 @@ class GymPTTrainerFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $pt_subscription_trainers = GymPTSubscriptionTrainer::branch()->with(['pt_class.pt_subscription','pt_trainer', 'pt_class.pt_members']);
-        $pt_subscription_trainers = $pt_subscription_trainers->when(intval(@$pt_class_id), function ($query) use ($pt_class_id) {
-                $query->where('pt_class_id', $pt_class_id);
-            })->when((@$pt_trainer), function ($query) use ($pt_trainer) {
-                $query->where('pt_trainer_id', $pt_trainer);
-            });
-            if(@$from && @$to) {
-                $pt_subscription_trainers = $pt_subscription_trainers->when(($from), function ($query) use ($from) {
-                    $query->whereDate('date_from', '>=', Carbon::parse($from)->format('Y-m-d'));
-                })->when(($to), function ($query) use ($to) {
-                    $query->whereDate('date_to', '<=', Carbon::parse($to)->format('Y-m-d'));
-                });
+        $branchId = @$this->user_sw->branch_setting_id;
+
+        $rangeStart = $from ? Carbon::parse($from)->startOfDay() : Carbon::now()->startOfWeek();
+        $rangeEnd = $to
+            ? Carbon::parse($to)->endOfDay()
+            : $rangeStart->copy()->addWeek();
+
+        $trainerAssignments = GymPTClassTrainer::with(['class', 'trainer'])
+            ->where('is_active', true)
+            ->when($branchId, function ($query, $branchId) {
+                $query->where('branch_setting_id', $branchId);
+            })
+            ->when($pt_class_id, function ($query) use ($pt_class_id) {
+                $query->where('class_id', $pt_class_id);
+            })
+            ->when($pt_trainer, function ($query) use ($pt_trainer) {
+                $query->where('trainer_id', $pt_trainer);
+            })
+            ->get();
+
+        $classesWithSchedule = GymPTClass::branch()
+            ->with('pt_subscription')
+            ->when($pt_class_id, function ($query) use ($pt_class_id) {
+                $query->where('id', $pt_class_id);
+            })
+            ->whereNotNull('schedule')
+            ->get();
+
+        foreach ($classesWithSchedule as $classModel) {
+            $already = $trainerAssignments->firstWhere('class_id', $classModel->id);
+            if ($already) {
+                continue;
             }
-            $pt_subscription_trainers = $pt_subscription_trainers->get();
-        $result = [];
-        $i = 0;
-        foreach ($pt_subscription_trainers as $pt_subscription_trainer){
-            if(@$pt_subscription_trainer->pt_class && $pt_subscription_trainer->reservation_details) {
-                $from = \Carbon\Carbon::parse($pt_subscription_trainer->date_from)->toDateString();
-                $to = \Carbon\Carbon::parse($pt_subscription_trainer->date_from)->addMonth()->toDateString();
-                if(@$pt_subscription_trainer->date_to)
-                    $to = \Carbon\Carbon::parse($pt_subscription_trainer->date_to)->toDateString();
-                $dateRange = CarbonPeriod::create($from, $to);
-                foreach ($pt_subscription_trainer->reservation_details['work_days'] as $index => $pt_subscription) {
-                    foreach($dateRange as $date){
-                        if($date->dayOfWeek == $index){
-                            $result[$i]['title'] = @$pt_subscription_trainer->pt_class->name; //@$pt_subscription_trainer->pt_class->pt_subscription->name .' - '.trim($pt_subscription_trainer->pt_trainer->name).' ( ' . @$pt_subscription_trainer->pt_class->classes . ' ' . trans('sw.pt_class_2').' ) ';
-                            $result[$i]['start'] = $date->toDateString().' '.$pt_subscription['start'];
-                            $result[$i]['end'] = $date->toDateString().' '.$pt_subscription['end'];
-                            $result[$i]['background_color'] = @$pt_subscription_trainer->pt_class->class_color ?? '';
-                            $result[$i]['pt_class_id'] = @$pt_subscription_trainer->pt_class_id;
-                            $result[$i]['pt_trainer_id'] = @$pt_subscription_trainer->pt_trainer_id;
-                            $result[$i]['id'] = @$pt_subscription_trainer->id;
-                            $i++;
-                        }
-                    }
-                }
-            }
+
+            $trainerAssignments->push($this->makeVirtualAssignment($classModel));
         }
-        $reservations = $result;
+
+        $attendanceLookup = GymPTMemberAttendee::with('pt_member')
+            ->whereBetween('session_date', [$rangeStart, $rangeEnd])
+            ->get()
+            ->groupBy(function (GymPTMemberAttendee $attendee) {
+                $member = $attendee->pt_member;
+                if (!$member || !$attendee->session_date) {
+                    return null;
+                }
+
+                $classId = $member->class_id ?? $member->pt_class_id ?? 0;
+                $trainerId = $member->class_trainer_id ?? 0;
+
+                return $this->buildTimelineKey($classId, $trainerId, $attendee->session_date);
+            })
+            ->filter(fn ($value, $key) => !is_null($key));
+
+        $timeline = $this->sessionService->resolveVirtualTimeline($trainerAssignments, $rangeStart, $rangeEnd);
+
+        $reservations = $timeline->map(function (object $entry) use ($attendanceLookup) {
+            $classModel = $entry->class;
+            $assignment = $entry->class_trainer;
+            $trainer = $entry->trainer;
+            $slot = $entry->slot;
+
+            $key = $this->buildTimelineKey($classModel->id, $assignment?->id ?? 0, $slot);
+            $attendeeCount = isset($attendanceLookup[$key]) ? $attendanceLookup[$key]->count() : 0;
+            $duration = $classModel->session_duration ?? 60;
+
+            $trainerName = optional($trainer)->name ?? trans('sw.unassigned_trainer');
+
+            return [
+                'title' => trim(($classModel->name ?? trans('sw.pt_class')) . ' - ' . $trainerName),
+                'start' => $slot->format('Y-m-d H:i:s'),
+                'end' => $slot->copy()->addMinutes($duration)->format('Y-m-d H:i:s'),
+                'background_color' => $classModel->class_color ?? '',
+                'pt_class_id' => $classModel->id,
+                'pt_trainer_id' => $assignment?->trainer_id,
+                'session_token' => $this->sessionService->encodeVirtualSessionId($classModel, $assignment, $slot),
+                'status' => $attendeeCount > 0 ? 'completed' : 'pending',
+                'attendee_count' => $attendeeCount,
+            ];
+        })->values()->toArray();
 
         $pt_trainers = GymPTTrainer::branch()->get();
         $subscriptions = GymPTSubscription::branch()->with('pt_classes')->get();
         $classes = GymPTClass::branch()->get();
-        return view('software::Front.pt_trainer_front_reports', ['pt_trainers' => $pt_trainers, 'classes' => $classes, 'subscriptions' => $subscriptions,'trainer' => new GymPTTrainer(), 'reservations' => $reservations, 'title'=>$title]);
+        return view('software::Front.pt_trainer_front_reports', [
+            'pt_trainers' => $pt_trainers,
+            'classes' => $classes,
+            'subscriptions' => $subscriptions,
+            'trainer' => new GymPTTrainer(),
+            'reservations' => $reservations,
+            'title' => $title,
+        ]);
     }
 
 
-    public function createTrainerPayPercentageAmountForm(){
-        $member_id = request('id');
-        $member = GymPTMember::where('id', $member_id)->first();
-        if(!$member){
-            return Response::json(['status' => false, 'message' => trans('sw.no_record_found')], 404);
-        }
-        // Prevent duplicate payment
-        if((int)@$member->trainer_amount_status === 1){
-            return Response::json(['status' => false, 'message' => trans('sw.already_paid')], 409);
+    public function pendingCommissions(Request $request, GymPTTrainer $trainer)
+    {
+        $filters = [
+            'trainer_id' => $trainer->id,
+            'class_id' => $request->input('class_id'),
+            'from' => $request->input('from'),
+            'to' => $request->input('to'),
+        ];
+        if (@$this->user_sw->branch_setting_id) {
+            $filters['branch_setting_id'] = $this->user_sw->branch_setting_id;
         }
 
-        if($member){
-            $trainer_amount_paid = $member->trainer_percentage / 100 * ($member->amount_paid - $member->vat);
-            $member->trainer_amount_status = 1;
-            $member->trainer_amount_paid = $trainer_amount_paid;
-            $member->save();
+        $summary = $this->commissionService->summarizePending(array_filter($filters));
+        $group = $summary['grouped'] instanceof \Illuminate\Support\Collection
+            ? $summary['grouped']->get($trainer->id)
+            : null;
 
+        $commissions = collect(data_get($group, 'commissions', []))->map(function (GymPTCommission $commission) {
+            $member = $commission->member;
+            $memberRecord = optional($member)->member;
+            $attendee = $commission->attendee;
+            $class = optional($attendee?->pt_member?->pt_class);
+
+            return [
+                'id' => $commission->id,
+                'session_date' => optional($attendee?->session_date ?? $commission->session_date)->format('Y-m-d H:i'),
+                'member_name' => optional($memberRecord)->name,
+                'member_code' => optional($memberRecord)->code,
+                'class_name' => optional($class)->name,
+                'commission_amount' => number_format($commission->commission_amount, 2),
+                'commission_rate' => number_format($commission->commission_rate, 2),
+            ];
+        })->values();
+
+        return response()->json([
+            'commissions' => $commissions,
+            'totals' => [
+                'amount' => round(data_get($group, 'total_amount', 0), 2),
+                'count' => data_get($group, 'total_count', 0),
+            ],
+        ]);
+    }
+
+
+    public function createTrainerPayPercentageAmountForm(Request $request)
+    {
+        $trainerId = (int) ($request->input('trainer_id') ?? $request->input('id'));
+
+        $trainer = $this->TrainerRepository->withTrashed()->find($trainerId);
+        if (!$trainer) {
+            return response()->json([
+                'status' => false,
+                'message' => trans('sw.no_record_found'),
+            ], 404);
+        }
+
+        $commissionIds = $request->input('commission_ids', []);
+        if (is_string($commissionIds)) {
+            $commissionIds = array_filter(array_map('intval', explode(',', $commissionIds)));
+        }
+        if (!is_array($commissionIds)) {
+            $commissionIds = [];
+        }
+
+        $filters = [
+            'class_id' => $request->input('class_id'),
+            'from' => $request->input('from'),
+            'to' => $request->input('to'),
+        ];
+        if (@$this->user_sw->branch_setting_id) {
+            $filters['branch_setting_id'] = $this->user_sw->branch_setting_id;
+        }
+
+        $pendingQuery = $trainer->commissions()
+            ->where('status', 'pending')
+            ->when(@$this->user_sw->branch_setting_id, function ($query, $branchId) {
+                $query->where('branch_setting_id', $branchId);
+            });
+
+        if (!empty($filters['class_id'])) {
+            $pendingQuery->whereHas('attendee.pt_member', function ($query) use ($filters) {
+                $query->where('class_id', $filters['class_id'])
+                    ->orWhere('pt_class_id', $filters['class_id']);
+            });
+        }
+
+        if (!empty($filters['from'])) {
+            $pendingQuery->where(function ($query) use ($filters) {
+                $query->whereDate('session_date', '>=', Carbon::parse($filters['from'])->format('Y-m-d'))
+                    ->orWhere(function ($inner) use ($filters) {
+                        $inner->whereNull('session_date')
+                            ->whereDate('created_at', '>=', Carbon::parse($filters['from'])->format('Y-m-d'));
+                    });
+            });
+        }
+
+        if (!empty($filters['to'])) {
+            $pendingQuery->where(function ($query) use ($filters) {
+                $query->whereDate('session_date', '<=', Carbon::parse($filters['to'])->format('Y-m-d'))
+                    ->orWhere(function ($inner) use ($filters) {
+                        $inner->whereNull('session_date')
+                            ->whereDate('created_at', '<=', Carbon::parse($filters['to'])->format('Y-m-d'));
+                    });
+            });
+        }
+
+        if (!empty($commissionIds)) {
+            $pendingQuery->whereIn('id', $commissionIds);
+        }
+
+        $commissions = $pendingQuery
+            ->with(['member.member', 'attendee.pt_member.pt_class'])
+            ->get();
+
+        if ($commissions->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => trans('sw.no_commissions_available'),
+            ], 422);
+        }
+
+        $totalAmount = round($commissions->sum('commission_amount'), 2);
+        $totalCount = $commissions->count();
+
+        DB::transaction(function () use ($trainer, $commissions, $totalAmount) {
+            $commissionIds = $commissions->pluck('id')->all();
+            $this->commissionService->settleCommissionsForTrainer(
+                $trainer,
+                $commissionIds,
+                optional(Auth::guard('sw')->user())->id
+            );
+
+            // Mirror the legacy money box behaviour while sourcing amounts from the new ledger.
+            $vatPercentage = (float) data_get($this->mainSettings, 'vat_details.vat_percentage', 0);
+            $vatAmount = $vatPercentage > 0
+                ? round(($totalAmount * ($vatPercentage / 100)) / (1 + ($vatPercentage / 100)), 2)
+                : 0;
 
             $amount_box = GymMoneyBox::branch()->latest()->first();
-            $amount_after = GymMoneyBoxFrontController::amountAfter( (float)@$amount_box->amount, (float)@$amount_box->amount_before, (int)@$amount_box->operation);
-            $notes = trans('sw.pt_trainer_moneybox_add_msg', ['subscription' => $member->pt_subscription->name, 'member' => $member->member->name, 'amount_paid' => (float)($trainer_amount_paid), 'trainer_name' => $member->pt_trainer->name, 'trainer_percentage' => $member->trainer_percentage]);
+            $amount_after = GymMoneyBoxFrontController::amountAfter(
+                (float) optional($amount_box)->amount,
+                (float) optional($amount_box)->amount_before,
+                (int) optional($amount_box)->operation
+            );
 
-            $moneyBox = GymMoneyBox::create([
-                'user_id' => Auth::guard('sw')->user()->id
-                , 'amount' => @(float)$trainer_amount_paid
-                , 'vat' => ((@(float)$trainer_amount_paid * (@$this->mainSettings->vat_details['vat_percentage'] / 100)) / (1 + (@$this->mainSettings->vat_details['vat_percentage'] / 100)))
-                , 'operation' => TypeConstants::Sub
-                , 'amount_before' => $amount_after
-                , 'notes' => $notes
-                , 'type' => TypeConstants::PayPTTrainerCommission
-                , 'payment_type' => TypeConstants::CASH_PAYMENT
-                , 'member_id' => @$member->member->member_id
-                , 'member_pt_subscription_id' => @$member->id
-                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            $notes = trans('sw.trainer_commission_payout_note', [
+                'trainer' => $trainer->name,
+                'sessions' => $commissions->count(),
+                'amount' => number_format($totalAmount, 2),
+            ]);
+
+            GymMoneyBox::create([
+                'user_id' => optional(Auth::guard('sw')->user())->id,
+                'amount' => (float) $totalAmount,
+                'vat' => $vatAmount,
+                'operation' => TypeConstants::Sub,
+                'amount_before' => $amount_after,
+                'notes' => $notes,
+                'type' => TypeConstants::PayPTTrainerCommission,
+                'payment_type' => TypeConstants::CASH_PAYMENT,
+                'member_id' => null,
+                'member_pt_subscription_id' => null,
+                'branch_setting_id' => @$this->user_sw->branch_setting_id,
             ]);
 
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+        });
 
-        }
-        return '1';
-    }
+        $remainingQuery = $trainer->commissions()
+            ->where('status', 'pending')
+            ->when(@$this->user_sw->branch_setting_id, function ($query, $branchId) {
+                $query->where('branch_setting_id', $branchId);
+            });
 
-    public function createSubscription()
-    {
-        $subscriptions = GymPTSubscription::branch()->get();
-        $selectedPTSubscriptions = [];
-        $title = trans('sw.add_pt_trainer_schedule');
-        return view('software::Front.pt_trainer_subscription_front_form', [
-            'selectedPTSubscriptions' => $selectedPTSubscriptions,
-            'subscriptions' => $subscriptions,
-            'title' => $title
-        ]);
-    }
-
-    public function storeSubscription(Request $request)
-    {
-        $reservation_details = @$request->reservation_details;
-        $class_ids = @$request->class_ids;
-        $class_ids = @array_filter($class_ids);
-        $reservation_check = false;
-        $reservation_detail_result = [];
-
-        if (is_array($reservation_details) && count($reservation_details) > 0) {
-            foreach ($reservation_details as $key => $reservation_detail) {
-                if (@$reservation_detail['start'] && @$reservation_detail['end']) {
-                    $reservation_check = true;
-                    $reservation_detail_result[$key] = $reservation_detail;
-                }
-            }
-        }
-
-        if ($reservation_check) {
-            $trainer = new GymPTTrainer();
-            $trainer->reservation_details = $reservation_detail_result;
-            $trainer->save();
-
-            if (is_array($class_ids) && count($class_ids) > 0) {
-                $trainer->pt_subscriptions()->sync($class_ids);
-            }
-
-            session()->flash('sweet_flash_message', [
-                'type' => 'success',
-                'title' => trans('sw.success'),
-                'text' => trans('sw.pt_trainer_schedule_added_successfully')
-            ]);
-        } else {
-            session()->flash('sweet_flash_message', [
-                'type' => 'error',
-                'title' => trans('sw.error'),
-                'text' => trans('sw.please_select_at_least_one_time_slot')
-            ]);
-        }
-
-        return redirect()->route('sw.listPTTrainer');
-    }
-
-    public function showSubscription($id)
-    {
-        $subscription = GymPTSubscription::branch()->with(['pt_trainers'])->find($id);
-        
-        if (!$subscription) {
-            session()->flash('sweet_flash_message', [
-                'type' => 'error',
-                'title' => trans('sw.error'),
-                'text' => trans('sw.subscription_not_found')
-            ]);
-            return redirect()->route('sw.listPTTrainer');
-        }
-        
-        $title = trans('sw.view_pt_trainer_subscription', ['name' => $subscription->name_en]);
-        
-        return view('software::Front.pt_trainer_subscription_front_show', [
-            'subscription' => $subscription,
-            'title' => $title
-        ]);
-    }
-
-    public function destroySubscription($id)
-    {
-        $subscription = GymPTSubscription::branch()->find($id);
-        
-        if (!$subscription) {
-            session()->flash('sweet_flash_message', [
-                'type' => 'error',
-                'title' => trans('sw.error'),
-                'text' => trans('sw.subscription_not_found')
-            ]);
-            return redirect()->route('sw.listPTTrainer');
-        }
-        
-        try {
-            // Soft delete the subscription
-            $subscription->delete();
-            
-            session()->flash('sweet_flash_message', [
-                'type' => 'success',
-                'title' => trans('sw.success'),
-                'text' => trans('sw.pt_trainer_subscription_deleted_successfully')
-            ]);
-        } catch (\Exception $e) {
-            session()->flash('sweet_flash_message', [
-                'type' => 'error',
-                'title' => trans('sw.error'),
-                'text' => trans('sw.error_deleting_subscription')
-            ]);
-        }
-        
-        return redirect()->route('sw.listPTTrainer');
-    }
-
-    public function editSubscription($id, Request $request)
-    {
-        $trainer = $this->TrainerRepository->with(['pt_subscription_trainer.pt_class.pt_subscription'])->withTrashed()->find($id);
-        
-        // Handle search functionality
-        $search = $request->get('search');
-        $query = GymPTSubscription::branch();
-        
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('name_en', 'like', '%' . $search . '%')
-                  ->orWhere('name_ar', 'like', '%' . $search . '%')
-                  ->orWhere('price', 'like', '%' . $search . '%');
+        if (!empty($filters['class_id'])) {
+            $remainingQuery->whereHas('attendee.pt_member', function ($query) use ($filters) {
+                $query->where('class_id', $filters['class_id'])
+                    ->orWhere('pt_class_id', $filters['class_id']);
             });
         }
-        
-        $subscriptions = $query->paginate(10);
-        $selectedPTSubscriptions = @array_filter(array_map(function ($subscription){
-            return  $subscription['id'];
-        }, $trainer->pt_subscriptions->toArray()));
-        $total = $subscriptions->total();
-        $title = trans('sw.edit_pt_trainer_schedule', ['name' => $trainer->name]);
-        
-        // Prepare search query for pagination
-        $search_query = $request->only(['search']);
-        
-        return view('software::Front.pt_trainer_subscription_front_list', [
-            'trainer' => $trainer, 
-            'selectedPTSubscriptions' => $selectedPTSubscriptions,
-            'subscriptions' => $subscriptions,
-            'total' => $total,
-            'title' => $title,
-            'search_query' => $search_query
+
+        if (!empty($filters['from'])) {
+            $remainingQuery->whereDate('created_at', '>=', Carbon::parse($filters['from'])->format('Y-m-d'));
+        }
+
+        if (!empty($filters['to'])) {
+            $remainingQuery->whereDate('created_at', '<=', Carbon::parse($filters['to'])->format('Y-m-d'));
+        }
+
+        $remainingAmount = $remainingQuery->sum('commission_amount');
+        $remainingCount = $remainingQuery->count();
+
+        $pendingTotals = $this->commissionService->summarizePending(array_filter($filters));
+
+        return response()->json([
+            'status' => true,
+            'message' => trans('admin.successfully_paid'),
+            'paid_total' => $totalAmount,
+            'paid_count' => $totalCount,
+            'remaining' => [
+                'amount' => round($remainingAmount, 2),
+                'count' => $remainingCount,
+            ],
+            'pending_totals' => [
+                'amount' => round($pendingTotals['total_amount'], 2),
+                'count' => $pendingTotals['total_count'],
+            ],
         ]);
     }
 
-    public function updateSubscription(Request $request, $id)
+    protected function makeVirtualAssignment(GymPTClass $class): GymPTClassTrainer
     {
-        $reservation_details = @$request->reservation_details;
-        $class_ids = @$request->class_ids;
-        $class_ids = @array_filter($class_ids);
-        $trainer =$this->TrainerRepository->withTrashed()->find($id);
-        $reservation_check = false;
-        $reservation_detail_result = [];
-        $subscription_trainers = [];
-
-        if((is_array($reservation_details) && count($reservation_details) > 0) && (count($class_ids) > 0) && @$trainer->id){
-            $x = 0;
-            foreach ($reservation_details as $key => $reservation_detail){
-                if(@$class_ids[$x]) {
-                    $reservation_detail_split = explode('@@', $reservation_detail);
-                    $reservation_detail_split = array_filter($reservation_detail_split);
-                    $reservation_detail_data = [];
-
-                    foreach ($reservation_detail_split as $i => $get_reservation_detail) {
-                        $get_reservation_detail_split = explode(',,', $get_reservation_detail);
-                        $get_reservation_day = $get_reservation_detail_split[0];
-                        $get_reservation_start = $get_reservation_detail_split[1];
-                        $get_reservation_end = $get_reservation_detail_split[2];
-
-                        $reservation_detail_data[$get_reservation_day]['start'] = $get_reservation_start;
-                        $reservation_detail_data[$get_reservation_day]['end'] = $get_reservation_end;
-                        $reservation_detail_data[$get_reservation_day]['status'] = true;
-
-                    }
-                    if (is_array($$reservation_detail_data) && count($$reservation_detail_data) > 0) {
-                        $reservation_check = true;
-                        $reservation_detail_result[$key] = ['work_days' => $reservation_detail_data];
-                        $subscription_trainers[$key] = ['pt_class_id' => $class_ids[$key], 'pt_trainer_id' => @$trainer->id, 'reservation_details' => $reservation_detail_result[$key], 'branch_setting_id' => $this->user_sw->branch_setting_id];
-                    }
-
-                }
-            }
-        }
-        GymPTSubscriptionTrainer::branch()
-//                    ->where('pt_class_id', $class_ids[$key])
-            ->where('pt_trainer_id', @$trainer->id)->forceDelete();
-        if($reservation_check == true){
-            foreach ($subscription_trainers as  $subscription_trainer) {
-                GymPTSubscriptionTrainer::create(
-                    $subscription_trainer
-                );
-            }
-        }
-        $notes = str_replace(':name', $trainer['name'], trans('sw.edit_pt_trainer_schedule'));
-        $this->userLog($notes, TypeConstants::EditPTTrainerSchedule);
-
-        session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_edited'),
-            'type' => 'success'
+        $assignment = new GymPTClassTrainer([
+            'id' => null,
+            'class_id' => $class->id,
+            'trainer_id' => null,
+            'is_active' => true,
         ]);
-        return redirect(route('sw.editPTTrainerSubscription', $id));
+
+        $assignment->setRelation('class', $class);
+
+        return $assignment;
     }
 
+    protected function buildTimelineKey(int $classId, int $trainerId, Carbon $slot): string
+    {
+        return "{$classId}|{$trainerId}|" . $slot->format('Y-m-d H:i:s');
+    }
 }

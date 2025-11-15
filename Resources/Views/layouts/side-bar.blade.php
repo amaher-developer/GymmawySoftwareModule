@@ -542,9 +542,9 @@
     @if ($mainSettings->active_pt)
         <!--begin:Menu item-->
         <div data-kt-menu-trigger="click"
-            class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/pt*')) show @endif">
+            class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/pt*') && !Request::is(($lang ?? 'ar') . '/pt/trainer*')) show @endif">
             <!--begin:Menu link-->
-            <span class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt*')) show @endif">
+            <span class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt*') && !Request::is(($lang ?? 'ar') . '/pt/trainer*')) show @endif">
                 <span class="menu-icon">
                     <i class="ki-outline ki-security-user fs-2"></i>
                 </span>
@@ -602,6 +602,54 @@
                 </div>
                 <!--end:Menu item-->
             @endif
+
+            @if ($swUser && (in_array('listPTMember', (array) ($swUser->permissions ?? [])) || in_array('listPTClass', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/sessions*')) active @endif"
+                       href="{{ route('sw.listPTSessions') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.pt_sessions2') }}</span>
+                    </a>
+                </div>
+            @endif
+
+            <!-- @if ($swUser && (in_array('listPTMember', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/home-pt-mini')) active @endif"
+                       href="{{ route('sw.dashboardPTMini') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.client_pt_attendees_today') }}</span>
+                    </a>
+                </div>
+            @endif
+
+            @if ($swUser && (in_array('reportTodayPTMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user/log/pt-today*')) active @endif"
+                       href="{{ route('sw.reportTodayPTMemberList') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.report_pt_attendance') }}</span>
+                    </a>
+                </div>
+            @endif -->
+
+            <!-- @if ($swUser && (in_array('listPTTrainer', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/trainer*')) active @endif"
+                       href="{{ route('sw.listPTTrainer') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.pt_trainer_payouts') }}</span>
+                    </a>
+                </div>
+            @endif -->
 
 
         </div><!--end:Menu sub-->

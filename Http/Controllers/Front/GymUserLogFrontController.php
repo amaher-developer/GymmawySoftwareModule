@@ -934,6 +934,26 @@ class GymUserLogFrontController extends GymGenericFrontController
         }//else
             //$logs->whereDate('created_at', Carbon::now()->toDateString());
         $logs->orderBy('id', 'DESC');
+
+        $statsQuery = clone $logs;
+        $totalAttendances = (clone $statsQuery)->count();
+        $attendedMemberIds = (clone $statsQuery)->pluck('pt_subscription_id')->filter()->unique();
+        $uniqueMembers = $attendedMemberIds->count();
+        $uniqueTrainers = 0;
+        if ($attendedMemberIds->isNotEmpty()) {
+            $uniqueTrainers = GymPTMember::branch()
+                ->whereIn('id', $attendedMemberIds)
+                ->whereNotNull('pt_trainer_id')
+                ->distinct('pt_trainer_id')
+                ->count('pt_trainer_id');
+        }
+
+        $stats = [
+            'total_attendances' => $totalAttendances,
+            'unique_members' => $uniqueMembers,
+            'unique_trainers' => $uniqueTrainers,
+        ];
+
         if($this->limit){
             $logs = $logs->paginate($this->limit)->onEachSide(1);
             $total = $logs->total();
@@ -941,7 +961,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             $logs = $logs->get();
             $total = $logs->count();
         }
-        return view('software::Front.report_today_pt_member_front_list', compact('logs','search_query','title', 'total'));
+        return view('software::Front.report_today_pt_member_front_list', compact('logs','search_query','title', 'total', 'stats'));
     }
     function exportTodayPTMemberExcel()
     {
@@ -958,7 +978,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportTodayPTMemberExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'created_at', 'barcode', 'name', 'phone', 'pt_membership', 'pt_classes', 'pt_visits', 'pt_amount_remaining'
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'created_at', 'barcode', 'name', 'phone', 'pt_membership', 'pt_classes', 'pt_sessions_used', 'pt_amount_remaining'
             , 'pt_joining_date', 'pt_expire_date'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
 
     }
@@ -969,7 +989,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $records = $this->reportTodayPTMemberList()->with(\request()->all());
         $records = $records->logs;
 
-        $keys = [ 'created_at', 'barcode', 'name', 'phone', 'pt_membership', 'pt_classes', 'pt_visits', 'pt_amount_remaining'
+        $keys = [ 'created_at', 'barcode', 'name', 'phone', 'pt_membership', 'pt_classes', 'pt_sessions_used', 'pt_amount_remaining'
             , 'pt_joining_date', 'pt_expire_date'];
         if ($this->lang == 'ar') $keys = array_reverse($keys);
 
@@ -980,8 +1000,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $records[$key]['name'] = $record['member']['name'];
             $records[$key]['phone'] = (str_replace('+', '00', $record['member']['phone']));
             $records[$key]['pt_membership'] = $record['pt_member_subscription']['pt_subscription']['name'];
-            $records[$key]['pt_classes'] = $record['pt_member_subscription']['classes'];
-            $records[$key]['pt_visits'] = $record['pt_member_subscription']['visits'];
+            $records[$key]['pt_classes'] = $record['pt_member_subscription']['sessions_total'] ?? $record['pt_member_subscription']['classes'];
+            $records[$key]['pt_sessions_used'] = $record['pt_member_subscription']['sessions_used'] ?? $record['pt_member_subscription']['visits'];
             $records[$key]['amount_remaining'] = $record['pt_member_subscription']['amount_remaining'];
             $records[$key]['pt_joining_date'] = Carbon::parse($record['pt_member_subscription']['joining_date'])->toDateString();
             $records[$key]['pt_expire_date'] = Carbon::parse($record['pt_member_subscription']['expire_date'])->toDateString();

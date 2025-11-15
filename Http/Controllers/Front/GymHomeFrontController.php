@@ -15,8 +15,8 @@ use Modules\Software\Models\GymNonMember;
 use Modules\Software\Models\GymNonMemberTime;
 use Modules\Software\Models\GymPotentialMember;
 use Modules\Software\Models\GymPTClass;
+use Modules\Software\Models\GymPTClassTrainer;
 use Modules\Software\Models\GymPTMemberAttendee;
-use Modules\Software\Models\GymPTSubscriptionTrainer;
 use Modules\Software\Models\GymSubscription;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserLog;
@@ -33,13 +33,16 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\View;
+use Modules\Software\Services\PT\PTSessionService;
 
 class GymHomeFrontController extends GymGenericFrontController
 {
+    protected PTSessionService $sessionService;
+
     function __construct()
     {
         parent::__construct();
-      
+        $this->sessionService = app(PTSessionService::class);
     }
     public $money_box_daily_sum = 0;
     public function home(){
@@ -85,37 +88,171 @@ class GymHomeFrontController extends GymGenericFrontController
     public function home_pt_mini(){
 
         $title = trans('sw.pt_member_login');
-        $last_enter_member = GymMemberAttendee::branch()->with('member:id,name')->orderBy('id', 'desc')->where('type', TypeConstants::ATTENDANCE_TYPE_PT)->first();
-//        $colors = ['purple', 'grey', 'yellow', 'green', 'red'];
-        $pt_subscription_trainers = GymPTSubscriptionTrainer::branch()->with(['pt_class.pt_subscription','pt_trainer', 'pt_class.pt_members'])->get();
-        $result = [];
-        $i = 0;
-        foreach ($pt_subscription_trainers as $pt_subscription_trainer){
-            if(@$pt_subscription_trainer->pt_class && $pt_subscription_trainer->reservation_details) {
-                $from = \Carbon\Carbon::parse($pt_subscription_trainer->date_from)->toDateString();
-                $to = \Carbon\Carbon::now()->addMonth()->toDateString();
-                if(@$pt_subscription_trainer->date_to)
-                    $to = \Carbon\Carbon::parse($pt_subscription_trainer->date_to)->toDateString();
-                $dateRange = CarbonPeriod::create($from, $to);
-//                $color = $colors[rand(0,4)];
-                foreach ($pt_subscription_trainer->reservation_details['work_days'] as $index => $pt_subscription) {
-                    foreach($dateRange as $date){
-                        if($date->dayOfWeek == $index){
-                            $result[$i]['title'] = @$pt_subscription_trainer->pt_class->name; //@$pt_subscription_trainer->pt_class->pt_subscription->name .' - '.trim($pt_subscription_trainer->pt_trainer->name).' ( ' . @$pt_subscription_trainer->pt_class->classes . ' ' . trans('sw.pt_class_2').' ) ';
-                            $result[$i]['start'] = $date->toDateString().' '.$pt_subscription['start'];
-                            $result[$i]['end'] = $date->toDateString().' '.$pt_subscription['end'];
-                            $result[$i]['background_color'] = @$pt_subscription_trainer->pt_class->class_color ?? '';
-                            $result[$i]['pt_class_id'] = @$pt_subscription_trainer->pt_class_id;
-                            $result[$i]['pt_trainer_id'] = @$pt_subscription_trainer->pt_trainer_id;
-                            $result[$i]['id'] = @$pt_subscription_trainer->id;
-                            $i++;
-                        }
-                    }
-                }
+        $last_enter_member = GymMemberAttendee::branch()
+            ->with(['member:id,name,image'])
+            ->where('type', TypeConstants::ATTENDANCE_TYPE_PT)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        $today = Carbon::today();
+        $now = Carbon::now();
+        $todayStart = $today->copy()->startOfDay();
+        $todayEnd = $today->copy()->endOfDay();
+
+        $assignments = GymPTClassTrainer::branch()
+            ->with(['class', 'trainer'])
+            ->where('is_active', true)
+            ->get();
+
+        $classesWithSchedule = GymPTClass::branch()
+            ->with('pt_subscription')
+            ->whereNotNull('schedule')
+            ->where(function ($query) {
+                $query->whereNull('is_active')
+                    ->orWhere('is_active', true);
+            })
+            ->get();
+
+        foreach ($classesWithSchedule as $classModel) {
+            $already = $assignments->firstWhere('class_id', $classModel->id);
+            if ($already) {
+                continue;
             }
+            $assignments->push($this->makeVirtualAssignment($classModel));
         }
-        $reservations = $result;
-        return view('software::Front.dashboard_pt_mini', compact(['title', 'last_enter_member', 'reservations']));
+
+        $timelineToday = $this->sessionService->resolveVirtualTimeline($assignments, $todayStart, $todayEnd);
+
+        $attendanceToday = GymPTMemberAttendee::branch()
+            ->whereBetween('session_date', [$todayStart, $todayEnd])
+            ->get();
+
+        $todaySessionsTotal = $timelineToday->count();
+        $todaySessionsCompleted = $attendanceToday->count();
+        $todaySessionsPending = max($todaySessionsTotal - $todaySessionsCompleted, 0);
+
+        $uniqueMembersToday = $attendanceToday
+            ->pluck('pt_member_id')
+            ->filter()
+            ->unique()
+            ->count();
+
+        $uniqueTrainersToday = $timelineToday
+            ->pluck('trainer.id')
+            ->filter()
+            ->unique()
+            ->count();
+
+        $timelineNextSeven = $this->sessionService->resolveVirtualTimeline(
+            $assignments,
+            $todayStart,
+            $todayStart->copy()->addDays(7)->endOfDay()
+        );
+
+        $sessionsNextSevenDays = $timelineNextSeven->count();
+
+        $nextSessionEntry = $timelineNextSeven->first(function (object $entry) use ($now) {
+            return $entry->slot->gte($now);
+        });
+
+        $nextSession = $nextSessionEntry
+            ? (object) [
+                'class' => $nextSessionEntry->class,
+                'session_date' => $nextSessionEntry->slot->copy(),
+                'trainer_name' => optional($nextSessionEntry->trainer)->name,
+            ]
+            : null;
+
+        $sessionTotals = GymPTMember::branch()
+            ->selectRaw('COALESCE(SUM(total_sessions), 0) as total_sessions_sum, COALESCE(SUM(remaining_sessions), 0) as remaining_sessions_sum')
+            ->first();
+
+        $totalSessionsSum = (int) data_get($sessionTotals, 'total_sessions_sum', 0);
+        $remainingSessionsSum = (int) data_get($sessionTotals, 'remaining_sessions_sum', 0);
+        $usedSessionsSum = max($totalSessionsSum - $remainingSessionsSum, 0);
+
+        $stats = [
+            'sessions_today' => $todaySessionsTotal,
+            'sessions_completed_today' => $todaySessionsCompleted,
+            'sessions_pending_today' => $todaySessionsPending,
+            'unique_members_today' => $uniqueMembersToday,
+            'unique_trainers_today' => $uniqueTrainersToday,
+            'sessions_next_seven_days' => $sessionsNextSevenDays,
+            'remaining_sessions_total' => $remainingSessionsSum,
+            'used_sessions_total' => $usedSessionsSum,
+            'next_session' => $nextSession,
+        ];
+
+        $calendarStart = $todayStart->copy()->subDay();
+        $calendarEnd = $todayStart->copy()->addMonth()->endOfDay();
+
+        $timelineCalendar = $this->sessionService->resolveVirtualTimeline($assignments, $calendarStart, $calendarEnd);
+
+        $attendanceLookup = GymPTMemberAttendee::branch()
+            ->with('pt_member')
+            ->whereBetween('session_date', [$calendarStart, $calendarEnd])
+            ->get()
+            ->groupBy(function (GymPTMemberAttendee $attendee) {
+                $member = $attendee->pt_member;
+                if (!$member || !$attendee->session_date) {
+                    return null;
+                }
+
+                $classId = $member->class_id ?? $member->pt_class_id ?? 0;
+                $trainerId = $member->class_trainer_id ?? 0;
+
+                return $this->buildTimelineKey($classId, $trainerId, $attendee->session_date);
+            })
+            ->filter(fn ($value, $key) => !is_null($key));
+
+        $reservations = $timelineCalendar
+            ->map(function (object $entry) use ($attendanceLookup) {
+                $classModel = $entry->class;
+                $assignment = $entry->class_trainer;
+                $trainer = $entry->trainer;
+                $slot = $entry->slot;
+
+                $key = $this->buildTimelineKey($classModel->id, $assignment?->id ?? 0, $slot);
+                $attendeeCount = isset($attendanceLookup[$key]) ? $attendanceLookup[$key]->count() : 0;
+                $duration = $classModel->session_duration ?? 60;
+
+                $trainerName = optional($trainer)->name ?? trans('sw.unassigned_trainer');
+
+                return [
+                    'title' => trim(($classModel->name ?? trans('sw.pt_class')) . ' - ' . $trainerName),
+                    'start' => $slot->format('Y-m-d H:i:s'),
+                    'end' => $slot->copy()->addMinutes($duration)->format('Y-m-d H:i:s'),
+                    'background_color' => $classModel->class_color ?? '',
+                    'pt_class_id' => $classModel->id,
+                    'pt_trainer_id' => $assignment?->trainer_id,
+                    'session_token' => $this->sessionService->encodeVirtualSessionId($classModel, $assignment, $slot),
+                    'status' => $attendeeCount > 0 ? 'completed' : 'pending',
+                    'attendee_count' => $attendeeCount,
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        return view('software::Front.dashboard_pt_mini', compact('title', 'last_enter_member', 'reservations', 'stats'));
+    }
+
+    protected function makeVirtualAssignment(GymPTClass $class): GymPTClassTrainer
+    {
+        $assignment = new GymPTClassTrainer([
+            'id' => null,
+            'class_id' => $class->id,
+            'trainer_id' => null,
+            'is_active' => true,
+        ]);
+
+        $assignment->setRelation('class', $class);
+
+        return $assignment;
+    }
+
+    protected function buildTimelineKey(int $classId, int $trainerId, Carbon $slot): string
+    {
+        return "{$classId}|{$trainerId}|" . $slot->format('Y-m-d H:i:s');
     }
 
     public function home_fingerprint_mini(){

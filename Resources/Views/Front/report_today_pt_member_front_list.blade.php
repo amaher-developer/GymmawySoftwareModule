@@ -156,6 +156,45 @@
         </div>
         <!--end::Search-->
 
+        @php
+            $stats = $stats ?? [];
+        @endphp
+
+        @if(!empty($stats))
+            <div class="row g-5 mb-5">
+                <div class="col-xl-4 col-md-6">
+                    <div class="card card-flush h-100">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <span class="fs-7 text-muted">{{ trans('sw.pt_attendance_total') }}</span>
+                            <div class="fs-2 fw-bold text-gray-900">
+                                {{ number_format((int) ($stats['total_attendances'] ?? 0)) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-4 col-md-6">
+                    <div class="card card-flush h-100">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <span class="fs-7 text-muted">{{ trans('sw.pt_attendance_unique_members') }}</span>
+                            <div class="fs-2 fw-bold text-gray-900">
+                                {{ number_format((int) ($stats['unique_members'] ?? 0)) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-4 col-md-6">
+                    <div class="card card-flush h-100">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <span class="fs-7 text-muted">{{ trans('sw.pt_attendance_unique_trainers') }}</span>
+                            <div class="fs-2 fw-bold text-gray-900">
+                                {{ number_format((int) ($stats['unique_trainers'] ?? 0)) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!--begin::Total count-->
         <div class="d-flex align-items-center mb-5">
             <div class="symbol symbol-50px me-5">
@@ -185,8 +224,8 @@
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-user-tick fs-6 me-2"></i>{{ trans('sw.pt_trainer')}}
                             </th>
-                            <th class="min-w-100px text-nowrap">
-                                <i class="ki-outline ki-chart-simple fs-6 me-2"></i>{{ trans('sw.pt_classes')}}
+                            <th class="min-w-120px text-nowrap">
+                                <i class="ki-outline ki-chart-simple fs-6 me-2"></i>{{ trans('sw.sessions_used')}}
                             </th>
                             <th class="min-w-120px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.joining_date')}}
@@ -226,8 +265,12 @@
                                     @endphp
                                     <span class="fw-bold">{{ @$trainer->name }}</span>
                                 </td>
+                                @php
+                                    $sessionsTotal = $log->pt_member_subscription->sessions_total ?? $log->pt_member_subscription->classes ?? 0;
+                                    $sessionsUsed = $log->pt_member_subscription->sessions_used;
+                                @endphp
                                 <td>
-                                    <span class="fw-bold">{{ $log->pt_member_subscription->visits }} / {{ $log->pt_member_subscription->classes }}</span>
+                                    <span class="fw-bold">{{ $sessionsUsed }} / {{ $sessionsTotal ?: '-' }}</span>
                                 </td>
                                 <td>
                                     <span class="fw-bold">{{ @$log->pt_member_subscription->joining_date ? \Carbon\Carbon::parse(@$log->pt_member_subscription->joining_date)->format('Y-m-d') : '' }}</span>

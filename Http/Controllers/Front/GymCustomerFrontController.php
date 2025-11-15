@@ -36,7 +36,13 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function __construct()
     {
         parent::__construct();
-        $this->customer = request()->session()->get('swCustomer');
+        $request = request();
+
+        if (app()->runningInConsole() || ! $request->hasSession()) {
+            $this->customer = null;
+        } else {
+            $this->customer = $request->session()->get('swCustomer');
+        }
         $this->imageManager = new ImageManager(new Driver());
     }
 

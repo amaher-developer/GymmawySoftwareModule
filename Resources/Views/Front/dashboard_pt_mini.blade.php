@@ -85,6 +85,105 @@
         <div class="Metronic-alerts alert alert-danger fade in"><i class="fa-lg fa fa-warning"></i>  {!! trans('sw.subscription_expire_date_msg', ['date'=> \Carbon\Carbon::parse($mainSettings->sw_end_date)->toDateString(), 'url' => route('sw.listSwPayment')]) !!}</div>
     @endif
 
+    @php
+        $nextSession = $stats['next_session'] ?? null;
+    @endphp
+
+    <div class="row g-5 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-flush h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <span class="fs-7 text-muted">{{ trans('sw.pt_sessions_today') }}</span>
+                    <div class="fs-2 fw-bold text-gray-900">
+                        {{ number_format((int) ($stats['sessions_today'] ?? 0)) }}
+                    </div>
+                    <div class="d-flex justify-content-between mt-3 text-muted">
+                        <span><i class="ki-outline ki-check-circle text-success me-1"></i>{{ trans('sw.pt_sessions_completed_today') }}</span>
+                        <span class="fw-semibold text-success">{{ number_format((int) ($stats['sessions_completed_today'] ?? 0)) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <span><i class="ki-outline ki-time text-warning me-1"></i>{{ trans('sw.pt_sessions_pending_today') }}</span>
+                        <span class="fw-semibold text-warning">{{ number_format((int) ($stats['sessions_pending_today'] ?? 0)) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-flush h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <span class="fs-7 text-muted">{{ trans('sw.pt_unique_members_today') }}</span>
+                    <div class="fs-2 fw-bold text-gray-900">
+                        {{ number_format((int) ($stats['unique_members_today'] ?? 0)) }}
+                    </div>
+                    <div class="d-flex justify-content-between mt-3 text-muted">
+                        <span><i class="ki-outline ki-user text-primary me-1"></i>{{ trans('sw.pt_unique_trainers_today') }}</span>
+                        <span class="fw-semibold text-primary">{{ number_format((int) ($stats['unique_trainers_today'] ?? 0)) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-flush h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <span class="fs-7 text-muted">{{ trans('sw.pt_sessions_next_seven_days') }}</span>
+                    <div class="fs-2 fw-bold text-gray-900">
+                        {{ number_format((int) ($stats['sessions_next_seven_days'] ?? 0)) }}
+                    </div>
+                    <span class="text-muted mt-3">{{ trans('sw.pt_sessions_next_seven_days_hint') }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-flush h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <span class="fs-7 text-muted">{{ trans('sw.pt_total_sessions_remaining') }}</span>
+                    <div class="fs-2 fw-bold text-gray-900">
+                        {{ number_format((int) ($stats['remaining_sessions_total'] ?? 0)) }}
+                    </div>
+                    <div class="d-flex justify-content-between mt-3 text-muted">
+                        <span><i class="ki-outline ki-chart-line text-info me-1"></i>{{ trans('sw.pt_total_sessions_used') }}</span>
+                        <span class="fw-semibold text-info">{{ number_format((int) ($stats['used_sessions_total'] ?? 0)) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        @if($nextSession)
+        <div class="row g-5 mb-5">
+            <div class="col-xl-12">
+                <div class="card card-flush">
+                    <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+                        <div class="d-flex align-items-center mb-4 mb-md-0">
+                            <div class="symbol symbol-60px me-4">
+                                <div class="symbol-label bg-light-info">
+                                    <i class="ki-outline ki-calendar fs-2x text-info"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="fs-7 text-muted">{{ trans('sw.pt_next_session') }}</span>
+                                <div class="fs-4 fw-bold text-gray-900">
+                                        {{ optional($nextSession->class)->name ?? trans('sw.pt_class') }}
+                                </div>
+                                <div class="text-muted">
+                                        {{ optional($nextSession->session_date)->format('Y-m-d H:i') }}
+                                        @if(!empty($nextSession->trainer_name))
+                                            • {{ $nextSession->trainer_name }}
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="{{ route('sw.listPTSessions') }}" class="btn btn-light-primary">
+                                <i class="ki-outline ki-arrow-right fs-2 me-2"></i>{{ trans('sw.pt_manage_sessions') }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!--begin::Dashboard-->
     <div class="row g-5">
         <!--begin::Member Check-in-->
@@ -367,6 +466,9 @@
                                                 <th>
                                                     {{ trans('sw.pt_class')}}
                                                 </th>
+                                                <th>
+                                                    {{ trans('sw.sessions_used')}}
+                                                </th>
 
                                                 {{--                                                <th>--}}
                                                 {{--                                                    {{ trans('sw.status')}}--}}
@@ -464,24 +566,24 @@
                             url: url,
                             cache: false,
                             type: 'GET',
-                            dataType: 'text',
-                            data: {},
-                            success: function (response) {
-                                // $('#trainer_confirm').modal('toggle');
-                                // $('#tr_trainer_member_'+id).remove();
+                            dataType: 'json',
+                            success: function (response_data) {
                                 let result = '';
-                                let date_status = '';
-                                let response_data = $.parseJSON(response);
                                 if(response_data.result.length > 0){
                                     for (let i = 0; i < response_data.result.length; i++){
+                                        const entry = response_data.result[i];
+                                        const member = entry.member || {};
+                                        const sessionsUsed = entry.sessions_used ?? 0;
+                                        const sessionsTotal = entry.sessions_total ?? '-';
                                         result+= '<tr>';
                                         result+= '<td>' + (i+1) + '</td>';
-                                        result+= '<td><i class="fa fa-user text-muted"></i> ' + (response_data.result[i].member.name || '' )+ '</td>';
+                                        result+= '<td><i class="fa fa-user text-muted"></i> ' + (member.name || '' )+ '</td>';
                                         result+= '<td>' + arg.title + '</td>';
+                                        result+= '<td>' + sessionsUsed + ' / ' + sessionsTotal + '</td>';
                                         result+= '</tr>';
                                     }
                                 }else{
-                                    result = '<tr id="empty_cart"><td colspan="3" class="text-center">{{ trans('sw.no_record_found')}}</td></tr>';
+                                    result = '<tr id="empty_cart"><td colspan="4" class="text-center">{{ trans('sw.no_record_found')}}</td></tr>';
 
                                 }
                                 $('#modalMembersTable').modal('show');
@@ -503,6 +605,7 @@
                             title: '{{$reservation['title']}}',
                             pt_class_id: '{{$reservation['pt_class_id']}}',
                             pt_trainer_id: '{{$reservation['pt_trainer_id']}}',
+                            session_token: '{{$reservation['session_token'] ?? ''}}',
                             start: '{{$reservation['start']}}',
                             end: '{{$reservation['end']}}',
                             backgroundColor: '{{$reservation['background_color']}}',
@@ -578,7 +681,7 @@
                     // var partsDate = data.member.member_subscriptions.expire_date.split('T');
                     $('#client_expire_date').text(data.member.expire_date);
                     $('#client_workouts').text(data.member.remain_workouts);
-                    $('#client_classes').text(data.member.classes);
+                    $('#client_classes').text(data.member.sessions_total ?? data.member.classes);
                     let subscription_name = '';
                     if(data.member.pt_subscription){ subscription_name =  data.member.pt_subscription?.name; }else{  subscription_name = trans_old_membership; }
                     $('#client_membership').text(subscription_name);
@@ -602,7 +705,10 @@
                     if(data.member.pt_members && (data.member.pt_members.length > 0)){
                         let pt_members = '';
                         for (let i = 0; data.member.pt_members.length > i; i++){
-                            pt_members = pt_members + '<a id="pt_membership_'+ data.member.pt_members[i].id +'" class="tag pt_membership_a tx-15" style="margin: 5px;" onclick="pt_membership('+ data.member.pt_members[i].id +')">' + data.member.pt_members[i].pt_subscription.name +' ('+ data.member.pt_members[i].visits + ' / ' + data.member.pt_members[i].classes +') ' +'</a>';
+                            const ptMember = data.member.pt_members[i];
+                            const sessionsUsed = ptMember.sessions_used ?? ptMember.visits ?? 0;
+                            const sessionsTotal = ptMember.sessions_total ?? ptMember.total_sessions ?? ptMember.classes ?? 0;
+                            pt_members = pt_members + '<a id="pt_membership_'+ ptMember.id +'" class="tag pt_membership_a tx-15" style="margin: 5px;" onclick="pt_membership('+ ptMember.id +')">' + ptMember.pt_subscription.name +' ('+ sessionsUsed + ' / ' + sessionsTotal +') ' +'</a>';
                         }
                         $('#client_pt_membership_h5').show();
                         $('#client_pt_membership').html(pt_members);

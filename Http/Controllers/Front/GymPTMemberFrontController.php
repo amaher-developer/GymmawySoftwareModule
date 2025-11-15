@@ -12,6 +12,7 @@ use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberAttendee;
 use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMoneyBox;
+use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymPTClass;
 use Modules\Software\Models\GymPTMember;
 use Modules\Software\Models\GymPTMemberAttendee;
@@ -20,6 +21,9 @@ use Modules\Software\Models\GymPTSubscriptionTrainer;
 use Modules\Software\Models\GymPTTrainer;
 use Modules\Billing\Services\SwBillingService;
 use Modules\Software\Repositories\GymPTMemberRepository;
+use Modules\Software\Services\PT\PTCommissionService;
+use Modules\Software\Services\PT\PTEnrollmentService;
+use Modules\Software\Services\PT\PTSessionService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Carbon\Carbon;
@@ -35,10 +39,20 @@ class GymPTMemberFrontController extends GymGenericFrontController
 {
     public $MemberRepository;
     public $fileName;
+    protected PTEnrollmentService $enrollmentService;
+    protected PTSessionService $sessionService;
+    protected PTCommissionService $commissionService;
 
-    public function __construct()
+    public function __construct(
+        PTEnrollmentService $enrollmentService,
+        PTSessionService $sessionService,
+        PTCommissionService $commissionService
+    )
     {
         parent::__construct();
+        $this->enrollmentService = $enrollmentService;
+        $this->sessionService = $sessionService;
+        $this->commissionService = $commissionService;
         $this->MemberRepository=new GymPTMemberRepository(new Application);
         $this->MemberRepository=$this->MemberRepository->branch();
     }
@@ -233,6 +247,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $discounts = GymGroupDiscount::branch()->where('is_pt_member', true)->get();
         $classes = GymPTClass::branch()->isSystem()->with(['pt_subscription_trainer'])->get();
         $billingSettings = SwBillingService::getSettings();
+        $paymentTypes = GymPaymentType::orderBy('payment_id')->get();
         return view('software::Front.pt_member_front_create', [
             'member' => new GymPTMember(),
             'discounts' => $discounts,
@@ -241,6 +256,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
             'classes'=> $classes,
             'title'=>$title,
             'billingSettings' => $billingSettings,
+            'paymentTypes' => $paymentTypes,
         ]);
     }
 
@@ -292,23 +308,40 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return redirect(route('sw.createPTMember'))->withErrors(['pt_class_id' => trans('sw.active_members_exceeds_available_members')]);
         }
 
-        $member_inputs['classes'] = $class->classes;
-        $member_inputs['member_id'] = $memberSubscription->id;
+        $calculatedSessions = (int) ($request->input('total_sessions') ?? $class->total_sessions ?? $class->classes ?? 0);
+        $remainingSessions = (int) ($request->input('remaining_sessions') ?? $calculatedSessions);
+        $amountRemaining = (($class->price - (float)$amount_paid - (float)$discount_value) + (($class->price - (float)$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100)));
 
-        $member_inputs['start_time_day'] = @$class->start_time_day;
-        $member_inputs['end_time_day'] = @$class->end_time_day;
-        $member_inputs['workouts_per_day'] = @$class->workouts_per_day;
+        $enrollmentPayload = [
+            'member_id' => $memberSubscription->id,
+            'pt_subscription_id' => $member_inputs['pt_subscription_id'],
+            'class_trainer_id' => $request->input('class_trainer_id'),
+            'class_type' => $class->class_type,
+            'classes' => $calculatedSessions,
+            'total_sessions' => $calculatedSessions,
+            'remaining_sessions' => $remainingSessions,
+            'start_date' => $request->input('joining_date'),
+            'end_date' => $request->input('expire_date'),
+            'amount_paid' => (float) $amount_paid,
+            'amount_before_discount' => $class->price,
+            'discount_value' => (float) $discount_value,
+            'payment_method' => (string) $request->input('payment_type'),
+            'trainer_percentage' => $request->input('trainer_percentage'),
+            'notes' => $member_inputs['notes'] ?? null,
+        ];
 
-        $member_inputs['amount_paid'] = (float)$amount_paid;
-        $member_inputs['discount_value'] = (float)$discount_value;
-        $member_inputs['vat'] = $vat;
-        $member_inputs['amount_before_discount'] = $class->price;
-        $member_inputs['amount_remaining'] = (($class->price - (float)$amount_paid - @(float)$discount_value) + (($class->price - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100)));
-        $member_inputs['payment_type'] = (int)($request->payment_type);
-
-        if($member_inputs['joining_date']){ $member_inputs['joining_date'] = Carbon::parse($member_inputs['joining_date']); }else{  $member_inputs['joining_date'] = Carbon::now();}
-
-        $member = $this->MemberRepository->create($member_inputs);
+        $member = $this->enrollmentService->enrollMember($class, $enrollmentPayload);
+        $member->start_time_day = @$class->start_time_day;
+        $member->end_time_day = @$class->end_time_day;
+        $member->workouts_per_day = @$class->workouts_per_day;
+        $member->discount_value = (float) $discount_value;
+        $member->discount = (float) $discount_value;
+        $member->vat = $vat;
+        $member->amount_before_discount = $class->price;
+        $member->amount_remaining = $amountRemaining;
+        $member->payment_type = (int) $request->payment_type;
+        $member->notes = $member_inputs['notes'] ?? null;
+        $member->save();
         
         // Award loyalty points if member made a payment
         $loyaltyPointsEarned = 0;
@@ -349,7 +382,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
 
         $amount_box = GymMoneyBox::branch()->latest()->first();
         $amount_after = GymMoneyBoxFrontController::amountAfter( (float)@$amount_box->amount, (float)@$amount_box->amount_before, (int)@$amount_box->operation);
-        $notes = trans('sw.pt_member_moneybox_add_msg', ['subscription' => $class->pt_subscription->name." (".$class->classes.")", 'member' => $memberSubscription->name, 'amount_paid' => (float)($amount_paid), 'amount_remaining' => round($member_inputs['amount_remaining'], 2)]);
+        $notes = trans('sw.pt_member_moneybox_add_msg', ['subscription' => $class->pt_subscription->name." (".$class->classes.")", 'member' => $memberSubscription->name, 'amount_paid' => (float)($amount_paid), 'amount_remaining' => round($amountRemaining, 2)]);
         if($discount_value) {
             $notes = $notes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
         }
@@ -416,6 +449,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $title = trans('sw.pt_member_edit');
         $member->loadMissing('zatcaInvoice');
         $billingSettings = SwBillingService::getSettings();
+        $paymentTypes = GymPaymentType::orderBy('payment_id')->get();
         return view('software::Front.pt_member_front_edit', [
             'member' => $member,
             'discounts' => $discounts,
@@ -424,13 +458,14 @@ class GymPTMemberFrontController extends GymGenericFrontController
             'classes'=> $classes,
             'title'=>$title,
             'billingSettings' => $billingSettings,
+            'paymentTypes' => $paymentTypes,
         ]);
     }
 
     public function update(GymPTMemberRequest $request, $id)
     {
         $member = $this->MemberRepository->with(['member.member_subscription_info.subscription', 'pt_subscription', 'pt_class', 'pt_trainer'])->withTrashed()->find($id);
-        $differentPrice = @(float)$request->amount_paid - $member->amount_paid;
+        $originalAmountPaid = $member->amount_paid;
         $member_inputs = $this->prepare_inputs($request->except(['_token']));
         $class = GymPTClass::branch()->with(['pt_subscription'])->where('id', $member_inputs['pt_class_id'])->orderBy('id', 'desc')->first();
         $vat = (($class->price - @$request->discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100));
@@ -446,18 +481,46 @@ class GymPTMemberFrontController extends GymGenericFrontController
         if(($class->member_limit != 0) && (@($active_member_count-1) >= $class->member_limit)){
             return redirect(route('sw.editPTMember', $member->id))->withErrors(['pt_class_id' => trans('sw.active_members_exceeds_available_members')]);
         }
-        $member_inputs['classes'] = $class->classes;
+        $calculatedSessions = (int) ($request->input('total_sessions') ?? $class->total_sessions ?? $class->classes ?? 0);
+        $remainingSessions = (int) ($request->input('remaining_sessions') ?? $member->remaining_sessions ?? $calculatedSessions);
+        $amountRemaining = (($class->price - (float)$request->amount_paid - @(float)$request->discount_value) + (($class->price - @$request->discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100)));
+
+        $enrollmentPayload = [
+            'member_id' => $member->member_id,
+            'pt_subscription_id' => $member_inputs['pt_subscription_id'],
+            'class_trainer_id' => $request->input('class_trainer_id') ?? $member->class_trainer_id,
+            'class_type' => $class->class_type,
+            'classes' => $calculatedSessions,
+            'total_sessions' => $calculatedSessions,
+            'remaining_sessions' => $remainingSessions,
+            'start_date' => $request->input('joining_date'),
+            'end_date' => $request->input('expire_date'),
+            'amount_paid' => (float) $request->amount_paid,
+            'amount_before_discount' => $class->price,
+            'discount_value' => (float) $request->discount_value,
+            'payment_method' => (string) $request->input('payment_type'),
+            'trainer_percentage' => $request->input('trainer_percentage'),
+            'notes' => $member_inputs['notes'] ?? null,
+        ];
+
+        $member = $this->enrollmentService->updateMember($member, $enrollmentPayload);
+        $member->start_time_day = @$class->start_time_day;
+        $member->end_time_day = @$class->end_time_day;
+        $member->workouts_per_day = @$class->workouts_per_day;
+        $member->discount_value = (float) $request->discount_value;
+        $member->discount = (float) $request->discount_value;
+        $member->vat = $vat;
+        $member->amount_before_discount = $class->price;
+        $member->amount_remaining = $amountRemaining;
+        $member->payment_type = (int) $request->payment_type;
+        $member->notes = $member_inputs['notes'] ?? null;
+        $member->save();
+
         $member_inputs['amount_paid'] = (float)$request->amount_paid;
-        //$member_inputs['amount_remaining'] = ($class->price - (float)$request->amount_paid - @(float)$request->discount_value);
-        $member_inputs['discount_value'] = @(float)$request->discount_value;
+        $member_inputs['amount_remaining'] = $amountRemaining;
         $member_inputs['vat'] = $vat;
-        $member_inputs['amount_before_discount'] = $class->price;
-        $member_inputs['amount_remaining'] = (($class->price - (float)$request->amount_paid - @(float)$request->discount_value) + (($class->price - @$request->discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100)));
-        $member_inputs['payment_type'] = (int)($request->payment_type);
 
-        if($member_inputs['joining_date']){ $member_inputs['joining_date'] = Carbon::parse($member_inputs['joining_date']); }else{  $member_inputs['joining_date'] = Carbon::now();}
-
-        $member->update($member_inputs);
+        $differentPrice = (float)$request->amount_paid - $originalAmountPaid;
 
         $notes = str_replace(':name', $member['name'], trans('sw.edit_activity'));
         $this->userLog($notes, TypeConstants::EditPTMember);
@@ -770,34 +833,111 @@ class GymPTMemberFrontController extends GymGenericFrontController
 
     private function prepare_inputs($inputs)
     {
-        // Handle text fields - convert null/empty values to empty strings to avoid null constraint violations
-        if (isset($inputs['content_ar'])) {
-            $inputs['content_ar'] = $inputs['content_ar'] !== null ? $inputs['content_ar'] : '';
-        } else {
-            $inputs['content_ar'] = '';
-        }
-        if (isset($inputs['content_en'])) {
-            $inputs['content_en'] = $inputs['content_en'] !== null ? $inputs['content_en'] : '';
-        } else {
-            $inputs['content_en'] = '';
-        }
-
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
         }
         return $inputs;
     }
 
+    private function recordMemberAttendance(GymPTMember $member): ?GymPTMemberAttendee
+    {
+        $member->loadMissing(['member.member_subscription_info', 'pt_class', 'classTrainer']);
+        $class = $member->pt_class ?? GymPTClass::find($member->pt_class_id);
+
+        if (!$class) {
+            return null;
+        }
+
+        $today = Carbon::now();
+        $endDate = $member->end_date ?? ($member->expire_date ? Carbon::parse($member->expire_date) : null);
+        if ($endDate && $endDate->lt($today)) {
+            return null;
+        }
+
+        $remaining = $member->remaining_sessions;
+        if ($remaining === null) {
+            $totalSessions = $member->total_sessions ?? $member->classes ?? 0;
+            $remaining = max($totalSessions - ($member->visits ?? 0), 0);
+        }
+        if ($remaining <= 0 && ($member->classes ?? $member->total_sessions ?? 0) > 0) {
+            return null;
+        }
+
+        $searchStart = Carbon::parse($member->start_date ?? $member->joining_date ?? $today)->startOfDay();
+        if ($today->greaterThan($searchStart)) {
+            $searchStart = $today->copy();
+        }
+
+        $searchEnd = $member->end_date
+            ? $member->end_date->copy()->endOfDay()
+            : ($member->expire_date ? Carbon::parse($member->expire_date)->endOfDay() : $today->copy()->addMonths(3));
+
+        if ($searchEnd->lt($searchStart)) {
+            return null;
+        }
+
+        $nextSlot = $this->sessionService->resolveNextScheduledSlot(
+            $class,
+            $member->classTrainer,
+            $searchStart,
+            $searchEnd
+        );
+
+        if (!$nextSlot) {
+            return null;
+        }
+
+        $existing = GymPTMemberAttendee::where('pt_member_id', $member->id)
+            ->where('session_date', $nextSlot)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $attendee = GymPTMemberAttendee::create([
+            'pt_member_id' => $member->id,
+            'session_id' => null,
+            'session_date' => $nextSlot,
+            'user_id' => optional(Auth::guard('sw')->user())->id,
+            'branch_setting_id' => $member->branch_setting_id ?? $class->branch_setting_id ?? @$this->user_sw->branch_setting_id,
+            'attended' => true,
+        ]);
+
+        $this->commissionService->recordForAttendance($attendee, $nextSlot, $member->classTrainer);
+        $this->enrollmentService->adjustRemainingSessions($member, -1);
+
+        GymMemberAttendee::create([
+            'user_id' => optional(Auth::guard('sw')->user())->id,
+            'member_id' => $member->member_id,
+            'pt_subscription_id' => $member->id,
+            'subscription_id' => optional(optional($member->member)->member_subscription_info)->id,
+            'type' => TypeConstants::ATTENDANCE_TYPE_PT,
+            'branch_setting_id' => @$this->user_sw->branch_setting_id,
+        ]);
+
+        $note = trans('sw.pt_member_used', [
+            'subscription' => ' ( ' . ($class->name ?? trans('sw.pt_class')) . ' - ' . ($class->classes ?? $class->total_sessions ?? 0) . ' ) ',
+            'name' => optional($member->member)->name,
+        ]);
+        $this->userLog($note, TypeConstants::ScanPTMember);
+
+        return $attendee;
+    }
+
     private function memberPTAttendeesById($id){
         $id = $id;
-        $member = GymPTMember::branch()->with(['member', 'pt_subscription', 'pt_class'])->where('id', $id)->first();
-        if($member && ($member->classes > $member->visits)) {
-            $member->increment('visits');
-//            GymPTMemberAttendee::create(['user_id' => Auth::guard('sw')->user()->id, 'pt_member_id' => $member->member->id ]);
-            GymMemberAttendee::create(['user_id' => @Auth::guard('sw')->user()->id, 'member_id' => $member->member->id,'pt_subscription_id' => $member->id,'subscription_id' => @$member->member->member_subscription_info->id, 'type' => TypeConstants::ATTENDANCE_TYPE_PT, 'branch_setting_id' => @$this->user_sw->branch_setting_id ]);
-            $note = trans('sw.pt_member_used', ['subscription' => ' ( '.$member->pt_subscription->name.' - '.$member->pt_class->classes.' ) ', 'name' => $member->member->name]);
-            $this->userLog($note, TypeConstants::ScanPTMember);
-            return $member->pt_subscription->name.' ('.$member->visits.' / '.$member->classes.') ';
+        $member = GymPTMember::branch()->with(['member', 'pt_subscription', 'pt_class', 'classTrainer'])->where('id', $id)->first();
+        if(!$member) {
+            return '';
+        }
+
+        $attendee = $this->recordMemberAttendance($member);
+        if ($attendee) {
+            $member->refresh();
+            $totalSessions = $member->sessions_total ?? $member->total_sessions ?? $member->classes ?? 0;
+            $usedSessions = $member->sessions_used ?? ($totalSessions - ($member->remaining_sessions ?? 0));
+            return $member->pt_subscription->name.' ('.$usedSessions.' / '.$totalSessions.') ';
         }
         return '';
     }
@@ -855,34 +995,23 @@ class GymPTMemberFrontController extends GymGenericFrontController
                     }
 
                     if(!$enquiry) {
-                        $member->increment('visits');
-//                        if ($member->member_subscription_info->status == TypeConstants::Freeze) {
-//                            $dateNow = Carbon::now();
-//                            $startFreezeDate = Carbon::parse($member->member_subscription_info->start_freeze_date);
-//                            $endFreezeDate = Carbon::parse($member->member_subscription_info->end_freeze_date);
-//                            $endExpireDate = Carbon::parse($member->member_subscription_info->expire_date);
-//                            if ($dateNow > $endFreezeDate)
-//                                $freezingDays = $startFreezeDate->diffInDays($endFreezeDate);
-//                            else
-//                                $freezingDays = $startFreezeDate->diffInDays($dateNow);
-//                            $member->member_subscription_info->end_freeze_date = Carbon::now();
-//                            $member->member_subscription_info->expire_date = $endExpireDate->addDays($freezingDays);
-//
-//                            $member->member->member_subscription_info->status = TypeConstants::Active;
-//                            $member->member->member_subscription_info->save();
-//                        }
-
-                        GymMemberAttendee::create(['user_id' => @Auth::guard('sw')->user()->id, 'member_id' => $member->member_id,'pt_subscription_id' => $member->id,'subscription_id' => @$member->member->member_subscription_info->id, 'type' => TypeConstants::ATTENDANCE_TYPE_PT, 'branch_setting_id' => @$this->user_sw->branch_setting_id ]);
-
-                        $note = str_replace(':name', $member->member->name, trans('sw.barcode_scan_note'));
-                        $this->userLog($note, TypeConstants::ScanMember);
+                        $attendee = $this->recordMemberAttendance($member);
+                        if (!$attendee) {
+                            return Response::json([
+                                'msg' => trans('sw.no_available_sessions'),
+                                'member' => $member,
+                                'status' => false,
+                            ], 200);
+                        }
+                        $member->refresh();
                     }
                     $status = true;
                 }else{
                     $msg = trans('sw.membership_expired');
                 }
                 $member['expire_date'] = Carbon::parse($member->expire_date)->format('d-m-Y');
-                $member['remain_workouts'] = $member->classes - $member->visits;
+                $sessionsRemaining = $member->remaining_sessions ?? ($member->classes - $member->visits);
+                $member['remain_workouts'] = $sessionsRemaining;
                 $member['amount_remaining'] = number_format($member->amount_remaining, 2);
                 return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
 //            }else{

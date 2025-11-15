@@ -2,7 +2,7 @@
 <style>
     .select2-container {
         width: 100% !important;
-        z-index: 9999 !important;
+        z-index: auto !important;
     }
 
     .select2-container--default.select2-container--focus .select2-selection--multiple {
