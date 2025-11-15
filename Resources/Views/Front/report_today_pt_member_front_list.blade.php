@@ -259,24 +259,26 @@
                                 <td>
                                     <span class="fw-bold">{{ @$log->pt_member_subscription->pt_subscription->name }}</span>
                                 </td>
-                                <td>
-                                    @php
-                                        $trainer = \Modules\Software\Models\GymPTTrainer::find(@$log->pt_member_subscription->pt_trainer_id);
-                                    @endphp
-                                    <span class="fw-bold">{{ @$trainer->name }}</span>
-                                </td>
                                 @php
-                                    $sessionsTotal = $log->pt_member_subscription->sessions_total ?? $log->pt_member_subscription->classes ?? 0;
-                                    $sessionsUsed = $log->pt_member_subscription->sessions_used;
+                                    $subscription = $log->pt_member_subscription;
+                                    $trainerId = $subscription->pt_trainer_id ?? null;
+                                    $trainer = $trainerId ? \Modules\Software\Models\GymPTTrainer::find($trainerId) : null;
+                                    $sessionsTotal = $subscription
+                                        ? ($subscription->sessions_total ?? $subscription->classes ?? 0)
+                                        : 0;
+                                    $sessionsUsed = $subscription->sessions_used ?? 0;
                                 @endphp
+                                <td>
+                                    <span class="fw-bold">{{ $trainer->name ?? trans('sw.not_assigned') }}</span>
+                                </td>
                                 <td>
                                     <span class="fw-bold">{{ $sessionsUsed }} / {{ $sessionsTotal ?: '-' }}</span>
                                 </td>
                                 <td>
-                                    <span class="fw-bold">{{ @$log->pt_member_subscription->joining_date ? \Carbon\Carbon::parse(@$log->pt_member_subscription->joining_date)->format('Y-m-d') : '' }}</span>
+                                    <span class="fw-bold">{{ $subscription && $subscription->joining_date ? \Carbon\Carbon::parse($subscription->joining_date)->format('Y-m-d') : '' }}</span>
                                 </td>
                                 <td>
-                                    <span class="fw-bold">{{ @$log->pt_member_subscription->expire_date ? \Carbon\Carbon::parse(@$log->pt_member_subscription->expire_date)->format('Y-m-d') : '' }}</span>
+                                    <span class="fw-bold">{{ $subscription && $subscription->expire_date ? \Carbon\Carbon::parse($subscription->expire_date)->format('Y-m-d') : '' }}</span>
                                 </td>
                                 <td>
                                     <span class="badge badge-light-success">{{ trans('sw.attend') }}</span>
