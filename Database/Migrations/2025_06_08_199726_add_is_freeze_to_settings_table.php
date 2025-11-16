@@ -15,7 +15,10 @@ class AddIsFreezeToSettingsTable extends Migration
     public function up()
     {
         Schema::table('settings', function (Blueprint $table) {
-            $table->boolean('is_freeze')->default(1)->nullable();
+            if (!Schema::hasColumn('settings', 'is_freeze')) {
+                $table->boolean('is_freeze')->default(1);
+            }
+            $table->boolean('is_freeze')->nullable();
         });
 
     }
