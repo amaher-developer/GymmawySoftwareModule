@@ -25,6 +25,7 @@ use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymMoneyBoxType;
 use Modules\Software\Models\GymNonMemberTime;
 use Modules\Software\Models\GymPaymentType;
+use Modules\Software\Models\GymReservation;
 use Modules\Software\Models\GymPotentialMember;
 use Modules\Software\Models\GymSaleChannel;
 use Modules\Software\Models\GymSubscription;
@@ -212,7 +213,28 @@ class GymMemberFrontController extends GymGenericFrontController
 
         $subscriptions = GymSubscription::branch()->isSystem()->get();
         $users = GymUser::branch()->get();
-        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query'));
+        
+        // Load upcoming reservations for members
+        $memberIds = $members instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator 
+            ? $members->pluck('id')->toArray() 
+            : $members->pluck('id')->toArray();
+        $upcomingReservations = [];
+        if (!empty($memberIds)) {
+            $upcomingReservations = GymReservation::branch()
+                ->where('client_type', 'member')
+                ->whereIn('member_id', $memberIds)
+                ->whereDate('reservation_date', '>=', \Carbon\Carbon::today()->format('Y-m-d'))
+                ->whereNotIn('status', ['cancelled', 'missed'])
+                ->with(['activity' => function($q) {
+                    $q->withTrashed();
+                }])
+                ->orderBy('reservation_date', 'asc')
+                ->orderBy('start_time', 'asc')
+                ->get()
+                ->groupBy('member_id');
+        }
+        
+        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query', 'upcomingReservations'));
     }
 
     public function updateSubscriptionsStatus($id = [], $all = false)

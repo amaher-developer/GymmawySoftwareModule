@@ -25,6 +25,7 @@ use Modules\Software\Models\GymStoreProduct;
 use Modules\Software\Models\GymPTMember;
 use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Models\GymPTSubscription;
+use Modules\Software\Models\GymReservation;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -359,10 +360,24 @@ class GymHomeFrontController extends GymGenericFrontController
         }
         $logs = $logsQuery->limit(20)->get();
 
+        // Reservations Statistics
+        $reservationsQuery = GymReservation::branch();
+        if ($from_date && $to_date) {
+            $reservationsQuery->whereBetween('reservation_date', [$from_date, $to_date]);
+        } else {
+            $reservationsQuery->whereDate('reservation_date', Carbon::today());
+        }
+        $total_reservations = (clone $reservationsQuery)->count();
+        $confirmed_reservations = (clone $reservationsQuery)->where('status', 'confirmed')->count();
+        $attended_reservations = (clone $reservationsQuery)->where('status', 'attended')->count();
+        $cancelled_reservations = (clone $reservationsQuery)->where('status', 'cancelled')->count();
+        $pending_reservations = (clone $reservationsQuery)->where('status', 'pending')->count();
+
 
         return view('software::Front.statistics', compact([
             'revenues', 'earnings', 'expenses'
             , 'title', 'logs', 'subscriptions'
+            , 'total_reservations', 'confirmed_reservations', 'attended_reservations', 'cancelled_reservations', 'pending_reservations'
             , 'money_box_now'
             , 'members_count', 'non_members_count', 'admin_count', 'potential_members_count', 'members_active_count', 'members_deactive_count'
             , 'new_members', 'expired_members'
@@ -477,16 +492,36 @@ class GymHomeFrontController extends GymGenericFrontController
             ->sortByDesc('revenue')
             ->take(10);
         
+        // Reservations Statistics for Members
+        $memberReservationsQuery = GymReservation::branch()
+            ->where('client_type', 'member');
+        if ($from_date) {
+            $memberReservationsQuery->where('reservation_date', '>=', $from_date);
+        }
+        if ($to_date) {
+            $memberReservationsQuery->where('reservation_date', '<=', $to_date);
+        }
+        $total_member_reservations = (clone $memberReservationsQuery)->count();
+        $member_confirmed_reservations = (clone $memberReservationsQuery)->where('status', 'confirmed')->count();
+        $member_attended_reservations = (clone $memberReservationsQuery)->where('status', 'attended')->count();
+        $member_cancelled_reservations = (clone $memberReservationsQuery)->where('status', 'cancelled')->count();
+        $member_pending_reservations = (clone $memberReservationsQuery)->where('status', 'pending')->count();
+        $member_missed_reservations = (clone $memberReservationsQuery)->where('status', 'missed')->count();
+        
         // Chart data for monthly trends
         $new_subscriptions_chart = $this->getSubscriptionChartData(0, $from_date, $to_date); // New subscriptions
         $expired_subscriptions_chart = $this->getSubscriptionChartData(2, $from_date, $to_date); // Expired subscriptions
         $frozen_subscriptions_chart = $this->getSubscriptionChartData(3, $from_date, $to_date); // Frozen subscriptions
+        $member_reservations_chart = $this->getReservationChartData('member', $from_date, $to_date);
         
         return view('software::Front.member_subscription_statistics', compact([
             'title', 'total_subscriptions', 'active_subscriptions', 'expired_subscriptions', 
             'frozen_subscriptions', 'subscription_revenue', 'monthly_revenue', 
             'new_this_month', 'expiring_soon', 'popular_subscriptions',
-            'new_subscriptions_chart', 'expired_subscriptions_chart', 'frozen_subscriptions_chart'
+            'new_subscriptions_chart', 'expired_subscriptions_chart', 'frozen_subscriptions_chart',
+            'total_member_reservations', 'member_confirmed_reservations', 
+            'member_attended_reservations', 'member_cancelled_reservations', 'member_pending_reservations', 'member_missed_reservations',
+            'member_reservations_chart'
         ]));
     }
 
@@ -879,15 +914,34 @@ class GymHomeFrontController extends GymGenericFrontController
                 return $member;
             });
         
+        // Reservations Statistics for Non-Members
+        $reservationsQuery = GymReservation::branch()
+            ->where('client_type', 'non_member');
+        if ($from_date) {
+            $reservationsQuery->where('reservation_date', '>=', $from_date);
+        }
+        if ($to_date) {
+            $reservationsQuery->where('reservation_date', '<=', $to_date);
+        }
+        $total_non_member_reservations = (clone $reservationsQuery)->count();
+        $non_member_confirmed_reservations = (clone $reservationsQuery)->where('status', 'confirmed')->count();
+        $non_member_attended_reservations = (clone $reservationsQuery)->where('status', 'attended')->count();
+        $non_member_cancelled_reservations = (clone $reservationsQuery)->where('status', 'cancelled')->count();
+        $non_member_pending_reservations = (clone $reservationsQuery)->where('status', 'pending')->count();
+        
         // Chart data for monthly trends
         $new_non_members_chart = $this->getNonMemberChartData('members', $from_date, $to_date);
         $sessions_chart = $this->getNonMemberChartData('sessions', $from_date, $to_date);
         $attendance_chart = $this->getNonMemberChartData('attendance', $from_date, $to_date);
+        $reservations_chart = $this->getReservationChartData('non_member', $from_date, $to_date);
         
         return view('software::Front.non_member_statistics', compact([
             'title', 'total_non_members', 'active_sessions', 'expired_sessions', 
             'total_sessions', 'attendance_rate', 'total_revenue', 'monthly_revenue',
             'popular_activities', 'recent_non_members',
+            'total_non_member_reservations', 'non_member_confirmed_reservations', 
+            'non_member_attended_reservations', 'non_member_cancelled_reservations', 'non_member_pending_reservations',
+            'reservations_chart',
             'new_non_members_chart', 'sessions_chart', 'attendance_chart'
         ]));
     }
@@ -952,6 +1006,43 @@ class GymHomeFrontController extends GymGenericFrontController
     public function nonMemberStatisticsRefresh(){
         // Refresh logic for non-member statistics
         return response()->json(['status' => 'success']);
+    }
+
+    private function getReservationChartData($client_type = null, $from_date = null, $to_date = null){
+        $query = GymReservation::branch();
+        
+        if ($client_type) {
+            $query->where('client_type', $client_type);
+        }
+        
+        if ($from_date) {
+            $query->where('reservation_date', '>=', $from_date);
+        }
+        
+        if ($to_date) {
+            $query->where('reservation_date', '<=', $to_date);
+        }
+        
+        $data = $query->get()
+            ->groupBy(function($reservation) {
+                return Carbon::parse($reservation->reservation_date)->format('m');
+            });
+
+        $recordCount = [];
+        $recordArr = [];
+        
+        foreach ($data as $key => $value) {
+            $recordCount[(int)$key] = count($value);
+        }
+
+        for($i = 1; $i <= 12; $i++){
+            if(!empty($recordCount[$i])){
+                $recordArr[$i] = $recordCount[$i];
+            }else{
+                $recordArr[$i] = 0;
+            }
+        }
+        return implode(',', $recordArr);
     }
 
 }

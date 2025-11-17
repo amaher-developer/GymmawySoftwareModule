@@ -20,6 +20,8 @@ use Modules\Software\Http\Requests\GymTrainingAssessmentRequest;
 use Illuminate\Container\Container as Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Mpdf\Mpdf;
 
 class GymTrainingMemberLogFrontController extends GymGenericFrontController
 {
@@ -682,6 +684,142 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     }
 
     /**
+     * Download plan as PDF
+     */
+    public function downloadPlanPDF($memberId, $logId)
+    {
+        try {
+            // Get the log entry
+            $log = GymTrainingMemberLog::where('member_id', $memberId)
+                ->where('id', $logId)
+                ->where('training_type', 'plan')
+                ->firstOrFail();
+
+            // Get member
+            $member = GymMember::findOrFail($memberId);
+
+            // Get plan details
+            $plan = $this->getLogDetails($log);
+            
+            if (!$plan) {
+                abort(404, 'Plan not found');
+            }
+
+            // Ensure tasks are loaded
+            if (!isset($plan->tasks) || !$plan->tasks) {
+                $plan = GymTrainingPlan::with(['tasks' => function($q) {
+                    $q->orderBy('order', 'asc')->orderBy('id', 'asc');
+                }])->find($plan->id ?? $plan->plan_id ?? null);
+            }
+
+            // Prepare data for PDF
+            $data = [
+                'plan' => $plan,
+                'member' => $member,
+                'log' => $log,
+                'lang' => app()->getLocale(),
+            ];
+
+            // Try mPDF for better Arabic support
+            if (app()->getLocale() == 'ar') {
+                try {
+                    // Render view to HTML
+                    $html = view('software::Front.training_plan_pdf', $data)->render();
+                    
+                    // Configure mPDF for Arabic
+                    $mpdf = new Mpdf([
+                        'mode' => 'utf-8',
+                        'format' => 'A4',
+                        'orientation' => 'P',
+                        'margin_left' => 15,
+                        'margin_right' => 15,
+                        'margin_top' => 15,
+                        'margin_bottom' => 15,
+                        'margin_header' => 9,
+                        'margin_footer' => 9,
+                        'directionality' => 'rtl',
+                        'default_font' => 'dejavusans',
+                        'default_font_size' => 12,
+                        'autoScriptToLang' => true,
+                        'autoLangToFont' => true,
+                        'allow_charset_conversion' => false,
+                        'tempDir' => storage_path('app/temp'),
+                    ]);
+                    
+                    // Set RTL for Arabic - must be called after instantiation
+                    $mpdf->SetDirectionality('rtl');
+                    
+                    // Write HTML - mPDF handles RTL automatically when directionality is set
+                    $mpdf->WriteHTML($html);
+                    
+                    // Generate filename
+                    $filename = 'plan_' . ($plan->title ?? 'plan') . '_' . $member->code . '_' . date('Y-m-d') . '.pdf';
+                    $filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $filename);
+                    
+                    return response($mpdf->Output($filename, 'D'), 200, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    \Log::error('mPDF failed for plan PDF: ' . $e->getMessage());
+                    // Fallback to DomPDF
+                }
+            }
+            
+            // Use DomPDF as fallback or for non-Arabic
+            $pdf = Pdf::loadView('software::Front.training_plan_pdf', $data);
+            
+            // Set paper size and orientation
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Set options for better Arabic support
+            $options = [
+                'enable-local-file-access' => true,
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'isFontSubsettingEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
+                'isPhpEnabled' => true,
+                'isJavascriptEnabled' => false,
+                'chroot' => public_path(),
+            ];
+            
+            // Configure for Arabic text
+            if (app()->getLocale() == 'ar') {
+                $options['defaultFont'] = 'DejaVu Sans';
+                $options['fontDir'] = storage_path('fonts/');
+                $options['fontCache'] = storage_path('fonts/');
+            }
+            
+            foreach ($options as $key => $value) {
+                $pdf->setOption($key, $value);
+            }
+            
+            // Generate filename
+            $filename = 'plan_' . ($plan->title ?? 'plan') . '_' . $member->code . '_' . date('Y-m-d') . '.pdf';
+            $filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $filename);
+
+            return $pdf->download($filename);
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate plan PDF: ' . $e->getMessage(), [
+                'exception' => $e,
+                'member_id' => $memberId,
+                'log_id' => $logId
+            ]);
+            
+            session()->flash('sweet_flash_message', [
+                'title' => trans('admin.error'),
+                'message' => trans('sw.failed_to_generate_pdf') . ': ' . $e->getMessage(),
+                'type' => 'error'
+            ]);
+            
+            return redirect()->back();
+        }
+    }
+
+    /**
      * Get detailed data for a log entry
      */
     private function getLogDetails($log)
@@ -700,22 +838,50 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
                     return null;
                 
                 case 'plan':
-                    if ($log->reference_id) {
-                        $planAssignment = \DB::table('sw_gym_training_members')->find($log->reference_id);
+                    // Try reference_id first, then fallback to meta
+                    $memberPlanId = $log->reference_id ?? $meta['member_plan_id'] ?? null;
+                    $planId = $meta['plan_id'] ?? null;
+                    
+                    if ($memberPlanId) {
+                        $planAssignment = \DB::table('sw_gym_training_members')->find($memberPlanId);
                         if ($planAssignment) {
-                            // Get plan ID based on type (training_plan_id or diet_plan_id)
-                            $planId = $planAssignment->training_plan_id ?? $planAssignment->diet_plan_id;
-                            $plan = GymTrainingPlan::find($planId);
-                            if ($plan) {
-                                $plan->from_date = $planAssignment->from_date;
-                                $plan->to_date = $planAssignment->to_date;
-                                $plan->assignment_weight = $planAssignment->weight;
-                                $plan->assignment_height = $planAssignment->height;
-                                $plan->assignment_notes = $planAssignment->notes;
-                                return $plan;
+                            // Get plan ID based on type (training_plan_id or diet_plan_id or plan_id)
+                            if (!$planId) {
+                                $planId = $planAssignment->training_plan_id ?? $planAssignment->diet_plan_id ?? $planAssignment->plan_id;
+                            }
+                            
+                            if ($planId) {
+                                $plan = GymTrainingPlan::with(['tasks' => function($q) {
+                                    $q->orderBy('order', 'asc')->orderBy('id', 'asc');
+                                }])->find($planId);
+                                
+                                if ($plan) {
+                                    $plan->from_date = $planAssignment->from_date ?? null;
+                                    $plan->to_date = $planAssignment->to_date ?? null;
+                                    $plan->assignment_weight = $planAssignment->weight ?? null;
+                                    $plan->assignment_height = $planAssignment->height ?? null;
+                                    $plan->assignment_notes = $planAssignment->notes ?? null;
+                                    return $plan;
+                                }
                             }
                         }
+                    } elseif ($planId) {
+                        // If we have plan_id but no member_plan_id, still try to load the plan
+                        $plan = GymTrainingPlan::with(['tasks' => function($q) {
+                            $q->orderBy('order', 'asc')->orderBy('id', 'asc');
+                        }])->find($planId);
+                        
+                        if ($plan) {
+                            // Try to get assignment data from meta if available
+                            $plan->from_date = isset($meta['from_date']) ? $meta['from_date'] : null;
+                            $plan->to_date = isset($meta['to_date']) ? $meta['to_date'] : null;
+                            $plan->assignment_weight = isset($meta['assignment_weight']) ? $meta['assignment_weight'] : null;
+                            $plan->assignment_height = isset($meta['assignment_height']) ? $meta['assignment_height'] : null;
+                            $plan->assignment_notes = isset($meta['assignment_notes']) ? $meta['assignment_notes'] : null;
+                            return $plan;
+                        }
                     }
+                    
                     return null;
                 
                 case 'medicine':
@@ -735,14 +901,90 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
                     if ($log->reference_id) {
                         $track = GymTrainingTrack::find($log->reference_id);
                         if ($track) {
+                            // Get member for calculations
+                            $member = GymMember::find($track->member_id);
+                            $gender = $member->gender ?? 'male';
+                            $age = $member->age ?? ($member->birth_date ? \Carbon\Carbon::parse($member->birth_date)->age : 30);
+                            
+                            // Calculate additional metrics
+                            $calculations = [];
+                            $weight = $track->weight ?? 0;
+                            $height = $track->height ?? 0;
+                            $heightInMeters = $height / 100;
+                            $fatPercentage = $track->fat_percentage ?? 0;
+                            
+                            if ($weight > 0 && $height > 0) {
+                                // BMR (Basal Metabolic Rate) - Mifflin-St Jeor Equation
+                                if ($gender == 'female') {
+                                    $bmr = 10 * $weight + 6.25 * $height - 5 * $age - 161;
+                                } else {
+                                    $bmr = 10 * $weight + 6.25 * $height - 5 * $age + 5;
+                                }
+                                $calculations['bmr'] = round($bmr, 2) . ' kcal/day';
+                                
+                                // TDEE (Total Daily Energy Expenditure) - approximate using BMR * 1.55 (moderately active)
+                                $tdee = $bmr * 1.55;
+                                $calculations['tdee'] = round($tdee, 2) . ' kcal/day';
+                                
+                                // Ideal Weight Range (BMI 18.5-24.9)
+                                $idealWeightMin = 18.5 * ($heightInMeters * $heightInMeters);
+                                $idealWeightMax = 24.9 * ($heightInMeters * $heightInMeters);
+                                $calculations['ideal_weight'] = round($idealWeightMin, 1) . ' - ' . round($idealWeightMax, 1) . ' kg';
+                                
+                                // Weight to Lose/Gain (based on ideal weight)
+                                $currentBMI = $weight / ($heightInMeters * $heightInMeters);
+                                if ($currentBMI > 24.9) {
+                                    $weightToLose = $weight - $idealWeightMax;
+                                    $calculations['weight_to_lose'] = round($weightToLose, 1) . ' kg';
+                                } elseif ($currentBMI < 18.5) {
+                                    $weightToGain = $idealWeightMin - $weight;
+                                    $calculations['weight_to_gain'] = round($weightToGain, 1) . ' kg';
+                                }
+                                
+                                // Waist-to-Height Ratio (if waist/abdominal circumference available)
+                                if ($track->abdominal_circumference) {
+                                    $whtr = ($track->abdominal_circumference / $height) * 100;
+                                    $calculations['waist_to_height_ratio'] = round($whtr, 1) . '%';
+                                    if ($whtr >= 50) {
+                                        $calculations['whtr_status'] = trans('sw.high_risk');
+                                    } elseif ($whtr >= 45) {
+                                        $calculations['whtr_status'] = trans('sw.moderate_risk');
+                                    } else {
+                                        $calculations['whtr_status'] = trans('sw.low_risk');
+                                    }
+                                }
+                            }
+                            
+                            if ($weight > 0 && $fatPercentage > 0) {
+                                // Body Fat Mass
+                                $bodyFatMass = ($weight * $fatPercentage) / 100;
+                                $calculations['body_fat_mass'] = round($bodyFatMass, 2) . ' kg';
+                                
+                                // Lean Body Mass
+                                $leanBodyMass = $weight - $bodyFatMass;
+                                $calculations['lean_body_mass'] = round($leanBodyMass, 2) . ' kg';
+                            }
+                            
                             // Structure measurements for display
                             $track->measurements = [
+                                'date' => $track->date ? \Carbon\Carbon::parse($track->date)->format('Y-m-d') : ($track->created_at ? $track->created_at->format('Y-m-d') : null),
                                 'weight' => $track->weight ? $track->weight . ' kg' : null,
                                 'height' => $track->height ? $track->height . ' cm' : null,
+                                'bmi' => $track->bmi ?? (($weight > 0 && $height > 0) ? round($weight / (($height / 100) * ($height / 100)), 2) : null),
                                 'fat_percentage' => $track->fat_percentage ? $track->fat_percentage . '%' : null,
                                 'muscle_mass' => $track->muscle_mass ? $track->muscle_mass . ' kg' : null,
+                                'neck_circumference' => $track->neck_circumference ? $track->neck_circumference . ' cm' : null,
+                                'chest_circumference' => $track->chest_circumference ? $track->chest_circumference . ' cm' : null,
+                                'arm_circumference' => $track->arm_circumference ? $track->arm_circumference . ' cm' : null,
+                                'abdominal_circumference' => $track->abdominal_circumference ? $track->abdominal_circumference . ' cm' : null,
+                                'pelvic_circumference' => $track->pelvic_circumference ? $track->pelvic_circumference . ' cm' : null,
+                                'thigh_circumference' => $track->thigh_circumference ? $track->thigh_circumference . ' cm' : null,
                             ];
-                            // Remove null values
+                            
+                            // Add calculations
+                            $track->calculations = $calculations;
+                            
+                            // Remove null values from measurements
                             $track->measurements = array_filter($track->measurements);
                             return $track;
                         }

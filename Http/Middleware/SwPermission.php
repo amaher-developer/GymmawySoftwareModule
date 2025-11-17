@@ -56,7 +56,8 @@ class SwPermission
             , 'userAttendees', 'userAttendeesStore'
             , 'fingerprintRefresh'
             , 'getNonMemberReservation', 'createReservationNonMemberAjax', 'deleteReservationNonMemberAjax'
-
+            , 'reservation.events', 'reservation.slots', 'reservation.checkOverlap', 'reservation.ajaxCreate', 'reservation.ajaxUpdate', 'reservation.ajaxGet'
+            , 'reservation.confirm', 'reservation.cancel', 'reservation.attend', 'reservation.missed'
             , 'exportTodayPTMemberExcel', 'exportTodayPTMemberPDF', 'exportTodayMemberExcel', 'exportTodayMemberPDF'
             , 'exportTodayNonMemberExcel', 'exportTodayNonMemberPDF', 'exportExpireMemberExcel', 'exportExpireMemberPDF'
             , 'exportSubscriptionMemberExcel', 'exportSubscriptionMemberPDF', 'exportPTSubscriptionMemberExcel', 'exportPTSubscriptionMemberPDF'

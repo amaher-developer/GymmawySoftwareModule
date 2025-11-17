@@ -96,6 +96,7 @@ if(!isset($permission_group->permissions)){
                                 @if($mainSettings->active_mobile)
                                 <option value="banners">{{ trans('sw.media') }}</option>
                                 @endif
+                                <option value="reservations">{{ trans('sw.reservations') }}</option>
                                 <option value="statistics">{{ trans('sw.statistics') }}</option>
                                 <option value="reports">{{ trans('sw.reports') }}</option>
                                 <option value="aiReports">{{ trans('sw.ai_reports') }}</option>
@@ -181,6 +182,11 @@ if(!isset($permission_group->permissions)){
                             </a>
                         </li>
                                         @endif
+                        <li class="nav-item">
+                            <a class="nav-link" href="#reservations" data-toggle="tab">
+                                {{ trans('sw.reservations') }}
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#statistics" data-toggle="tab">
                                 {{ trans('sw.statistics') }}
@@ -1129,6 +1135,70 @@ if(!isset($permission_group->permissions)){
                                         </div>
                                     </div>
 
+                                    <!--begin::Reservations Tab-->
+                                    <div class="tab-pane" id="reservations">
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-calendar-tick"></i> {{ trans('sw.reservations') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listReservation"
+                                                                            @if(@in_array('listReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createReservation"
+                                                                            @if(@in_array('createReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.create') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editReservation"
+                                                                            @if(@in_array('editReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('admin.edit') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteReservation"
+                                                                            @if(@in_array('deleteReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="changeReservationStatus"
+                                                                            @if(@in_array('changeReservationStatus', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.change_status') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="confirmReservation"
+                                                                            @if(@in_array('confirmReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.confirm') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="cancelReservation"
+                                                                            @if(@in_array('cancelReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.cancel') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="attendReservation"
+                                                                            @if(@in_array('attendReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.attend') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="markMissedReservation"
+                                                                            @if(@in_array('markMissedReservation', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.mark_missed') }}</span></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--end::Reservations Tab-->
 
                                     <div class="tab-pane " id="banners">
                                         <hr class="perm-hr"/>

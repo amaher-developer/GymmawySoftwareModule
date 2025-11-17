@@ -545,6 +545,32 @@
                 $(`#day_end_${dayIndex}`).prop('disabled', !isChecked);
                 $(`tr[data-day-row="${dayIndex}"]`).toggleClass('disabled-row', !isChecked);
             });
+
+            // Handle form submission - ensure reservation_details is null if no days selected
+            $('form').on('submit', function(e) {
+                let hasActiveDay = false;
+                
+                // Check if any day checkbox is checked
+                $('.day-checkbox').each(function() {
+                    if ($(this).is(':checked')) {
+                        hasActiveDay = true;
+                        return false; // break loop
+                    }
+                });
+                
+                // If no active days, add hidden input to set reservation_details to null
+                if (!hasActiveDay) {
+                    // Remove any existing reservation_details inputs
+                    $('input[name^="reservation_details"]').remove();
+                    
+                    // Add hidden input to explicitly set reservation_details to null
+                    $('<input>').attr({
+                        type: 'hidden',
+                        name: 'reservation_details',
+                        value: ''
+                    }).appendTo($(this));
+                }
+            });
         });
     </script>
 @endsection

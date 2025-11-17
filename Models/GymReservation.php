@@ -3,42 +3,46 @@
 namespace Modules\Software\Models;
 
 use Modules\Generic\Models\GenericModel;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GymReservation extends GenericModel
 {
-
-    protected $dates = ['deleted_at'];
-
     protected $table = 'sw_gym_reservations';
-    protected $guarded = ['id'];
-    protected $appends = [];
-    public static $uploads_path='uploads/reservations/';
-    public static $thumbnails_uploads_path='uploads/reservations/thumbnails/';
+
+    protected $fillable = [
+        'client_type',
+        'member_id',
+        'non_member_id',
+        'activity_id',
+        'reservation_date',
+        'start_time',
+        'end_time',
+        'status',
+        'cancelled_at',
+        'notes',
+    ];
+
+    protected $casts = [
+        'reservation_date' => 'date:Y-m-d',
+        'cancelled_at'     => 'datetime',
+    ];
 
     public function scopeBranch($query)
     {
         return $query->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
     }
+
     public function member()
     {
-        return $this->belongsTo(GymMember::class, 'member_id');
+        return $this->belongsTo(GymMember::class, 'member_id')->withTrashed();
     }
 
-
-
-
-    public function toArray()
+    public function nonMember()
     {
-        return parent::toArray();
-        $to_array_attributes = [];
-        foreach ($this->relations as $key => $relation) {
-            $to_array_attributes[$key] = $relation;
-        }
-        foreach ($this->appends as $key => $append) {
-            $to_array_attributes[$key] = $append;
-        }
-        return $to_array_attributes;
+        return $this->belongsTo(GymNonMember::class, 'non_member_id')->withTrashed();
     }
 
+    public function activity()
+    {
+        return $this->belongsTo(GymActivity::class, 'activity_id')->withTrashed();
+    }
 }

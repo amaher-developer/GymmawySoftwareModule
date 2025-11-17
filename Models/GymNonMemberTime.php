@@ -9,7 +9,7 @@ class GymNonMemberTime extends GenericModel
 
     protected $dates = ['deleted_at'];
 
-    protected $table = 'sw_gym_non_member_times';
+    protected $table = 'sw_gym_reservations';
     protected $guarded = ['id'];
     protected $appends = [];
     protected $casts = [];

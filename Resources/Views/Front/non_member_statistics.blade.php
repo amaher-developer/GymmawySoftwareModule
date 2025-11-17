@@ -231,6 +231,58 @@
             </div>
             <!--end::Col-->
 
+            <!--begin::Col - Reservations Statistics-->
+            <div class="col-md-6 col-lg-6 col-xl-6 col-xxl-3 mb-10">
+                <!--begin::Card widget - Total Reservations-->
+                <div class="card card-flush h-md-50 mb-5 mb-xl-10">
+                    <!--begin::Header-->
+                    <div class="card-header pt-5">
+                        <!--begin::Title-->
+                        <div class="card-title d-flex flex-column">
+                            <!--begin::Amount-->
+                            <span class="fs-2hx fw-bold text-gray-900 me-2 lh-1 ls-n2">{{ $total_non_member_reservations ?? 0 }}</span>
+                            <!--end::Amount-->
+                            <!--begin::Subtitle-->
+                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.total_reservations') }}</span>
+                            <!--end::Subtitle-->
+                        </div>
+                        <!--end::Title-->
+                    </div>
+                    <!--end::Header-->
+                    <!--begin::Card body-->
+                    <div class="card-body d-flex flex-column justify-content-end">
+                        <!--begin::Stats-->
+                        <div class="d-flex flex-column content-justify-center w-100">
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center mb-2">
+                                <div class="bullet w-8px h-6px rounded-2 bg-success me-3"></div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.confirmed') }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $non_member_confirmed_reservations ?? 0 }}</div>
+                            </div>
+                            <!--end::Label-->
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center mb-2">
+                                <div class="bullet w-8px h-6px rounded-2 bg-primary me-3"></div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.attended') }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $non_member_attended_reservations ?? 0 }}</div>
+                            </div>
+                            <!--end::Label-->
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center">
+                                <div class="bullet w-8px h-6px rounded-2 bg-danger me-3"></div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.cancelled') }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $non_member_cancelled_reservations ?? 0 }}</div>
+                            </div>
+                            <!--end::Label-->
+                        </div>
+                        <!--end::Stats-->
+                    </div>
+                    <!--end::Card body-->
+                </div>
+                <!--end::Card widget-->
+            </div>
+            <!--end::Col - Reservations Statistics-->
+
             <!--begin::Col-->
             <div class="col-md-6 col-lg-6 col-xl-6 col-xxl-3 mb-10">
                 <!--begin::Card widget - Attendance Rate-->
@@ -794,6 +846,9 @@
                 }, {
                     name: '{{ trans('sw.sessions_attended') }}',
                     data: [{{ $attendance_chart }}]
+                }, {
+                    name: '{{ trans('sw.reservations') }}',
+                    data: [{{ $reservations_chart ?? '0,0,0,0,0,0,0,0,0,0,0,0' }}]
                 }],
                 chart: {
                     fontFamily: 'inherit',

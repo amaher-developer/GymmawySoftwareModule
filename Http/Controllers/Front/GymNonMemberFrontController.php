@@ -15,7 +15,6 @@ use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymNonMember;
 use Modules\Software\Models\GymNonMemberTime;
-use Modules\Software\Models\GymReservation;
 use Modules\Software\Models\GymSaleChannel;
 use Modules\Software\Models\GymUserLog;
 use Modules\Software\Repositories\GymActivityRepository;
@@ -111,7 +110,26 @@ class GymNonMemberFrontController extends GymGenericFrontController
             $total = $members->count();
         }
         $activities = GymActivity::branch()->isSystem()->get();
-        return view('software::Front.nonmember_front_list', compact('members', 'activities','title', 'total', 'search_query'));
+        
+        // Load upcoming reservations for non-members
+        $memberIds = $members->pluck('id')->toArray();
+        $upcomingReservations = [];
+        if (!empty($memberIds)) {
+            $upcomingReservations = \Modules\Software\Models\GymReservation::branch()
+                ->where('client_type', 'non_member')
+                ->whereIn('non_member_id', $memberIds)
+                ->whereDate('reservation_date', '>=', \Carbon\Carbon::today()->format('Y-m-d'))
+                ->whereNotIn('status', ['cancelled', 'missed'])
+                ->with(['activity' => function($q) {
+                    $q->withTrashed();
+                }])
+                ->orderBy('reservation_date', 'asc')
+                ->orderBy('start_time', 'asc')
+                ->get()
+                ->groupBy('non_member_id');
+        }
+        
+        return view('software::Front.nonmember_front_list', compact('members', 'activities','title', 'total', 'search_query', 'upcomingReservations'));
     }
 
 

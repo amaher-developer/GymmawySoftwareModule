@@ -48,4 +48,8 @@ Route::prefix('training/member-log')
             ->post('ai-plan/save-template', 'Front\GymTrainingMemberLogFrontController@saveAiPlanTemplate');
         Route::name('sw.assignAiPlanToMember')
             ->post('{member}/ai-plan/assign', 'Front\GymTrainingMemberLogFrontController@assignAiPlanToMember');
+            
+        // Download plan PDF
+        Route::name('sw.downloadPlanPDF')
+            ->get('{member}/plan/{logId}/pdf', 'Front\GymTrainingMemberLogFrontController@downloadPlanPDF');
     });

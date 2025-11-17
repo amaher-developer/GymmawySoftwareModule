@@ -209,7 +209,7 @@
                 <!--end::Export-->
                 
                 <!--begin::Calendar Button-->
-                <a href="{{route('sw.listNonMemberReport')}}" class="btn btn-sm btn-flex btn-light-info">
+                <a href="{{route('sw.listReservation')}}" class="btn btn-sm btn-flex btn-light-info">
                     <i class="ki-outline ki-calendar fs-6"></i>
                     {{ trans('sw.activities_calender')}}
                 </a>
@@ -636,6 +636,51 @@
                                         </a>
                                         <!--end::Invoice-->
                                     @endif
+                                    
+                                    <!--begin::Upcoming Reservations Button-->
+                                    @php
+                                        $memberReservations = $upcomingReservations[$member->id] ?? collect();
+                                    @endphp
+                                    @if($memberReservations->count() > 0)
+                                        <button type="button" 
+                                                class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm position-relative" 
+                                                title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#upcomingReservationsModal{{ $member->id }}">
+                                            <i class="ki-outline ki-calendar-tick fs-2"></i>
+                                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                                                {{ $memberReservations->count() }}
+                                                <span class="visually-hidden">{{ trans('sw.upcoming_reservations') }}</span>
+                                            </span>
+                                        </button>
+                                    @endif
+                                    <!--end::Upcoming Reservations Button-->
+                                    
+                                    <!--begin::Quick Book Button-->
+                                    @php
+                                        $memberActivities = @$member->member_subscription_info->activities ?? [];
+                                        // Filter activities to get only those with activity data
+                                        $hasValidActivities = false;
+                                        if (!empty($memberActivities) && is_array($memberActivities)) {
+                                            foreach ($memberActivities as $act) {
+                                                if (isset($act['activity']['id'])) {
+                                                    $hasValidActivities = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    @if((in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user) && $hasValidActivities)
+                                        <button type="button" 
+                                                class="btn btn-icon btn-bg-light btn-active-color-success btn-sm" 
+                                                title="{{ trans('sw.quick_booking') }}"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#quickBookModal{{ $member->id }}"
+                                                onclick="openQuickBookModal({{ $member->id }}, {{ json_encode($memberActivities) }})">
+                                            <i class="ki-outline ki-calendar-add fs-2"></i>
+                                        </button>
+                                    @endif
+                                    <!--end::Quick Book Button-->
 
                                     @if(in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user)
                                         @if((@($member->member_subscription_info->number_times_freeze) > 0) && (@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Active))
@@ -1162,6 +1207,280 @@
     <!-- End model pay -->
 
     <!-- End model profile -->
+    
+    <!--begin::Upcoming Reservations Modal for Each Member-->
+    @foreach($members as $member)
+        @php
+            $memberReservations = $upcomingReservations[$member->id] ?? collect();
+        @endphp
+        @if($memberReservations->count() > 0)
+            <div class="modal fade" id="upcomingReservationsModal{{ $member->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="fw-bold">{{ trans('sw.upcoming_reservations') }}</h2>
+                            <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
+                                <i class="ki-outline ki-cross fs-1"></i>
+                            </div>
+                        </div>
+                        <div class="modal-body scroll-y mx-5 mx-xl-15 my-7">
+                            <!--begin::Member Info-->
+                            <div class="d-flex align-items-center mb-5">
+                                <div class="symbol symbol-50px me-3">
+                                    <div class="symbol-label bg-light-primary">
+                                        <i class="ki-outline ki-user fs-2x text-primary"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-800 fw-bold fs-5">{{ $member->name }}</div>
+                                    @if($member->phone)
+                                        <div class="text-muted fs-7">
+                                            <i class="ki-outline ki-phone fs-6 me-1"></i> {{ $member->phone }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            <!--end::Member Info-->
+                            
+                            <!--begin::Reservations List-->
+                            <div class="separator separator-dashed my-5"></div>
+                            <div class="mb-5">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <h3 class="fw-bold text-gray-800 fs-6">
+                                        {{ trans('sw.reservations') }} ({{ $memberReservations->count() }})
+                                    </h3>
+                                    <a href="{{ route('sw.listReservation') }}?member_id={{ $member->id }}" class="btn btn-sm btn-light-primary">
+                                        <i class="ki-outline ki-eye fs-6"></i> {{ trans('sw.view_all') }}
+                                    </a>
+                                </div>
+                                
+                                <div class="d-flex flex-column gap-3">
+                                    @foreach($memberReservations as $reservation)
+                                        <div class="card card-flush border border-gray-300 border-dashed">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-flex align-items-center gap-4">
+                                                        <!--begin::Date-->
+                                                        <div class="text-center">
+                                                            <div class="text-gray-500 fw-semibold fs-7 mb-1">{{ trans('sw.date') }}</div>
+                                                            <span class="badge badge-{{ $reservation->status == 'confirmed' ? 'success' : ($reservation->status == 'pending' ? 'warning' : 'primary') }} badge-lg">
+                                                                {{ $reservation->reservation_date->format('Y-m-d') }}
+                                                            </span>
+                                                        </div>
+                                                        <!--end::Date-->
+                                                        
+                                                        <!--begin::Time-->
+                                                        <div class="text-center">
+                                                            <div class="text-gray-500 fw-semibold fs-7 mb-1">{{ trans('sw.time') }}</div>
+                                                            <div class="text-gray-800 fw-bold fs-6">
+                                                                <i class="ki-outline ki-time fs-5 text-primary me-1"></i>
+                                                                {{ $reservation->start_time }} - {{ $reservation->end_time }}
+                                                            </div>
+                                                        </div>
+                                                        <!--end::Time-->
+                                                        
+                                                        <!--begin::Activity-->
+                                                        @if($reservation->activity)
+                                                            <div class="text-center">
+                                                                <div class="text-gray-500 fw-semibold fs-7 mb-1">{{ trans('sw.activity') }}</div>
+                                                                <span class="badge badge-light-info badge-lg">
+                                                                    <i class="ki-outline ki-list fs-5 me-1"></i>
+                                                                    {{ $reservation->activity->{'name_'.($lang ?? 'ar')} ?? $reservation->activity->name }}
+                                                                </span>
+                                                            </div>
+                                                        @endif
+                                                        <!--end::Activity-->
+                                                    </div>
+                                                    
+                                                    <!--begin::Status & Actions-->
+                                                    <div class="text-end">
+                                                        <div class="mb-2">
+                                                            <select class="form-select form-select-sm reservation-status-select" 
+                                                                    data-reservation-id="{{ $reservation->id }}"
+                                                                    style="min-width: 120px;">
+                                                                <option value="pending" @selected($reservation->status == 'pending')>{{ trans('sw.pending') }}</option>
+                                                                <option value="confirmed" @selected($reservation->status == 'confirmed')>{{ trans('sw.confirmed') }}</option>
+                                                                <option value="attended" @selected($reservation->status == 'attended')>{{ trans('sw.attended') }}</option>
+                                                                <option value="cancelled" @selected($reservation->status == 'cancelled')>{{ trans('sw.cancelled') }}</option>
+                                                                <option value="missed" @selected($reservation->status == 'missed')>{{ trans('sw.missed') }}</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-icon btn-light-primary reservation-edit-btn" 
+                                                                    title="{{ trans('admin.edit') }}"
+                                                                    data-reservation-id="{{ $reservation->id }}"
+                                                                    data-member-id="{{ $member->id }}">
+                                                                <i class="ki-outline ki-pencil fs-4"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <!--end::Status & Actions-->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <!--end::Reservations List-->
+                        </div>
+                        <div class="modal-footer flex-center">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('sw.close') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
+    <!--end::Upcoming Reservations Modal-->
+    
+    <!--begin::Quick Book Modal for Each Member-->
+    @foreach($members as $member)
+        @php
+            $memberActivities = @$member->member_subscription_info->activities ?? [];
+            // Check if member has valid activities with activity data
+            $hasValidActivities = false;
+            if (!empty($memberActivities) && is_array($memberActivities)) {
+                foreach ($memberActivities as $act) {
+                    if (isset($act['activity']['id'])) {
+                        $hasValidActivities = true;
+                        break;
+                    }
+                }
+            }
+        @endphp
+        @if($hasValidActivities)
+            <div class="modal fade" id="quickBookModal{{ $member->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="fw-bold">
+                                <i class="ki-outline ki-calendar-tick fs-2 me-2 text-success"></i>
+                                {{ trans('sw.quick_booking') }} - {{ $member->name }}
+                            </h2>
+                            <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
+                                <i class="ki-outline ki-cross fs-1"></i>
+                            </div>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="qb_member_id_{{ $member->id }}" value="{{ $member->id }}">
+                            <input type="hidden" id="qb_reservation_id_{{ $member->id }}" value="">
+                            
+                            <!--begin::Help Text-->
+                            <div class="alert alert-light-info d-flex align-items-center p-4 mb-5">
+                                <i class="ki-outline ki-information-5 fs-2x text-info me-3"></i>
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold text-gray-800">{{ trans('sw.quick_booking_title') }}</span>
+                                    <span class="text-muted fs-7 mt-1">{{ trans('sw.select_activity_and_time') }}</span>
+                                </div>
+                            </div>
+                            <!--end::Help Text-->
+                            
+                            <!--begin::Input group-->
+                            <div class="mb-5 fv-row">
+                                <label class="required form-label">
+                                    <i class="ki-outline ki-gym fs-6 me-1"></i>
+                                    {{ trans('sw.activity') }}
+                                </label>
+                                <select id="qb_activity_{{ $member->id }}" class="form-select form-select-solid qb-activity-select" data-member-id="{{ $member->id }}" data-placeholder="{{ trans('sw.select_activity') }}">
+                                    <option value="">{{ trans('sw.select_activity') }}</option>
+                                    @foreach($memberActivities as $activity)
+                                        @php
+                                            // Structure: $activity['activity']['id'], $activity['activity']['name_ar'], etc.
+                                            $activityData = $activity['activity'] ?? null;
+                                            $activityId = $activityData['id'] ?? null;
+                                            $activityName = $activityData['name_'.($lang ?? 'ar')] ?? $activityData['name_ar'] ?? $activityData['name'] ?? '';
+                                            // Duration might be in activity object or in main activity array
+                                            $duration = $activityData['duration_minutes'] ?? $activity['duration_minutes'] ?? 60;
+                                        @endphp
+                                        @if($activityId && $activityName)
+                                            <option value="{{ $activityId }}" data-duration="{{ $duration }}">{{ $activityName }}</option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                            </div>
+                            <!--end::Input group-->
+
+                            <!--begin::Input group-->
+                            <div class="mb-5 fv-row">
+                                <label class="required form-label">
+                                    <i class="ki-outline ki-calendar fs-6 me-1"></i>
+                                    {{ trans('sw.date') }}
+                                </label>
+                                <input type="date" id="qb_date_{{ $member->id }}" class="form-control form-control-solid qb-date-input" data-member-id="{{ $member->id }}" min="{{ date('Y-m-d') }}" />
+                                <div class="form-text">
+                                    <i class="ki-outline ki-information-2 fs-7 me-1"></i>
+                                    {{ trans('sw.select_date_for_slots') }}
+                                </div>
+                            </div>
+                            <!--end::Input group-->
+
+                            <!--begin::Input group-->
+                            <div class="mb-5 fv-row">
+                                <label class="form-label">
+                                    <i class="ki-outline ki-time fs-6 me-1"></i>
+                                    {{ trans('sw.duration') }}
+                                </label>
+                                <select id="qb_duration_{{ $member->id }}" class="form-select form-select-solid qb-duration-select" data-member-id="{{ $member->id }}">
+                                    <option value="30">30 {{ trans('sw.minutes') }}</option>
+                                    <option value="45">45 {{ trans('sw.minutes') }}</option>
+                                    <option value="60" selected>60 {{ trans('sw.minutes') }}</option>
+                                    <option value="90">90 {{ trans('sw.minutes') }}</option>
+                                    <option value="120">120 {{ trans('sw.minutes') }}</option>
+                                </select>
+                                <div class="form-text">
+                                    <i class="ki-outline ki-information-2 fs-7 me-1"></i>
+                                    {{ trans('sw.select_duration_help') }}
+                                </div>
+                            </div>
+                            <!--end::Input group-->
+
+                            <!--begin::Button-->
+                            <div class="mb-5">
+                                <button type="button" class="btn btn-light-primary w-100 qb-load-slots-btn" data-member-id="{{ $member->id }}">
+                                    <i class="ki-outline ki-magnifier fs-2"></i>
+                                    {{ trans('sw.show_available_slots') }}
+                                </button>
+                            </div>
+                            <!--end::Button-->
+
+                            <!--begin::Slots-->
+                            <div id="qb_slots_{{ $member->id }}" class="mb-5">
+                                <div class="slots-empty-state">
+                                    <i class="ki-outline ki-calendar-tick"></i>
+                                    <div class="empty-title">{{ trans('sw.select_activity_date_to_show_slots') }}</div>
+                                    <div class="empty-subtitle">{{ trans('sw.choose_activity_and_date_first') }}</div>
+                                </div>
+                            </div>
+                            <!--end::Slots-->
+
+                            <!--begin::Input group-->
+                            <div class="mb-5 fv-row">
+                                <label class="form-label">
+                                    <i class="ki-outline ki-note-text fs-6 me-1"></i>
+                                    {{ trans('sw.notes') }}
+                                </label>
+                                <textarea id="qb_notes_{{ $member->id }}" class="form-control form-control-solid" rows="3" placeholder="{{ trans('sw.enter_notes_placeholder') }}"></textarea>
+                                <div class="form-text">
+                                    <i class="ki-outline ki-information-2 fs-7 me-1"></i>
+                                    {{ trans('sw.notes_optional_help') }}
+                                </div>
+                            </div>
+                            <!--end::Input group-->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('sw.cancel') }}</button>
+                            <button type="button" class="btn btn-success qb-book-btn" data-member-id="{{ $member->id }}">
+                                <i class="ki-outline ki-check-circle fs-2"></i>
+                                <span class="qb-book-btn-text">{{ trans('sw.book_now') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
+    <!--end::Quick Book Modal for Each Member-->
 @endsection
 
 @section('scripts')
@@ -1243,60 +1562,54 @@
             }
         }
         function remove_reservation(id, time){
-            swal({
+            Swal.fire({
                 title: trans_are_you_sure,
                 text: "",
-                type: "warning",
+                icon: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#DD6B55",
                 confirmButtonText: trans_yes,
                 cancelButtonText: trans_no_please,
-                showLoaderOnConfirm: true,
-//                ,closeOnConfirm: false,
-//                closeOnCancel: false
-                preConfirm: function (isConfirm) {
-                    return new Promise(function (resolve, reject) {
-                        setTimeout(function () {
-                            if (isConfirm) {
-
-
-                                $.get("{{route('sw.deleteReservationNonMemberAjax')}}", {  id: id, time: time },
-                                    function(result){
-                                        if(result) {
-                                            swal({
-                                                title: trans_done,
-                                                text: trans_successfully_processed,
-                                                type: "success",
-                                                timer: 4000,
-                                                confirmButtonText: 'Ok',
-                                            });
-                                        if(result == 'reload'){
-                                            location.reload();
-                                        }
+                allowOutsideClick: false,
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.get("{{route('sw.deleteReservationNonMemberAjax')}}", {  id: id, time: time },
+                        function(result){
+                            if(result) {
+                                Swal.fire({
+                                    title: trans_done,
+                                    text: trans_successfully_processed,
+                                    icon: "success",
+                                    timer: 4000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    if(result == 'reload'){
+                                        location.reload();
+                                    } else {
                                         $('#li_reservation_'+id).remove();
-                                        }else{
-                                            swal({
-                                                title: trans_operation_failed,
-                                                text: trans_operation_failed,
-                                                type: "error",
-                                                timer: 4000,
-                                                confirmButtonText: 'Ok',
-                                            });
-                                        }
                                     }
-                                );
-
-                                return false;
-                            } else {
-                                swal("Cancelled", "Alright, everything still as it is", "info");
+                                });
+                            }else{
+                                Swal.fire({
+                                    title: trans_operation_failed,
+                                    text: trans_operation_failed,
+                                    icon: "error",
+                                    timer: 4000,
+                                    showConfirmButton: false
+                                });
                             }
-//            });
-                        }, 2000)
-                    })
-                },
-                allowOutsideClick: false
-            }).then(function (isConfirm) {
-
+                        }
+                    );
+                } else {
+                    Swal.fire({
+                        title: "Cancelled",
+                        text: "Alright, everything still as it is",
+                        icon: "info",
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
             });
             return false;
         }
@@ -1443,7 +1756,12 @@
 
                 },
                 error: function (request, error) {
-                    swal("Operation failed", "Something went wrong.", "error");
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
                     console.error("Request: " + JSON.stringify(request));
                     console.error("Error: " + JSON.stringify(error));
                 }
@@ -1522,7 +1840,12 @@
 
                 },
                 error: function (request, error) {
-                    swal("Operation failed", "Something went wrong.", "error");
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
                     console.error("Request: " + JSON.stringify(request));
                     console.error("Error: " + JSON.stringify(error));
                 }
@@ -1546,7 +1869,12 @@
                     a.remove();
                 },
                 error: function (request, error) {
-                    swal("Operation failed", "Something went wrong.", "error");
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
                     console.error("Request: " + JSON.stringify(request));
                     console.error("Error: " + JSON.stringify(error));
                 }
@@ -1702,7 +2030,12 @@
 
                 },
                 error: function (request, error) {
-                    swal("Operation failed", "Something went wrong.", "error");
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
                     console.error("Request: " + JSON.stringify(request));
                     console.error("Error: " + JSON.stringify(error));
                 }
@@ -1732,7 +2065,12 @@
                     }, 500);
                 },
                 error: function (request, error) {
-                    swal("Operation failed", "Something went wrong.", "error");
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
                     console.error("Request: " + JSON.stringify(request));
                     console.error("Error: " + JSON.stringify(error));
                 }
@@ -1803,7 +2141,12 @@
                          $('#credits_balance').addClass('member_balance_less').html(response);
                  },
                  error: function (request, error) {
-                     swal("Operation failed", "Something went wrong.", "error");
+                     Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
                      console.error("Request: " + JSON.stringify(request));
                      console.error("Error: " + JSON.stringify(error));
                  }
@@ -1885,12 +2228,12 @@
                             $('#form_credit_add_btn').hide();
                             $('#form_credit_refund_btn').hide();
                             $('#credits_balance').val(data);
-                            swal({
+                            Swal.fire({
                                 title: trans_done,
                                 text: trans_successfully_processed,
-                                type: "success",
+                                icon: "success",
                                 timer: 4000,
-                                confirmButtonText: 'Ok',
+                                showConfirmButton: false
                             });
                         }
 
@@ -1903,5 +2246,800 @@
              return false;
          }
     </script>
+
+<!-- Quick Booking Styles -->
+<style>
+/* Time Slots Styling */
+.time-slots-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+    padding: 1rem 0;
+}
+
+.slot-btn {
+    min-width: 140px;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 0.65rem;
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+    border: 2px solid;
+    background: transparent;
+}
+
+.slot-btn i {
+    font-size: 1.1rem;
+}
+
+/* Available Slot */
+.slot-free {
+    border-color: #50cd89;
+    color: #50cd89;
+    background-color: rgba(80, 205, 137, 0.08);
+}
+
+.slot-free:hover {
+    background-color: rgba(80, 205, 137, 0.15);
+    border-color: #47b875;
+    color: #47b875;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(80, 205, 137, 0.2);
+}
+
+.slot-free.active {
+    background: linear-gradient(135deg, #50cd89 0%, #47b875 100%);
+    color: #ffffff;
+    border-color: #47b875;
+    box-shadow: 0 4px 16px rgba(80, 205, 137, 0.4);
+    transform: translateY(-2px);
+}
+
+.slot-free.active::before {
+    content: "\2713";
+    margin-left: -0.5rem;
+    font-weight: bold;
+}
+
+/* Busy/Occupied Slot */
+.slot-busy {
+    border-color: #e4e6ef;
+    color: #a1a5b7;
+    background-color: #f5f8fa;
+    cursor: not-allowed;
+    opacity: 0.65;
+    position: relative;
+}
+
+.slot-busy::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: #a1a5b7;
+    transform: rotate(-5deg);
+}
+
+/* Empty State */
+.slots-empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    background: linear-gradient(135deg, #f5f8fa 0%, #ffffff 100%);
+    border-radius: 0.65rem;
+    border: 2px dashed #e4e6ef;
+}
+
+.slots-empty-state i {
+    font-size: 4rem;
+    color: #e4e6ef;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.slots-empty-state .empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #5e6278;
+    margin-bottom: 0.5rem;
+}
+
+.slots-empty-state .empty-subtitle {
+    font-size: 0.875rem;
+    color: #a1a5b7;
+}
+
+/* Error State */
+.slots-error-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%);
+    border-radius: 0.65rem;
+    border: 2px solid #f1416c;
+}
+
+.slots-error-state i {
+    font-size: 4rem;
+    color: #f1416c;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.slots-error-state .error-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f1416c;
+    margin-bottom: 0.5rem;
+}
+
+.slots-error-state .error-subtitle {
+    font-size: 0.875rem;
+    color: #a1a5b7;
+}
+
+/* Loading State */
+.slots-loading-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.slots-loading-state .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3rem;
+    color: #50cd89;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .time-slots-container {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .slot-btn {
+        min-width: 120px;
+        padding: 0.625rem 0.875rem;
+        font-size: 0.85rem;
+    }
+}
+</style>
+
+<!-- Quick Booking JavaScript -->
+<script>
+// Function to open quick book modal for specific member
+function openQuickBookModal(memberId, activities) {
+    console.log('Opening modal for member:', memberId);
+    // Wait for modal to be shown, then initialize Select2
+    setTimeout(function() {
+        const select = $(`#qb_activity_${memberId}`);
+        if (select.length === 0) {
+            console.error('Select element not found for member:', memberId);
+            return;
+        }
+        if (select.hasClass('select2-hidden-accessible')) {
+            select.select2('destroy');
+        }
+        select.select2({
+            placeholder: '{{ trans('sw.select_activity') }}',
+            allowClear: true,
+            minimumResultsForSearch: 0,
+            dropdownParent: $(`#quickBookModal${memberId}`),
+            language: {
+                searching: function() {
+                    return '{{ trans('sw.searching') }}...';
+                },
+                noResults: function() {
+                    return '{{ trans('sw.no_results_found') }}';
+                }
+            }
+        });
+        console.log('Select2 initialized for member:', memberId);
+    }, 300);
+}
+
+// Load slots for specific member modal - MUST be outside DOMContentLoaded
+$(document).on('click', '.qb-load-slots-btn', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const memberId = $(this).data('member-id');
+    console.log('Button clicked! Loading slots for member:', memberId);
+    
+    // Get values - handle Select2
+    let activity_id;
+    const activitySelect = $(`#qb_activity_${memberId}`);
+    console.log('Activity select element:', activitySelect.length, activitySelect);
+    
+    if (activitySelect.length === 0) {
+        console.error('Activity select not found for member:', memberId);
+        Swal.fire({
+            icon: 'error',
+            title: '{{ trans('sw.error') }}',
+            text: 'Activity select not found',
+            confirmButtonText: 'Ok'
+        });
+        return false;
+    }
+    
+    if (activitySelect.hasClass('select2-hidden-accessible')) {
+        activity_id = activitySelect.select2('val');
+    } else {
+        activity_id = activitySelect.val();
+    }
+    
+    const date = $(`#qb_date_${memberId}`).val();
+    const duration = $(`#qb_duration_${memberId}`).val();
+    
+    console.log('Form values:', {activity_id, date, duration});
+
+    if(!activity_id || !date) {
+        Swal.fire({
+            icon: 'error',
+            title: '{{ trans('sw.error') }}',
+            text: '{{ trans('sw.select_activity_date_first') }}',
+            confirmButtonText: 'Ok'
+        });
+        return false;
+    }
+
+    const btn = $(this);
+    const originalHtml = btn.html();
+    btn.prop('disabled', true).html('<i class="ki-outline ki-loading fs-2"></i> {{ trans('sw.loading') }}...');
+    $(`#qb_slots_${memberId}`).html(`
+        <div class="slots-loading-state">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">{{ trans('sw.loading') }}...</span>
+            </div>
+            <div class="text-muted mt-3 fw-semibold">{{ trans('sw.loading_slots') }}...</div>
+        </div>
+    `);
+    
+    console.log('Sending request to:', "{{ route('sw.reservation.slots') }}");
+
+    $.ajax({
+        url: "{{ route('sw.reservation.slots') }}",
+        type: 'POST',
+        dataType: 'json',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        data: {
+            activity_id: activity_id, 
+            reservation_date: date, 
+            duration: duration
+        },
+        success: function(resp) {
+            console.log('Response received:', resp);
+            btn.prop('disabled', false).html('<i class="ki-outline ki-magnifier fs-2"></i> {{ trans('sw.show_available_slots') }}');
+            $(`#qb_slots_${memberId}`).empty();
+        
+            // Check if day is available
+            if (resp.day_available === false) {
+                $(`#qb_slots_${memberId}`).html(`
+                    <div class="slots-empty-state">
+                        <i class="ki-outline ki-calendar-tick"></i>
+                        <div class="empty-title">{{ trans('sw.day_not_available_for_reservation') }}</div>
+                        <div class="empty-subtitle">{{ trans('sw.please_select_different_date') }}</div>
+                    </div>
+                `);
+                return;
+            }
+
+            if (resp.slots && resp.slots.length > 0) {
+                const slotsContainer = $('<div class="time-slots-container"></div>');
+                let availableCount = 0;
+                let occupiedCount = 0;
+                
+                resp.slots.forEach(function(slot){
+                    const slotBtn = $('<button type="button" class="slot-btn"></button>');
+                    const hasLimit = resp.has_limit || false;
+                    const limit = resp.reservation_limit || 0;
+                    const current = slot.current_bookings || 0;
+                    const remaining = slot.remaining_slots;
+                    
+                    // Build time text with capacity info if limit exists
+                    let timeText = `<span><i class="ki-outline ki-time fs-6"></i> ${slot.start_time} - ${slot.end_time}</span>`;
+                    
+                    if (hasLimit && slot.available) {
+                        // Show remaining slots info
+                        timeText += `<small class="d-block mt-1" style="font-size: 0.75rem; opacity: 0.8;">
+                            ${remaining > 0 ? remaining + ' {{ trans("sw.slots_remaining") }}' : '{{ trans("sw.last_slot") }}'}
+                        </small>`;
+                    } else if (hasLimit && !slot.available) {
+                        // Show limit reached
+                        timeText += `<small class="d-block mt-1" style="font-size: 0.75rem; opacity: 0.8;">
+                            {{ trans("sw.limit_reached") }} (${current}/${limit})
+                        </small>`;
+                    }
+                    
+                    if(slot.available){
+                        availableCount++;
+                        slotBtn.addClass('slot-free qb-select-slot-member')
+                               .attr('data-start', slot.start_time)
+                               .attr('data-end', slot.end_time)
+                               .attr('data-member-id', memberId)
+                               .html(timeText);
+                    } else {
+                        occupiedCount++;
+                        slotBtn.addClass('slot-busy')
+                               .prop('disabled', true)
+                               .html(timeText);
+                    }
+                    
+                    slotsContainer.append(slotBtn);
+                });
+                
+                // Add summary header with capacity info
+                const summaryHtml = resp.has_limit 
+                    ? `
+                        <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light-primary rounded">
+                            <div class="d-flex align-items-center gap-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge badge-circle badge-light-success"></span>
+                                    <span class="text-gray-700 fw-semibold">{{ trans('sw.available') }}: ${availableCount}</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge badge-circle badge-light-secondary"></span>
+                                    <span class="text-gray-700 fw-semibold">{{ trans('sw.occupied') }}: ${occupiedCount}</span>
+                                </div>
+                            </div>
+                            <div class="text-gray-600 fw-semibold">
+                                <i class="ki-outline ki-user fs-6 me-1"></i>
+                                {{ trans('sw.reservation_limit') }}: ${resp.reservation_limit}
+                            </div>
+                        </div>
+                    `
+                    : `
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge badge-circle badge-light-success"></span>
+                                    <span class="text-gray-700 fw-semibold">{{ trans('sw.available') }}: ${availableCount}</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge badge-circle badge-light-secondary"></span>
+                                    <span class="text-gray-700 fw-semibold">{{ trans('sw.occupied') }}: ${occupiedCount}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                
+                const summary = $(summaryHtml);
+                $(`#qb_slots_${memberId}`).append(summary).append(slotsContainer);
+            } else {
+                $(`#qb_slots_${memberId}`).html(`
+                    <div class="slots-empty-state">
+                        <i class="ki-outline ki-calendar-tick"></i>
+                        <div class="empty-title">{{ trans('sw.no_slots_available') }}</div>
+                        <div class="empty-subtitle">{{ trans('sw.try_different_date') }}</div>
+                    </div>
+                `);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX Error loading slots:', {xhr, status, error});
+            btn.prop('disabled', false).html('<i class="ki-outline ki-magnifier fs-2"></i> {{ trans('sw.show_available_slots') }}');
+            let errorMsg = '{{ trans('sw.error_loading_slots') }}';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            $(`#qb_slots_${memberId}`).html(`
+                <div class="slots-error-state">
+                    <i class="ki-outline ki-cross-circle"></i>
+                    <div class="error-title">${errorMsg}</div>
+                    <div class="error-subtitle">${error || '{{ trans('sw.please_try_again') }}'}</div>
+                </div>
+            `);
+        }
+    });
+});
+
+// Choose slot for member modal
+$(document).on('click', '.qb-select-slot-member', function(){
+    const memberId = $(this).data('member-id');
+    $(`.qb-select-slot-member[data-member-id="${memberId}"]`).removeClass('active');
+    $(this).addClass('active');
+});
+
+// Book now for specific member (create or update)
+$(document).on('click', '.qb-book-btn', function(){
+    const memberId = $(this).data('member-id');
+    const reservationId = $(`#qb_reservation_id_${memberId}`).val();
+    const activity_id = $(`#qb_activity_${memberId}`).val();
+    const date = $(`#qb_date_${memberId}`).val();
+    const selected = $(`.qb-select-slot-member[data-member-id="${memberId}"].active`);
+    const member_id = $(`#qb_member_id_${memberId}`).val();
+    
+    if(!activity_id || !date) {
+        Swal.fire({
+            icon: 'error',
+            title: '{{ trans('sw.error') }}',
+            text: '{{ trans('sw.select_activity_date_first') }}',
+            confirmButtonText: 'Ok'
+        });
+        return;
+    }
+    
+    if(selected.length === 0) {
+        Swal.fire({
+            icon: 'error',
+            title: '{{ trans('sw.error') }}',
+            text: '{{ trans('sw.select_slot') }}',
+            confirmButtonText: 'Ok'
+        });
+        return;
+    }
+    
+    const start_time = selected.data('start');
+    const end_time = selected.data('end');
+    const notes = $(`#qb_notes_${memberId}`).val();
+
+    const payload = {
+        client_type: 'member',
+        member_id: member_id,
+        non_member_id: null,
+        activity_id: activity_id,
+        reservation_date: date,
+        start_time: start_time,
+        end_time: end_time,
+        notes: notes
+    };
+
+    const btn = $(this);
+    const btnText = btn.find('.qb-book-btn-text');
+    const isUpdate = reservationId && reservationId !== '';
+    const url = isUpdate 
+        ? "{{ route('sw.reservation.ajaxUpdate', ':id') }}".replace(':id', reservationId)
+        : "{{ route('sw.reservation.ajaxCreate') }}";
+    
+    btn.prop('disabled', true);
+    btnText.text('{{ trans('sw.booking') }}...');
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(async r => {
+        if(r.status === 422){
+            const j = await r.json();
+            btn.prop('disabled', false);
+            btnText.text(isUpdate ? '{{ trans('sw.update') }}' : '{{ trans('sw.book_now') }}');
+            Swal.fire({
+                icon: 'error',
+                title: '{{ trans('sw.error') }}',
+                text: j.message || '{{ trans('sw.slot_conflict') }}',
+                confirmButtonText: 'Ok'
+            });
+            return;
+        }
+        return r.json();
+    })
+    .then(res => {
+        if(res && res.success){
+            // Close modal immediately after successful reservation
+            $(`#quickBookModal${memberId}`).modal('hide');
+            
+            Swal.fire({
+                icon: 'success',
+                title: '{{ trans('admin.done') }}',
+                text: isUpdate ? '{{ trans('admin.successfully_edited') }}' : '{{ trans('sw.reservation_created') }}',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                location.reload();
+            });
+        }
+    })
+    .catch(() => {
+        btn.prop('disabled', false);
+        btnText.text(isUpdate ? '{{ trans('sw.update') }}' : '{{ trans('sw.book_now') }}');
+        Swal.fire({
+            icon: 'error',
+            title: '{{ trans('sw.error') }}',
+            text: '{{ trans('sw.booking_failed') }}',
+            confirmButtonText: 'Ok'
+        });
+    });
+});
+
+// Store initial status when page loads and when modal opens
+$(document).ready(function(){
+    // Store initial values for all status selects
+    $('.reservation-status-select').each(function(){
+        const currentVal = $(this).val();
+        if (!$(this).data('old-value')) {
+            $(this).data('old-value', currentVal);
+        }
+    });
+    
+    // Re-store values when modal is shown
+    $('[id^="upcomingReservationsModal"]').on('shown.bs.modal', function(){
+        $(this).find('.reservation-status-select').each(function(){
+            const currentVal = $(this).val();
+            $(this).data('old-value', currentVal);
+        });
+    });
+});
+
+// Change reservation status in upcoming reservations modal
+$(document).on('change', '.reservation-status-select', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const reservationId = $(this).data('reservation-id');
+    const select = $(this);
+    const newStatus = select.val();
+    const oldValue = select.data('old-value');
+    
+    console.log('Status changed:', { reservationId, newStatus, oldValue });
+    
+    // If status didn't change, do nothing
+    if (newStatus === oldValue) {
+        console.log('Status unchanged, ignoring');
+        return;
+    }
+    
+    // Show confirmation dialog with Yes/No buttons using SweetAlert2
+    Swal.fire({
+        title: '{{ trans('admin.are_you_sure') }}',
+        text: '{{ trans('sw.change_status_confirmation') }}',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#DD6B55',
+        confirmButtonText: '{{ trans('admin.yes') }}',
+        cancelButtonText: '{{ trans('sw.no') }}',
+        allowOutsideClick: false,
+        reverseButtons: true
+    }).then((result) => {
+        if (!result.isConfirmed) {
+            // User cancelled, revert to old value
+            select.val(oldValue);
+            return;
+        }
+        
+        // Determine which action to use based on new status
+        let url = '';
+        
+        if (newStatus === 'confirmed') {
+            url = "{{ route('sw.reservation.confirm', ':id') }}".replace(':id', reservationId);
+        } else if (newStatus === 'cancelled') {
+            url = "{{ route('sw.reservation.cancel', ':id') }}".replace(':id', reservationId);
+        } else if (newStatus === 'attended') {
+            url = "{{ route('sw.reservation.attend', ':id') }}".replace(':id', reservationId);
+        } else if (newStatus === 'missed') {
+            url = "{{ route('sw.reservation.missed', ':id') }}".replace(':id', reservationId);
+        } else if (newStatus === 'pending') {
+            // Revert to old value
+            select.val(oldValue);
+            Swal.fire({
+                title: '{{ trans('admin.info') }}',
+                text: '{{ trans('sw.pending_status_not_supported') }}',
+                icon: 'info',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            return;
+        }
+        
+        if (!url) {
+            select.val(oldValue);
+            Swal.fire({
+                title: '{{ trans('sw.error') }}',
+                text: '{{ trans('sw.invalid_status') }}',
+                icon: 'error',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            return;
+        }
+        
+        // Disable select during request
+        select.prop('disabled', true);
+        
+        console.log('Sending AJAX request to:', url);
+        
+        $.ajax({
+            url: url,
+            type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            dataType: 'json',
+            success: function(response){
+                console.log('AJAX success response:', response);
+                
+                if(response && response.success && response.status){
+                    // Update old value to new status
+                    select.data('old-value', response.status);
+                    
+                    // Update select value to match new status
+                    select.val(response.status);
+                    
+                    // Update badge color if badge exists
+                    const card = select.closest('.card');
+                    if (card.length) {
+                        const badge = card.find('.badge').first();
+                        if (badge.length) {
+                            const colors = {
+                                'confirmed': 'success',
+                                'pending': 'warning',
+                                'cancelled': 'danger',
+                                'attended': 'primary',
+                                'missed': 'secondary'
+                            };
+                            badge.removeClass('badge-success badge-warning badge-danger badge-primary badge-secondary badge-dark')
+                                  .addClass('badge-' + (colors[response.status] || 'dark'));
+                        }
+                    }
+                    
+                    // Show success message and close modal
+                    Swal.fire({
+                        title: '{{ trans('admin.done') }}',
+                        text: '{{ trans('sw.status_changed_successfully') }}',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        // Close the upcoming reservations modal
+                        const modalId = select.closest('[id^="upcomingReservationsModal"]').attr('id');
+                        if (modalId) {
+                            $('#' + modalId).modal('hide');
+                        }
+                    });
+                } else {
+                    // Revert to old value
+                    select.val(oldValue);
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: response.message || '{{ trans('sw.status_change_failed') }}',
+                        icon: 'error',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            },
+            error: function(xhr, status, error){
+                console.error('AJAX error:', { xhr, status, error });
+                // Revert to old value
+                select.val(oldValue);
+                
+                let errorMsg = '{{ trans('sw.status_change_failed') }}';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                
+                Swal.fire({
+                    title: '{{ trans('sw.error') }}',
+                    text: errorMsg,
+                    icon: 'error',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            },
+            complete: function(){
+                select.prop('disabled', false);
+            }
+        });
+    });
+});
+
+// Edit reservation button - opens quick modal with reservation data
+$(document).on('click', '.reservation-edit-btn', function(){
+    const reservationId = $(this).data('reservation-id');
+    const memberId = $(this).data('member-id');
+    
+    // Close upcoming reservations modal
+    $(`#upcomingReservationsModal${memberId}`).modal('hide');
+    
+    // Fetch reservation data
+    $.ajax({
+        url: "{{ route('sw.reservation.ajaxGet', ':id') }}".replace(':id', reservationId),
+        type: 'GET',
+        success: function(res){
+            if(res.success && res.data){
+                const data = res.data;
+                
+                // Set reservation ID
+                $(`#qb_reservation_id_${memberId}`).val(data.id);
+                
+                // Populate form fields
+                $(`#qb_activity_${memberId}`).val(data.activity_id).trigger('change');
+                $(`#qb_date_${memberId}`).val(data.reservation_date);
+                
+                // Calculate duration from start and end time
+                const start = data.start_time.split(':');
+                const end = data.end_time.split(':');
+                const startMinutes = parseInt(start[0]) * 60 + parseInt(start[1]);
+                const endMinutes = parseInt(end[0]) * 60 + parseInt(end[1]);
+                const duration = endMinutes - startMinutes;
+                $(`#qb_duration_${memberId}`).val(duration);
+                
+                $(`#qb_notes_${memberId}`).val(data.notes || '');
+                
+                // Update button text
+                $(`#quickBookModal${memberId} .qb-book-btn-text`).text('{{ trans('sw.update') }}');
+                
+                // Load slots and select the current slot
+                setTimeout(function(){
+                    $(`#quickBookModal${memberId} .qb-load-slots-btn`).click();
+                    
+                    // After slots load, select the current time slot
+                    setTimeout(function(){
+                        $(`.qb-select-slot-member[data-member-id="${memberId}"][data-start="${data.start_time}"][data-end="${data.end_time}"]`)
+                            .first().click();
+                    }, 1000);
+                }, 500);
+                
+                // Open quick modal
+                $(`#quickBookModal${memberId}`).modal('show');
+            }
+        },
+        error: function(){
+            Swal.fire({
+                icon: 'error',
+                title: '{{ trans('sw.error') }}',
+                text: '{{ trans('sw.failed_to_load_reservation') }}',
+                confirmButtonText: 'Ok'
+            });
+        }
+    });
+});
+
+// Reset member modal when closed
+@foreach($members as $member)
+    @php
+        $memberActivities = @$member->member_subscription_info->activities ?? [];
+        $hasValidActivities = false;
+        if (!empty($memberActivities) && is_array($memberActivities)) {
+            foreach ($memberActivities as $act) {
+                if (isset($act['activity']['id'])) {
+                    $hasValidActivities = true;
+                    break;
+                }
+            }
+        }
+    @endphp
+    @if($hasValidActivities)
+        $('#quickBookModal{{ $member->id }}').on('hidden.bs.modal', function () {
+            $('#qb_reservation_id_{{ $member->id }}').val('');
+            $('#qb_activity_{{ $member->id }}').val(null).trigger('change');
+            $('#qb_date_{{ $member->id }}').val('');
+            $('#qb_duration_{{ $member->id }}').val('60');
+            $('#qb_notes_{{ $member->id }}').val('');
+            $('#qb_slots_{{ $member->id }}').html(`
+                <div class="slots-empty-state">
+                    <i class="ki-outline ki-calendar-tick"></i>
+                    <div class="empty-title">{{ trans('sw.select_activity_date_to_show_slots') }}</div>
+                    <div class="empty-subtitle">{{ trans('sw.choose_activity_and_date_first') }}</div>
+                </div>
+            `);
+            $(`.qb-select-slot-member[data-member-id="{{ $member->id }}"]`).removeClass('active');
+            $(`#quickBookModal{{ $member->id }} .qb-book-btn-text`).text('{{ trans('sw.book_now') }}');
+        });
+    @endif
+@endforeach
+
+// Auto-update duration when activity is selected
+$(document).on('change', '.qb-activity-select', function(){
+    const memberId = $(this).data('member-id');
+    const selectedOption = $(this).find('option:selected');
+    const duration = selectedOption.data('duration');
+    if (duration) {
+        $(`#qb_duration_${memberId}`).val(duration);
+    }
+});
+</script>
 
 @endsection

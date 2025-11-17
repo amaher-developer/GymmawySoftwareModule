@@ -11,6 +11,7 @@ use Modules\Software\Models\GymNonMember;
 use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymPTMember;
 use Modules\Software\Models\GymSubscription;
+use Modules\Software\Models\GymReservation;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Container\Container as Application;
 use Modules\Software\Http\Requests\GymOrderRequest;
@@ -199,9 +200,25 @@ class GymOrderFrontController extends GymGenericFrontController
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
             $qr_img_invoice = str_replace(base_path(), '', $qr_img_invoice);
         }
+        
+        // Load upcoming reservations for member
+        $upcomingReservations = collect();
+        if ($order->member_id) {
+            $upcomingReservations = GymReservation::query()
+                ->branch()
+                ->where('member_id', $order->member_id)
+                ->where('client_type', 'member')
+                ->whereDate('reservation_date', '>=', Carbon::now()->toDateString())
+                ->whereNotIn('status', ['cancelled', 'missed'])
+                ->with(['activity' => function($q) { $q->withTrashed(); }])
+                ->orderBy('reservation_date', 'asc')
+                ->orderBy('start_time', 'asc')
+                ->get();
+        }
+        
         return view('software::Front.order_subscription_front_show', ['order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'vat' => $vat
 //            ,'cash_payment' => $cash_payment, 'online_payment' => $online_payment, 'bank_transfer_payment' => $bank_transfer_payment
-        , 'payments' => $payments
+        , 'payments' => $payments, 'upcomingReservations' => $upcomingReservations
         ]);
     }
 
@@ -449,9 +466,25 @@ class GymOrderFrontController extends GymGenericFrontController
             $qr_img_invoice = $d->getBarcodePNGPath($generatedQRString, TypeConstants::QRCodeType);
             $qr_img_invoice = str_replace(base_path(), '', $qr_img_invoice);
         }
+        
+        // Load upcoming reservations for non-member
+        $upcomingReservations = collect();
+        if ($order->id) {
+            $upcomingReservations = GymReservation::query()
+                ->branch()
+                ->where('non_member_id', $order->id)
+                ->where('client_type', 'non_member')
+                ->whereDate('reservation_date', '>=', Carbon::now()->toDateString())
+                ->whereNotIn('status', ['cancelled', 'missed'])
+                ->with(['activity' => function($q) { $q->withTrashed(); }])
+                ->orderBy('reservation_date', 'asc')
+                ->orderBy('start_time', 'asc')
+                ->get();
+        }
+        
         return view('software::Front.order_subscription_front_show', ['order' => $order, 'invoice' => $invoice, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'vat' => $vat
 //            ,'cash_payment' => $cash_payment, 'online_payment' => $online_payment, 'bank_transfer_payment' => $bank_transfer_payment
-        , 'payments' => $payments
+        , 'payments' => $payments, 'upcomingReservations' => $upcomingReservations
         ]);
     }
 

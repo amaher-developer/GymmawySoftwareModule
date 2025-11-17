@@ -291,6 +291,41 @@ class GymActivityFrontController extends GymGenericFrontController
         $inputs['content_ar'] = isset($inputs['content_ar']) && $inputs['content_ar'] !== null ? $inputs['content_ar'] : '';
         $inputs['content_en'] = isset($inputs['content_en']) && $inputs['content_en'] !== null ? $inputs['content_en'] : '';
 
+        // Handle reservation_details - set to null if no work days are selected
+        if (isset($inputs['reservation_details']) && isset($inputs['reservation_details']['work_days'])) {
+            $workDays = $inputs['reservation_details']['work_days'];
+            $hasActiveDay = false;
+            
+            // Check if any day has status = 1
+            foreach ($workDays as $dayIndex => $dayData) {
+                if (isset($dayData['status']) && $dayData['status'] == 1) {
+                    $hasActiveDay = true;
+                    break;
+                }
+            }
+            
+            if ($hasActiveDay) {
+                // Build reservation_details structure with only active days
+                $reservationDetails = ['work_days' => []];
+                foreach ($workDays as $dayIndex => $dayData) {
+                    if (isset($dayData['status']) && $dayData['status'] == 1) {
+                        $reservationDetails['work_days'][$dayIndex] = [
+                            'status' => 1,
+                            'start' => $dayData['start'] ?? null,
+                            'end' => $dayData['end'] ?? null
+                        ];
+                    }
+                }
+                $inputs['reservation_details'] = json_encode($reservationDetails);
+            } else {
+                // No active days - set to null
+                $inputs['reservation_details'] = null;
+            }
+        } else {
+            // No reservation_details in input - set to null
+            $inputs['reservation_details'] = null;
+        }
+
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
         }

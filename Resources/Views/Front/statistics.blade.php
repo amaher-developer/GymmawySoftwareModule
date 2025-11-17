@@ -244,6 +244,74 @@
             </div>
         </div>
         <!--end::Users-->
+
+        <!--begin::Reservations-->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-light-info me-5">
+                        <i class="ki-outline ki-calendar-tick fs-2tx text-info"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-gray-700 fw-bold d-block fs-7 mb-1">{{ trans('sw.reservations') }}</span>
+                        <span class="text-gray-900 fw-bolder d-block fs-2x">{{$total_reservations ?? 0}}</span>
+                        <span class="text-muted fs-8">{{ $from_date && $to_date ? trans('sw.selected_period') : trans('sw.today') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--end::Reservations-->
+
+        <!--begin::Confirmed Reservations-->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-light-success me-5">
+                        <i class="ki-outline ki-check-circle fs-2tx text-success"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-gray-700 fw-bold d-block fs-7 mb-1">{{ trans('sw.confirmed') }}</span>
+                        <span class="text-gray-900 fw-bolder d-block fs-2x">{{$confirmed_reservations ?? 0}}</span>
+                        <span class="text-muted fs-8">{{ $from_date && $to_date ? trans('sw.selected_period') : trans('sw.today') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--end::Confirmed Reservations-->
+
+        <!--begin::Attended Reservations-->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-light-primary me-5">
+                        <i class="ki-outline ki-check fs-2tx text-primary"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-gray-700 fw-bold d-block fs-7 mb-1">{{ trans('sw.attended') }}</span>
+                        <span class="text-gray-900 fw-bolder d-block fs-2x">{{$attended_reservations ?? 0}}</span>
+                        <span class="text-muted fs-8">{{ $from_date && $to_date ? trans('sw.selected_period') : trans('sw.today') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--end::Attended Reservations-->
+
+        <!--begin::Cancelled Reservations-->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-light-danger me-5">
+                        <i class="ki-outline ki-cross fs-2tx text-danger"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-gray-700 fw-bold d-block fs-7 mb-1">{{ trans('sw.cancelled') }}</span>
+                        <span class="text-gray-900 fw-bolder d-block fs-2x">{{$cancelled_reservations ?? 0}}</span>
+                        <span class="text-muted fs-8">{{ $from_date && $to_date ? trans('sw.selected_period') : trans('sw.today') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--end::Cancelled Reservations-->
     </div>
     <!--end::Statistics-->
 

@@ -337,6 +337,88 @@
                 <!--end::Chart widget-->
             </div>
             <!--end::Col-->
+
+            <!--begin::Col - Member Reservations Statistics-->
+            <div class="col-md-6 col-lg-6 col-xl-6 col-xxl-3 mb-10">
+                <!--begin::Card widget - Total Reservations-->
+                <div class="card card-flush h-md-50 mb-5 mb-xl-10">
+                    <!--begin::Header-->
+                    <div class="card-header pt-5">
+                        <!--begin::Title-->
+                        <div class="card-title d-flex flex-column">
+                            <!--begin::Amount-->
+                            <span class="fs-2hx fw-bold text-gray-900 me-2 lh-1 ls-n2">{{ $total_member_reservations ?? 0 }}</span>
+                            <!--end::Amount-->
+                            <!--begin::Subtitle-->
+                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.member_reservations') }}</span>
+                            <!--end::Subtitle-->
+                        </div>
+                        <!--end::Title-->
+                    </div>
+                    <!--end::Header-->
+                    <!--begin::Card body-->
+                    <div class="card-body d-flex flex-column justify-content-end">
+                        <!--begin::Stats-->
+                        <div class="d-flex flex-column content-justify-center w-100">
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center mb-2">
+                                <div class="bullet w-8px h-6px rounded-2 bg-success me-3"></div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.confirmed') }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $member_confirmed_reservations ?? 0 }}</div>
+                            </div>
+                            <!--end::Label-->
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center mb-2">
+                                <div class="bullet w-8px h-6px rounded-2 bg-primary me-3"></div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.attended') }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $member_attended_reservations ?? 0 }}</div>
+                            </div>
+                            <!--end::Label-->
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center mb-2">
+                                <div class="bullet w-8px h-6px rounded-2 bg-warning me-3"></div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.missed') }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $member_missed_reservations ?? 0 }}</div>
+                            </div>
+                            <!--end::Label-->
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center">
+                                <div class="bullet w-8px h-6px rounded-2 bg-danger me-3"></div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.cancelled') }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $member_cancelled_reservations ?? 0 }}</div>
+                            </div>
+                            <!--end::Label-->
+                        </div>
+                        <!--end::Stats-->
+                    </div>
+                    <!--end::Card body-->
+                </div>
+                <!--end::Card widget-->
+                
+                <!--begin::Card widget - Reservations Chart-->
+                <div class="card card-flush h-md-50 mb-xl-10">
+                    <!--begin::Header-->
+                    <div class="card-header pt-5">
+                        <!--begin::Title-->
+                        <div class="card-title d-flex flex-column">
+                            <!--begin::Subtitle-->
+                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.reservations_trend') }}</span>
+                            <!--end::Subtitle-->
+                        </div>
+                        <!--end::Title-->
+                    </div>
+                    <!--end::Header-->
+                    <!--begin::Card body-->
+                    <div class="card-body d-flex align-items-end px-0 pb-0">
+                        <!--begin::Chart-->
+                        <div id="kt_member_reservations_chart" class="w-100" style="height: 80px"></div>
+                        <!--end::Chart-->
+                    </div>
+                    <!--end::Card body-->
+                </div>
+                <!--end::Card widget-->
+            </div>
+            <!--end::Col - Member Reservations Statistics-->
         </div>
         <!--end::Row-->
         
@@ -520,9 +602,90 @@
                     name: '{{ trans('sw.frozen_subscriptions')}}',
                     data: [{{ $frozen_subscriptions_chart }}],
                     color: '#FFC700'
+                }, {
+                    name: '{{ trans('sw.reservations')}}',
+                    data: [{{ $member_reservations_chart ?? '0,0,0,0,0,0,0,0,0,0,0,0' }}],
+                    color: '#009ef7'
                 }],
                 credits: { enabled: false }
             });
+
+            // Member Reservations Mini Chart
+            var reservationsChart = {
+                self: null,
+                rendered: false
+            };
+            var initReservationsChart = function() {
+                var element = document.getElementById("kt_member_reservations_chart");
+                if (!element) {
+                    return;
+                }
+                var height = parseInt(KTUtil.css(element, 'height'));
+                var labelColor = KTUtil.getCssVariableValue('--bs-gray-500');
+                var borderColor = KTUtil.getCssVariableValue('--bs-gray-200');
+                var primaryColor = KTUtil.getCssVariableValue('--bs-primary');
+                var options = {
+                    series: [{
+                        name: '{{ trans('sw.reservations') }}',
+                        data: [{{ $member_reservations_chart ?? '0,0,0,0,0,0,0,0,0,0,0,0' }}]
+                    }],
+                    chart: {
+                        fontFamily: 'inherit',
+                        type: 'area',
+                        height: height,
+                        toolbar: { show: false },
+                        zoom: { enabled: false },
+                        sparkline: { enabled: true }
+                    },
+                    plotOptions: {},
+                    legend: { show: false },
+                    dataLabels: { enabled: false },
+                    fill: { type: 'solid', opacity: 1 },
+                    stroke: {
+                        curve: 'smooth',
+                        show: true,
+                        width: 3,
+                        colors: [primaryColor]
+                    },
+                    xaxis: {
+                        categories: ['{{ trans('sw.jan') }}', '{{ trans('sw.feb') }}', '{{ trans('sw.mar') }}', '{{ trans('sw.apr') }}', '{{ trans('sw.may') }}', '{{ trans('sw.jun') }}', '{{ trans('sw.jul') }}', '{{ trans('sw.aug') }}', '{{ trans('sw.sep') }}', '{{ trans('sw.oct') }}', '{{ trans('sw.nov') }}', '{{ trans('sw.dec') }}'],
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                        labels: { show: false, style: { colors: labelColor, fontSize: '12px' } },
+                        crosshairs: { show: false }
+                    },
+                    yaxis: {
+                        min: 0,
+                        max: Math.max({{ $member_reservations_chart ?? '0,0,0,0,0,0,0,0,0,0,0,0' }}) + 5 || 10,
+                        labels: { show: false, style: { colors: labelColor, fontSize: '12px' } }
+                    },
+                    states: {
+                        normal: { filter: { type: 'none', value: 0 } },
+                        hover: { filter: { type: 'none', value: 0 } },
+                        active: { allowMultipleDataPointsSelection: false, filter: { type: 'none', value: 0 } }
+                    },
+                    tooltip: {
+                        style: { fontSize: '12px' },
+                        y: {
+                            formatter: function(e) {
+                                return e + " {{ trans('sw.reservations') }}"
+                            }
+                        }
+                    },
+                    colors: ['#009ef7'],
+                    markers: {
+                        colors: [primaryColor],
+                        strokeColor: [primaryColor],
+                        strokeWidth: 3
+                    }
+                };
+                reservationsChart.self = new ApexCharts(element, options);
+                setTimeout(function() {
+                    reservationsChart.self.render();
+                    reservationsChart.rendered = true;
+                }, 200);
+            };
+            initReservationsChart();
         });
     </script>
 @endsection

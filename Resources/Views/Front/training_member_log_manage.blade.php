@@ -173,7 +173,7 @@
             
             <div id="log_{{ $log->id }}" class="collapse">
                 <div class="card-body border-top">
-                    @if($log->details)
+                    @if($log->details || ($log->training_type == 'plan' && $log->meta))
                         {{-- Assessment Details --}}
                         @if($log->training_type == 'assessment' && isset($log->details->answers))
                             @php
@@ -276,32 +276,101 @@
 
                         {{-- Plan Details --}}
                         @if($log->training_type == 'plan')
+                            @php
+                                // If details is null or empty, try to load from meta
+                                $meta = is_string($log->meta) ? json_decode($log->meta, true) : (array)$log->meta;
+                                
+                                if (!$log->details || (is_object($log->details) && !isset($log->details->title) && !isset($log->details->plan_title) && !isset($log->details->content))) {
+                                    // Try to get member_plan_id and plan_id from meta
+                                    $memberPlanId = $log->reference_id ?? $meta['member_plan_id'] ?? null;
+                                    $planId = $meta['plan_id'] ?? null;
+                                    
+                                    if ($memberPlanId) {
+                                        // Try to load from sw_gym_training_members first
+                                        $planAssignment = \DB::table('sw_gym_training_members')->find($memberPlanId);
+                                        if ($planAssignment) {
+                                            if (!$planId) {
+                                                $planId = $planAssignment->training_plan_id ?? $planAssignment->diet_plan_id ?? $planAssignment->plan_id;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if ($planId) {
+                                        $plan = \Modules\Software\Models\GymTrainingPlan::with(['tasks' => function($q) {
+                                            $q->orderBy('order', 'asc')->orderBy('id', 'asc');
+                                        }])->find($planId);
+                                        
+                                        if ($plan) {
+                                            // Add assignment data if available
+                                            if (isset($planAssignment)) {
+                                                $plan->from_date = $planAssignment->from_date ?? null;
+                                                $plan->to_date = $planAssignment->to_date ?? null;
+                                                $plan->assignment_weight = $planAssignment->weight ?? null;
+                                                $plan->assignment_height = $planAssignment->height ?? null;
+                                                $plan->assignment_notes = $planAssignment->notes ?? null;
+                                            }
+                                            $log->details = $plan;
+                                        } else {
+                                            // Plan not found, create object from meta
+                                            $log->details = (object) [
+                                                'plan_title' => $meta['plan_title'] ?? 'N/A',
+                                                'title' => $meta['plan_title'] ?? 'N/A',
+                                                'type' => $meta['plan_type'] ?? 1,
+                                                'content' => null,
+                                                'tasks' => collect([])
+                                            ];
+                                        }
+                                    } else {
+                                        // No plan_id found, create object from meta only
+                                        $log->details = (object) [
+                                            'plan_title' => $meta['plan_title'] ?? 'N/A',
+                                            'title' => $meta['plan_title'] ?? 'N/A',
+                                            'type' => $meta['plan_type'] ?? 1,
+                                            'content' => null,
+                                            'tasks' => collect([])
+                                        ];
+                                    }
+                                }
+                            @endphp
+                            @if($log->details)
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center p-3 bg-light-success rounded">
-                                        <i class="{{ $log->details->type == 1 ? 'la la-dumbbell text-success' : 'la la-apple text-warning' }} fs-2x me-3"></i>
-                                        <div>
+                                        <i class="{{ ($log->details->type ?? 1) == 1 ? 'la la-dumbbell text-success' : 'la la-apple text-warning' }} fs-2x me-3"></i>
+                                        <div class="flex-grow-1">
                                             <div class="text-muted fs-7">{{ trans('sw.plan_title') }}</div>
-                                            <div class="fw-bold text-gray-900">{{ $log->details->title }}</div>
-                                            <div class="text-muted fs-8">{{ $log->details->type == 1 ? trans('sw.training_plan') : trans('sw.diet_plan') }}</div>
+                                            <div class="fw-bold text-gray-900">{{ $log->details->title ?? ($log->details->plan_title ?? 'N/A') }}</div>
+                                            <div class="text-muted fs-8">{{ ($log->details->type ?? 1) == 1 ? trans('sw.training_plan') : trans('sw.diet_plan') }}</div>
+                                        </div>
+                                        <div>
+                                            <a href="{{ route('sw.downloadPlanPDF', ['member' => $member->id, 'logId' => $log->id]) }}" 
+                                               class="btn btn-sm btn-light-primary" 
+                                               title="{{ trans('sw.download_pdf') }}">
+                                                <i class="ki-outline ki-file-down fs-5"></i>
+                                                {{ trans('sw.download_pdf') }}
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
+                                @if(isset($log->details->from_date) && $log->details->from_date)
                                 <div class="col-md-3">
                                     <div class="p-3 bg-light rounded">
                                         <div class="text-muted fs-7">{{ trans('sw.from') }}</div>
                                         <div class="fw-bold">{{ \Carbon\Carbon::parse($log->details->from_date)->format('Y-m-d') }}</div>
                                     </div>
                                 </div>
+                                @endif
+                                @if(isset($log->details->to_date) && $log->details->to_date)
                                 <div class="col-md-3">
                                     <div class="p-3 bg-light rounded">
                                         <div class="text-muted fs-7">{{ trans('sw.to') }}</div>
-                                        <div class="fw-bold">{{ $log->details->to_date ? \Carbon\Carbon::parse($log->details->to_date)->format('Y-m-d') : '--' }}</div>
+                                        <div class="fw-bold">{{ \Carbon\Carbon::parse($log->details->to_date)->format('Y-m-d') }}</div>
                                     </div>
                                 </div>
+                                @endif
                             </div>
                             
-                            @if(isset($log->details->assignment_weight) || isset($log->details->assignment_height))
+                            @if((isset($log->details->assignment_weight) && $log->details->assignment_weight > 0) || (isset($log->details->assignment_height) && $log->details->assignment_height > 0))
                             <div class="row g-3 mb-3">
                                 @if(isset($log->details->assignment_weight) && $log->details->assignment_weight > 0)
                                 <div class="col-md-6">
@@ -322,11 +391,188 @@
                             </div>
                             @endif
                             
-                            <div class="alert alert-light-success">
-                                <strong>{{ trans('sw.description') }}:</strong> {{ $log->details->content }}
+                            @if($log->details->content)
+                            <div class="mb-4">
+                                <h6 class="fw-bold text-gray-800 mb-3">
+                                    <i class="ki-outline ki-note-2 fs-4 me-2 text-success"></i>
+                                    {{ trans('sw.description') }}
+                                </h6>
+                                @php
+                                    // Try to decode JSON if content is JSON
+                                    $contentJson = null;
+                                    $contentText = $log->details->content;
+                                    try {
+                                        $decoded = json_decode($log->details->content, true);
+                                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                            $contentJson = $decoded;
+                                            $contentText = null;
+                                        }
+                                    } catch (\Exception $e) {
+                                        // Not JSON, use as text
+                                        $contentText = $log->details->content;
+                                    }
+                                @endphp
+                                
+                                @if($contentJson)
+                                    {{-- Content is JSON - display professionally --}}
+                                    <div class="card border border-success border-dashed bg-light-success">
+                                        <div class="card-body">
+                                            @if(isset($contentJson['summary']) || isset($contentJson['description']))
+                                            <div class="mb-3">
+                                                @if(isset($contentJson['summary']))
+                                                <div class="text-gray-800 mb-2" style="white-space: pre-wrap; line-height: 1.8;">{{ $contentJson['summary'] }}</div>
+                                                @elseif(isset($contentJson['description']))
+                                                <div class="text-gray-800 mb-2" style="white-space: pre-wrap; line-height: 1.8;">{{ $contentJson['description'] }}</div>
+                                                @endif
+                                            </div>
+                                            @endif
+                                            
+                                            @if(isset($contentJson['notes']) && $contentJson['notes'])
+                                            <div class="alert alert-light-info border border-info border-dashed mb-0">
+                                                <div class="text-gray-700" style="white-space: pre-wrap;">{{ $contentJson['notes'] }}</div>
+                                            </div>
+                                            @endif
+                                            
+                                            {{-- Collapsible raw JSON --}}
+                                            <div class="mt-3">
+                                                <button class="btn btn-sm btn-light-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#plan_content_json_{{ $log->id }}">
+                                                    <i class="ki-outline ki-code fs-6 me-1"></i>
+                                                    {{ trans('sw.view_raw_data') }}
+                                                </button>
+                                                <div class="collapse mt-2" id="plan_content_json_{{ $log->id }}">
+                                                    <div class="card bg-light-secondary border border-gray-300">
+                                                        <div class="card-body p-3">
+                                                            <pre class="mb-0 text-gray-800" style="font-size: 11px; max-height: 400px; overflow-y: auto; white-space: pre-wrap;">{{ json_encode($contentJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    {{-- Content is plain text --}}
+                                    <div class="alert alert-light-success border border-success border-dashed">
+                                        <div class="text-gray-800" style="white-space: pre-wrap; line-height: 1.8;">{{ $contentText }}</div>
+                                    </div>
+                                @endif
                             </div>
+                            @endif
+                            
+                            {{-- Plan Tasks --}}
+                            @php
+                                // Ensure tasks is a collection
+                                $planTasks = collect([]);
+                                if (isset($log->details->tasks)) {
+                                    if (is_countable($log->details->tasks)) {
+                                        $planTasks = is_a($log->details->tasks, 'Illuminate\Support\Collection') 
+                                            ? $log->details->tasks 
+                                            : collect($log->details->tasks);
+                                    }
+                                }
+                            @endphp
+                            @if($planTasks && $planTasks->count() > 0)
+                            <div class="separator separator-dashed my-4"></div>
+                            <div class="mb-4">
+                                <h6 class="fw-bold text-gray-800 mb-3">
+                                    <i class="ki-outline ki-check-square fs-4 me-2 text-primary"></i>
+                                    {{ trans('sw.plan_tasks') }} ({{ $planTasks->count() }})
+                                </h6>
+                                
+                                <div class="row g-3">
+                                    @foreach($planTasks as $index => $task)
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="card border border-gray-300 h-100 shadow-sm">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex align-items-start">
+                                                    <span class="badge badge-circle badge-primary me-3 mt-1" style="min-width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600;">{{ $index + 1 }}</span>
+                                                    <div class="flex-grow-1">
+                                                        {{-- Task Name (Title) --}}
+                                                        @php
+                                                            $taskName = $task->{'name_'.($lang ?? 'ar')} ?? $task->name_ar ?? $task->name_en ?? '';
+                                                        @endphp
+                                                        @if($taskName)
+                                                        <div class="fw-bold text-dark mb-2 fs-6">
+                                                            {{ $taskName }}
+                                                        </div>
+                                                        @endif
+                                                        
+                                                        {{-- Task Details/Description --}}
+                                                        @if(isset($task->details) && $task->details)
+                                                        <div class="text-gray-600 fs-7 mb-3" style="white-space: pre-wrap; line-height: 1.6;">{{ $task->details }}</div>
+                                                        @endif
+                                                        
+                                                        {{-- Training Details (for training plans) --}}
+                                                        @if($log->details->type == 1 && (isset($task->t_group) || isset($task->t_repeats) || isset($task->t_rest) || isset($task->youtube_link)))
+                                                        <div class="d-flex flex-wrap gap-1 mb-2">
+                                                            @if(isset($task->t_group) && $task->t_group)
+                                                            <span class="badge badge-light-success fs-8 py-2 px-3">
+                                                                <i class="ki-outline ki-abstract-26 fs-7 me-1"></i>
+                                                                {{ trans('sw.sets') }}: {{ $task->t_group }}
+                                                            </span>
+                                                            @endif
+                                                            @if(isset($task->t_repeats) && $task->t_repeats)
+                                                            <span class="badge badge-light-primary fs-8 py-2 px-3">
+                                                                <i class="ki-outline ki-repeat fs-7 me-1"></i>
+                                                                {{ trans('sw.reps') }}: {{ $task->t_repeats }}
+                                                            </span>
+                                                            @endif
+                                                            @if(isset($task->t_rest) && $task->t_rest)
+                                                            <span class="badge badge-light-secondary fs-8 py-2 px-3">
+                                                                <i class="ki-outline ki-timer fs-7 me-1"></i>
+                                                                {{ trans('sw.rest_time') }}: {{ $task->t_rest }}
+                                                            </span>
+                                                            @endif
+                                                            @if(isset($task->youtube_link) && $task->youtube_link)
+                                                            <a href="{{ $task->youtube_link }}" target="_blank" class="badge badge-light-danger fs-8 py-2 px-3 text-decoration-none">
+                                                                <i class="ki-outline ki-youtube fs-7 me-1"></i>
+                                                                {{ trans('sw.watch_video') }}
+                                                            </a>
+                                                            @endif
+                                                        </div>
+                                                        @endif
+                                                        
+                                                        {{-- Diet/Nutrition Details (for diet plans) --}}
+                                                        @if($log->details->type == 2 && (isset($task->d_calories) || isset($task->d_protein) || isset($task->d_carb) || isset($task->d_fats)))
+                                                        <div class="d-flex flex-wrap gap-1 mb-2">
+                                                            @if(isset($task->d_calories) && $task->d_calories)
+                                                            <span class="badge badge-light-danger fs-8 py-2 px-3">
+                                                                <i class="ki-outline ki-fire fs-7 me-1"></i>
+                                                                {{ $task->d_calories }} {{ trans('sw.calories') }}
+                                                            </span>
+                                                            @endif
+                                                            @if(isset($task->d_protein) && $task->d_protein)
+                                                            <span class="badge badge-light-success fs-8 py-2 px-3">
+                                                                <i class="ki-outline ki-abstract-26 fs-7 me-1"></i>
+                                                                P: {{ $task->d_protein }}g
+                                                            </span>
+                                                            @endif
+                                                            @if(isset($task->d_carb) && $task->d_carb)
+                                                            <span class="badge badge-light-warning fs-8 py-2 px-3">
+                                                                <i class="ki-outline ki-abstract-42 fs-7 me-1"></i>
+                                                                C: {{ $task->d_carb }}g
+                                                            </span>
+                                                            @endif
+                                                            @if(isset($task->d_fats) && $task->d_fats)
+                                                            <span class="badge badge-light-info fs-8 py-2 px-3">
+                                                                <i class="ki-outline ki-abstract-28 fs-7 me-1"></i>
+                                                                F: {{ $task->d_fats }}g
+                                                            </span>
+                                                            @endif
+                                                        </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+                        @endif
                             
                             {{-- Payment Information --}}
+                            @if($log->training_type == 'plan')
                             @php
                                 // Try to get payment from plan details first, then from meta
                                 $paymentData = null;
@@ -413,6 +659,7 @@
                                 <strong>{{ trans('sw.assignment_notes') }}:</strong> {{ $log->details->assignment_notes }}
                             </div>
                             @endif
+                            @endif
                         @endif
 
                         {{-- Medicine Details --}}
@@ -483,7 +730,7 @@
                                             <div class="text-gray-900 fw-bold fs-4">{{ $log->details->measurements['bmi'] }}</div>
                                             <div class="text-muted fs-8">
                                                 @php
-                                                    $bmi = $log->details->measurements['bmi'];
+                                                    $bmi = is_numeric($log->details->measurements['bmi']) ? $log->details->measurements['bmi'] : floatval(str_replace(' kg', '', str_replace(' cm', '', $log->details->measurements['bmi'])));
                                                     $category = '';
                                                     $color = '';
                                                     if ($bmi < 18.5) {
@@ -506,6 +753,35 @@
                                     </div>
                                     @endif
                                 </div>
+                                
+                                {{-- Additional Calculations --}}
+                                @if(isset($log->details->calculations) && !empty($log->details->calculations))
+                                <div class="row g-3 mt-2">
+                                    <div class="col-12">
+                                        <h6 class="fw-bold text-info mb-2">
+                                            <i class="ki-outline ki-calculator fs-4 me-2"></i>
+                                            {{ trans('sw.additional_calculations') }}
+                                        </h6>
+                                    </div>
+                                    @foreach($log->details->calculations as $calcKey => $calcValue)
+                                        @if(!in_array($calcKey, ['whtr_status']))
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="p-3 bg-light-info rounded border border-info border-dashed">
+                                                <div class="text-muted fs-7">{{ trans('sw.' . $calcKey) }}</div>
+                                                <div class="text-gray-900 fw-bold fs-5">{{ $calcValue }}</div>
+                                                @if($calcKey == 'waist_to_height_ratio' && isset($log->details->calculations['whtr_status']))
+                                                <div class="text-muted fs-8 mt-1">
+                                                    <span class="badge badge-light-{{ $log->details->calculations['whtr_status'] == trans('sw.high_risk') ? 'danger' : ($log->details->calculations['whtr_status'] == trans('sw.moderate_risk') ? 'warning' : 'success') }}">
+                                                        {{ $log->details->calculations['whtr_status'] }}
+                                                    </span>
+                                                </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                                @endif
                             </div>
                             @endif
 
@@ -794,9 +1070,9 @@
                                                 {{ trans('sw.view_raw_data') }}
                                             </button>
                                             <div class="collapse mt-2" id="ai_debug_{{ $log->id }}">
-                                                <div class="card bg-light-secondary">
-                                                    <div class="card-body">
-                                                        <pre class="mb-0 text-gray-800" style="font-size: 11px; max-height: 400px; overflow-y: auto;">{{ json_encode($aiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                                <div class="card bg-light-secondary border border-gray-300">
+                                                    <div class="card-body p-3">
+                                                        <pre class="mb-0 text-gray-800" style="font-size: 11px; max-height: 400px; overflow-y: auto; white-space: pre-wrap;">{{ json_encode($aiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                                     </div>
                                                 </div>
                                             </div>
@@ -971,9 +1247,21 @@
                         <div class="alert alert-light-secondary">
                             <div class="text-muted fst-italic mb-2">{{ trans('sw.no_details_available') }}</div>
                             @if($log->meta)
-                            <div class="text-muted fs-7">
-                                <strong>{{ trans('sw.meta_data') }}:</strong>
-                                <pre class="mb-0 mt-2 p-3 bg-light rounded">{{ is_string($log->meta) ? $log->meta : json_encode($log->meta, JSON_PRETTY_PRINT) }}</pre>
+                            <div class="text-muted fs-7 mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>{{ trans('sw.meta_data') }}:</strong>
+                                    <button class="btn btn-sm btn-light-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#meta_data_{{ $log->id }}">
+                                        <i class="ki-outline ki-eye fs-6 me-1"></i>
+                                        {{ trans('sw.view') }}
+                                    </button>
+                                </div>
+                                <div class="collapse mt-2" id="meta_data_{{ $log->id }}">
+                                    <div class="card bg-light-secondary border border-gray-300">
+                                        <div class="card-body p-3">
+                                            <pre class="mb-0 text-gray-800" style="font-size: 11px; max-height: 400px; overflow-y: auto; white-space: pre-wrap;">{{ is_string($log->meta) ? $log->meta : json_encode($log->meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             @endif
                             @if($log->reference_id)
