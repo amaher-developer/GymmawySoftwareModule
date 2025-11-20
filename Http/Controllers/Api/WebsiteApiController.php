@@ -52,19 +52,27 @@ class WebsiteApiController extends GenericApiController
         $settings = $this->SettingRepository
             ->select(
                 'name_en', 'name_ar', 'phone', 'meta_description_en', 'meta_keywords_en', 'meta_description_ar', 'meta_keywords_ar', 'logo_en', 'logo_ar', 'logo_white_en', 'logo_white_ar'
-                ,'facebook', 'twitter', 'google_plus', 'instagram', 'youtube', 'latitude', 'longitude', 'support_email', 'about_en', 'about_ar', 'terms_en', 'terms_ar'
-                ,'address_en', 'address_ar', 'under_maintenance', 'images', 'cover_images'
+                ,'latitude', 'longitude', 'support_email', 'about_en', 'about_ar', 'terms_en', 'terms_ar'
+                ,'address_en', 'address_ar', 'under_maintenance', 'images', 'cover_images', 'social_media'
             )
             ->first();
-        if(@count($settings->images)){
+        
+        if($settings && $settings->images && is_array($settings->images) && count($settings->images) > 0){
             $settings->images = array_map(function ($image) {
                 return asset(Setting::$uploads_path.'gyms/'.$image);
             }, $settings->images);
         }
-        if(@count($settings->cover_images)){
+        if($settings && $settings->cover_images && is_array($settings->cover_images) && count($settings->cover_images) > 0){
             $settings->cover_images = array_map(function ($image) {
                 return asset(Setting::$uploads_path.'gyms/'.$image);
             }, $settings->cover_images);
+        }
+
+        if(!$settings){
+            $this->return['settings'] = [];
+            $this->return['settings']['activities'] = [];
+            $this->return['settings']['subscription'] = [];
+            return $this->return;
         }
 
         $activities = GymActivity::where('is_web', 1)->select('id', 'name_ar', 'name_en')->get();

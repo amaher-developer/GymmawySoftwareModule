@@ -212,7 +212,8 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
         $subscriptions = GymSubscription::branch()->isSystem()->get();
-        $users = GymUser::branch()->get();
+        $users = GymUser::branch()-> get();
+        $payment_types = GymPaymentType::get();
         
         // Load upcoming reservations for members
         $memberIds = $members instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator 
@@ -234,7 +235,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 ->groupBy('member_id');
         }
         
-        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query', 'upcomingReservations'));
+        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query', 'upcomingReservations','payment_types'));
     }
 
     public function updateSubscriptionsStatus($id = [], $all = false)
@@ -2980,17 +2981,17 @@ dd('ssss');
             $notes2 = str_replace(':name', $member_name, $notes2);
             $this->userLog($notes2, $credit_amount);
 
-            $member_balance = number_format($type == 0 ? ($this->member_balance + $amount) : ($this->member_balance - $amount), 2);
-            $member->store_balance = $member_balance;
+            $member_balance_value = $type == 0 ? ($this->member_balance + $amount) : ($this->member_balance - $amount);
+            $member->store_balance = $member_balance_value;
             $member->save();
 
-            if(($member_balance >= 0) && ($type != 1)){
+            if(($member_balance_value >= 0) && ($type != 1)){
                 GymMoneyBox::where('is_store_balance', 2)->where('member_id', $member->id)->update(['is_store_balance' => 1, 'payment_type' => $payment_type]);
             }
         }
 
-        $member_balance = number_format($type == 0 ? ($this->member_balance + $amount) : ($this->member_balance - $amount), 2);
-        return $member_balance;
+        $member_balance_value = $type == 0 ? ($this->member_balance + $amount) : ($this->member_balance - $amount);
+        return number_format($member_balance_value, 2);
 
     }
 }

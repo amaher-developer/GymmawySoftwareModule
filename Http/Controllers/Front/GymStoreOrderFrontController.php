@@ -178,6 +178,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
         $order = $orderModel->toArray();
         $invoice = $orderModel->zatcaInvoice;
+        $payment_types = \Modules\Software\Models\GymPaymentType::get();
 
         foreach ($order['products'] as $i => $product_id){
             $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
@@ -210,6 +211,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             'invoice' => $invoice,
             'qr_img_invoice' => @$qr_img_invoice,
             'title' => $title,
+            'payment_types' => $payment_types,
         ]);
     }
 
@@ -223,6 +225,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
         $order = $orderModel->toArray();
         $invoice = $orderModel->zatcaInvoice;
+        $payment_types = \Modules\Software\Models\GymPaymentType::get();
 
         foreach ($order['products'] as $i => $product_id){
             $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
@@ -253,6 +256,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             'invoice' => $invoice,
             'qr_img_invoice' => @$qr_img_invoice,
             'title' => $title,
+            'payment_types' => $payment_types,
         ]);
     }
 
@@ -793,18 +797,32 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         return $inputs;
     }
     public function getStoreMemberAjax(){
-        $member_id = (int)@request('member_id');
-        if($member_id){
-            $member = GymMember::branch()->with(['member_subscription_info.subscription'])->where('code', $member_id);
-
-            if(strlen($member_id) > 5)
-                $member = $member->orWhere('phone', $member_id);
-
-            $member = $member->first();
-            if(@$member){$member->balance = @$member->member_balance();}
-            return $member;
+        $member_input = request('member_id');
+        if(!$member_input){
+            return [];
         }
-        return [];
+
+        $memberQuery = GymMember::branch()->with(['member_subscription_info.subscription']);
+
+        $member = $memberQuery->where('code', $member_input)
+            ->when(strlen($member_input) > 5, function ($query) use ($member_input) {
+                $query->orWhere('phone', $member_input);
+            })
+            ->first();
+
+        if(!$member && is_numeric($member_input)){
+            $member = GymMember::branch()->with(['member_subscription_info.subscription'])
+                ->where('id', (int)$member_input)
+                ->first();
+        }
+
+        if($member){
+            $calculatedBalance = $member->member_balance();
+            $member->balance = isset($member->store_balance) ? (float)$member->store_balance : $calculatedBalance;
+            $member->calculated_balance = $calculatedBalance;
+        }
+
+        return $member ?: [];
     }
     
     public function getMemberLoyaltyInfo(){

@@ -14,32 +14,31 @@ use Illuminate\Http\Request;
 */
 
 // website route
-Route::post('/settings', 'Api\WebsiteApiController@settings')->middleware(['api', 'cors']);
-Route::post('/member-subscription-info', 'Api\WebsiteApiController@memberSubscriptionInfo')->middleware(['api', 'cors']);
-Route::post('/member-subscription-invoice-info', 'Api\WebsiteApiController@memberSubscriptionInvoiceInfo')->middleware(['api', 'cors']);
-Route::post('/member-subscription-info-by-phone', 'Api\WebsiteApiController@memberSubscriptionInfoByPhone')->middleware(['api', 'cors']);
-Route::post('/create-member-subscription', 'Api\WebsiteApiController@createMemberSubscription')->middleware(['api', 'cors']);
-Route::post('/member-attendance-info', 'Api\WebsiteApiController@memberAttendanceInfo')->middleware(['api', 'cors']);
+Route::match(['get', 'post'], '/settings', 'Api\WebsiteApiController@settings')->middleware(['api']);
+Route::post('/member-subscription-info', 'Api\WebsiteApiController@memberSubscriptionInfo')->middleware(['api']);
+Route::post('/member-subscription-invoice-info', 'Api\WebsiteApiController@memberSubscriptionInvoiceInfo')->middleware(['api']);
+Route::post('/member-subscription-info-by-phone', 'Api\WebsiteApiController@memberSubscriptionInfoByPhone')->middleware(['api']);
+Route::post('/create-member-subscription', 'Api\WebsiteApiController@createMemberSubscription')->middleware(['api']);
+Route::post('/member-attendance-info', 'Api\WebsiteApiController@memberAttendanceInfo')->middleware(['api']);
 
 
-Route::get('/web/home', 'Api\WebsiteApiController@home')->middleware(['api', 'cors']);
-Route::get('/web/about-us', 'Api\WebsiteApiController@aboutUs')->middleware(['api', 'cors']);
-Route::get('/web/gallery', 'Api\WebsiteApiController@gallery')->middleware(['api', 'cors']);
-Route::get('/web/subscriptions', 'Api\WebsiteApiController@subscriptions')->middleware(['api', 'cors']);
-Route::get('/web/activities', 'Api\WebsiteApiController@activities')->middleware(['api', 'cors']);
-Route::get('/web/notifications', 'Api\WebsiteApiController@notifications')->middleware(['api', 'cors']);
+Route::get('/web/home', 'Api\WebsiteApiController@home')->middleware(['api']);
+Route::get('/web/about-us', 'Api\WebsiteApiController@aboutUs')->middleware(['api']);
+Route::get('/web/gallery', 'Api\WebsiteApiController@gallery')->middleware(['api']);
+Route::get('/web/subscriptions', 'Api\WebsiteApiController@subscriptions')->middleware(['api']);
+Route::get('/web/activities', 'Api\WebsiteApiController@activities')->middleware(['api']);
+Route::get('/web/notifications', 'Api\WebsiteApiController@notifications')->middleware(['api']);
 
-Route::get('/send-member-to-gymmawy', 'Api\GymMemberApiController@sendMemberToGymmawy')->middleware(['api', 'cors']);
-Route::get('/send-one-member-to-gymmawy', 'Api\GymMemberApiController@sendOneMemberToGymmawy')->middleware(['api', 'cors']);
-Route::get('/send-sw-my-app-notifications', 'Api\GymMemberApiController@sendSwMyAppNotifications')->middleware(['api', 'cors']);
+Route::get('/send-member-to-gymmawy', 'Api\GymMemberApiController@sendMemberToGymmawy')->middleware(['api']);
+Route::get('/send-one-member-to-gymmawy', 'Api\GymMemberApiController@sendOneMemberToGymmawy')->middleware(['api']);
+Route::get('/send-sw-my-app-notifications', 'Api\GymMemberApiController@sendSwMyAppNotifications')->middleware(['api']);
 
-Route::name('sw.successfulPayment')->get('/sw-payment/s', 'Api\GymSwPaymentApiController@successfulPayment')->middleware(['api', 'cors']);
+Route::name('sw.successfulPayment')->get('/sw-payment/s', 'Api\GymSwPaymentApiController@successfulPayment')->middleware(['api']);
 
-Route::name('sw.migration')->get('/gym-migrate', 'Api\GymSettingApiController@migrate')->middleware(['api', 'cors']);
-Route::name('sw.lastMigration')->get('/gym-last-migrate', 'Api\GymSettingApiController@lastMigrate')->middleware(['api', 'cors']);
+Route::name('sw.migration')->get('/gym-migrate', 'Api\GymSettingApiController@migrate')->middleware(['api']);
+Route::name('sw.lastMigration')->get('/gym-last-migrate', 'Api\GymSettingApiController@lastMigrate')->middleware(['api']);
 
 Route::prefix('zk')
-    ->middleware(['cors'])
     ->group(function () {
         Route::get('login',  'Front\GymZKFrontController@login');
         Route::get('member', 'Front\GymZKFrontController@member');
@@ -53,8 +52,8 @@ Route::prefix('zk')
 Route::any('/gym-member/fingerprint-store', 'Api\GymMemberApiController@fingerprintMemberAttendees');
 Route::any('/gym-member/fingerprint-zk-attendees-member', 'Api\GymMemberApiController@fingerprintZKMemberAttendees');
 
-Route::any('/gym-member/fingerprint-zk-member-getter', 'Api\GymMemberApiController@fingerprintZKMemberGetter')->middleware(['api', 'cors']);
-Route::any('/gym-member/fingerprint-zk-member-setter', 'Api\GymMemberApiController@fingerprintZKMemberSetter')->middleware(['api', 'cors']);
+Route::any('/gym-member/fingerprint-zk-member-getter', 'Api\GymMemberApiController@fingerprintZKMemberGetter')->middleware(['api']);
+Route::any('/gym-member/fingerprint-zk-member-setter', 'Api\GymMemberApiController@fingerprintZKMemberSetter')->middleware(['api']);
 
 
 Route::name('sw.ptClassActiveMemberAjax')

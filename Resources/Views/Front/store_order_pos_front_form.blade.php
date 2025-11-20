@@ -34,6 +34,14 @@
     .page-bg {
         background-color: #f9f9f9;
     }
+    .member-balance-positive {
+        color: #1f9254;
+        font-weight: 600;
+    }
+    .member-balance-negative {
+        color: #b42318;
+        font-weight: 600;
+    }
 </style>
 @endsection
 
@@ -318,9 +326,37 @@
                                 <select name="member_id" id="member_id" class="form-select" data-control="select2" data-placeholder="{{ trans('sw.select_member')}}">
                                     <option value="">{{ trans('sw.select_member')}}</option>
                                     @foreach($members as $member)
-                                    <option value="{{ $member->id }}">{{ $member->name }} - {{ $member->code }}</option>
+                                    <option value="{{ $member->id }}" data-member-code="{{ $member->code }}">{{ $member->name }} - {{ $member->code }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+                            
+                            <div class="card bg-light-secondary p-5 mb-8 d-none" id="member_info_card">
+                                <div class="row">
+                                    <div class="col-6 mb-4">
+                                        <strong>{{ trans('sw.name')}}:</strong>
+                                        <span id="pos_member_name">-</span>
+                                    </div>
+                                    <div class="col-6 mb-4">
+                                        <strong>{{ trans('sw.phone')}}:</strong>
+                                        <span id="pos_member_phone">-</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>{{ trans('sw.balance')}}:</strong>
+                                        <span id="pos_member_balance">-</span>
+                                    </div>
+                                    <div class="col-6 d-flex justify-content-between align-items-center d-none" id="store_member_use_balance_wrapper">
+                                        <strong class="me-2" title="{{ trans('sw.amount_paid_validate_must_less_balance')}}">{{ trans('sw.use_balance')}}</strong>
+                                        <div class="form-check form-switch form-check-custom form-check-solid">
+                                            <input type="checkbox" class="form-check-input" name="store_member_use_balance" id="store_member_use_balance" value="1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info d-none" id="use_balance_notice">
+                                <i class="ki-outline ki-wallet fs-2 me-2"></i>
+                                {{ trans('sw.use_balance') }} - {{ trans('sw.amount_paid_validate_must_less_balance') }}
                             </div>
                             <!--end::Member Selection-->
                             
@@ -507,7 +543,9 @@
     let cart = [];
     const vatRate = {{ @$mainSettings->vat_details['vat_percentage'] ?? 0 }} / 100;
     const currencySymbol = '{{ $lang == "ar" ? (env("APP_CURRENCY_AR") ?? "") : (env("APP_CURRENCY_EN") ?? "") }}';
-    
+    const storePostpaidEnabled = {{ @$mainSettings->store_postpaid ? 'true' : 'false' }};
+    let selectedMemberBalance = 0;
+    let selectedMemberId = null;
     function addProductData(productData) {
         if (!productData || !productData.id) {
             return;
@@ -852,8 +890,80 @@
     }
     
     // Load loyalty points and rate when member is selected
+    function resetMemberInfoCard() {
+        selectedMemberBalance = 0;
+        selectedMemberId = null;
+        $('#pos_member_name').text('-');
+        $('#pos_member_phone').text('-');
+        $('#pos_member_balance').text('-').removeClass('member-balance-positive member-balance-negative');
+        $('#member_info_card').addClass('d-none');
+        $('#store_member_use_balance').prop('checked', false);
+        $('#use_balance_notice').addClass('d-none');
+        $('#store_member_use_balance').prop('disabled', true);
+        $('#store_member_use_balance_wrapper').addClass('d-none');
+    }
+    
+    function updateMemberInfoCard(member) {
+        $('#pos_member_name').text(member.name || '-');
+        $('#pos_member_phone').text(member.phone || '-');
+        
+        const balanceElement = $('#pos_member_balance');
+        balanceElement.removeClass('member-balance-positive member-balance-negative');
+        const balanceValue = parseFloat(member.balance) || 0;
+        selectedMemberBalance = balanceValue;
+        
+        balanceElement.text(balanceValue.toFixed(2));
+        if (balanceValue > 0) {
+            balanceElement.addClass('member-balance-positive');
+            $('#store_member_use_balance_wrapper').removeClass('d-none');
+            $('#store_member_use_balance').prop('disabled', false);
+        } else if (balanceValue < 0) {
+            balanceElement.addClass('member-balance-negative');
+            if (storePostpaidEnabled) {
+                $('#store_member_use_balance_wrapper').removeClass('d-none');
+                $('#store_member_use_balance').prop('disabled', false);
+            } else {
+                $('#store_member_use_balance_wrapper').addClass('d-none');
+                $('#store_member_use_balance').prop('checked', false).prop('disabled', true);
+                $('#use_balance_notice').addClass('d-none');
+            }
+        } else {
+            balanceElement.removeClass('member-balance-positive member-balance-negative');
+            if (storePostpaidEnabled) {
+                $('#store_member_use_balance_wrapper').removeClass('d-none');
+                $('#store_member_use_balance').prop('disabled', false);
+            } else {
+                $('#store_member_use_balance_wrapper').addClass('d-none');
+                $('#store_member_use_balance').prop('checked', false).prop('disabled', true);
+                $('#use_balance_notice').addClass('d-none');
+            }
+        }
+        
+        $('#member_info_card').removeClass('d-none');
+    }
+    
     $('#member_id').on('change', function() {
         const memberId = $(this).val();
+        selectedMemberId = memberId || null;
+        $('#store_member_use_balance').prop('checked', false);
+        $('#use_balance_notice').addClass('d-none');
+        
+        if (!memberId) {
+            resetMemberInfoCard();
+        } else {
+            const memberCode = $('#member_id option:selected').data('member-code');
+            $.get('{{ route('sw.getStoreMemberAjax') }}', { member_id: memberCode || memberId })
+                .done(function(result) {
+                    if (result && result.id) {
+                        updateMemberInfoCard(result);
+                    } else {
+                        resetMemberInfoCard();
+                    }
+                })
+                .fail(function() {
+                    resetMemberInfoCard();
+                });
+        }
         
         if (memberId && {{ @$mainSettings->active_loyalty ? 'true' : 'false' }}) {
             // Load member loyalty points
@@ -890,6 +1000,14 @@
             memberLoyaltyPoints = 0;
             loyaltyPointToMoneyRate = 0;
             calculateLoyaltyDiscount();
+        }
+    });
+    
+    $('#store_member_use_balance').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#use_balance_notice').removeClass('d-none');
+        } else {
+            $('#use_balance_notice').addClass('d-none');
         }
     });
     

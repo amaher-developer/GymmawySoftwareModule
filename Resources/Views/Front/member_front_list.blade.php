@@ -963,12 +963,16 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold">{{ trans('sw.payment_type')}}</label>
                         <select class="form-control form-control-solid" name="credit_payment_type" id="credit_payment_type">
-                            @foreach($payment_types as $payment_type)
-                                <option value="{{$payment_type->payment_id}}" 
-                                        @if(@old('payment_type',$order->payment_type) == $payment_type->payment_id) selected @endif>
-                                    {{$payment_type->name}}
-                                </option>
-                            @endforeach
+                            @if(!empty($payment_types) && count($payment_types))
+                                @foreach($payment_types as $payment_type)
+                                    <option value="{{ $payment_type->payment_id }}" 
+                                            @if(@old('payment_type', $order->payment_type) == $payment_type->payment_id) selected @endif>
+                                        {{ $payment_type->name }}
+                                    </option>
+                                @endforeach
+                            @else
+                                <option value="">{{ trans('sw.no_record_found') }}</option>
+                            @endif
                         </select>
                     </div>
 
