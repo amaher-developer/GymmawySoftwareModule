@@ -105,23 +105,27 @@ class GymNonMemberFrontController extends GymGenericFrontController
         if ($this->limit) {
             $members = $members->paginate($this->limit)->onEachSide(1);
             $total = $members->total();
+            $memberIds = $members->pluck('id')->toArray();
         } else {
             $members = $members->get();
             $total = $members->count();
+            $memberIds = $members->pluck('id')->toArray();
         }
-        $activities = GymActivity::branch()->isSystem()->get();
+        
+        // Optimize: Use select to limit columns (duration_minutes doesn't exist in activities table)
+        $activities = GymActivity::branch()->isSystem()->select('id', 'name_ar', 'name_en')->get();
         
         // Load upcoming reservations for non-members
-        $memberIds = $members->pluck('id')->toArray();
         $upcomingReservations = [];
         if (!empty($memberIds)) {
             $upcomingReservations = \Modules\Software\Models\GymReservation::branch()
+                ->select('id', 'non_member_id', 'activity_id', 'reservation_date', 'start_time', 'end_time', 'status')
                 ->where('client_type', 'non_member')
                 ->whereIn('non_member_id', $memberIds)
                 ->whereDate('reservation_date', '>=', \Carbon\Carbon::today()->format('Y-m-d'))
                 ->whereNotIn('status', ['cancelled', 'missed'])
                 ->with(['activity' => function($q) {
-                    $q->withTrashed();
+                    $q->select('id', 'name_ar', 'name_en')->withTrashed();
                 }])
                 ->orderBy('reservation_date', 'asc')
                 ->orderBy('start_time', 'asc')
@@ -129,9 +133,75 @@ class GymNonMemberFrontController extends GymGenericFrontController
                 ->groupBy('non_member_id');
         }
         
-        return view('software::Front.nonmember_front_list', compact('members', 'activities','title', 'total', 'search_query', 'upcomingReservations'));
+        // Pre-compute active_activity_reservation feature check (move from Blade to Controller)
+        $mainSettings = \Illuminate\Support\Facades\View::shared('mainSettings') ?? 
+            \Modules\Generic\Models\Setting::where('id', \Modules\Generic\Models\GenericModel::getCurrentBranchId())->first();
+        $features = is_array($mainSettings->features ?? null) 
+            ? $mainSettings->features 
+            : (is_string($mainSettings->features ?? null) 
+                ? json_decode($mainSettings->features, true) 
+                : []);
+        $active_activity_reservation = isset($features['active_activity_reservation']) && $features['active_activity_reservation'];
+        
+        // Pre-format date inputs (move Carbon parsing from Blade to Controller)
+        $formatted_from_date = request('from') ? \Carbon\Carbon::parse(request('from'))->format('Y-m-d') : '';
+        $formatted_to_date = request('to') ? \Carbon\Carbon::parse(request('to'))->format('Y-m-d') : '';
+        $formatted_search = request('search') ? strip_tags(request('search')) : '';
+        
+        // Process members to add computed properties (move logic from Blade to Controller)
+        if ($members instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator) {
+            $members->getCollection()->transform(function($member) use ($upcomingReservations) {
+                return $this->processNonMemberForBlade($member, $upcomingReservations);
+            });
+        } else {
+            $members = $members->map(function($member) use ($upcomingReservations) {
+                return $this->processNonMemberForBlade($member, $upcomingReservations);
+            });
+        }
+        
+        return view('software::Front.nonmember_front_list', compact('members', 'activities','title', 'total', 'search_query', 'upcomingReservations', 'active_activity_reservation', 'formatted_from_date', 'formatted_to_date', 'formatted_search'));
     }
 
+    /**
+     * Process non-member data for Blade view (moved from Blade to Controller)
+     * Pre-computes values to avoid logic and Carbon parsing in Blade templates
+     */
+    private function processNonMemberForBlade($member, $upcomingReservations)
+    {
+        // Pre-compute member reservations count (move from Blade to Controller)
+        $member->reservations_count = isset($upcomingReservations[$member->id]) 
+            ? $upcomingReservations[$member->id]->count() 
+            : 0;
+        $member->member_reservations = $upcomingReservations[$member->id] ?? collect();
+        
+        // Pre-process activities array to extract needed data (move complex logic from Blade to Controller)
+        if (!empty($member->activities)) {
+            $processedActivities = [];
+            $lang = $this->lang ?? 'ar';
+            foreach ($member->activities as $activity) {
+                $activityId = is_array($activity) ? ($activity['id'] ?? null) : $activity->id ?? null;
+                $activityName = is_array($activity) 
+                    ? ($activity['name_'.$lang] ?? $activity['name_ar'] ?? $activity['name'] ?? '') 
+                    : ($activity->{'name_'.$lang} ?? $activity->name ?? '');
+                // Note: duration_minutes doesn't exist in activities table, using default 60
+                $duration = 60;
+                
+                if ($activityId) {
+                    $processedActivities[] = [
+                        'id' => $activityId,
+                        'name' => $activityName,
+                        'name_ar' => is_array($activity) ? ($activity['name_ar'] ?? '') : ($activity->name_ar ?? ''),
+                        'duration_minutes' => $duration
+                    ];
+                }
+            }
+            $member->processed_activities = $processedActivities;
+        } else {
+            $member->processed_activities = [];
+        }
+        
+        return $member;
+    }
 
     function exportExcel(){
 

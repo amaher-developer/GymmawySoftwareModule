@@ -264,8 +264,8 @@
                                         <!--begin::Renew-->
                                         <a class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm me-1"
                                            onclick="list_renew_membership('{{@$member->member->member_subscription_info->id}}')"
-                                           expire_msg="{{ trans('sw.expire_date_msg', ['date' => @\Carbon\Carbon::parse($member->member->member_subscription_info->expire_date)->toDateString()])}}"
-                                           expire_color="@if(@$member->member->member_subscription_info->status == 0) green @else red @endif"
+                                           expire_msg="{{ trans('sw.expire_date_msg', ['date' => @$member->member->member_subscription_info->formatted_expire_date ?? ''])}}"
+                                           expire_color="{{@$member->member->member_subscription_info->expire_color ?? 'red'}}"
                                            title="{{ trans('sw.renew_membership')}}"
                                            id="list_member_{{@$member->member->member_subscription_info->id}}" style="cursor: pointer;"
                                            data-target="#modelRenew" data-toggle="modal">

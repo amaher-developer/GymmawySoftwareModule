@@ -269,6 +269,12 @@ function addTask() {
                         <textarea name="tasks[${taskIndex}][description]" class="form-control" rows="2"></textarea>
                     </div>
                     
+                    <!-- Image URL - Available for both Training and Diet -->
+                    <div class="col-md-6">
+                        <label class="form-label">{{ trans('sw.image_url') ?? 'Image URL' }}</label>
+                        <input type="url" name="tasks[${taskIndex}][image_url]" class="form-control" placeholder="https://example.com/image.jpg" />
+                    </div>
+                    
                     <!-- Training Fields -->
                     <div class="col-md-6 training-only" style="display: ${isTraining ? '' : 'none'}">
                         <label class="form-label">{{ trans('sw.youtube_link') }}</label>
@@ -303,6 +309,12 @@ function addTask() {
                     <div class="col-md-3 diet-only" style="display: ${isTraining ? 'none' : ''}">
                         <label class="form-label">{{ trans('sw.fats') }}</label>
                         <input type="text" name="tasks[${taskIndex}][d_fats]" class="form-control" placeholder="10g" />
+                    </div>
+                    
+                    <!-- YouTube Link for Diet Plans -->
+                    <div class="col-md-6 diet-only" style="display: ${isTraining ? 'none' : ''}">
+                        <label class="form-label">{{ trans('sw.youtube_link') }}</label>
+                        <input type="url" name="tasks[${taskIndex}][youtube_link]" class="form-control" placeholder="https://youtube.com/..." />
                     </div>
                     
                     <div class="col-12">

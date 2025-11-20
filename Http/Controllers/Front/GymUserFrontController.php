@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Response;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -235,6 +236,11 @@ class GymUserFrontController extends GymGenericFrontController
     {
         $user_inputs = $this->prepare_inputs($request->except(['_token']));
         
+        // Encrypt password if provided
+        if(isset($user_inputs['password']) && !empty($user_inputs['password'])){
+            $user_inputs['password'] = Hash::make($user_inputs['password']);
+        }
+        
         // If permission_group_id is set, use permissions from the group
         if($request->permission_group_id){
             $permissionGroup = \Modules\Software\Models\GymUserPermission::find($request->permission_group_id);
@@ -268,6 +274,14 @@ class GymUserFrontController extends GymGenericFrontController
     {
         $user = $this->GymUserRepository->find($id);
         $user_inputs = array_filter($this->prepare_inputs($request->except(['_token'])));
+        
+        // Encrypt password if provided
+        if(isset($user_inputs['password']) && !empty($user_inputs['password'])){
+            $user_inputs['password'] = Hash::make($user_inputs['password']);
+        } else {
+            // Remove password from inputs if not provided (to keep current password)
+            unset($user_inputs['password']);
+        }
         
         // If permission_group_id is set, use permissions from the group
         if($request->permission_group_id){
@@ -331,7 +345,13 @@ class GymUserFrontController extends GymGenericFrontController
             $user_inputs['salary'] = $request->salary ;
 
         }
-        if(!$request->password) unset($user_inputs['password']);
+        // Encrypt password if provided
+        if(isset($user_inputs['password']) && !empty($user_inputs['password'])){
+            $user_inputs['password'] = Hash::make($user_inputs['password']);
+        } else {
+            // Remove password from inputs if not provided (to keep current password)
+            unset($user_inputs['password']);
+        }
         $user->update($user_inputs);
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),

@@ -729,6 +729,11 @@ document.addEventListener('DOMContentLoaded', function(){
                 title: '{{ trans('sw.missed') }}',
                 text: '{{ trans('sw.mark_missed_question') }}',
                 type: 'warning'
+            },
+            delete: {
+                title: '{{ trans('sw.delete') }}',
+                text: '{{ trans('sw.delete_reservation_question') }}',
+                type: 'warning'
             }
         };
 
@@ -742,7 +747,8 @@ document.addEventListener('DOMContentLoaded', function(){
             confirm: '{{ route('sw.reservation.confirm', ':id') }}',
             cancel: '{{ route('sw.reservation.cancel', ':id') }}',
             attend: '{{ route('sw.reservation.attend', ':id') }}',
-            missed: '{{ route('sw.reservation.missed', ':id') }}'
+            missed: '{{ route('sw.reservation.missed', ':id') }}',
+            delete: '{{ route('sw.deleteReservation', ':id') }}'
         };
         const url = routes[action] ? routes[action].replace(':id', id) : `/reservation/${id}/${action}`;
 
@@ -759,6 +765,11 @@ document.addEventListener('DOMContentLoaded', function(){
             reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
+                if (action === 'delete' && routes.delete) {
+                    window.location.href = routes.delete.replace(':id', id);
+                    return;
+                }
+
                 btn.prop('disabled', true);
                 
                 $.ajax({
@@ -950,8 +961,21 @@ document.addEventListener('DOMContentLoaded', function(){
                     // Update button text
                     $('.qb-book-btn-text').text('{{ trans('sw.update') }}');
                     
-                    // Open modal
+                    // Store reservation time in data attributes for slot selection after loading
+                    $('#quickBookModal').data('reservation-start-time', data.start_time);
+                    $('#quickBookModal').data('reservation-end-time', data.end_time);
+                    
+                    // Open modal and load slots after modal is shown
                     $('#quickBookModal').modal('show');
+                    
+                    // Wait for modal to be fully shown, then automatically load slots
+                    $('#quickBookModal').one('shown.bs.modal', function() {
+                        // Trigger slots loading after a short delay to ensure select2 is ready
+                        setTimeout(function() {
+                            // Click load slots button
+                            $('.qb-load-slots-btn').click();
+                        }, 300);
+                    });
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -1115,6 +1139,27 @@ document.addEventListener('DOMContentLoaded', function(){
                     
                     const summary = $(summaryHtml);
                     $('#qb_slots').append(summary).append(slotsContainer);
+                    
+                    // If editing a reservation, auto-select the matching time slot
+                    const currentReservationId = $('#qb_reservation_id').val();
+                    if (currentReservationId) {
+                        // Get reservation times from modal data attributes
+                        const reservationStartTime = $('#quickBookModal').data('reservation-start-time');
+                        const reservationEndTime = $('#quickBookModal').data('reservation-end-time');
+                        
+                        if (reservationStartTime && reservationEndTime) {
+                            // Small delay to ensure DOM is fully rendered
+                            setTimeout(function() {
+                                const matchingSlot = $(`.qb-select-slot[data-start="${reservationStartTime}"][data-end="${reservationEndTime}"]`);
+                                if (matchingSlot.length > 0) {
+                                    // Remove active class from all slots first
+                                    $('.qb-select-slot').removeClass('active');
+                                    // Add active class and click the matching slot
+                                    matchingSlot.first().addClass('active').click();
+                                }
+                            }, 100);
+                        }
+                    }
                 } else {
                     $('#qb_slots').html(`
                         <div class="slots-empty-state">

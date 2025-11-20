@@ -144,6 +144,13 @@
         $sentAt = $invoiceRecord ? data_get($invoiceRecord, 'zatca_sent_at') : null;
         $sentAtFormatted = $sentAt ? \Carbon\Carbon::parse($sentAt)->format('Y-m-d H:i') : null;
 
+        // Check if activity reservation feature is active
+        $features = is_array($mainSettings->features ?? null)
+            ? $mainSettings->features 
+            : (is_string($mainSettings->features ?? null) 
+                ? json_decode($mainSettings->features, true) 
+                : []);
+        $active_activity_reservation = isset($features['active_activity_reservation']) && $features['active_activity_reservation'];
         $rawQr = $invoiceRecord ? data_get($invoiceRecord, 'zatca_qr_code') : null;
         if (!empty($rawQr)) {
             $baseQr = \Illuminate\Support\Str::startsWith($rawQr, 'data:image') ? $rawQr : 'data:image/png;base64,' . $rawQr;
@@ -437,7 +444,7 @@
                         </button>
                         <!-- end::Print-->
                         
-                        @if((Route::current()->getName() == 'sw.showOrderSubscription') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
+                        @if($active_activity_reservation && (Route::current()->getName() == 'sw.showOrderSubscription') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
                             <!-- begin::Upcoming Reservations Button (Member)-->
                             @php
                                 $memberReservations = $upcomingReservations ?? collect();
@@ -484,7 +491,7 @@
                             <!-- end::Quick Book Button (Member)-->
                         @endif
                         
-                        @if((Route::current()->getName() == 'sw.showOrderSubscriptionNonMember') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
+                        @if($active_activity_reservation && (Route::current()->getName() == 'sw.showOrderSubscriptionNonMember') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
                             <!-- begin::Upcoming Reservations Button (Non-Member)-->
                             @php
                                 $nonMemberReservations = $upcomingReservations ?? collect();
@@ -662,7 +669,7 @@
 
     <!-- End model pay -->
     
-    @if((Route::current()->getName() == 'sw.showOrderSubscription') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
+    @if($active_activity_reservation && (Route::current()->getName() == 'sw.showOrderSubscription') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
         @php
             $memberReservations = $upcomingReservations ?? collect();
         @endphp
@@ -920,7 +927,7 @@
         @endif
     @endif
     
-    @if((Route::current()->getName() == 'sw.showOrderSubscriptionNonMember') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
+    @if($active_activity_reservation && (Route::current()->getName() == 'sw.showOrderSubscriptionNonMember') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
         @php
             $nonMemberReservations = $upcomingReservations ?? collect();
         @endphp
@@ -1561,7 +1568,9 @@
     });
 
 </script>
+@endif
 
+@if($active_activity_reservation && ((Route::current()->getName() == 'sw.showOrderSubscription') || (Route::current()->getName() == 'sw.showOrderSubscriptionNonMember')) && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
 <!-- Quick Booking JavaScript -->
 <script>
 // Function to open quick book modal for member
@@ -1786,6 +1795,27 @@ $(document).on('click', '.qb-load-slots-btn[data-member-id]', function(e){
                 
                 const summary = $(summaryHtml);
                 $(`#qb_slots_${memberId}`).append(summary).append(slotsContainer);
+                
+                // If editing a reservation, auto-select the matching time slot
+                const currentReservationId = $(`#qb_reservation_id_${memberId}`).val();
+                if (currentReservationId) {
+                    // Get reservation times from modal data attributes
+                    const reservationStartTime = $(`#quickBookModal${memberId}`).data('reservation-start-time');
+                    const reservationEndTime = $(`#quickBookModal${memberId}`).data('reservation-end-time');
+                    
+                    if (reservationStartTime && reservationEndTime) {
+                        // Small delay to ensure DOM is fully rendered
+                        setTimeout(function() {
+                            const matchingSlot = $(`.qb-select-slot-member[data-member-id="${memberId}"][data-start="${reservationStartTime}"][data-end="${reservationEndTime}"]`);
+                            if (matchingSlot.length > 0) {
+                                // Remove active class from all slots first
+                                $(`.qb-select-slot-member[data-member-id="${memberId}"]`).removeClass('active');
+                                // Add active class and click the matching slot
+                                matchingSlot.first().addClass('active').click();
+                            }
+                        }, 100);
+                    }
+                }
             } else {
                 $(`#qb_slots_${memberId}`).html(`
                     <div class="slots-empty-state">
@@ -1976,6 +2006,27 @@ $(document).on('click', '.qb-load-slots-btn[data-non-member-id]', function(e){
                 
                 const summary = $(summaryHtml);
                 $(`#qb_slots_${nonMemberId}`).append(summary).append(slotsContainer);
+                
+                // If editing a reservation, auto-select the matching time slot
+                const currentReservationId = $(`#qb_reservation_id_${nonMemberId}`).val();
+                if (currentReservationId) {
+                    // Get reservation times from modal data attributes
+                    const reservationStartTime = $(`#quickBookModal${nonMemberId}`).data('reservation-start-time');
+                    const reservationEndTime = $(`#quickBookModal${nonMemberId}`).data('reservation-end-time');
+                    
+                    if (reservationStartTime && reservationEndTime) {
+                        // Small delay to ensure DOM is fully rendered
+                        setTimeout(function() {
+                            const matchingSlot = $(`.qb-select-slot-nonmember[data-non-member-id="${nonMemberId}"][data-start="${reservationStartTime}"][data-end="${reservationEndTime}"]`);
+                            if (matchingSlot.length > 0) {
+                                // Remove active class from all slots first
+                                $(`.qb-select-slot-nonmember[data-non-member-id="${nonMemberId}"]`).removeClass('active');
+                                // Add active class and click the matching slot
+                                matchingSlot.first().addClass('active').click();
+                            }
+                        }, 100);
+                    }
+                }
             } else {
                 $(`#qb_slots_${nonMemberId}`).html(`
                     <div class="slots-empty-state">
@@ -2475,19 +2526,21 @@ $(document).on('click', '.reservation-edit-btn', function(){
                     // Update button text
                     $(`#quickBookModal${memberId} .qb-book-btn-text`).text('{{ trans('sw.update') }}');
                     
-                    // Load slots and select the current slot
-                    setTimeout(function(){
-                        $(`#quickBookModal${memberId} .qb-load-slots-btn`).click();
-                        
-                        // After slots load, select the current time slot
-                        setTimeout(function(){
-                            $(`.qb-select-slot-member[data-member-id="${memberId}"][data-start="${data.start_time}"][data-end="${data.end_time}"]`)
-                                .first().click();
-                        }, 1000);
-                    }, 500);
+                    // Store reservation time in modal data attributes for slot selection after loading
+                    $(`#quickBookModal${memberId}`).data('reservation-start-time', data.start_time);
+                    $(`#quickBookModal${memberId}`).data('reservation-end-time', data.end_time);
                     
-                    // Open quick modal
+                    // Open quick modal first
                     $(`#quickBookModal${memberId}`).modal('show');
+                    
+                    // Wait for modal to be fully shown, then automatically load slots
+                    $(`#quickBookModal${memberId}`).one('shown.bs.modal', function() {
+                        // Trigger slots loading after a short delay to ensure select2 is ready
+                        setTimeout(function(){
+                            // Click load slots button
+                            $(`#quickBookModal${memberId} .qb-load-slots-btn`).click();
+                        }, 300);
+                    });
                 }
             },
             error: function(){
@@ -2531,19 +2584,21 @@ $(document).on('click', '.reservation-edit-btn', function(){
                     // Update button text
                     $(`#quickBookModal${nonMemberId} .qb-book-btn-text`).text('{{ trans('sw.update') }}');
                     
-                    // Load slots and select the current slot
-                    setTimeout(function(){
-                        $(`#quickBookModal${nonMemberId} .qb-load-slots-btn`).click();
-                        
-                        // After slots load, select the current time slot
-                        setTimeout(function(){
-                            $(`.qb-select-slot-nonmember[data-non-member-id="${nonMemberId}"][data-start="${data.start_time}"][data-end="${data.end_time}"]`)
-                                .first().click();
-                        }, 1000);
-                    }, 500);
+                    // Store reservation time in modal data attributes for slot selection after loading
+                    $(`#quickBookModal${nonMemberId}`).data('reservation-start-time', data.start_time);
+                    $(`#quickBookModal${nonMemberId}`).data('reservation-end-time', data.end_time);
                     
-                    // Open quick modal
+                    // Open quick modal first
                     $(`#quickBookModal${nonMemberId}`).modal('show');
+                    
+                    // Wait for modal to be fully shown, then automatically load slots
+                    $(`#quickBookModal${nonMemberId}`).one('shown.bs.modal', function() {
+                        // Trigger slots loading after a short delay to ensure select2 is ready
+                        setTimeout(function(){
+                            // Click load slots button
+                            $(`#quickBookModal${nonMemberId} .qb-load-slots-btn`).click();
+                        }, 300);
+                    });
                 }
             },
             error: function(){
@@ -2558,7 +2613,7 @@ $(document).on('click', '.reservation-edit-btn', function(){
     }
 });
 
-@if((Route::current()->getName() == 'sw.showOrderSubscription') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
+@if($active_activity_reservation && (Route::current()->getName() == 'sw.showOrderSubscription') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
     // Reset member modal when closed
     $('#quickBookModal{{ $order->member_id }}').on('hidden.bs.modal', function () {
         $('#qb_reservation_id_{{ $order->member_id }}').val('');
@@ -2578,7 +2633,7 @@ $(document).on('click', '.reservation-edit-btn', function(){
     });
 @endif
 
-@if((Route::current()->getName() == 'sw.showOrderSubscriptionNonMember') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
+@if($active_activity_reservation && (Route::current()->getName() == 'sw.showOrderSubscriptionNonMember') && (in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user))
     // Reset non-member modal when closed
     $('#quickBookModal{{ $order->id }}').on('hidden.bs.modal', function () {
         $('#qb_reservation_id_{{ $order->id }}').val('');

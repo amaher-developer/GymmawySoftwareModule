@@ -143,9 +143,9 @@
                         <div class="col-md-6">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.date_range') }}</label>
                             <div class="input-group date-picker input-daterange">
-                                <input type="text" class="form-control" name="from" id="from_date" value="@php echo @strip_tags($_GET['from']) @endphp" placeholder="{{ trans('sw.from') }}" autocomplete="off">
+                                <input type="text" class="form-control" name="from" id="from_date" value="{{ $formatted_from_date }}" placeholder="{{ trans('sw.from') }}" autocomplete="off">
                                 <span class="input-group-text">{{ trans('sw.to') }}</span>
-                                <input type="text" class="form-control" name="to" id="to_date" value="@php echo @strip_tags($_GET['to']) @endphp" placeholder="{{ trans('sw.to') }}" autocomplete="off">
+                                <input type="text" class="form-control" name="to" id="to_date" value="{{ $formatted_to_date }}" placeholder="{{ trans('sw.to') }}" autocomplete="off">
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -181,7 +181,7 @@
         <div class="d-flex align-items-center position-relative my-1 mb-5">
             <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
             <form class="d-flex" action="" method="get" style="max-width: 400px;">
-                <input type="text" name="search" class="form-control form-control-solid ps-12" value="@php echo @strip_tags($_GET['search']) @endphp" placeholder="{{ trans('sw.search_on') }}">
+                <input type="text" name="search" class="form-control form-control-solid ps-12" value="{{ $formatted_search }}" placeholder="{{ trans('sw.search_on') }}">
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
                 </button>

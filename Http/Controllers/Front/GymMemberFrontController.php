@@ -843,7 +843,7 @@ class GymMemberFrontController extends GymGenericFrontController
             '#member_name' => @$membership->member->name
             , '#member_code' => @(int)$membership->member->code
             , '#member_phone' => @$membership->member->phone
-            , '#membership_start_date' => Carbon::parse($membership->start_date)->toDateString()
+            , '#membership_start_date' => Carbon::parse($membership->start_date)->addHours(12)->toDateString()
             , '#membership_expire_date' => Carbon::parse($membership->expire_date)->toDateString()
             , '#membership_amount_paid' => @$membership->amount_paid
             , '#membership_name' => @$membership->subscription->name

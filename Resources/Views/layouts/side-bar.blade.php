@@ -231,7 +231,7 @@
                 <!--end:Menu link-->
             </div>
 
-            @if ($swUser && (in_array('statistics', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            @if ($swUser && (isset($permissionsMap['statistics']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div data-kt-menu-trigger="click"
                     class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/statistics*')) show @endif">
@@ -321,6 +321,7 @@
                 <!--end:Menu item-->
             @endif
 
+{{-- @if ($swUser && (isset($permissionsMap['reportUserNotificationsList']) || $isSuperUser))--}}
             <div class="menu-item">
                 <!--begin:Menu link-->
                 <a class="menu-link" href="{{ url('/') }}" id="side_notification">
@@ -331,13 +332,15 @@
                 </a>
                 <!--end:Menu link-->
             </div>
+           {{-- @endif--}}
 
-            @if ($swUser && (count(array_intersect(@(array) ($swUser->permissions ?? []), [
-                        'listNonMember',
-                        'listMember',
-                        'listPotentialMember',
-                        'listReservationMember',
-                    ])) > 0 || $swUser->is_super_user))
+            @if ($swUser && (
+                    isset($permissionsMap['listNonMember']) ||
+                    isset($permissionsMap['listMember']) ||
+                    isset($permissionsMap['listPotentialMember']) ||
+                    isset($permissionsMap['listReservationMember']) ||
+                    $isSuperUser
+                ))
                 <!--begin:Menu item-->
                 <div data-kt-menu-trigger="click"
                     class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/moneybox/order/subscription*') ||
@@ -359,11 +362,11 @@
                     </span>
                     <!--end:Menu link-->
 
-                    @if ($swUser && (
-                        (@$mainSettings->active_subscription && in_array('listMember', (array) ($swUser->permissions ?? []))) ||
-                            $swUser->is_super_user))
-                        <!--begin:Menu sub-->
-                        <div class="menu-sub menu-sub-accordion">
+                    <!--begin:Menu sub-->
+                    <div class="menu-sub menu-sub-accordion">
+                        @if ($swUser && (
+                            (@$mainSettings->active_subscription && isset($permissionsMap['listMember'])) ||
+                                $isSuperUser))
                             <!--begin:Menu item-->
                             <div class="menu-item">
                                 <!--begin:Menu link-->
@@ -377,67 +380,73 @@
                                 <!--end:Menu link-->
                             </div>
                             <!--end:Menu item-->
-                    @endif
+                        @endif
 
-                    @if ($swUser && (
-                        (@$mainSettings->active_activity && in_array('listNonMember', (array) ($swUser->permissions ?? []))) ||
-                            $swUser->is_super_user))
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
-                            <!--begin:Menu link-->
-                            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/non-member*')) active @endif"
-                                href="{{ route('sw.listNonMember') }}">
-                                <span class="menu-bullet">
-                                    <span class="bullet bullet-dot"></span>
-                                </span>
-                                <span class="menu-title">{{ trans('sw.daily_clients') }}</span>
-                            </a>
-                            <!--end:Menu link-->
-                        </div>
-                        <!--end:Menu item-->
-                    @endif
+                        @if ($swUser && (
+                            (@$mainSettings->active_activity && isset($permissionsMap['listNonMember'])) ||
+                                $isSuperUser))
+                            <!--begin:Menu item-->
+                            <div class="menu-item">
+                                <!--begin:Menu link-->
+                                <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/non-member*')) active @endif"
+                                    href="{{ route('sw.listNonMember') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">{{ trans('sw.daily_clients') }}</span>
+                                </a>
+                                <!--end:Menu link-->
+                            </div>
+                            <!--end:Menu item-->
+                        @endif
 
-                    @if ($swUser && (in_array('listPotentialMember', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
-                            <!--begin:Menu link-->
-                            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/potential-member*')) active @endif "
-                                href="{{ route('sw.listPotentialMember') }}">
-                                <span class="menu-bullet">
-                                    <span class="bullet bullet-dot"></span>
-                                </span>
-                                <span class="menu-title">{{ trans('sw.potential_clients') }}</span>
-                            </a>
-                            <!--end:Menu link-->
-                        </div>
-                        <!--end:Menu item-->
-                    @endif
+                        @if ($swUser && (isset($permissionsMap['listPotentialMember']) || $isSuperUser))
+                            <!--begin:Menu item-->
+                            <div class="menu-item">
+                                <!--begin:Menu link-->
+                                <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/potential-member*')) active @endif "
+                                    href="{{ route('sw.listPotentialMember') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">{{ trans('sw.potential_clients') }}</span>
+                                </a>
+                                <!--end:Menu link-->
+                            </div>
+                            <!--end:Menu item-->
+                        @endif
 
-                    @if ($swUser && (
-                        ($mainSettings->active_mobile || $mainSettings->active_website) &&
-                            (in_array('listReservationMember', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user)))
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
-                            <!--begin:Menu link-->
-                            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/reservation-member*')) active @endif"
-                                href="{{ route('sw.listReservationMember') }}">
-                                <span class="menu-bullet">
-                                    <span class="bullet bullet-dot"></span>
-                                </span>
-                                <span class="menu-title">{{ trans('sw.reservation_clients') }}</span>
-                            </a>
-                            <!--end:Menu link-->
-                        </div>
-                        <!--end:Menu item-->
-                    @endif
-
-
-                </div><!--end:Menu sub-->
+                        @if ($swUser && (
+                            ($mainSettings->active_mobile || $mainSettings->active_website) &&
+                                (isset($permissionsMap['listReservationMember']) || $isSuperUser)))
+                            <!--begin:Menu item-->
+                            <div class="menu-item">
+                                <!--begin:Menu link-->
+                                <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/reservation-member*')) active @endif"
+                                    href="{{ route('sw.listReservationMember') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">{{ trans('sw.reservation_clients') }}</span>
+                                </a>
+                                <!--end:Menu link-->
+                            </div>
+                            <!--end:Menu item-->
+                        @endif
+                    </div>
+                    <!--end:Menu sub-->
         </div>
         <!--end:Menu item-->
         @endif
 
-        @if ($mainSettings->active_store)
+        @if ($mainSettings->active_store && $swUser && (
+                isset($permissionsMap['createStoreOrderPOS']) ||
+                isset($permissionsMap['listStoreProducts']) ||
+                isset($permissionsMap['listStoreOrders']) ||
+                isset($permissionsMap['listStoreOrderVendor']) ||
+                isset($permissionsMap['listStoreCategory']) ||
+                $isSuperUser
+            ))
             <!--begin:Menu item-->
             <div data-kt-menu-trigger="click"
                 class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/store*')) show @endif">
@@ -451,9 +460,9 @@
                 </span>
                 <!--end:Menu link-->
 
-                @if ($swUser && (in_array('createStoreOrder', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                    <!--begin:Menu sub-->
-                    <div class="menu-sub menu-sub-accordion">
+                <!--begin:Menu sub-->
+                <div class="menu-sub menu-sub-accordion">
+                    @if ($swUser && (isset($permissionsMap['createStoreOrderPOS']) || $isSuperUser))
                         <!--begin:Menu item-->
                         <div class="menu-item">
                             <!--begin:Menu link-->
@@ -467,79 +476,83 @@
                             <!--end:Menu link-->
                         </div>
                         <!--end:Menu item-->
-                @endif
+                    @endif
 
-                @if ($swUser && (in_array('listStoreProducts', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                    <!--begin:Menu item-->
-                    <div class="menu-item">
-                        <!--begin:Menu link-->
-                        <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/store/product*')) active @endif"
-                            href="{{ route('sw.listStoreProducts') }}">
-                            <span class="menu-bullet">
-                                <span class="bullet bullet-dot"></span>
-                            </span>
-                            <span class="menu-title">{{ trans('sw.list_products') }}</span>
-                        </a>
-                        <!--end:Menu link-->
-                    </div>
-                    <!--end:Menu item-->
-                @endif
+                    @if ($swUser && (isset($permissionsMap['listStoreProducts']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/store/product*')) active @endif"
+                                href="{{ route('sw.listStoreProducts') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.list_products') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
 
-                @if ($swUser && (in_array('listStoreOrders', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                    <!--begin:Menu item-->
-                    <div class="menu-item">
-                        <!--begin:Menu link-->
-                        <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/store/order*') && !Request::is(($lang ?? 'ar') . '/store/order/create-pos')) active @endif"
-                            href="{{ route('sw.listStoreOrders') }}">
-                            <span class="menu-bullet">
-                                <span class="bullet bullet-dot"></span>
-                            </span>
-                            <span class="menu-title">{{ trans('sw.sales_invoices') }}</span>
-                        </a>
-                        <!--end:Menu link-->
-                    </div>
-                    <!--end:Menu item-->
-                @endif
+                    @if ($swUser && (isset($permissionsMap['listStoreOrders']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/store/order*') && !Request::is(($lang ?? 'ar') . '/store/order/create-pos')) active @endif"
+                                href="{{ route('sw.listStoreOrders') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.sales_invoices') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
 
-                @if ($swUser && (in_array('listStoreOrderVendor', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                    <!--begin:Menu item-->
-                    <div class="menu-item">
-                        <!--begin:Menu link-->
-                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/store/vendor/order*')) active @endif "
-                            href="{{ route('sw.listStoreOrderVendor') }}">
-                            <span class="menu-bullet">
-                                <span class="bullet bullet-dot"></span>
-                            </span>
-                            <span class="menu-title">{{ trans('sw.purchase_invoices') }}</span>
-                        </a>
-                        <!--end:Menu link-->
-                    </div>
-                    <!--end:Menu item-->
-                @endif
+                    @if ($swUser && (isset($permissionsMap['listStoreOrderVendor']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/store/vendor/order*')) active @endif "
+                                href="{{ route('sw.listStoreOrderVendor') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.purchase_invoices') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
 
-                @if ($swUser && (in_array('listStoreCategory', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                    <!--begin:Menu item-->
-                    <div class="menu-item">
-                        <!--begin:Menu link-->
-                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/store/category*')) active @endif "
-                            href="{{ route('sw.listStoreCategory') }}">
-                            <span class="menu-bullet">
-                                <span class="bullet bullet-dot"></span>
-                            </span>
-                            <span class="menu-title">{{ trans('sw.store_categories') }}</span>
-                        </a>
-                        <!--end:Menu link-->
-                    </div>
-                    <!--end:Menu item-->
-                @endif
-
-
-            </div><!--end:Menu sub-->
+                    @if ($swUser && (isset($permissionsMap['listStoreCategory']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/store/category*')) active @endif "
+                                href="{{ route('sw.listStoreCategory') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.store_categories') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
+                </div>
+                <!--end:Menu sub-->
     </div>
     <!--end:Menu item-->
     @endif
 
-    @if ($mainSettings->active_pt)
+    @if ($mainSettings->active_pt && $swUser && (
+            isset($permissionsMap['listPTSubscription']) ||
+            isset($permissionsMap['listPTClass']) ||
+            isset($permissionsMap['listPTMember']) ||
+            $isSuperUser
+        ))
         <!--begin:Menu item-->
         <div data-kt-menu-trigger="click"
             class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/pt*') && !Request::is(($lang ?? 'ar') . '/pt/trainer*')) show @endif">
@@ -553,9 +566,9 @@
             </span>
             <!--end:Menu link-->
 
-            @if ($swUser && (in_array('listPTSubscription', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <!--begin:Menu sub-->
-                <div class="menu-sub menu-sub-accordion">
+            <!--begin:Menu sub-->
+            <div class="menu-sub menu-sub-accordion">
+                @if ($swUser && (isset($permissionsMap['listPTSubscription']) || $isSuperUser))
                     <!--begin:Menu item-->
                     <div class="menu-item">
                         <!--begin:Menu link-->
@@ -569,95 +582,99 @@
                         <!--end:Menu link-->
                     </div>
                     <!--end:Menu item-->
-            @endif
+                @endif
 
-            @if ($swUser && (in_array('listPTClass', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <!--begin:Menu item-->
-                <div class="menu-item">
-                    <!--begin:Menu link-->
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/class*')) active @endif"
-                        href="{{ route('sw.listPTClass') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.pt_classes') }}</span>
-                    </a>
-                    <!--end:Menu link-->
-                </div>
-                <!--end:Menu item-->
-            @endif
+                @if ($swUser && (isset($permissionsMap['listPTClass']) || $isSuperUser))
+                    <!--begin:Menu item-->
+                    <div class="menu-item">
+                        <!--begin:Menu link-->
+                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/class*')) active @endif"
+                            href="{{ route('sw.listPTClass') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">{{ trans('sw.pt_classes') }}</span>
+                        </a>
+                        <!--end:Menu link-->
+                    </div>
+                    <!--end:Menu item-->
+                @endif
 
-            @if ($swUser && (in_array('listPTMember', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <!--begin:Menu item-->
-                <div class="menu-item">
-                    <!--begin:Menu link-->
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/member*')) active @endif "
-                        href="{{ route('sw.listPTMember') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.pt_members') }}</span>
-                    </a>
-                    <!--end:Menu link-->
-                </div>
-                <!--end:Menu item-->
-            @endif
+                @if ($swUser && (isset($permissionsMap['listPTMember']) || $isSuperUser))
+                    <!--begin:Menu item-->
+                    <div class="menu-item">
+                        <!--begin:Menu link-->
+                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/member*')) active @endif "
+                            href="{{ route('sw.listPTMember') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">{{ trans('sw.pt_members') }}</span>
+                        </a>
+                        <!--end:Menu link-->
+                    </div>
+                    <!--end:Menu item-->
+                @endif
 
-            @if ($swUser && (in_array('listPTMember', (array) ($swUser->permissions ?? [])) || in_array('listPTClass', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <div class="menu-item">
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/sessions*')) active @endif"
-                       href="{{ route('sw.listPTSessions') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.pt_sessions2') }}</span>
-                    </a>
-                </div>
-            @endif
+                @if ($swUser && (isset($permissionsMap['listPTMember']) || isset($permissionsMap['listPTClass']) || $isSuperUser))
+                    <div class="menu-item">
+                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/sessions*')) active @endif"
+                           href="{{ route('sw.listPTSessions') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">{{ trans('sw.pt_sessions2') }}</span>
+                        </a>
+                    </div>
+                @endif
 
-            <!-- @if ($swUser && (in_array('listPTMember', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <div class="menu-item">
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/home-pt-mini')) active @endif"
-                       href="{{ route('sw.dashboardPTMini') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.client_pt_attendees_today') }}</span>
-                    </a>
-                </div>
-            @endif
+                <!-- @if ($swUser && (isset($permissionsMap['listPTMember']) || $isSuperUser))
+                    <div class="menu-item">
+                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/home-pt-mini')) active @endif"
+                           href="{{ route('sw.dashboardPTMini') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">{{ trans('sw.client_pt_attendees_today') }}</span>
+                        </a>
+                    </div>
+                @endif
 
-            @if ($swUser && (in_array('reportTodayPTMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <div class="menu-item">
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user/log/pt-today*')) active @endif"
-                       href="{{ route('sw.reportTodayPTMemberList') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.report_pt_attendance') }}</span>
-                    </a>
-                </div>
-            @endif -->
+                @if ($swUser && (isset($permissionsMap['reportTodayPTMemberList']) || $isSuperUser))
+                    <div class="menu-item">
+                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user/log/pt-today*')) active @endif"
+                           href="{{ route('sw.reportTodayPTMemberList') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">{{ trans('sw.report_pt_attendance') }}</span>
+                        </a>
+                    </div>
+                @endif -->
 
-            <!-- @if ($swUser && (in_array('listPTTrainer', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-                <div class="menu-item">
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/trainer*')) active @endif"
-                       href="{{ route('sw.listPTTrainer') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.pt_trainer_payouts') }}</span>
-                    </a>
-                </div>
-            @endif -->
-
-
-        </div><!--end:Menu sub-->
+                <!-- @if ($swUser && (isset($permissionsMap['listPTTrainer']) || $isSuperUser))
+                    <div class="menu-item">
+                        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/trainer*')) active @endif"
+                           href="{{ route('sw.listPTTrainer') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">{{ trans('sw.pt_trainer_payouts') }}</span>
+                        </a>
+                    </div>
+                @endif -->
+            </div>
+            <!--end:Menu sub-->
 </div>
 <!--end:Menu item-->
 @endif
 
-@if ($mainSettings->active_training)
+@if ($mainSettings->active_training && $swUser && (
+        isset($permissionsMap['listTrainingPlan']) ||
+        isset($permissionsMap['listTrainingMember']) ||
+        isset($permissionsMap['listTrainingTrack']) ||
+        $isSuperUser
+    ))
     <!--begin:Menu item-->
     <div data-kt-menu-trigger="click"
         class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/training*')) show @endif">
@@ -671,7 +688,7 @@
         </span>
         <!--end:Menu link-->
 
-        @if ($swUser && (in_array('listTrainingPlan', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+        @if ($swUser && (isset($permissionsMap['listTrainingPlan']) || $isSuperUser))
             <!--begin:Menu sub-->
             <div class="menu-sub menu-sub-accordion">
                 <!--begin:Menu item - Training Plans-->
@@ -724,6 +741,12 @@
 
 {{-- moved Activities, Subscriptions, Users under Settings submenu --}}
 
+@if ($swUser && (
+        isset($permissionsMap['createMoneyBoxAdd']) ||
+        isset($permissionsMap['createMoneyBoxWithdraw']) ||
+        isset($permissionsMap['createMoneyBoxWithdrawEarnings']) ||
+        $isSuperUser
+    ))
 <div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/moneybox*') && !Request::is(($lang ?? 'ar') . '/moneybox')) show @endif">
     <!--begin:Menu link-->
     <span class="menu-link @if (Request::is(($lang ?? 'ar') . '/moneybox*') && !Request::is(($lang ?? 'ar') . '/moneybox')) show @endif">
@@ -735,9 +758,9 @@
     </span>
     <!--end:Menu link-->
 
-    @if ($swUser && (in_array('createMoneyBoxAdd', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-        <!--begin:Menu sub-->
-        <div class="menu-sub menu-sub-accordion">
+    <!--begin:Menu sub-->
+    <div class="menu-sub menu-sub-accordion">
+        @if ($swUser && (isset($permissionsMap['createMoneyBoxAdd']) || $isSuperUser))
             <!--begin:Menu item-->
             <div class="menu-item">
                 <!--begin:Menu link-->
@@ -751,43 +774,68 @@
                 <!--end:Menu link-->
             </div>
             <!--end:Menu item-->
-    @endif
+        @endif
 
-    @if ($swUser && (in_array('createMoneyBoxWithdraw', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-        <!--begin:Menu item-->
-        <div class="menu-item">
-            <!--begin:Menu link-->
-            <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/moneybox/withdraw')) active @endif"
-                href="{{ route('sw.createMoneyBoxWithdraw') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.withdraw_from_money_box') }}</span>
-            </a>
-            <!--end:Menu link-->
-        </div>
-        <!--end:Menu item-->
-    @endif
+        @if ($swUser && (isset($permissionsMap['createMoneyBoxWithdraw']) || $isSuperUser))
+            <!--begin:Menu item-->
+            <div class="menu-item">
+                <!--begin:Menu link-->
+                <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/moneybox/withdraw')) active @endif"
+                    href="{{ route('sw.createMoneyBoxWithdraw') }}">
+                    <span class="menu-bullet">
+                        <span class="bullet bullet-dot"></span>
+                    </span>
+                    <span class="menu-title">{{ trans('sw.withdraw_from_money_box') }}</span>
+                </a>
+                <!--end:Menu link-->
+            </div>
+            <!--end:Menu item-->
+        @endif
 
-    @if ($swUser && (in_array('createMoneyBoxWithdrawEarnings', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-        <!--begin:Menu item-->
-        <div class="menu-item">
-            <!--begin:Menu link-->
-            <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/moneybox/withdraw-earnings')) active @endif"
-                href="{{ route('sw.createMoneyBoxWithdrawEarnings') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.withdraw_earning') }}</span>
-            </a>
-            <!--end:Menu link-->
-        </div>
-        <!--end:Menu item-->
-    @endif
-   
-</div><!--end:Menu sub-->
+        @if ($swUser && (isset($permissionsMap['createMoneyBoxWithdrawEarnings']) || $isSuperUser))
+            <!--begin:Menu item-->
+            <div class="menu-item">
+                <!--begin:Menu link-->
+                <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/moneybox/withdraw-earnings')) active @endif"
+                    href="{{ route('sw.createMoneyBoxWithdrawEarnings') }}">
+                    <span class="menu-bullet">
+                        <span class="bullet bullet-dot"></span>
+                    </span>
+                    <span class="menu-title">{{ trans('sw.withdraw_earning') }}</span>
+                </a>
+                <!--end:Menu link-->
+            </div>
+            <!--end:Menu item-->
+        @endif
+    </div>
+    <!--end:Menu sub-->
 </div>
+@endif
 
+@if ($swUser && (
+        isset($permissionsMap['listMoneyBox']) ||
+        isset($permissionsMap['reportMoneyboxTax']) ||
+        isset($permissionsMap['reportZatcaInvoices']) ||
+        isset($permissionsMap['reportRenewMemberList']) ||
+        isset($permissionsMap['reportExpireMemberList']) ||
+        isset($permissionsMap['reportDetailMemberList']) ||
+        isset($permissionsMap['reportSubscriptionMemberList']) ||
+        isset($permissionsMap['reportPTSubscriptionMemberList']) ||
+        isset($permissionsMap['reportTodayMemberList']) ||
+        isset($permissionsMap['reportTodayPTMemberList']) ||
+        isset($permissionsMap['reportTodayNonMemberList']) ||
+        isset($permissionsMap['reportUserAttendeesList']) ||
+        isset($permissionsMap['reportStoreList']) ||
+        isset($permissionsMap['reportOnlinePaymentTransactionList']) ||
+        isset($permissionsMap['listMoneyBoxDaily']) ||
+        isset($permissionsMap['listLoyaltyTransaction']) ||
+        (@$mainSettings->active_ai && (
+            isset($permissionsMap['aiReportsDashboard']) ||
+            isset($permissionsMap['aiReportsJobs']) ||
+            isset($permissionsMap['aiReportsInsights'])
+        )) ||
+        $isSuperUser
+    ))
 <div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
     <!--begin:Menu link-->
     <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
@@ -799,9 +847,9 @@
     </span>
     <!--end:Menu link-->
 
-    @if ($swUser && (in_array('listMoneyBox', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-        <!--begin:Menu sub-->
-        <div class="menu-sub menu-sub-accordion">
+    <!--begin:Menu sub-->
+    <div class="menu-sub menu-sub-accordion">
+        @if ($swUser && (isset($permissionsMap['listMoneyBox']) || $isSuperUser))
             <!--begin:Menu item-->
             <div class="menu-item">
                 <!--begin:Menu link-->
@@ -815,9 +863,9 @@
                 <!--end:Menu link-->
             </div>
             <!--end:Menu item-->
-    @endif
+        @endif
 
-    @if ($swUser && (in_array('reportMoneyboxTax', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportMoneyboxTax']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -833,7 +881,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportRenewMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportRenewMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -849,7 +897,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportExpireMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportExpireMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -865,7 +913,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportDetailMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportDetailMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -881,7 +929,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportSubscriptionMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportSubscriptionMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -897,7 +945,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportFreezeMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportFreezeMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -913,7 +961,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportPTSubscriptionMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportPTSubscriptionMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -929,7 +977,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportTodayMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportTodayMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -945,7 +993,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportTodayPTMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportTodayPTMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -961,7 +1009,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportTodayNonMemberList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportTodayNonMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -977,7 +1025,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportUserAttendeesList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportUserAttendeesList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -993,7 +1041,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (in_array('reportStoreList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportStoreList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1008,7 +1056,7 @@
         </div>
         <!--end:Menu item-->
     @endif
-    @if ($swUser && config('sw_billing.zatca_enabled') && (in_array('reportZatcaInvoices', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && config('sw_billing.zatca_enabled') && (isset($permissionsMap['reportZatcaInvoices']) || $isSuperUser))
         <div class="menu-item">
             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user/log/zatca-invoices')) active @endif"
                 href="{{ route('sw.reportZatcaInvoices') }}">
@@ -1019,7 +1067,7 @@
             </a>
         </div>
     @endif
-    @if ($swUser && (in_array('reportOnlinePaymentTransactionList', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['reportOnlinePaymentTransactionList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1034,7 +1082,7 @@
         </div>
         <!--end:Menu item-->
     @endif
-    @if ($swUser && (in_array('listMoneyBoxDaily', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+    @if ($swUser && (isset($permissionsMap['listMoneyBoxDaily']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1063,7 +1111,7 @@
     </div>
     <!--end:Menu item-->
 
-    @if ($swUser && @$mainSettings->active_loyalty && ($swUser->is_super_user || in_array('listLoyaltyTransaction', (array) ($swUser->permissions ?? []))))
+    @if ($swUser && @$mainSettings->active_loyalty && ($isSuperUser || isset($permissionsMap['listLoyaltyTransaction'])))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1078,7 +1126,11 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && ($swUser->is_super_user || count(array_intersect(@(array) ($swUser->permissions ?? []), ['aiReportsDashboard','aiReportsJobs','aiReportsInsights'])) > 0))
+    @if (@$mainSettings->active_ai && $swUser && ($isSuperUser || 
+            isset($permissionsMap['aiReportsDashboard']) ||
+            isset($permissionsMap['aiReportsJobs']) ||
+            isset($permissionsMap['aiReportsInsights'])
+        ))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1093,7 +1145,7 @@
         <!--end:Menu item-->
 
         <!--begin:Menu item-->
-        @if ($swUser->is_super_user || in_array('aiReportsJobs', (array) ($swUser->permissions ?? [])))
+        @if ($isSuperUser || isset($permissionsMap['aiReportsJobs']))
         <div class="menu-item">
             <!--begin:Menu link-->
             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/jobs')) active @endif" href="{{ route('ai.reports.jobs') }}">
@@ -1108,7 +1160,7 @@
         <!--end:Menu item-->
 
         <!--begin:Menu item-->
-        @if ($swUser->is_super_user || in_array('aiReportsInsights', (array) ($swUser->permissions ?? [])))
+        @if ($isSuperUser || isset($permissionsMap['aiReportsInsights']))
         <div class="menu-item">
             <!--begin:Menu link-->
             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/insights')) active @endif" href="{{ route('ai.reports.insights') }}">
@@ -1131,7 +1183,7 @@
                 <span class="menu-title">{{ trans('sw.ai_risk_assessment') }}</span>
             </a>
         </div>
-        <!--end:Menu item-->
+        <! end:Menu item-->
         <!--begin:Menu item-->
         <!-- <div class="menu-item">
             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/performance')) active @endif" href="{{ route('ai.reports.performance') }}">
@@ -1178,10 +1230,16 @@
     @endif
 
 
-</div><!--end:Menu sub-->
+    </div><!--end:Menu sub-->
 </div>
+<!--end:Menu item-->
+@endif
 
-@if (@$mainSettings->active_website || @$mainSettings->active_mobile)
+@if (@$mainSettings->active_mobile && $swUser && (
+        isset($permissionsMap['listBanner']) ||
+        isset($permissionsMap['listGallery']) ||
+        $isSuperUser
+    ))
 
     <!--begin:Menu item-->
     <div data-kt-menu-trigger="click"
@@ -1196,9 +1254,9 @@
         </span>
         <!--end:Menu link-->
 
-        @if ($swUser && (in_array('listBanner', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-            <!--begin:Menu sub-->
-            <div class="menu-sub menu-sub-accordion">
+        <!--begin:Menu sub-->
+        <div class="menu-sub menu-sub-accordion">
+            @if ($swUser && (isset($permissionsMap['listBanner']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1212,37 +1270,39 @@
                     <!--end:Menu link-->
                 </div>
                 <!--end:Menu item-->
-        @endif
+            @endif
 
-        @if ($swUser && (in_array('listGallery', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
-            <!--begin:Menu item-->
-            <div class="menu-item">
-                <!--begin:Menu link-->
-                <a class="menu-link   @if (Request::is(($lang ?? 'ar') . '/banner/gallery')) active @endif"
-                    href="{{ route('sw.listGallery') }}">
-                    <span class="menu-bullet">
-                        <span class="bullet bullet-dot"></span>
-                    </span>
-                    <span class="menu-title">{{ trans('sw.gallery') }}</span>
-                </a>
-                <!--end:Menu link-->
-            </div>
-            <!--end:Menu item-->
-        @endif
-
-
-    </div><!--end:Menu sub-->
+            @if ($swUser && (isset($permissionsMap['listGallery']) || $isSuperUser))
+                <!--begin:Menu item-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link   @if (Request::is(($lang ?? 'ar') . '/banner/gallery')) active @endif"
+                        href="{{ route('sw.listGallery') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.gallery') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
+            @endif
+        </div>
+        <!--end:Menu sub-->
     </div>
     <!--end:Menu item-->
 
 @endif
 
-@if ($swUser && $swUser->is_super_user &&
-        ($mainSettings->active_sms ||
-            $mainSettings->active_telegram ||
-            $mainSettings->active_wa ||
-            $mainSettings->active_notification ||
-            $mainSettings->active_mobile))
+@if ($swUser && (
+        $isSuperUser ||
+        ($mainSettings->active_sms && isset($permissionsMap['createSMS'])) ||
+        ($mainSettings->active_telegram && isset($permissionsMap['createTelegram'])) ||
+        ($mainSettings->active_wa && (isset($permissionsMap['createWA']) || isset($permissionsMap['createWAUltra']))) ||
+        ($mainSettings->active_notification && isset($permissionsMap['createNotification'])) ||
+        ($mainSettings->active_mobile && isset($permissionsMap['createMyNotification'])) ||
+        isset($permissionsMap['editEventNotification'])
+    ))
 
     <!--begin:Menu item-->
     <div data-kt-menu-trigger="click"
@@ -1271,7 +1331,7 @@
         <!--end:Menu link-->
         <div class="menu-sub menu-sub-accordion">
 
-            @if ($mainSettings->active_sms)
+            @if ($mainSettings->active_sms && ($swUser && (isset($permissionsMap['createSMS']) || $isSuperUser)))
                 <!--begin:Menu sub-->
                 <!--begin:Menu item-->
                 <div class="menu-item">
@@ -1288,7 +1348,7 @@
                 <!--end:Menu item-->
             @endif
 
-            @if ($mainSettings->active_telegram)
+            @if ($mainSettings->active_telegram && ($swUser && (isset($permissionsMap['createTelegram']) || $isSuperUser)))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1305,7 +1365,7 @@
             @endif
 
 
-            @if ($mainSettings->active_wa)
+            @if ($mainSettings->active_wa && ($swUser && (isset($permissionsMap['createWA']) || isset($permissionsMap['createWAUltra']) || $isSuperUser)))
                 @if (@env('WA_GATEWAY') == 'ULTRA')
                     <!--begin:Menu item-->
                     <div class="menu-item">
@@ -1337,7 +1397,7 @@
                 @endif
             @endif
 
-            @if ($mainSettings->active_mobile)
+            @if ($mainSettings->active_mobile && ($swUser && (isset($permissionsMap['createMyNotification']) || $isSuperUser)))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1353,7 +1413,7 @@
                 <!--end:Menu item-->
             @endif
 
-            @if ($mainSettings->active_notification && !$mainSettings->active_mobile)
+            @if ($mainSettings->active_notification && !$mainSettings->active_mobile && ($swUser && (isset($permissionsMap['createNotification']) || $isSuperUser)))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1370,7 +1430,7 @@
             @endif
 
 
-            @if ($swUser && $swUser->is_super_user)
+            @if ($swUser && ($isSuperUser || isset($permissionsMap['editEventNotification'])))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1392,13 +1452,14 @@
     <!--end:Menu item-->
 @endif
 
-@if ($swUser && $swUser->is_super_user)
+@if ($swUser)
     <!--begin:Menu item-->
     <div data-kt-menu-trigger="click"
         class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
+                Request::is(($lang ?? 'ar') . '/reservation*') ||
                 Request::is(($lang ?? 'ar') . '/user*') ||
                 Request::is(($lang ?? 'ar') . '/pt/trainer*') ||
                 Request::is(($lang ?? 'ar') . '/loyalty/rules*') ||
@@ -1408,6 +1469,7 @@
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
+                Request::is(($lang ?? 'ar') . '/reservation*') ||
                 Request::is(($lang ?? 'ar') . '/user*') || 
                 Request::is(($lang ?? 'ar') . '/pt/trainer*') ||
                 Request::is(($lang ?? 'ar') . '/loyalty/rules*') ||
@@ -1422,6 +1484,7 @@
 
         <!--begin:Menu sub-->
         <div class="menu-sub menu-sub-accordion">
+            @if ($swUser && $isSuperUser)
             <!--begin:Menu item-->
             <div class="menu-item">
                 <!--begin:Menu link-->
@@ -1435,11 +1498,12 @@
                 <!--end:Menu link-->
             </div>
             <!--end:Menu item-->
+            @endif
 
 
 
             {{-- Users (moved under Settings) --}}
-            @if ($swUser && (in_array('listUser', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            @if ($swUser && (isset($permissionsMap['listUser']) || $isSuperUser))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user*') && !Request::is(($lang ?? 'ar') . '/user/log*') && !Request::is(($lang ?? 'ar') . '/user/log/renew') && !Request::is(($lang ?? 'ar') . '/user/log/today')) active @endif"
                         href="{{ route('sw.listUser') }}">
@@ -1451,7 +1515,7 @@
                 </div>
             @endif
            
-            @if ($mainSettings->active_pt && $swUser && (in_array('listPTTrainer', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            @if ($mainSettings->active_pt && $swUser && (isset($permissionsMap['listPTTrainer']) || $isSuperUser))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/pt/trainer*')) active @endif"
                         href="{{ route('sw.listPTTrainer') }}">
@@ -1465,7 +1529,7 @@
            
 
             {{-- Subscriptions (moved under Settings) --}}
-            @if ($swUser && ((@$mainSettings->active_subscription && in_array('listSubscription', (array) ($swUser->permissions ?? []))) || $swUser->is_super_user))
+            @if ($swUser && ((@$mainSettings->active_subscription && isset($permissionsMap['listSubscription'])) || $isSuperUser))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription*')) active @endif"
                         href="{{ route('sw.listSubscription') }}">
@@ -1477,7 +1541,7 @@
                 </div>
             @endif
  {{-- Activities (moved under Settings) --}}
-            @if ($swUser && ((@$mainSettings->active_activity && in_array('listActivity', (array) ($swUser->permissions ?? []))) || $swUser->is_super_user))
+            @if ($swUser && ((@$mainSettings->active_activity && isset($permissionsMap['listActivity'])) || $isSuperUser))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/activity*')) active @endif"
                         href="{{ route('sw.listActivity') }}">
@@ -1489,7 +1553,28 @@
                 </div>
             @endif
             
-            @if ($swUser && (in_array('listPaymentType', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            @php
+                $features = is_array($mainSettings->features ?? null)
+                    ? $mainSettings->features 
+                    : (is_string($mainSettings->features ?? null) 
+                        ? json_decode($mainSettings->features, true) 
+                        : []);
+                $active_activity_reservation = isset($features['active_activity_reservation']) && $features['active_activity_reservation'];
+            @endphp
+            
+            @if ($swUser && $active_activity_reservation && (isset($permissionsMap['listReservation']) || isset($permissionsMap['createReservation']) || isset($permissionsMap['editReservation']) || $isSuperUser))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/reservation*')) active @endif"
+                        href="{{ route('sw.listReservation') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.reservations') }}</span>
+                    </a>
+                </div>
+            @endif
+            
+            @if ($swUser && (isset($permissionsMap['listPaymentType']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1506,7 +1591,7 @@
             @endif
 
 
-            @if ($swUser && (in_array('listMoneyBoxType', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            @if ($swUser && (isset($permissionsMap['listMoneyBoxType']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1522,7 +1607,7 @@
                 <!--end:Menu item-->
             @endif
 
-            @if ($swUser && (in_array('listGroupDiscount', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            @if ($swUser && (isset($permissionsMap['listGroupDiscount']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1538,7 +1623,7 @@
                 <!--end:Menu item-->
             @endif
 
-            <!-- @if ($swUser && (in_array('listStoreGroup', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            <!-- @if ($swUser && (isset($permissionsMap['listStoreGroup']) || $isSuperUser))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/setting/store-group*')) active @endif "
                         href="{{ route('sw.listStoreGroup') }}">
@@ -1551,7 +1636,7 @@
             @endif -->
 
 
-            @if ($swUser && (in_array('listSaleChannel', (array) ($swUser->permissions ?? [])) || $swUser->is_super_user))
+            @if ($swUser && (isset($permissionsMap['listSaleChannel']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1581,7 +1666,7 @@
             </div>
             <!--end:Menu item-->
 
-            @if (@$mainSettings->active_loyalty && ($swUser->is_super_user || in_array('listLoyaltyPointRule', (array) ($swUser->permissions ?? []))))
+            @if (@$mainSettings->active_loyalty && ($isSuperUser || isset($permissionsMap['listLoyaltyPointRule'])))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1597,7 +1682,7 @@
                 <!--end:Menu item-->
             @endif
 
-            @if (@$mainSettings->active_loyalty && ($swUser->is_super_user || in_array('listLoyaltyCampaign', (array) ($swUser->permissions ?? []))))
+            @if (@$mainSettings->active_loyalty && ($isSuperUser || isset($permissionsMap['listLoyaltyCampaign'])))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1646,72 +1731,46 @@
 
 
 
-{{-- <li class="nav-item">
-    <a href="{{route('web.templates')}}" target="_blank" class="nav-link nav-toggle">
-        <i class="icon-star"></i>
-        <span class="title">{{trans('sw.your_website')}}</span>
-    </a>
-</li> --}}
-{{-- @if ($swUser->is_super_user) --}}
-{{--    <li class="nav-item @if (Request::is(($lang ?? 'ar') . '/sms*')) active open @endif"> --}}
-{{--        <a href="{{route('sw.createSMS')}}" class="nav-link nav-toggle"> --}}
-{{--            <i class="icon-screen-smartphone"></i> --}}
-{{--            <span class="title">{{trans('sw.sms_add')}}</span> --}}
-{{--        </a> --}}
-{{--    </li> --}}
-{{-- @endif --}}
-{{-- @if ($swUser->is_super_user) --}}
-{{--    <li class="nav-item "> --}}
-{{--        <a href="#" data-target="#modelBackup" data-toggle="modal" class="nav-link nav-toggle"> --}}
-{{--            <i class="fa fa-database"></i> --}}
-{{--            <span class="title">{{trans('sw.backup_database')}}</span> --}}
-{{--        </a> --}}
-{{--    </li> --}}
-{{-- @endif --}}
-{{-- @if ($swUser->is_super_user) --}}
-{{--    <li class="nav-item "> --}}
-{{--        <a class="nav-link nav-toggle" id="site_on_off"> --}}
-{{--            <i class="icon-globe"></i> --}}
-{{--            <span class="title">{{trans('sw.off_site')}}</span> --}}
-{{--            {!! $mainSettings->under_maintenance ? '<span class="badge badge-danger side-badge">'.trans('sw.website_off').'</span>' : '<span class="badge badge-success side-badge">'.trans('sw.website_on').'</span>' !!} --}}
-{{--        </a> --}}
-{{--    </li> --}}
-{{-- @endif --}}
 
 
+{{-- 
+    Commented out GYM management section safely
+    Entire block wrapped to avoid any Blade @if/@endif parsing
+    NOTHING inside this block will be parsed by Blade
+-----------------------------------------------------------------------------------
+    @if (\Illuminate\Support\Facades\Auth::user() && \Illuminate\Support\Facades\Auth::user()->gym)
+        <li aria-haspopup="true" class="nav-item @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) active open @endif">
+            <a href="javascript:;" 
+               class="nav-link nav-toggle @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) open @endif">
+                <i class="icon-settings"></i>
+                <span class="title"> {{trans('global.gym_management')}}</span>
+                <span class="selected"></span>
+                <span class="arrow @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) open @endif"></span>
+            </a>
 
+            <ul class="sub-menu">
+                <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/subscription*') ? 'active open' : '' }}">
+                    <a href="" class="nav-link ">
+                        <i class="icon-notebook "></i>
+                        <span class="title">{{trans('global.subscriptions')}}</span>
+                    </a>
+                </li>
+                <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/member*') ? 'active open' : '' }}">
+                    <a href="" class="nav-link ">
+                        <i class="icon-notebook "></i>
+                        <span class="title">{{trans('global.members')}}</span>
+                    </a>
+                </li>
+                <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/order*') ? 'active open' : '' }}">
+                    <a href="" class="nav-link ">
+                        <i class="icon-notebook "></i>
+                        <span class="title">{{trans('global.orders')}}</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+    @endif
+-----------------------------------------------------------------------------------
+--}}
 
-@if (\Illuminate\Support\Facades\Auth::user() && \Illuminate\Support\Facades\Auth::user()->gym)
-    {{-- <li aria-haspopup="true" class="nav-item @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) active open @endif"> --}}
-    {{--    <a href="javascript:;" --}}
-    {{--       class="nav-link nav-toggle @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) open @endif"> --}}
-    {{--        <i class="icon-settings"></i> --}}
-    {{--        <span class="title"> {{trans('global.gym_management')}}</span> --}}
-    {{--        <span class="selected"></span> --}}
-    {{--        <span class="arrow @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) open @endif"></span> --}}
-    {{--    </a> --}}
-
-
-    {{--    <ul class="sub-menu"> --}}
-    {{--        <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/subscription*') ? 'active open' : '' }}"> --}}
-    {{--            <a href="" class="nav-link "> --}}
-    {{--                <i class="icon-notebook "></i> --}}
-    {{--                <span class="title">{{trans('global.subscriptions')}}</span> --}}
-    {{--            </a> --}}
-    {{--        </li> --}}
-    {{--        <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/member*') ? 'active open' : '' }}"> --}}
-    {{--            <a href="" class="nav-link "> --}}
-    {{--                <i class="icon-notebook "></i> --}}
-    {{--                <span class="title">{{trans('global.members')}}</span> --}}
-    {{--            </a> --}}
-    {{--        </li> --}}
-    {{--        <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/order*') ? 'active open' : '' }}"> --}}
-    {{--            <a href="" class="nav-link "> --}}
-    {{--                <i class="icon-notebook "></i> --}}
-    {{--                <span class="title">{{trans('global.orders')}}</span> --}}
-    {{--            </a> --}}
-    {{--        </li> --}}
-    {{--    </ul> --}}
-    {{-- </li> --}}
-@endif
 <!-- END MEGA MENU -->

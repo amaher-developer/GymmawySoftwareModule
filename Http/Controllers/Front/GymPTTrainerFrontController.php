@@ -484,14 +484,30 @@ class GymPTTrainerFrontController extends GymGenericFrontController
             $attendee = $commission->attendee;
             $class = optional($attendee?->pt_member?->pt_class);
 
+            // Handle session_date formatting
+            $sessionDate = null;
+            if ($attendee && $attendee->session_date) {
+                try {
+                    $sessionDate = Carbon::parse($attendee->session_date)->format('Y-m-d H:i');
+                } catch (\Exception $e) {
+                    $sessionDate = $attendee->session_date;
+                }
+            } elseif ($commission->session_date) {
+                try {
+                    $sessionDate = Carbon::parse($commission->session_date)->format('Y-m-d H:i');
+                } catch (\Exception $e) {
+                    $sessionDate = $commission->session_date;
+                }
+            }
+
             return [
                 'id' => $commission->id,
-                'session_date' => optional($attendee?->session_date ?? $commission->session_date)->format('Y-m-d H:i'),
-                'member_name' => optional($memberRecord)->name,
-                'member_code' => optional($memberRecord)->code,
-                'class_name' => optional($class)->name,
-                'commission_amount' => number_format($commission->commission_amount, 2),
-                'commission_rate' => number_format($commission->commission_rate, 2),
+                'session_date' => $sessionDate ?? '-',
+                'member_name' => optional($memberRecord)->name ?? '-',
+                'member_code' => optional($memberRecord)->code ?? '',
+                'class_name' => optional($class)->name ?? '-',
+                'commission_amount' => number_format($commission->commission_amount ?? 0, 2),
+                'commission_rate' => number_format($commission->commission_rate ?? 0, 2),
             ];
         })->values();
 

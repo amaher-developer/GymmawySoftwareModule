@@ -575,48 +575,115 @@
 @endsection
 @section('scripts')
     <script src="https://code.highcharts.com/highcharts.js"></script>
-
     <script>
-        $("#kt_daterangepicker_4").daterangepicker({
-            autoUpdateInput: false,
-            opens: '{{ $lang == "ar" ? "left" : "right" }}',
-            ranges: {
-                "{{ trans('sw.today') }}": [moment(), moment()],
-                "{{ trans('sw.yesterday') }}": [moment().subtract(1, "days"), moment().subtract(1, "days")],
-                "{{ trans('sw.last_7_days') }}": [moment().subtract(6, "days"), moment()],
-                "{{ trans('sw.last_30_days') }}": [moment().subtract(29, "days"), moment()],
-                "{{ trans('sw.this_month') }}": [moment().startOf("month"), moment().endOf("month")],
-                "{{ trans('sw.last_month') }}": [moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month")]
-            },
-            locale: {
-                format: 'YYYY-MM-DD',
-                separator: ' - ',
-                applyLabel: '{{ trans('sw.apply') }}',
-                cancelLabel: '{{ trans('sw.cancel') }}',
-                fromLabel: '{{ trans('sw.from') }}',
-                toLabel: '{{ trans('sw.to') }}',
-                customRangeLabel: '{{ trans('sw.custom') }}',
-                @if($lang == 'ar')
-                daysOfWeek: ['{{ trans('sw.sun') }}', '{{ trans('sw.mon') }}', '{{ trans('sw.tue') }}', '{{ trans('sw.wed') }}', '{{ trans('sw.thurs') }}', '{{ trans('sw.fri') }}', '{{ trans('sw.sat') }}'],
-                monthNames: ['{{ trans('sw.month_1') }}', '{{ trans('sw.month_2') }}', '{{ trans('sw.month_3') }}', '{{ trans('sw.month_4') }}', '{{ trans('sw.month_5') }}', '{{ trans('sw.month_6') }}', '{{ trans('sw.month_7') }}', '{{ trans('sw.month_8') }}', '{{ trans('sw.month_9') }}', '{{ trans('sw.month_10') }}', '{{ trans('sw.month_11') }}', '{{ trans('sw.month_12') }}'],
-                @endif
-                firstDay: {{ $lang == 'ar' ? 6 : 0 }}
+        // Wait for moment.js and daterangepicker to be loaded
+        function waitForDaterangepicker(maxAttempts, attempts) {
+            maxAttempts = maxAttempts || 50;
+            attempts = attempts || 0;
+
+            if (typeof moment === 'undefined') {
+                if (attempts < maxAttempts) {
+                    setTimeout(function() { waitForDaterangepicker(maxAttempts, attempts + 1); }, 100);
+                } else {
+                    console.error('moment.js failed to load after ' + maxAttempts + ' attempts');
+                }
+                return;
             }
-        });
 
-        $('#kt_daterangepicker_4').on('apply.daterangepicker', function(ev, picker) {
-            $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
-        });
+            if (typeof $ === 'undefined' || typeof $.fn === 'undefined') {
+                if (attempts < maxAttempts) {
+                    setTimeout(function() { waitForDaterangepicker(maxAttempts, attempts + 1); }, 100);
+                } else {
+                    console.error('jQuery failed to load after ' + maxAttempts + ' attempts');
+                }
+                return;
+            }
 
-        $('#kt_daterangepicker_4').on('cancel.daterangepicker', function(ev, picker) {
-            $(this).val('');
-        });
+            if (typeof $.fn.daterangepicker === 'undefined') {
+                if (attempts < maxAttempts) {
+                    setTimeout(function() { waitForDaterangepicker(maxAttempts, attempts + 1); }, 100);
+                } else {
+                    console.error('daterangepicker failed to load after ' + maxAttempts + ' attempts');
+                }
+                return;
+            }
 
-        @if(request('from_date') && request('to_date'))
-        $('#kt_daterangepicker_4').val('{{ request('from_date') }} - {{ request('to_date') }}');
-        $('#kt_daterangepicker_4').data('daterangepicker').setStartDate('{{ request('from_date') }}');
-        $('#kt_daterangepicker_4').data('daterangepicker').setEndDate('{{ request('to_date') }}');
-        @endif
+            initDateRangePicker();
+        }
+
+        if (typeof jQuery !== 'undefined') {
+            jQuery(document).ready(function() {
+                waitForDaterangepicker();
+            });
+        } else {
+            window.addEventListener('DOMContentLoaded', function() {
+                setTimeout(function() {
+                    if (typeof jQuery !== 'undefined') {
+                        jQuery(document).ready(function() {
+                            waitForDaterangepicker();
+                        });
+                    } else {
+                        waitForDaterangepicker();
+                    }
+                }, 100);
+            });
+        }
+
+        function initDateRangePicker() {
+            if ($("#kt_daterangepicker_4").length === 0) {
+                console.error('Element #kt_daterangepicker_4 not found!');
+                return;
+            }
+
+            if ($("#kt_daterangepicker_4").data('daterangepicker')) {
+                console.log('daterangepicker already initialized');
+                return;
+            }
+
+            $("#kt_daterangepicker_4").daterangepicker({
+                autoUpdateInput: false,
+                opens: '{{ $lang == "ar" ? "left" : "right" }}',
+                ranges: {
+                    "{{ trans('sw.today') }}": [moment(), moment()],
+                    "{{ trans('sw.yesterday') }}": [moment().subtract(1, "days"), moment().subtract(1, "days")],
+                    "{{ trans('sw.last_7_days') }}": [moment().subtract(6, "days"), moment()],
+                    "{{ trans('sw.last_30_days') }}": [moment().subtract(29, "days"), moment()],
+                    "{{ trans('sw.this_month') }}": [moment().startOf("month"), moment().endOf("month")],
+                    "{{ trans('sw.last_month') }}": [moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month")]
+                },
+                locale: {
+                    format: 'YYYY-MM-DD',
+                    separator: ' - ',
+                    applyLabel: '{{ trans('sw.apply') }}',
+                    cancelLabel: '{{ trans('sw.cancel') }}',
+                    fromLabel: '{{ trans('sw.from') }}',
+                    toLabel: '{{ trans('sw.to') }}',
+                    customRangeLabel: '{{ trans('sw.custom') }}',
+                    @if($lang == 'ar')
+                    daysOfWeek: ['{{ trans('sw.sun') }}', '{{ trans('sw.mon') }}', '{{ trans('sw.tue') }}', '{{ trans('sw.wed') }}', '{{ trans('sw.thurs') }}', '{{ trans('sw.fri') }}', '{{ trans('sw.sat') }}'],
+                    monthNames: ['{{ trans('sw.month_1') }}', '{{ trans('sw.month_2') }}', '{{ trans('sw.month_3') }}', '{{ trans('sw.month_4') }}', '{{ trans('sw.month_5') }}', '{{ trans('sw.month_6') }}', '{{ trans('sw.month_7') }}', '{{ trans('sw.month_8') }}', '{{ trans('sw.month_9') }}', '{{ trans('sw.month_10') }}', '{{ trans('sw.month_11') }}', '{{ trans('sw.month_12') }}'],
+                    @endif
+                    firstDay: {{ $lang == 'ar' ? 6 : 0 }}
+                }
+            });
+
+            $('#kt_daterangepicker_4').on('apply.daterangepicker', function(ev, picker) {
+                $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+            });
+
+            $('#kt_daterangepicker_4').on('cancel.daterangepicker', function(ev, picker) {
+                $(this).val('');
+            });
+
+            @if(request('from_date') && request('to_date'))
+            $('#kt_daterangepicker_4').val('{{ request('from_date') }} - {{ request('to_date') }}');
+            var dateRangePicker = $('#kt_daterangepicker_4').data('daterangepicker');
+            if (dateRangePicker) {
+                dateRangePicker.setStartDate('{{ request('from_date') }}');
+                dateRangePicker.setEndDate('{{ request('to_date') }}');
+            }
+            @endif
+        }
 
         function applyFilter() {
             var inputVal = $("#kt_daterangepicker_4").val();

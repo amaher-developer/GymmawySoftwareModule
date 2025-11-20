@@ -112,12 +112,14 @@
                 @endif
                 <!--end::Export-->
                 
+                @if($active_activity_reservation)
                 <!--begin::Calendar Button-->
                 <a href="{{route('sw.listReservation')}}" class="btn btn-sm btn-flex btn-light-info">
                     <i class="ki-outline ki-calendar fs-6"></i>
                     {{ trans('sw.activities_calender')}}
                 </a>
                 <!--end::Calendar Button-->
+                @endif
                 
                 
             </div>
@@ -135,9 +137,9 @@
                         <div class="col-md-6">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.date_range')}}</label>
                             <div class="input-group date-picker input-daterange">
-                                <input type="text" class="form-control" name="from" id="from_date" value="@php echo @strip_tags($_GET['from']) ? \Carbon\Carbon::parse($_GET['from'])->format('Y-m-d') : '' @endphp" placeholder="{{ trans('sw.from')}}" autocomplete="off">
+                                <input type="text" class="form-control" name="from" id="from_date" value="{{ $formatted_from_date }}" placeholder="{{ trans('sw.from')}}" autocomplete="off">
                                 <span class="input-group-text">{{ trans('sw.to')}}</span>
-                                <input type="text" class="form-control" name="to" id="to_date" value="@php echo @strip_tags($_GET['to']) ? \Carbon\Carbon::parse($_GET['to'])->format('Y-m-d') : '' @endphp" placeholder="{{ trans('sw.to')}}" autocomplete="off">
+                                <input type="text" class="form-control" name="to" id="to_date" value="{{ $formatted_to_date }}" placeholder="{{ trans('sw.to')}}" autocomplete="off">
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -165,7 +167,7 @@
         <div class="d-flex align-items-center position-relative my-1 mb-5">
             <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
             <form class="d-flex" action="" method="get" style="max-width: 400px;">
-                <input type="text" name="search" class="form-control form-control-solid ps-12" value="@php echo @strip_tags($_GET['search']) @endphp" placeholder="{{ trans('sw.search_on')}}">
+                <input type="text" name="search" class="form-control form-control-solid ps-12" value="{{ $formatted_search }}" placeholder="{{ trans('sw.search_on')}}">
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
                 </button>
@@ -293,19 +295,17 @@
                                     </a>
                                     <!--end::Invoice-->
                                     
+                                    @if($active_activity_reservation)
                                     <!--begin::Upcoming Reservations Button-->
-                                    @php
-                                        $memberReservations = $upcomingReservations[$member->id] ?? collect();
-                                    @endphp
-                                    @if($memberReservations->count() > 0)
+                                    @if($member->reservations_count > 0)
                                         <button type="button" 
                                                 class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm position-relative" 
-                                                title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
+                                                title="{{ trans('sw.upcoming_reservations') }} ({{ $member->reservations_count }})"
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#upcomingReservationsModal{{ $member->id }}">
                                             <i class="ki-outline ki-calendar-tick fs-2"></i>
                                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                                                {{ $memberReservations->count() }}
+                                                {{ $member->reservations_count }}
                                                 <span class="visually-hidden">{{ trans('sw.upcoming_reservations') }}</span>
                                             </span>
                                         </button>
@@ -324,6 +324,7 @@
                                         </button>
                                     @endif
                                     <!--end::Quick Book Button-->
+                                    @endif
                                     
                                     @if(in_array('editNonMember', (array)$swUser->permissions) || $swUser->is_super_user)
                                         <!--begin::Edit-->
@@ -398,80 +399,10 @@
 
 @endsection
 
-@section('scripts')
-    @parent
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
-            type="text/javascript"></script>
-    
-    <script>
-        $(document).on('click', '#export', function (event) {
-            event.preventDefault();
-            $.ajax({
-                url: $(this).attr('url'),
-                cache: false,
-                type: 'GET',
-                dataType: 'json',
-                success: function (response) {
-                    var a = document.createElement("a");
-                    a.href = response.file;
-                    a.download = response.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                },
-                error: function (request, error) {
-                    Swal.fire({
-                        title: '{{ trans('sw.error') }}',
-                        text: 'Something went wrong.',
-                        icon: 'error',
-                        confirmButtonText: 'Ok'
-                    });
-                    console.error("Request: " + JSON.stringify(request));
-                    console.error("Error: " + JSON.stringify(error));
-                }
-            });
-
-        });
-
-        $("#filter_form").slideUp();
-        $(".filter_trigger_button").click(function () {
-            $("#filter_form").slideToggle(300);
-        });
-
-        $(document).on('click', '.remove_filter', function (event) {
-            event.preventDefault();
-            var filter = $(this).attr('id');
-            $("#" + filter).val('');
-            $("#form_filter").submit();
-        });
-        jQuery(document).ready(function () {
-             var today = new Date();
-             $('.input-daterange').datepicker({
-                format: 'yyyy-mm-dd',
-                autoclose: true,
-                todayHighlight: true,
-                clearBtn: true,
-                orientation: 'bottom auto',
-                defaultDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() },
-                defaultViewDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() }
-            });
-
-            $('button[type="reset"]').on('click', function() {
-                setTimeout(() => {
-                    $(this).closest('form').find('select').trigger('change');
-                }, 100);
-            });
-        });
-
-    </script>
-
-
+    @if($active_activity_reservation)
     <!--begin::Upcoming Reservations Modal for Each Member-->
     @foreach($members as $member)
-        @php
-            $memberReservations = $upcomingReservations[$member->id] ?? collect();
-        @endphp
-        @if($memberReservations->count() > 0)
+        @if($member->reservations_count > 0)
             <div class="modal fade" id="upcomingReservationsModal{{ $member->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content">
@@ -505,7 +436,7 @@
                             <div class="mb-5">
                                 <div class="d-flex align-items-center justify-content-between mb-3">
                                     <h3 class="fw-bold text-gray-800 fs-6">
-                                        {{ trans('sw.reservations') }} ({{ $memberReservations->count() }})
+                                        {{ trans('sw.reservations') }} ({{ $member->member_reservations->count() }})
                                     </h3>
                                     <a href="{{ route('sw.listReservation') }}?non_member_id={{ $member->id }}" class="btn btn-sm btn-light-primary">
                                         <i class="ki-outline ki-eye fs-6"></i> {{ trans('sw.view_all') }}
@@ -513,7 +444,7 @@
                                 </div>
                                 
                                 <div class="d-flex flex-column gap-3">
-                                    @foreach($memberReservations as $reservation)
+                                    @foreach($member->member_reservations as $reservation)
                                         <div class="card card-flush border border-gray-300 border-dashed">
                                             <div class="card-body">
                                                 <div class="d-flex align-items-center justify-content-between">
@@ -630,15 +561,8 @@
                                 </label>
                                 <select id="qb_activity_{{ $member->id }}" class="form-select form-select-solid qb-activity-select" data-member-id="{{ $member->id }}" data-placeholder="{{ trans('sw.select_activity') }}">
                                     <option value="">{{ trans('sw.select_activity') }}</option>
-                                    @foreach($member->activities ?? [] as $activity)
-                                        @php
-                                            $activityId = is_array($activity) ? ($activity['id'] ?? null) : $activity->id ?? null;
-                                            $activityName = is_array($activity) ? ($activity['name_'.($lang ?? 'ar')] ?? $activity['name_ar'] ?? $activity['name'] ?? '') : ($activity->{'name_'.($lang ?? 'ar')} ?? $activity->name ?? '');
-                                            $duration = is_array($activity) ? ($activity['duration_minutes'] ?? 60) : ($activity->duration_minutes ?? 60);
-                                        @endphp
-                                        @if($activityId)
-                                            <option value="{{ $activityId }}" data-duration="{{ $duration }}">{{ $activityName }}</option>
-                                        @endif
+                                    @foreach($member->processed_activities ?? [] as $activity)
+                                        <option value="{{ $activity['id'] }}" data-duration="{{ $activity['duration_minutes'] }}">{{ $activity['name'] }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -724,7 +648,7 @@
         @endif
     @endforeach
     <!--end::Quick Book Modal for Each Member-->
-
+    
     <!--begin::Quick Booking Modal (General)-->
     <div class="modal fade" id="quickBookingModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -862,9 +786,74 @@
         </div>
     </div>
     <!--end::Quick Booking Modal-->
-@endsection
-
+    @endif
+    
 @section('scripts')
+    @parent
+    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+            type="text/javascript"></script>
+    <script>
+        $(document).on('click', '#export', function (event) {
+            event.preventDefault();
+            $.ajax({
+                url: $(this).attr('url'),
+                cache: false,
+                type: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    var a = document.createElement("a");
+                    a.href = response.file;
+                    a.download = response.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                },
+                error: function (request, error) {
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
+                    console.error("Request: " + JSON.stringify(request));
+                    console.error("Error: " + JSON.stringify(error));
+                }
+            });
+        });
+
+        $("#filter_form").slideUp();
+        $(".filter_trigger_button").click(function () {
+            $("#filter_form").slideToggle(300);
+        });
+
+        $(document).on('click', '.remove_filter', function (event) {
+            event.preventDefault();
+            var filter = $(this).attr('id');
+            $("#" + filter).val('');
+            $("#form_filter").submit();
+        });
+
+        jQuery(document).ready(function () {
+            var today = new Date();
+            $('.input-daterange').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true,
+                clearBtn: true,
+                orientation: 'bottom auto',
+                defaultDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() },
+                defaultViewDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() }
+            });
+
+            $('button[type="reset"]').on('click', function() {
+                setTimeout(() => {
+                    $(this).closest('form').find('select').trigger('change');
+                }, 100);
+            });
+        });
+    </script>
+
+@if($active_activity_reservation)
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
@@ -1228,7 +1217,7 @@ $(document).ready(function() {
                     showConfirmButton: false
                 }).then(() => {
                     $('#quickBookingModal').modal('hide');
-                    location.reload();
+                                            location.reload();
                 });
                                         }
         })
@@ -1461,6 +1450,27 @@ $(document).on('click', '.qb-load-slots-btn', function(e){
                     
                     const summary = $(summaryHtml);
                     $(`#qb_slots_${memberId}`).append(summary).append(slotsContainer);
+                    
+                    // If editing a reservation, auto-select the matching time slot
+                    const currentReservationId = $(`#qb_reservation_id_${memberId}`).val();
+                    if (currentReservationId) {
+                        // Get reservation times from modal data attributes
+                        const reservationStartTime = $(`#quickBookModal${memberId}`).data('reservation-start-time');
+                        const reservationEndTime = $(`#quickBookModal${memberId}`).data('reservation-end-time');
+                        
+                        if (reservationStartTime && reservationEndTime) {
+                            // Small delay to ensure DOM is fully rendered
+                            setTimeout(function() {
+                                const matchingSlot = $(`.qb-select-slot-member[data-member-id="${memberId}"][data-start="${reservationStartTime}"][data-end="${reservationEndTime}"]`);
+                                if (matchingSlot.length > 0) {
+                                    // Remove active class from all slots first
+                                    $(`.qb-select-slot-member[data-member-id="${memberId}"]`).removeClass('active');
+                                    // Add active class and click the matching slot
+                                    matchingSlot.first().addClass('active').click();
+                                }
+                            }, 100);
+                        }
+                    }
                 } else {
                     $(`#qb_slots_${memberId}`).html(`
                         <div class="slots-empty-state">
@@ -1843,19 +1853,21 @@ $(document).on('click', '.reservation-edit-btn', function(){
                 // Update button text
                 $(`#quickBookModal${memberId} .qb-book-btn-text`).text('{{ trans('sw.update') }}');
                 
-                // Load slots and select the current slot
-                setTimeout(function(){
-                    $(`#quickBookModal${memberId} .qb-load-slots-btn`).click();
-                    
-                    // After slots load, select the current time slot
-                    setTimeout(function(){
-                        $(`.qb-select-slot-member[data-member-id="${memberId}"][data-start="${data.start_time}"][data-end="${data.end_time}"]`)
-                            .first().click();
-                    }, 1000);
-                }, 500);
+                // Store reservation time in modal data attributes for slot selection after loading
+                $(`#quickBookModal${memberId}`).data('reservation-start-time', data.start_time);
+                $(`#quickBookModal${memberId}`).data('reservation-end-time', data.end_time);
                 
-                // Open quick modal
+                // Open quick modal first
                 $(`#quickBookModal${memberId}`).modal('show');
+                
+                // Wait for modal to be fully shown, then automatically load slots
+                $(`#quickBookModal${memberId}`).one('shown.bs.modal', function() {
+                    // Trigger slots loading after a short delay to ensure select2 is ready
+                    setTimeout(function(){
+                        // Click load slots button
+                        $(`#quickBookModal${memberId} .qb-load-slots-btn`).click();
+                    }, 300);
+                });
             }
         },
         error: function(){
@@ -1901,4 +1913,5 @@ $(document).on('change', '.qb-activity-select', function(){
     }
 });
     </script>
+@endif
 @endsection

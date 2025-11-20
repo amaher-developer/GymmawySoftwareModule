@@ -44,8 +44,17 @@ class GymLoginFrontController extends GymGenericFrontController
         ]);
         
         if($getUser && password_verify($request->password, $getUser->password)){
-            // Manually log in the user
-            Auth::guard('sw')->login($getUser);
+            // Manually log in the user with "remember me" enabled
+            // Second parameter true = remember me for extended period (creates remember token cookie)
+            // This keeps the user logged in even after browser closes
+            $remember = true; // Always remember by default to keep session persistent
+            Auth::guard('sw')->login($getUser, $remember);
+            
+            // Ensure session persists by setting a longer cookie lifetime
+            $minutes = 43200; // 30 days
+            config(['session.lifetime' => $minutes]);
+            Session::put('auth_sw', true);
+            
             $user = true;
         } else {
             $user = false;

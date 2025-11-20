@@ -47,32 +47,91 @@ class GymHomeFrontController extends GymGenericFrontController
     }
     public $money_box_daily_sum = 0;
     public function home(){
-        $activities = GymActivity::branch()->get();
-        $subscriptions = GymSubscription::branch()->get();
-        $money_box = GymMoneyBox::branch()->orderBy('created_at', 'desc')->first();
-        $money_box_now = @GymMoneyBoxFrontController::amountAfter($money_box['amount'], $money_box['amount_before'], $money_box['operation']);
+        // Optimize: Use select to limit columns and reduce memory
+        $activities = GymActivity::branch()->select('id', 'name_ar', 'name_en')->get();
+        $subscriptions = GymSubscription::branch()->select('id', 'name_ar', 'name_en', 'price', 'period')->get();
+        $money_box = GymMoneyBox::branch()->select('id', 'amount', 'amount_before', 'operation', 'created_at')->orderBy('created_at', 'desc')->first();
+        $money_box_now = @GymMoneyBoxFrontController::amountAfter($money_box['amount'] ?? 0, $money_box['amount_before'] ?? 0, $money_box['operation'] ?? 0);
 
         $last_created_member = GymMember::branch()->select('id', 'name')->orderBy('created_at', 'desc')->first();
         $last_created_non_member = GymNonMember::branch()->select('id', 'name')->orderBy('created_at', 'desc')->first();
-        $last_enter_member = GymMemberAttendee::branch()->with('member:id,name')->orderBy('created_at', 'desc')->first();
+        $last_enter_member = GymMemberAttendee::branch()
+            ->select('id', 'member_id', 'created_at')
+            ->with('member:id,name')
+            ->orderBy('created_at', 'desc')
+            ->first();
 
+        // Optimize: Use join instead of whereHas for better performance
+        // Join is much faster than whereHas as it doesn't require subqueries
+        $branchId = \Modules\Generic\Models\GenericModel::getCurrentBranchId();
+        $now = Carbon::now();
+        
+        // Get member IDs that are not deleted (cache this for reuse)
+        // Optimize: Single query to get all active member IDs, then use whereIn (faster than whereHas)
+        $activeMemberIds = GymMember::branch()
+            ->withoutTrashed()
+            ->pluck('id')
+            ->toArray();
+        
+        // If no active members, return empty collections early
+        if (empty($activeMemberIds)) {
+            $last_expired_members = collect();
+            $last_expiring_members = collect();
+            $last_new_members = collect();
+        } else {
+            // Batch load all member subscriptions with proper eager loading using whereIn instead of whereHas
+            $last_expired_members = GymMemberSubscription::branch()
+                ->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
+                ->whereIn('member_id', $activeMemberIds)
+            ->with(['member' => function($q) {
+                $q->select('id', 'name', 'image')->withoutTrashed();
+            }])
+                ->where('expire_date', '<', $now)
+                ->orderBy('expire_date', 'DESC')
+                ->limit(9)
+                ->get();
+                
+            $last_expiring_members = GymMemberSubscription::branch()
+                ->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
+                ->whereIn('member_id', $activeMemberIds)
+                ->with(['member' => function($q) {
+                    $q->select('id', 'name', 'image')->withoutTrashed();
+                }])
+                ->where('expire_date', '>=', $now)
+                ->orderBy('expire_date', 'ASC')
+                ->limit(9)
+                ->get();
+                
+            $last_new_members = GymMemberSubscription::branch()
+                ->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
+                ->whereIn('member_id', $activeMemberIds)
+                ->with(['member' => function($q) {
+                    $q->select('id', 'name', 'image')->withoutTrashed();
+                }])
+                ->where('expire_date', '>=', $now)
+                ->orderBy('joining_date', 'desc')
+                ->limit(9)
+                ->get();
+        }
 
-        $last_expired_members = GymMemberSubscription::branch()->with('member')->whereHas('member', function($q){
-            $q->withoutTrashed();
-        })->where('expire_date', '<', Carbon::now())->orderBy('expire_date', 'DESC')->limit(9)->get();
-        $last_expiring_members = GymMemberSubscription::branch()->with('member')->whereHas('member', function($q){
-            $q->withoutTrashed();
-        })->where('expire_date', '>=', Carbon::now())->orderBy('expire_date', 'ASC')->limit(9)->get();
-        $last_new_members = GymMemberSubscription::branch()->with(['member'])->whereHas('member', function($q){
-            $q->withoutTrashed();
-        })->where('expire_date', '>=', Carbon::now())->orderBy('joining_date', 'desc')->limit(9)->get();
+        $birthday_members = GymMember::branch()
+            ->select('id', 'name', 'dob', 'image')
+            ->whereMonth('dob', $now->format('m'))
+            ->whereDay('dob', $now->format('d'))
+            ->orderBy('dob', 'asc')
+            ->limit(9)
+            ->get();
 
-        $birthday_members = GymMember::branch()->whereMonth('dob', Carbon::now()->format('m'))
-            ->whereDay('dob', Carbon::now()->format('d'))
-            ->orderBy('dob', 'asc')->limit(9)->get();
-
-        $last_attendance_members = GymMemberAttendee::branch()->with('member.member_subscription_info')
-            ->orderBy('created_at', 'desc')->limit(20)->get();
+        $last_attendance_members = GymMemberAttendee::branch()
+            ->select('id', 'member_id', 'created_at')
+            ->with(['member' => function($q) {
+                $q->select('id', 'name', 'image')->withoutTrashed();
+            }, 'member.member_subscription_info' => function($q) {
+                $q->select('id', 'member_id', 'expire_date', 'status', 'amount_remaining');
+            }])
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get();
 
         $title = trans('sw.dashboard');
         $lang = $this->lang ?? 'ar';
@@ -784,11 +843,13 @@ class GymHomeFrontController extends GymGenericFrontController
         $expired_pt_subscriptions_chart = $this->getPTSubscriptionChartData(2, $from_date, $to_date);
         $frozen_pt_subscriptions_chart = implode(',', array_fill(0, 12, 0)); // No frozen status for PT
         
+        $lang = $this->lang ?? 'ar';
         return view('software::Front.pt_subscription_statistics', compact([
             'title', 'total_pt_subscriptions', 'active_pt_subscriptions', 'expired_pt_subscriptions', 
             'frozen_pt_subscriptions', 'pt_revenue', 'monthly_pt_revenue', 
             'total_trainers', 'total_pt_classes', 'popular_pt_subscriptions', 'top_trainers',
-            'new_pt_subscriptions_chart', 'expired_pt_subscriptions_chart', 'frozen_pt_subscriptions_chart'
+            'new_pt_subscriptions_chart', 'expired_pt_subscriptions_chart', 'frozen_pt_subscriptions_chart',
+            'lang'
         ]));
     }
 

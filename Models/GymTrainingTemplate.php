@@ -31,8 +31,7 @@ class GymTrainingTemplate extends GenericModel
      */
     public function scopeBranch($query)
     {
-        $user_sw = auth('sw')->user();
-        return $query->where('branch_setting_id', $user_sw->branch_setting_id ?? 1);
+        return $query->where('branch_setting_id', parent::getCurrentBranchId());
     }
 }
 

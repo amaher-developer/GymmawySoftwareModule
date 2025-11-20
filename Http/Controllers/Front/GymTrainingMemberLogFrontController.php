@@ -410,9 +410,11 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     public function addFile(Request $request, $memberId)
     {
         $request->validate([
-            'file' => 'required|file|max:10240',
+            'file' => 'required|file|max:2048|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,txt', // 2MB in KB
             'title' => 'nullable|string',
             'type' => 'nullable|string',
+        ], [
+            'file.mimes' => trans('sw.invalid_file_type') . ': ' . trans('sw.allowed_file_types') . ': PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG, GIF, TXT',
         ]);
 
         $file = $request->file('file');

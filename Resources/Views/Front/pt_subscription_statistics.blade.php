@@ -23,7 +23,7 @@
 
 @section('list_add_button')
 <div>
-    <button class="btn btn-default btn-block rounded-3" id="members_refresh" onclick="members_refresh()">
+    <button class="btn btn-default btn-block rounded-3" id="pt_members_refresh" onclick="pt_members_refresh()">
         <i class="fa fa-refresh mx-1"></i>
         {{ trans('sw.members_refresh')}}
     </button>
@@ -39,7 +39,7 @@
             float: left;
         }
         .right{
-            float: right;
+            float: left;
         }
     </style>
 @endsection
@@ -57,13 +57,13 @@
                                 <input class="form-control form-control-solid" placeholder="{{ trans('sw.select_date_range') }}" id="kt_daterangepicker_4" readonly/>
                             </div>
                             <div class="col-md-2 text-end">
-                                <button type="button" class="btn btn-primary w-100" onclick="applyFilter()">
+                                <button type="button" class="btn btn-primary w-100" id="apply_filter_btn">
                                     <i class="ki-outline ki-filter fs-2"></i>
                                     {{ trans('sw.apply') }}
                                 </button>
                             </div>
                             <div class="col-md-2 text-end">
-                                <button type="button" class="btn btn-secondary w-100" onclick="resetFilter()">
+                                <button type="button" class="btn btn-secondary w-100" id="reset_filter_btn">
                                     <i class="ki-outline ki-cross fs-2"></i>
                                     {{ trans('sw.reset') }}
                                 </button>
@@ -103,7 +103,7 @@
                             </div>
                             <!--end::Info-->
                             <!--begin::Subtitle-->
-                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.pt_subscription_revenue')}}</span>
+                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.pt_revenue') ?? 'PT Revenue'}}</span>
                             <!--end::Subtitle-->
                         </div>
                         <!--end::Title-->
@@ -119,7 +119,7 @@
                                 <div class="bullet w-8px h-6px rounded-2 bg-success me-3"></div>
                                 <!--end::Bullet-->
                                 <!--begin::Label-->
-                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.active_subscriptions')}}</div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.active_pt_subscriptions') ?? 'Active PT Subscriptions'}}</div>
                                 <!--end::Label-->
                                 <!--begin::Stats-->
                                 <div class="fw-bolder text-gray-700 text-xxl-end">{{ $active_pt_subscriptions }}</div>
@@ -133,7 +133,7 @@
                 </div>
                 <!--end::Card widget-->
                 
-                <!--begin::Card widget - Active PT Members-->
+                <!--begin::Card widget - Active PT Subscriptions-->
                 <div class="card card-flush h-md-50 mb-xl-10">
                     <!--begin::Header-->
                     <div class="card-header pt-5">
@@ -143,7 +143,7 @@
                             <span class="fs-2hx fw-bold text-gray-900 me-2 lh-1 ls-n2">{{ $active_pt_subscriptions }}</span>
                             <!--end::Amount-->
                             <!--begin::Subtitle-->
-                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.active_pt_subscriptions')}}</span>
+                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.active_pt_subscriptions') ?? 'Active PT Subscriptions'}}</span>
                             <!--end::Subtitle-->
                         </div>
                         <!--end::Title-->
@@ -154,7 +154,7 @@
                         <!--begin::Progress-->
                         <div class="d-flex align-items-center flex-column mt-3 w-100">
                             <div class="d-flex justify-content-between w-100 mt-auto mb-2">
-                                <span class="fw-bolder fs-6 text-gray-900">{{ trans('sw.total_pt_subscriptions')}}</span>
+                                <span class="fw-bolder fs-6 text-gray-900">{{ trans('sw.total_pt_subscriptions') ?? 'Total PT Subscriptions'}}</span>
                                 <span class="fw-bold fs-6 text-gray-500">{{ $total_pt_subscriptions > 0 ? round(($active_pt_subscriptions / $total_pt_subscriptions) * 100) : 0 }}%</span>
                             </div>
                             <div class="h-8px mx-3 w-100 bg-light-success rounded">
@@ -207,41 +207,21 @@
                         <!--begin::Stats-->
                         <div class="d-flex flex-column content-justify-center w-100">
                             <!--begin::Label-->
-                            <div class="d-flex fs-6 fw-semibold align-items-center">
+                            <div class="d-flex fs-6 fw-semibold align-items-center mb-3">
                                 <!--begin::Bullet-->
                                 <div class="bullet w-8px h-6px rounded-2 bg-success me-3"></div>
                                 <!--end::Bullet-->
                                 <!--begin::Label-->
-                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.active')}}</div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.pt_revenue') ?? 'PT Revenue'}}</div>
                                 <!--end::Label-->
                                 <!--begin::Stats-->
-                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $active_pt_subscriptions }}</div>
-                                <!--end::Stats-->
-                            </div>
-                            <!--end::Label-->
-                            <!--begin::Label-->
-                            <div class="d-flex fs-6 fw-semibold align-items-center my-3">
-                                <!--begin::Bullet-->
-                                <div class="bullet w-8px h-6px rounded-2 bg-warning me-3"></div>
-                                <!--end::Bullet-->
-                                <!--begin::Label-->
-                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.frozen')}}</div>
-                                <!--end::Label-->
-                                <!--begin::Stats-->
-                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $frozen_pt_subscriptions }}</div>
-                                <!--end::Stats-->
-                            </div>
-                            <!--end::Label-->
-                            <!--begin::Label-->
-                            <div class="d-flex fs-6 fw-semibold align-items-center">
-                                <!--begin::Bullet-->
-                                <div class="bullet w-8px h-6px rounded-2 bg-danger me-3"></div>
-                                <!--end::Bullet-->
-                                <!--begin::Label-->
-                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.expire')}}</div>
-                                <!--end::Label-->
-                                <!--begin::Stats-->
-                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $expired_pt_subscriptions }}</div>
+                                <div class="fw-bolder text-gray-700 text-xxl-end">
+                                    @if($pt_revenue > 0)
+                                        {{number_format($pt_revenue, 0)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
+                                    @else
+                                        -
+                                    @endif
+                                </div>
                                 <!--end::Stats-->
                             </div>
                             <!--end::Label-->
@@ -252,7 +232,7 @@
                 </div>
                 <!--end::Card widget-->
                 
-                <!--begin::Card widget - Total Trainers-->
+                <!--begin::Card widget - Trainers & Classes-->
                 <div class="card card-flush h-md-50 mb-xl-10">
                     <!--begin::Header-->
                     <div class="card-header pt-5">
@@ -262,7 +242,7 @@
                             <span class="fs-2hx fw-bold text-gray-900 me-2 lh-1 ls-n2">{{ $total_trainers }}</span>
                             <!--end::Amount-->
                             <!--begin::Subtitle-->
-                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.total_trainers')}}</span>
+                            <span class="text-gray-500 pt-1 fw-semibold fs-6">{{ trans('sw.trainers') ?? 'Trainers'}}</span>
                             <!--end::Subtitle-->
                         </div>
                         <!--end::Title-->
@@ -275,13 +255,39 @@
                             <!--begin::Label-->
                             <div class="d-flex fs-6 fw-semibold align-items-center mb-3">
                                 <!--begin::Bullet-->
-                                <div class="bullet w-8px h-6px rounded-2 bg-primary me-3"></div>
+                                <div class="bullet w-8px h-6px rounded-2 bg-info me-3"></div>
                                 <!--end::Bullet-->
                                 <!--begin::Label-->
-                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.total_classes')}}</div>
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.pt_classes') ?? 'PT Classes'}}</div>
                                 <!--end::Label-->
                                 <!--begin::Stats-->
                                 <div class="fw-bolder text-gray-700 text-xxl-end">{{ $total_pt_classes }}</div>
+                                <!--end::Stats-->
+                            </div>
+                            <!--end::Label-->
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center my-3">
+                                <!--begin::Bullet-->
+                                <div class="bullet w-8px h-6px rounded-2 bg-warning me-3"></div>
+                                <!--end::Bullet-->
+                                <!--begin::Label-->
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.total_pt_subscriptions') ?? 'Total PT Subscriptions'}}</div>
+                                <!--end::Label-->
+                                <!--begin::Stats-->
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $total_pt_subscriptions }}</div>
+                                <!--end::Stats-->
+                            </div>
+                            <!--end::Label-->
+                            <!--begin::Label-->
+                            <div class="d-flex fs-6 fw-semibold align-items-center">
+                                <!--begin::Bullet-->
+                                <div class="bullet w-8px h-6px rounded-2 bg-danger me-3"></div>
+                                <!--end::Bullet-->
+                                <!--begin::Label-->
+                                <div class="text-gray-500 flex-grow-1 me-4">{{ trans('sw.expired')}}</div>
+                                <!--end::Label-->
+                                <!--begin::Stats-->
+                                <div class="fw-bolder text-gray-700 text-xxl-end">{{ $expired_pt_subscriptions }}</div>
                                 <!--end::Stats-->
                             </div>
                             <!--end::Label-->
@@ -302,8 +308,8 @@
                     <div class="card-header py-5">
                         <!--begin::Title-->
                         <h3 class="card-title align-items-start flex-column">
-                            <span class="card-label fw-bold text-gray-900">{{ trans('sw.pt_subscription_trends')}}</span>
-                            <span class="text-gray-500 mt-1 fw-semibold fs-6">{{ trans('sw.monthly_pt_activity')}}</span>
+                            <span class="card-label fw-bold text-gray-900">{{ trans('sw.pt_subscription_trends') ?? 'PT Subscription Trends'}}</span>
+                            <span class="text-gray-500 mt-1 fw-semibold fs-6">{{ trans('sw.monthly_pt_subscription_activity') ?? 'Monthly PT Subscription Activity'}}</span>
                         </h3>
                         <!--end::Title-->
                     </div>
@@ -318,7 +324,7 @@
                             </div>
                             <!--end::Statistics-->
                             <!--begin::Description-->
-                            <span class="fs-6 fw-semibold text-gray-500">{{ trans('sw.total_pt_subscriptions')}}</span>
+                            <span class="fs-6 fw-semibold text-gray-500">{{ trans('sw.total_pt_subscriptions') ?? 'Total PT Subscriptions'}}</span>
                             <!--end::Description-->
                         </div>
                         <!--end::Statistics-->
@@ -337,141 +343,67 @@
         <!--begin::Row-->
         <div class="row gy-5 g-xl-10">
             <!--begin::Col-->
-            <div class="col-xl-6 mb-xl-10">
-                <!--begin::Table widget - Popular PT Subscriptions-->
-                <div class="card h-md-100">
+            <div class="col-xl-12 mb-5 mb-xl-10">
+                <!--begin::Table widget-->
+                <div class="card card-flush h-xl-100">
                     <!--begin::Header-->
-                    <div class="card-header align-items-center border-0">
+                    <div class="card-header pt-7">
                         <!--begin::Title-->
-                        <h3 class="fw-bold text-gray-900 m-0">{{ trans('sw.popular_pt_subscriptions')}}</h3>
+                        <h3 class="card-title align-items-start flex-column">
+                            <span class="card-label fw-bold text-gray-900">{{ trans('sw.popular_pt_subscriptions') ?? 'Popular PT Subscriptions'}}</span>
+                            <span class="text-gray-500 mt-1 fw-semibold fs-6">{{ trans('sw.top_performing_pt_memberships') ?? 'Top Performing PT Memberships'}}</span>
+                        </h3>
                         <!--end::Title-->
                     </div>
                     <!--end::Header-->
                     <!--begin::Body-->
                     <div class="card-body pt-2">
-                        <!--begin::Scroll-->
-                        <div class="hover-scroll-overlay-y pe-6 me-n6" style="height: 415px">
-                            <!--begin::Table-->
-                            <table class="table table-row-dashed align-middle gs-0 gy-4 my-0">
-                                <!--begin::Table head-->
-                                <thead>
-                                    <tr class="fs-7 fw-bold text-gray-500 border-bottom-0">
-                                        <th class="min-w-125px">{{ trans('sw.pt_subscription')}}</th>
-                                        <th class="text-end min-w-100px">{{ trans('sw.classes')}}</th>
-                                        <th class="pe-0 text-end min-w-100px">{{ trans('sw.price')}}</th>
-                                        <th class="pe-0 text-end min-w-100px">{{ trans('sw.members')}}</th>
-                                        <th class="pe-0 text-end min-w-100px">{{ trans('sw.revenue')}}</th>
-                                    </tr>
-                                </thead>
-                                <!--end::Table head-->
-                                <!--begin::Table body-->
-                                <tbody>
-                                    @foreach($popular_pt_subscriptions as $subscription)
-                                    <tr>
-                                        <td class="ps-0">
-                                            <a href="javascript:;" class="text-gray-800 fw-bold text-hover-primary mb-1 fs-6 text-start pe-0">{{ $subscription->name }}</a>
-                                        </td>
-                                        <td>
-                                            <span class="text-gray-800 fw-bold d-block fs-6 ps-0 text-end">{{ $subscription->classes }}</span>
-                                        </td>
-                                        <td class="text-end pe-0">
-                                            <span class="text-gray-800 fw-bold d-block fs-6">
-                                                @if($subscription->price > 0)
-                                                    {{number_format($subscription->price, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
-                                                @else
-                                                    -
-                                                @endif
-                                            </span>
-                                        </td>
-                                        <td class="text-end pe-0">
-                                            <span class="badge py-3 px-4 fs-7 badge-light-primary">{{ $subscription->pt_members_count }}</span>
-                                        </td>
-                                        <td class="text-end pe-0">
-                                            <span class="text-gray-800 fw-bold d-block fs-6">
-                                                @if($subscription->revenue > 0)
-                                                    {{number_format($subscription->revenue, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
-                                                @else
-                                                    -
-                                                @endif
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                                <!--end::Table body-->
-                            </table>
-                            <!--end::Table-->
-                        </div>
-                        <!--end::Scroll-->
-                    </div>
-                    <!--end::Body-->
-                </div>
-                <!--end::Table widget-->
-            </div>
-            <!--end::Col-->
-            
-            <!--begin::Col-->
-            <div class="col-xl-6 mb-5 mb-xl-10">
-                <!--begin::Table widget - Top Trainers-->
-                <div class="card h-md-100">
-                    <!--begin::Header-->
-                    <div class="card-header align-items-center border-0">
-                        <!--begin::Title-->
-                        <h3 class="fw-bold text-gray-900 m-0">{{ trans('sw.top_trainers')}}</h3>
-                        <!--end::Title-->
-                    </div>
-                    <!--end::Header-->
-                    <!--begin::Body-->
-                    <div class="card-body pt-2">
-                        <!--begin::Scroll-->
-                        <div class="hover-scroll-overlay-y pe-6 me-n6" style="height: 415px">
-                            <!--begin::Table-->
-                            <table class="table table-row-dashed align-middle gs-0 gy-4 my-0">
-                                <!--begin::Table head-->
-                                <thead>
-                                    <tr class="fs-7 fw-bold text-gray-500 border-bottom-0">
-                                        <th class="ps-0 w-50px"></th>
-                                        <th class="min-w-125px">{{ trans('sw.trainer')}}</th>
-                                        <th class="text-end min-w-100px">{{ trans('sw.members')}}</th>
-                                        <th class="pe-0 text-end min-w-100px">{{ trans('sw.classes')}}</th>
-                                        <th class="pe-0 text-end min-w-100px">{{ trans('sw.revenue')}}</th>
-                                    </tr>
-                                </thead>
-                                <!--end::Table head-->
-                                <!--begin::Table body-->
-                                <tbody>
-                                    @foreach($top_trainers as $trainer)
-                                    <tr>
-                                        <td>
-                                            <img src="{{ $trainer->image }}" class="w-50px rounded-circle ms-n1" alt="" />
-                                        </td>
-                                        <td class="ps-0">
-                                            <a href="javascript:;" class="text-gray-800 fw-bold text-hover-primary mb-1 fs-6 text-start pe-0">{{ $trainer->name }}</a>
-                                            <span class="text-gray-500 fw-semibold fs-7 d-block text-start ps-0">{{ trans('sw.trainer')}}</span>
-                                        </td>
-                                        <td>
-                                            <span class="text-gray-800 fw-bold d-block fs-6 ps-0 text-end">{{ $trainer->members_count }}</span>
-                                        </td>
-                                        <td class="text-end pe-0">
-                                            <span class="text-gray-800 fw-bold d-block fs-6">{{ $trainer->classes_count }}</span>
-                                        </td>
-                                        <td class="text-end pe-0">
-                                            <span class="text-gray-800 fw-bold d-block fs-6">
-                                                @if($trainer->revenue > 0)
-                                                    {{number_format($trainer->revenue, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
-                                                @else
-                                                    -
-                                                @endif
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                                <!--end::Table body-->
-                            </table>
-                            <!--end::Table-->
-                        </div>
-                        <!--end::Scroll-->
+                        <!--begin::Table-->
+                        <table class="table align-middle table-row-dashed fs-6 gy-3">
+                            <!--begin::Table head-->
+                            <thead>
+                                <tr class="text-start text-gray-500 fw-bold fs-7 text-uppercase gs-0">
+                                    <th class="min-w-150px">{{ trans('sw.pt_subscription') ?? 'PT Subscription'}}</th>
+                                    <th class="text-end min-w-100px">{{ trans('sw.price')}}</th>
+                                    <th class="text-end min-w-100px">{{ trans('sw.period')}}</th>
+                                    <th class="text-end min-w-100px">{{ trans('sw.members')}}</th>
+                                    <th class="text-end min-w-100px">{{ trans('sw.revenue')}}</th>
+                                </tr>
+                            </thead>
+                            <!--end::Table head-->
+                            <!--begin::Table body-->
+                            <tbody class="fw-bold text-gray-600">
+                                @foreach($popular_pt_subscriptions as $subscription)
+                                <tr>
+                                    <td>
+                                        <a href="javascript:;" class="text-gray-900 text-hover-primary">{{ $subscription->name ?? '-' }}</a>
+                                    </td>
+                                    <td class="text-end">
+                                        @if(isset($subscription->price) && $subscription->price > 0)
+                                            {{number_format($subscription->price, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+                                    <td class="text-end">{{ $subscription->period ?? '-' }} {{ trans('sw.days')}}</td>
+                                    <td class="text-end">
+                                        <span class="badge py-3 px-4 fs-7 badge-light-primary">{{ $subscription->pt_members_count ?? 0 }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="text-gray-900 fw-bolder">
+                                            @if(isset($subscription->revenue) && $subscription->revenue > 0)
+                                                {{number_format($subscription->revenue, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </span>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <!--end::Table body-->
+                        </table>
+                        <!--end::Table-->
                     </div>
                     <!--end::Body-->
                 </div>
@@ -485,52 +417,120 @@
 @endsection
 
 @section('scripts')
-    <script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/highcharts.js"></script>
     <script>
-         $("#kt_daterangepicker_4").daterangepicker({
-             autoUpdateInput: false,
-             opens: '{{ $lang == "ar" ? "left" : "right" }}',
-             ranges: {
-                 "{{ trans('sw.today') }}": [moment(), moment()],
-                 "{{ trans('sw.yesterday') }}": [moment().subtract(1, "days"), moment().subtract(1, "days")],
-                 "{{ trans('sw.last_7_days') }}": [moment().subtract(6, "days"), moment()],
-                 "{{ trans('sw.last_30_days') }}": [moment().subtract(29, "days"), moment()],
-                 "{{ trans('sw.this_month') }}": [moment().startOf("month"), moment().endOf("month")],
-                 "{{ trans('sw.last_month') }}": [moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month")]
-             },
-             locale: {
-                 format: 'YYYY-MM-DD',
-                 separator: ' - ',
-                 applyLabel: '{{ trans('sw.apply') }}',
-                 cancelLabel: '{{ trans('sw.cancel') }}',
-                 fromLabel: '{{ trans('sw.from') }}',
-                 toLabel: '{{ trans('sw.to') }}',
-                 customRangeLabel: '{{ trans('sw.custom') }}',
-                 @if($lang == 'ar')
-                 daysOfWeek: ['{{ trans('sw.sun') }}', '{{ trans('sw.mon') }}', '{{ trans('sw.tue') }}', '{{ trans('sw.wed') }}', '{{ trans('sw.thurs') }}', '{{ trans('sw.fri') }}', '{{ trans('sw.sat') }}'],
-                 monthNames: ['{{ trans('sw.month_1') }}', '{{ trans('sw.month_2') }}', '{{ trans('sw.month_3') }}', '{{ trans('sw.month_4') }}', '{{ trans('sw.month_5') }}', '{{ trans('sw.month_6') }}', '{{ trans('sw.month_7') }}', '{{ trans('sw.month_8') }}', '{{ trans('sw.month_9') }}', '{{ trans('sw.month_10') }}', '{{ trans('sw.month_11') }}', '{{ trans('sw.month_12') }}'],
-                 @endif
-                 firstDay: {{ $lang == 'ar' ? 6 : 0 }}
-             }
-         });
+        // Wait for moment.js and daterangepicker to be loaded
+        function waitForDaterangepicker(maxAttempts, attempts) {
+            maxAttempts = maxAttempts || 50;
+            attempts = attempts || 0;
 
-         $('#kt_daterangepicker_4').on('apply.daterangepicker', function(ev, picker) {
-             $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
-         });
+            if (typeof moment === 'undefined') {
+                if (attempts < maxAttempts) {
+                    setTimeout(function() { waitForDaterangepicker(maxAttempts, attempts + 1); }, 100);
+                } else {
+                    console.error('moment.js failed to load after ' + maxAttempts + ' attempts');
+                }
+                return;
+            }
 
-         $('#kt_daterangepicker_4').on('cancel.daterangepicker', function(ev, picker) {
-             $(this).val('');
-         });
+            if (typeof $ === 'undefined' || typeof $.fn === 'undefined') {
+                if (attempts < maxAttempts) {
+                    setTimeout(function() { waitForDaterangepicker(maxAttempts, attempts + 1); }, 100);
+                } else {
+                    console.error('jQuery failed to load after ' + maxAttempts + ' attempts');
+                }
+                return;
+            }
 
-         @if(request('from_date') && request('to_date'))
-         $('#kt_daterangepicker_4').val('{{ request('from_date') }} - {{ request('to_date') }}');
-         $('#kt_daterangepicker_4').data('daterangepicker').setStartDate('{{ request('from_date') }}');
-         $('#kt_daterangepicker_4').data('daterangepicker').setEndDate('{{ request('to_date') }}');
-         @endif
+            if (typeof $.fn.daterangepicker === 'undefined') {
+                if (attempts < maxAttempts) {
+                    setTimeout(function() { waitForDaterangepicker(maxAttempts, attempts + 1); }, 100);
+                } else {
+                    console.error('daterangepicker failed to load after ' + maxAttempts + ' attempts');
+                }
+                return;
+            }
+
+            initDateRangePicker();
+        }
+
+        if (typeof jQuery !== 'undefined') {
+            jQuery(document).ready(function() {
+                waitForDaterangepicker();
+            });
+        } else {
+            window.addEventListener('DOMContentLoaded', function() {
+                setTimeout(function() {
+                    if (typeof jQuery !== 'undefined') {
+                        jQuery(document).ready(function() {
+                            waitForDaterangepicker();
+                        });
+                    } else {
+                        waitForDaterangepicker();
+                    }
+                }, 100);
+            });
+        }
+
+        function initDateRangePicker() {
+            if ($("#kt_daterangepicker_4").length === 0) {
+                console.error('Element #kt_daterangepicker_4 not found!');
+                return;
+            }
+
+            if ($("#kt_daterangepicker_4").data('daterangepicker')) {
+                console.log('daterangepicker already initialized');
+                return;
+            }
+
+            $("#kt_daterangepicker_4").daterangepicker({
+                autoUpdateInput: false,
+                opens: '{{ $lang == "ar" ? "left" : "right" }}',
+                ranges: {
+                    "{{ trans('sw.today') }}": [moment(), moment()],
+                    "{{ trans('sw.yesterday') }}": [moment().subtract(1, "days"), moment().subtract(1, "days")],
+                    "{{ trans('sw.last_7_days') }}": [moment().subtract(6, "days"), moment()],
+                    "{{ trans('sw.last_30_days') }}": [moment().subtract(29, "days"), moment()],
+                    "{{ trans('sw.this_month') }}": [moment().startOf("month"), moment().endOf("month")],
+                    "{{ trans('sw.last_month') }}": [moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month")]
+                },
+                locale: {
+                    format: 'YYYY-MM-DD',
+                    separator: ' - ',
+                    applyLabel: '{{ trans('sw.apply') }}',
+                    cancelLabel: '{{ trans('sw.cancel') }}',
+                    fromLabel: '{{ trans('sw.from') }}',
+                    toLabel: '{{ trans('sw.to') }}',
+                    customRangeLabel: '{{ trans('sw.custom') }}',
+                    @if($lang == 'ar')
+                    daysOfWeek: ['{{ trans('sw.sun') }}', '{{ trans('sw.mon') }}', '{{ trans('sw.tue') }}', '{{ trans('sw.wed') }}', '{{ trans('sw.thurs') }}', '{{ trans('sw.fri') }}', '{{ trans('sw.sat') }}'],
+                    monthNames: ['{{ trans('sw.month_1') }}', '{{ trans('sw.month_2') }}', '{{ trans('sw.month_3') }}', '{{ trans('sw.month_4') }}', '{{ trans('sw.month_5') }}', '{{ trans('sw.month_6') }}', '{{ trans('sw.month_7') }}', '{{ trans('sw.month_8') }}', '{{ trans('sw.month_9') }}', '{{ trans('sw.month_10') }}', '{{ trans('sw.month_11') }}', '{{ trans('sw.month_12') }}'],
+                    @endif
+                    firstDay: {{ $lang == 'ar' ? 6 : 0 }}
+                }
+            });
+
+            $('#kt_daterangepicker_4').on('apply.daterangepicker', function(ev, picker) {
+                $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+            });
+
+            $('#kt_daterangepicker_4').on('cancel.daterangepicker', function(ev, picker) {
+                $(this).val('');
+            });
+
+            @if(request('from_date') && request('to_date'))
+            $('#kt_daterangepicker_4').val('{{ request('from_date') }} - {{ request('to_date') }}');
+            var dateRangePicker = $('#kt_daterangepicker_4').data('daterangepicker');
+            if (dateRangePicker) {
+                dateRangePicker.setStartDate('{{ request('from_date') }}');
+                dateRangePicker.setEndDate('{{ request('to_date') }}');
+            }
+            @endif
+        }
 
         function applyFilter() {
             var inputVal = $("#kt_daterangepicker_4").val();
-            var url = '{{ route('sw.ptSubscriptionStatistics') }}';
+            var url = '{{ route('sw.statistics') }}';
             
             if (inputVal) {
                 var dateRange = $("#kt_daterangepicker_4").data('daterangepicker');
@@ -543,11 +543,12 @@
         }
 
         function resetFilter() {
+            console.log('resetFilter called');
             window.location.href = '{{ route('sw.ptSubscriptionStatistics') }}';
         }
 
-        function members_refresh(){
-            $('#members_refresh').hide().after('<div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div>');
+        function pt_members_refresh(){
+            $('#pt_members_refresh').hide().after('<div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div>');
             $.ajax({
                 url: '{{route('sw.ptSubscriptionStatisticsRefresh')}}',
                 cache: false,
@@ -577,20 +578,17 @@
                 yAxis: { title: null },
                 legend: { align: 'left', verticalAlign: 'top', y: 0 },
                 series: [{
-                    name: '{{ trans('sw.new_pt_subscriptions')}}',
+                    name: '{{ trans('sw.new_pt_subscriptions') ?? 'New PT Subscriptions'}}',
                     data: [{{ $new_pt_subscriptions_chart }}],
                     color: '#50CD89'
                 }, {
-                    name: '{{ trans('sw.expired_pt_subscriptions')}}',
+                    name: '{{ trans('sw.expired_pt_subscriptions') ?? 'Expired PT Subscriptions'}}',
                     data: [{{ $expired_pt_subscriptions_chart }}],
                     color: '#F1416C'
-                }, {
-                    name: '{{ trans('sw.frozen_pt_subscriptions')}}',
-                    data: [{{ $frozen_pt_subscriptions_chart }}],
-                    color: '#FFC700'
                 }],
                 credits: { enabled: false }
             });
         });
     </script>
 @endsection
+

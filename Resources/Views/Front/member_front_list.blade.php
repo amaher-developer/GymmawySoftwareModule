@@ -149,6 +149,15 @@
 @endsection
 
 @section('page_body')
+@php
+    // Check if activity reservation feature is enabled
+    $features = is_array($mainSettings->features ?? null) 
+        ? $mainSettings->features 
+        : (is_string($mainSettings->features ?? null) 
+            ? json_decode($mainSettings->features, true) 
+            : []);
+    $active_activity_reservation = isset($features['active_activity_reservation']) && $features['active_activity_reservation'];
+@endphp
 
 <!--begin::Members-->
 <div class="card card-flush">
@@ -208,12 +217,14 @@
                 @endif
                 <!--end::Export-->
                 
+                @if($active_activity_reservation)
                 <!--begin::Calendar Button-->
                 <a href="{{route('sw.listReservation')}}" class="btn btn-sm btn-flex btn-light-info">
                     <i class="ki-outline ki-calendar fs-6"></i>
                     {{ trans('sw.activities_calender')}}
                 </a>
                 <!--end::Calendar Button-->
+                @endif
 
                 <!--begin::Members Refresh Button-->
                 <button class="btn btn-sm btn-flex btn-light-secondary" id="members_refresh" onclick="members_refresh()">
@@ -508,7 +519,7 @@
                                             echo implode('', array_map(function ($name) use ($member, $lang) {
                                                 if (@$name['activity']['id']) {
                                                     static $i = 0;
-                                                    return '<button class="btn btn-'.(@$name['training_times'] > @$name['visits'] ? 'primary' : 'gray').' btn-sm rounded-2" id="activity_'.@$member->id.'_'.@$name['activity']['id'].'" onclick="non_membership_reservation('.@$member->id.', '.@$name['activity']['id'].')"  data-target="#modalReservation" data-toggle="modal" style="font-size: 10px; padding: 2px 6px;">'.$name['activity']['name_'.$lang].'</button>';
+                                                    return '<button class="btn btn-'.(@$name['training_times'] > @$name['visits'] ? 'primary' : 'gray').' btn-sm rounded-2" id="activity_'.@$member->id.'_'.@$name['activity']['id'].'"  style="font-size: 10px; padding: 2px 6px;">'.$name['activity']['name_'.$lang].'</button>';
                                                     $i++;
                                                 }
                                             }, $activities));
@@ -637,10 +648,11 @@
                                         <!--end::Invoice-->
                                     @endif
                                     
+                                    @if($active_activity_reservation)
                                     <!--begin::Upcoming Reservations Button-->
                                     @php
                                         $memberReservations = $upcomingReservations[$member->id] ?? collect();
-                                    @endphp
+                                        @endphp
                                     @if($memberReservations->count() > 0)
                                         <button type="button" 
                                                 class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm position-relative" 
@@ -681,6 +693,7 @@
                                         </button>
                                     @endif
                                     <!--end::Quick Book Button-->
+                                    @endif
 
                                     @if(in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user)
                                         @if((@($member->member_subscription_info->number_times_freeze) > 0) && (@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Active))
@@ -1091,100 +1104,6 @@
 
     <!-- End model pay -->
 
-
-    <!-- start model pay -->
-    <div class="modal" id="modalReservation">
-        <div class="modal-dialog  modal-xl" role="document">
-            <div class="modal-content modal-content-demo">
-                <div class="modal-header">
-                    <h6 class="modal-title">{{ trans('sw.reservations')}}</h6>
-                    <button aria-label="Close" class="close" data-dismiss="modal" type="button"><span
-                            aria-hidden="true">&times;</span></button>
-                </div>
-                <div class="modal-body">
-                    <h6 id="payMemberName" style="font-weight: bolder">&nbsp;</h6>
-
-
-                    <div class="row">
-
-                        <div class="row col-md-12">
-
-                            {{--                            <div class="form-group col-md-6">--}}
-                            {{--                                <label class="col-md-3 control-label">{{ trans('sw.member_id')}} </label>--}}
-                            {{--                                <div class="col-md-9">--}}
-                            {{--                                    <div class="input-group">--}}
-                            {{--											<span class="input-group-addon">--}}
-                            {{--											<i class="fa fa-search"></i>--}}
-                            {{--											</span>--}}
-
-                            {{--                                        <input id="member_id" value="{{ old('member_id') }}"--}}
-                            {{--                                               placeholder="{{ trans('sw.enter_member_id')}}"--}}
-                            {{--                                               name="member_id" type="text" class="form-control"  autocomplete="off" >--}}
-                            {{--                                    </div>--}}
-                            {{--                                </div>--}}
-                            {{--                            </div>--}}
-
-                            <div class="form-group col-md-6">
-                                {{--                <label class="col-md-3  control-label"> </label>--}}
-
-                                <div class="well">
-                                    <div class="row">
-                                        <address  class="col-md-6">
-                                            <strong>{{ trans('sw.name')}}:</strong>
-                                            <span id="store_member_name">-</span>
-                                        </address>
-                                        <address  class="col-md-6">
-                                            <strong>{{ trans('sw.phone')}}:</strong>
-                                            <span id="store_member_phone">-</span>
-                                        </address>
-                                    </div>
-
-                                    <address>
-                                        <strong>{{ trans('sw.reservations')}}:</strong><br><br>
-                                        <span id="member_reservations">-</span>
-                                    </address>
-
-                                </div>
-
-                            </div>
-
-                            <div class="col-md-6"><div id="activity_icons"></div></div>
-                            <div class="form-group col-md-12 clearfix"><hr/></div>
-                        </div>
-
-                        <div style="clear: none;padding-bottom: 15px"></div>
-
-
-                        <div class="col-md-12 text-center"><div id="picker"></div></div>
-                        {{--        <div>--}}
-                        {{--            <p>Selected date: <span id="selected-date"></span></p>--}}
-                        {{--            <p>Selected time: <span id="selected-time"></span></p>--}}
-                        {{--        </div>--}}
-                        <input type="hidden" id="selected_date" value="">
-                        <input type="hidden" id="selected_time" value="">
-                        <input type="hidden" id="selected_reservation_non_member_id" value="">
-                        <input type="hidden" id="selected_reservation_activity_id" value="">
-                        <input type="hidden" id="selected_reservation_start_date" value="">
-                        <input type="hidden" id="selected_reservation_step" value="">
-
-                        <div class="row" style="clear: none;padding-bottom: 15px"><br/></div>
-
-                        <div class="row">
-                            <div class="col-xs-8 col-md-12 invoice-block">
-                                <a class="btn btn-lg green hidden-print margin-bottom-5 " onclick="create_reservation();">
-                                    {{ trans('sw.reservation_complete')}} <i class="fa fa-check"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- End model pay -->
-
     <!-- start model profile -->
 
     <!-- start model pay -->
@@ -1208,6 +1127,7 @@
 
     <!-- End model profile -->
     
+    @if($active_activity_reservation)
     <!--begin::Upcoming Reservations Modal for Each Member-->
     @foreach($members as $member)
         @php
@@ -1481,6 +1401,7 @@
         @endif
     @endforeach
     <!--end::Quick Book Modal for Each Member-->
+    @endif
 @endsection
 
 @section('scripts')
@@ -1527,248 +1448,7 @@
         });
         @endif
 
-        function create_reservation(){
-
-            let selected_date = $('#selected_date').val();
-            let selected_time = $('#selected_time').val();
-            let selected_non_member_id = $('#selected_reservation_non_member_id').val();
-            let selected_activity_id = $('#selected_reservation_activity_id').val();
-            let selected_start_date = $('#selected_reservation_start_date').val();
-            let selected_step = $('#selected_reservation_step').val();
-            if(selected_date && selected_time && selected_non_member_id && selected_activity_id) {
-                $.get("{{route('sw.createReservationNonMemberAjax')}}", {  selected_date: selected_date, selected_time: selected_time, selected_activity_id: selected_activity_id,selected_non_member_id :selected_non_member_id, type : 2  },
-                    function(result){
-                        if(result != 'exist') {
-                            $('#ul_member_reservations').append('<li class="list-group-item" id="li_reservation_' + result + '"> <i class="fa fa-calendar text-muted"></i>'
-                                + moment(selected_date).format('MM-DD-YYYY')
-                                + ' <i class="fa fa-clock-o text-muted"></i>'
-                                + moment(selected_date).format('YYYY-MM-DD') + ' ' + selected_time
-                                + ' <i class="fa fa-user text-muted"></i> '+ $('#store_member_name').text()
-                                + ' <span class="badge badge-danger" onclick="remove_reservation(' + result + ', ' + "'" + selected_time + "'" + ')"><i class="fa fa-times"></i></span>'
-                                + '</li>');
-                            if(result == 'reload'){
-                                location.reload();
-                            }else{
-                                alert('{{ trans('admin.successfully_added')}}');
-                            }
-                        }else{
-                            alert('{{ trans('sw.reservation_member_exist')}}');
-                        }
-
-                    }
-                );
-            }else{
-                alert('{{ trans('sw.reservation_input_error')}}');
-            }
-        }
-        function remove_reservation(id, time){
-            Swal.fire({
-                title: trans_are_you_sure,
-                text: "",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#DD6B55",
-                confirmButtonText: trans_yes,
-                cancelButtonText: trans_no_please,
-                allowOutsideClick: false,
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.get("{{route('sw.deleteReservationNonMemberAjax')}}", {  id: id, time: time },
-                        function(result){
-                            if(result) {
-                                Swal.fire({
-                                    title: trans_done,
-                                    text: trans_successfully_processed,
-                                    icon: "success",
-                                    timer: 4000,
-                                    showConfirmButton: false
-                                }).then(() => {
-                                    if(result == 'reload'){
-                                        location.reload();
-                                    } else {
-                                        $('#li_reservation_'+id).remove();
-                                    }
-                                });
-                            }else{
-                                Swal.fire({
-                                    title: trans_operation_failed,
-                                    text: trans_operation_failed,
-                                    icon: "error",
-                                    timer: 4000,
-                                    showConfirmButton: false
-                                });
-                            }
-                        }
-                    );
-                } else {
-                    Swal.fire({
-                        title: "Cancelled",
-                        text: "Alright, everything still as it is",
-                        icon: "info",
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                }
-            });
-            return false;
-        }
-
-        function non_membership_reservation(id, activity_id, step, start_date){
-            $('#selected_reservation_non_member_id').val(id);
-            $('#selected_reservation_activity_id').val(activity_id);
-            $('#selected_reservation_start_date').val(start_date);
-            $('#selected_reservation_step').val(step);
-
-            let availability = [];
-            $.ajax({
-                url: '{{route('sw.getNonMemberReservation')}}',
-                cache: false,
-                type: 'GET',
-                data: {'activity_id': activity_id, 'non_member_id': id, 'start_date': start_date, 'step': step, member_type: 2},
-                dataType: 'json',
-                success: function (response) {
-                    $('#store_member_name').html(response.non_member?.name);
-                    $('#store_member_phone').html(response.non_member?.phone);
-
-                    let reservations = '<ul class="list-group" id="ul_member_reservations">';
-                    if(response.member_reservations){
-
-                        for(let i=0; i < response.member_reservations.length; i++) {
-                            reservations += '<li class="list-group-item" id="li_reservation_' + response.member_reservations[i].id + '"> <i class="fa fa-calendar text-muted"></i>'
-                                + moment(response.member_reservations[i].date).format('L')
-                                + ' <i class="fa fa-clock-o text-muted"></i>'
-                                + response.member_reservations[i].date
-                                + ' <i class="fa fa-user text-muted"></i> '+ (response.member_reservations[i]?.non_member?.name || response.member_reservations[i]?.member?.name)
-                                + ' <span class="badge badge-danger" onclick="remove_reservation(' + response.member_reservations[i].id + ', ' + "'" + response.member_reservations[i].date + "'" + ')"><i class="fa fa-times"></i></span>'
-                                + '</li>';
-                        }
-                    }
-                    reservations+='</ul>';
-                    $('#member_reservations').html(reservations);
-                    let activity_name = $('#activity_'+id+'_'+activity_id).html(); //document.querySelector('#activity_'+id+'_'+activity_id);
-                    let start_date = response.start_date || '{{\Carbon\Carbon::now()->subDay(@\Carbon\Carbon::now()->dayOfWeek)->format('Y-m-d')}}';
-                    $('#activity_icons').html('<button class="btn btn-primary btn-md rounded-3">' + activity_name + '</botton>');
-
-                    if(response?.reservation_check === 0) {
-                        availability = response.reservations;
-
-                        // https://www.jqueryscript.net/time-clock/pick-hours-availability-calendar.html#google_vignette
-                        // $('#myc-next-week').hide();
-                        // $('#myc-prev-week').hide();
-                        $('#picker').markyourcalendar({
-                            months: ['{{ trans('sw.jan')}}','{{ trans('sw.feb')}}','{{ trans('sw.mar')}}','{{ trans('sw.apr')}}','{{ trans('sw.may')}}','{{ trans('sw.jun')}}','{{ trans('sw.jul')}}','{{ trans('sw.aug')}}','{{ trans('sw.sep')}}','{{ trans('sw.oct')}}','{{ trans('sw.nov')}}','{{ trans('sw.dec')}}'],
-                            weekdays: ['{{ trans('sw.sun')}}','{{ trans('sw.mon')}}','{{ trans('sw.tue')}}','{{ trans('sw.wed')}}','{{ trans('sw.thurs')}}','{{ trans('sw.fri')}}','{{ trans('sw.sat')}}'],
-
-                            availability: availability,
-                            startDate: new Date(start_date),
-                            onClick: function(ev, data) {
-                                // data is a list of datetimes
-                                var d = data[0].split(' ')[0];
-                                var t = data[0].split(' ')[1];
-                                $('#selected_date').val(d);
-                                $('#selected_time').val(t);
-
-                                ev.addClass('selected');
-                                // $('#selected-date').html(d);
-                                // $('#selected-time').html(t);
-                            },prevHtml : '<a onclick="non_membership_reservation('+ id +', '+ activity_id +', '+1+', ' + '\'' + start_date + '\'' + ')" id="myc-prev-week"><</a>',nextHtml : '<a onclick="non_membership_reservation('+ id +', '+ activity_id +', '+2+', ' + '\'' + start_date + '\'' + ')" id="myc-next-week">></a>'
-                            , onClickNavigator: function(ev, instance) {
-                                console.log(instance);
-                                console.log(ev);
-                                console.log(instance[0].split(' ')[0]);
-                                //     var arr = [
-                                //         [
-                                //             ['4:01', '5:00', '6:00', '7:00', '8:01'],
-                                //             ['1:00', '5:00'],
-                                //             ['2:00', '5:00'],
-                                //             ['3:30'],
-                                //             ['2:00', '5:00'],
-                                //             ['2:00', '5:00'],
-                                //             ['2:00', '5:00']
-                                //         ],
-                                //         [
-                                //             ['2:00', '5:00'],
-                                //             ['4:00', '5:00', '6:00', '7:00', '8:00'],
-                                //             ['4:00', '5:00'],
-                                //             ['2:00', '5:00'],
-                                //             ['2:00', '5:00'],
-                                //             ['2:00', '5:00'],
-                                //             ['2:00', '5:00']
-                                //         ],
-                                //         [
-                                //             ['4:00', '5:00'],
-                                //             ['4:00', '5:00'],
-                                //             ['4:00', '5:00', '6:00', '7:00', '8:00'],
-                                //             ['3:00', '6:00'],
-                                //             ['3:00', '6:00'],
-                                //             ['3:00', '6:00'],
-                                //             ['3:00', '6:00']
-                                //         ],
-                                //         [
-                                //             ['4:00', '5:00'],
-                                //             ['4:00', '5:00'],
-                                //             ['4:00', '5:00'],
-                                //             ['4:00', '5:00', '6:00', '7:00', '8:00'],
-                                //             ['4:00', '5:00'],
-                                //             ['4:00', '5:00'],
-                                //             ['4:00', '5:00']
-                                //         ],
-                                //         [
-                                //             ['4:00', '6:00'],
-                                //             ['4:00', '6:00'],
-                                //             ['4:00', '6:00'],
-                                //             ['4:00', '6:00'],
-                                //             ['4:00', '5:00', '6:00', '7:00', '8:00'],
-                                //             ['4:00', '6:00'],
-                                //             ['4:00', '6:00']
-                                //         ],
-                                //         [
-                                //             ['3:00', '6:00'],
-                                //             ['3:00', '6:00'],
-                                //             ['3:00', '6:00'],
-                                //             ['3:00', '6:00'],
-                                //             ['3:00', '6:00'],
-                                //             ['4:00', '5:00', '6:00', '7:00', '8:00'],
-                                //             ['3:00', '6:00']
-                                //         ],
-                                //         [
-                                //             ['3:00', '4:00'],
-                                //             ['3:00', '4:00'],
-                                //             ['3:00', '4:00'],
-                                //             ['3:00', '4:00'],
-                                //             ['3:00', '4:00'],
-                                //             ['3:00', '4:00'],
-                                //             ['4:00', '5:00', '6:00', '7:00', '8:00']
-                                //         ]
-                                //     ]
-                                //     var rn = Math.floor(Math.random() * 10) % 7;
-                                //     instance.setAvailability(arr[rn]);
-                            }
-                        });
-
-                    }else if(response?.reservation_check === 1) {
-                        $('#picker').html('<div class="alert alert-danger">{{ trans('sw.member_time_reservation_activity_exceed_limit_error')}}</div>');
-                    }else{
-                        $('#picker').html('<div class="alert alert-danger">{{ trans('sw.no_dates_available_for_activity_error')}}</div>');
-
-                    }
-
-                },
-                error: function (request, error) {
-                    Swal.fire({
-                        title: '{{ trans('sw.error') }}',
-                        text: 'Something went wrong.',
-                        icon: 'error',
-                        confirmButtonText: 'Ok'
-                    });
-                    console.error("Request: " + JSON.stringify(request));
-                    console.error("Error: " + JSON.stringify(error));
-                }
-            });
-
-
-        }
+      
 
     </script>
     <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
@@ -2247,6 +1927,7 @@
          }
     </script>
 
+@if($active_activity_reservation)
 <!-- Quick Booking Styles -->
 <style>
 /* Time Slots Styling */
@@ -2614,6 +2295,27 @@ $(document).on('click', '.qb-load-slots-btn', function(e){
                 
                 const summary = $(summaryHtml);
                 $(`#qb_slots_${memberId}`).append(summary).append(slotsContainer);
+                
+                // If editing a reservation, auto-select the matching time slot
+                const currentReservationId = $(`#qb_reservation_id_${memberId}`).val();
+                if (currentReservationId) {
+                    // Get reservation times from modal data attributes
+                    const reservationStartTime = $(`#quickBookModal${memberId}`).data('reservation-start-time');
+                    const reservationEndTime = $(`#quickBookModal${memberId}`).data('reservation-end-time');
+                    
+                    if (reservationStartTime && reservationEndTime) {
+                        // Small delay to ensure DOM is fully rendered
+                        setTimeout(function() {
+                            const matchingSlot = $(`.qb-select-slot-member[data-member-id="${memberId}"][data-start="${reservationStartTime}"][data-end="${reservationEndTime}"]`);
+                            if (matchingSlot.length > 0) {
+                                // Remove active class from all slots first
+                                $(`.qb-select-slot-member[data-member-id="${memberId}"]`).removeClass('active');
+                                // Add active class and click the matching slot
+                                matchingSlot.first().addClass('active').click();
+                            }
+                        }, 100);
+                    }
+                }
             } else {
                 $(`#qb_slots_${memberId}`).html(`
                     <div class="slots-empty-state">
@@ -2971,19 +2673,21 @@ $(document).on('click', '.reservation-edit-btn', function(){
                 // Update button text
                 $(`#quickBookModal${memberId} .qb-book-btn-text`).text('{{ trans('sw.update') }}');
                 
-                // Load slots and select the current slot
-                setTimeout(function(){
-                    $(`#quickBookModal${memberId} .qb-load-slots-btn`).click();
-                    
-                    // After slots load, select the current time slot
-                    setTimeout(function(){
-                        $(`.qb-select-slot-member[data-member-id="${memberId}"][data-start="${data.start_time}"][data-end="${data.end_time}"]`)
-                            .first().click();
-                    }, 1000);
-                }, 500);
+                // Store reservation time in modal data attributes for slot selection after loading
+                $(`#quickBookModal${memberId}`).data('reservation-start-time', data.start_time);
+                $(`#quickBookModal${memberId}`).data('reservation-end-time', data.end_time);
                 
-                // Open quick modal
+                // Open quick modal first
                 $(`#quickBookModal${memberId}`).modal('show');
+                
+                // Wait for modal to be fully shown, then automatically load slots
+                $(`#quickBookModal${memberId}`).one('shown.bs.modal', function() {
+                    // Trigger slots loading after a short delay to ensure select2 is ready
+                    setTimeout(function(){
+                        // Click load slots button
+                        $(`#quickBookModal${memberId} .qb-load-slots-btn`).click();
+                    }, 300);
+                });
             }
         },
         error: function(){
@@ -3041,5 +2745,6 @@ $(document).on('change', '.qb-activity-select', function(){
     }
 });
 </script>
+@endif
 
 @endsection

@@ -17,42 +17,29 @@ class GymGenericFrontController extends GenericFrontController
     public function __construct()
     {
         parent::__construct();
-        $this->middleware(function ($request, $next) {
-            $this->user_sw = Auth::guard('sw')->user();
-            $this->user_sw_permissions = $this->user_sw ? $this->user_sw->permissions : null;
-            View::share('swUser', $this->user_sw);
-            View::share('swUserPermission', $this->user_sw_permissions);
-            return $next($request);
-        });
+        
+        // User initialization is now handled by InitializeUser middleware
+        // No need to duplicate the logic here - middleware will set user_sw and user_sw_permissions
         
         $this->barcode_type = TypeConstants::BarcodeType;
-        
-        // Don't initialize user properties - let magic method handle it
-        // This allows __get() to be triggered when accessing $this->user_sw
     }
 
     /**
-     * Get the authenticated user (call this in controller methods)
-     * This works because it's called AFTER middleware has run
+     * Get the authenticated user (call this in controller methods if needed)
+     * User is already initialized by InitializeUser middleware, but this can be used
+     * to refresh user data if needed
      */
     protected function getAuthenticatedUser()
     {
-    
-        // Always get fresh user data from Auth (don't cache in constructor)
+        // If user is already set by middleware, return it
+        if ($this->user_sw) {
+            return $this->user_sw;
+        }
+        
+        // Otherwise, fetch from Auth (fallback)
         $user = Auth::guard('sw')->user();
-        
-        \Log::info('User fetched', [
-            'user' => $user ? $user->id : 'null',
-            'user_name' => $user ? $user->name : 'null'
-        ]);
-        
-        // Store it in the property for future use
         $this->user_sw = $user;
         $this->user_sw_permissions = $user ? $user->permissions : null;
-        
-        // Share with views
-        View::share('swUser', $this->user_sw);
-        View::share('swUserPermission', $this->user_sw_permissions);
         
         return $user;
     }
@@ -71,45 +58,27 @@ class GymGenericFrontController extends GenericFrontController
 
     /**
      * Boot method that runs after middleware
-     * This is called by the middleware after authentication
+     * This is called by the middleware after authentication (if needed)
+     * Note: User is already initialized by InitializeUser middleware, so this is optional
      */
     public function boot()
     {
-        \Log::info('GymGenericFrontController boot method called', [
-            'auth_check' => Auth::guard('sw')->check(),
-            'auth_user_id' => Auth::guard('sw')->id()
-        ]);
-        
-        // User is now available because middleware has run
-        $this->user_sw = Auth::guard('sw')->user();
-        $this->user_sw_permissions = $this->user_sw ? $this->user_sw->permissions : null;
-        
-        // Share with views
-        View::share('swUser', $this->user_sw);
-        View::share('swUserPermission', $this->user_sw_permissions);
-        
-        \Log::info('User initialized in boot method', [
-            'user_id' => $this->user_sw ? $this->user_sw->id : 'null',
-            'permissions' => $this->user_sw_permissions
-        ]);
+        // User is already set by InitializeUser middleware
+        // This method can be used for additional initialization if needed
+        // No need to fetch user again - it's already set
     }
 
     /**
      * Magic method to automatically initialize user when accessing properties
      * This makes $this->user_sw work automatically in all child classes
+     * User should already be set by InitializeUser middleware, but this provides fallback
      */
     public function __get($property)
     {
-        \Log::info('Magic method __get called', [
-            'property' => $property,
-            'user_sw_is_null' => is_null($this->user_sw),
-            'auth_check' => Auth::guard('sw')->check()
-        ]);
-        
         // Handle user_sw property
         if ($property === 'user_sw') {
+            // If not set by middleware, fetch it (fallback)
             if (!$this->user_sw) {
-                \Log::info('Auto-initializing user via magic method');
                 $this->getAuthenticatedUser();
             }
             return $this->user_sw;
@@ -117,8 +86,8 @@ class GymGenericFrontController extends GenericFrontController
         
         // Handle user_sw_permissions property
         if ($property === 'user_sw_permissions') {
+            // If not set by middleware, fetch it (fallback)
             if (!$this->user_sw_permissions) {
-                \Log::info('Auto-initializing user permissions via magic method');
                 $this->getAuthenticatedUser();
             }
             return $this->user_sw_permissions;
@@ -139,11 +108,6 @@ class GymGenericFrontController extends GenericFrontController
      */
     public function __set($property, $value)
     {
-        \Log::info('Magic method __set called', [
-            'property' => $property,
-            'value_type' => gettype($value)
-        ]);
-        
         if (property_exists($this, $property)) {
             $this->$property = $value;
         }
@@ -152,11 +116,11 @@ class GymGenericFrontController extends GenericFrontController
     /**
      * Get the authenticated user with automatic initialization
      * Use this method instead of accessing $this->user_sw directly
+     * User should already be set by InitializeUser middleware
      */
     public function getUserSw()
     {
         if (!$this->user_sw) {
-            \Log::info('Auto-initializing user via getUserSw method');
             $this->getAuthenticatedUser();
         }
         return $this->user_sw;
@@ -165,11 +129,11 @@ class GymGenericFrontController extends GenericFrontController
     /**
      * Get the authenticated user permissions with automatic initialization
      * Use this method instead of accessing $this->user_sw_permissions directly
+     * Permissions should already be set by InitializeUser middleware
      */
     public function getUserSwPermissions()
     {
         if (!$this->user_sw_permissions) {
-            \Log::info('Auto-initializing user permissions via getUserSwPermissions method');
             $this->getAuthenticatedUser();
         }
         return $this->user_sw_permissions;

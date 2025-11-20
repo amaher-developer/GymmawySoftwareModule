@@ -42,15 +42,48 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $members = GymPotentialMember::branch()->reservation()->onlyTrashed()->with(['member.member_subscription_info', 'user' => function($q){
-                $q->withTrashed();
-            }])->orderBy('id', 'DESC');
+            // Optimize: Use select to limit columns
+            $members = GymPotentialMember::branch()->reservation()->onlyTrashed()
+                ->select('id', 'name', 'phone', 'status', 'type', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
+                ->with([
+                    'member' => function($q) {
+                        $q->select('id', 'name', 'phone', 'image');
+                    },
+                    'member.member_subscription_info' => function($q) {
+                        $q->select('id', 'member_id', 'expire_date', 'status');
+                    },
+                    'user' => function($q){
+                        $q->select('id', 'name')->withTrashed();
+                    }
+                ])
+                ->orderBy('id', 'DESC');
         }
         else
         {
-            $members = GymPotentialMember::branch()->reservation()->with(['member.member_subscription_info',  'activity', 'pt_subscription', 'subscription', 'user' => function($q){
-                $q->withTrashed();
-            }])->orderBy('id', 'DESC');
+            // Optimize: Use select to limit columns and add nested subscription relation
+            $members = GymPotentialMember::branch()->reservation()
+                ->select('id', 'name', 'phone', 'status', 'type', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
+                ->with([
+                    'member' => function($q) {
+                        $q->select('id', 'name', 'phone', 'image');
+                    },
+                    'member.member_subscription_info' => function($q) {
+                        $q->select('id', 'member_id', 'expire_date', 'status');
+                    },
+                    'activity' => function($q) {
+                        $q->select('id', 'name_ar', 'name_en');
+                    },
+                    'pt_subscription' => function($q) {
+                        $q->select('id', 'name_ar', 'name_en');
+                    },
+                    'subscription' => function($q) {
+                        $q->select('id', 'name_ar', 'name_en');
+                    },
+                    'user' => function($q){
+                        $q->select('id', 'name')->withTrashed();
+                    }
+                ])
+                ->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -81,12 +114,37 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         if ($this->limit) {
             $members = $members->paginate($this->limit)->onEachSide(1);
             $total = $members->total();
+            // Process paginated results
+            $members->getCollection()->transform(function($member) {
+                return $this->processReservationMemberForBlade($member);
+            });
         } else {
             $members = $members->get();
             $total = $members->count();
+            // Process collection results
+            $members = $members->map(function($member) {
+                return $this->processReservationMemberForBlade($member);
+            });
         }
 
         return view('software::Front.reservation_member_front_list', compact('members', 'title', 'total', 'search_query'));
+    }
+
+    /**
+     * Process reservation member data for Blade view (moved from Blade to Controller)
+     * Pre-computes values to avoid logic and Carbon parsing in Blade templates
+     */
+    private function processReservationMemberForBlade($member)
+    {
+        // Pre-compute expire date formatting (move Carbon parsing from Blade to Controller)
+        if ($member->member && $member->member->member_subscription_info && $member->member->member_subscription_info->expire_date) {
+            $member->member->member_subscription_info->formatted_expire_date = 
+                \Carbon\Carbon::parse($member->member->member_subscription_info->expire_date)->toDateString();
+            $member->member->member_subscription_info->expire_color = 
+                ($member->member->member_subscription_info->status == 0) ? 'green' : 'red';
+        }
+        
+        return $member;
     }
 
     public function updateReservationMember(){

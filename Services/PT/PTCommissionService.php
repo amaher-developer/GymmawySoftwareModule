@@ -180,14 +180,31 @@ class PTCommissionService
      */
     public function summarizePending(array $filters = []): array
     {
+        // Optimize: Add eager loading for member.member and nested relations to prevent lazy loading
         $query = GymPTCommission::query()
             ->where('status', 'pending')
             ->with([
-                'trainer',
-                'member',
-                'attendee.pt_member',
-                'attendee.pt_member.pt_class',
-                'attendee.pt_member.classTrainer',
+                'trainer' => function($q) {
+                    $q->select('id', 'name');
+                },
+                'member' => function($q) {
+                    $q->select('id', 'member_id', 'pt_class_id', 'class_trainer_id');
+                },
+                'member.member' => function($q) {
+                    $q->select('id', 'name', 'code');
+                },
+                'attendee' => function($q) {
+                    $q->select('id', 'pt_member_id', 'session_date');
+                },
+                'attendee.pt_member' => function($q) {
+                    $q->select('id', 'member_id', 'pt_class_id', 'class_trainer_id');
+                },
+                'attendee.pt_member.pt_class' => function($q) {
+                    $q->select('id', 'name_ar', 'name_en');
+                },
+                'attendee.pt_member.classTrainer' => function($q) {
+                    $q->select('id', 'class_id', 'trainer_id');
+                },
             ]);
 
         if ($branchId = $filters['branch_setting_id'] ?? null) {

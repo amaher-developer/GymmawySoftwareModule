@@ -1,78 +1,92 @@
 @extends('generic::Front.layouts.auth_master')
-@section('title'){{ $title }} | @endsection
+@section('title'){{ $title ?? trans('global.login') }} | @endsection
 @section('style')
     <style>
-        .login {
-            {{--background: url({{asset('resources/assets/admin/global/img/bg_login.png')}}) center center no-repeat fixed;--}}
-            background: url({{asset('resources/assets/admin/global/img/bg_login.png')}})  no-repeat fixed;
-            -webkit-background-size: cover;
-            -moz-background-size: cover;
-            -o-background-size: cover;
-            background-size: cover;
-            min-height: 100vh;
-            width: 100%;
-        }
+        /* Override any old CSS and ensure new design classes are applied */
+       
     </style>
 @endsection
 @section('content')
-
-    <!-- BEGIN LOGIN -->
-    <div class="content">
-        <!-- BEGIN LOGIN FORM -->
-
-        <form class="login-form" role="form" method="POST" action="{{ route('sw.login') }}">
-            {{ csrf_field() }}
-            <h3 class="form-title">{{$title}}</h3>
-            @include('generic::errors')
-{{--            <div class="alert alert-danger display-hide">--}}
-{{--                <ul style="margin: 0 0 10px 0;list-style: none;">--}}
-{{--                        <li>{{ trans('global.error_login')}}</li>--}}
-{{--                </ul>--}}
-{{--            </div>--}}
-{{--            <div class="alert alert-danger display-hide">--}}
-{{--                <button class="close" data-close="alert"></button>--}}
-{{--                <span>{{ trans('global.error_login')}}</span>--}}
-{{--            </div>--}}
-            <div class="form-group">
-                <!--ie8, ie9 does not support html5 placeholder, so we just show field title for that-->
-                <label class="control-label visible-ie8 visible-ie9">{{ trans('global.email')}}</label>
-                <div class="input-icon">
-                    <i class="fa fa-user"></i>
-                    <input class="form-control placeholder-no-fix" required autocomplete="off" type="email" name="email"
-                           placeholder="{{ trans('global.email')}}" dir="ltr"/>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label visible-ie8 visible-ie9">{{ trans('global.password')}}</label>
-                <div class="input-icon">
-                    <i class="fa fa-lock"></i>
-                    <input class="form-control placeholder-no-fix" type="password" autocomplete="off"
-                           placeholder="{{ trans('global.password')}}" name="password" dir="ltr"/>
-                </div>
-            </div>
-            <div class="form-actions">
-                <label class="checkbox">
-                    @if($lang == 'ar')
-                        <a href="{{preg_replace('/'.request()->segment(1).'/', 'en', strtolower(request()->fullUrl()),1)}}">English</a>
-                    @else
-                        <a href="{{preg_replace('/'.request()->segment(1).'/', 'ar', strtolower(request()->fullUrl()),1)}}">العربيه</a>
-                    @endif
-                    {{--                    <input type="checkbox" name="remember" value="1"/> Remember me --}}
-                </label>
-                <button type="submit" class="btn green-haze pull-right">
-                    {{ trans('global.login')}} <i class="m-icon-swapright m-icon-white"></i>
-                </button>
-            </div>
-        </form>
-        <!-- END LOGIN FORM -->
-    </div>
-    <!-- END LOGIN -->
-
-
-
-
-
+							<!--begin::Form-->
+							<form class="form w-100" novalidate="novalidate" id="kt_sign_in_form" action="{{ route('sw.login') }}" method="POST">
+								@csrf
+								@include('generic::errors')
+								<!--begin::Heading-->
+								<div class="text-center mb-11">
+									<!--begin::Title-->
+									<h1 class="text-gray-900 fw-bolder mb-3">{{ $title ?? trans('sw.login') }}</h1>
+									<!--end::Title-->
+									<!--begin::Subtitle-->
+									<div class="text-gray-500 fw-semibold fs-6">{{ trans('sw.login_to_account') }}</div>
+									<!--end::Subtitle=-->
+								</div>
+								<!--begin::Heading-->
+								<!--begin::Input group=-->
+								<div class="fv-row mb-8">
+									<!--begin::Email-->
+									<input type="text" placeholder="{{ trans('global.email') }}" name="email" autocomplete="off" class="form-control" value="{{ old('email') }}" style="direction: ltr;" />
+									<!--end::Email-->
+								</div>
+								<!--end::Input group=-->
+								<div class="fv-row mb-3">
+									<!--begin::Password-->
+									<input type="password" placeholder="{{ trans('global.password') }}" name="password" autocomplete="off" class="form-control" style="direction: ltr;" />
+									<!--end::Password-->
+								</div>
+								<!--end::Input group=-->
+								<!--begin::Wrapper-->
+								<div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8">
+									
+									<!--begin::Link-->
+									<div></div>
+									<!--end::Link-->
+								</div>
+								<!--end::Wrapper-->
+								<!--begin::Submit button-->
+								<div class="d-grid mb-10">
+									<button type="submit" id="kt_sign_in_submit" class="btn btn-primary">
+										<!--begin::Indicator label-->
+										<span class="indicator-label">{{ trans('admin.login') }}</span>
+										<!--end::Indicator label-->
+										<!--begin::Indicator progress-->
+										<span class="indicator-progress">{{ trans('sw.please_wait') ?? 'Please wait...' }} 
+										<span class="spinner-border spinner-border-sm align-middle ms-2"></span></span>
+										<!--end::Indicator progress-->
+									</button>
+								</div>
+								<!--end::Submit button-->
+								
+							</form>
+							<!--end::Form-->
 @endsection
 @section('script')
-
+<script>
+	// Standard form submission (general.js is disabled in layout)
+	document.addEventListener('DOMContentLoaded', function() {
+		var form = document.getElementById('kt_sign_in_form');
+		var submitButton = document.getElementById('kt_sign_in_submit');
+		
+		if (form && submitButton) {
+			// Remove novalidate attribute to enable HTML5 validation
+			form.removeAttribute('novalidate');
+			
+			// Handle form submission
+			form.addEventListener('submit', function(e) {
+				// Show loading state
+				submitButton.setAttribute('data-kt-indicator', 'on');
+				submitButton.disabled = true;
+				// Allow form to submit normally (don't prevent default)
+			});
+			
+			// Also handle button click for better UX
+			submitButton.addEventListener('click', function(e) {
+				// Let form validation handle it
+				if (!form.checkValidity()) {
+					form.reportValidity();
+					return;
+				}
+			});
+		}
+	});
+</script>
 @stop

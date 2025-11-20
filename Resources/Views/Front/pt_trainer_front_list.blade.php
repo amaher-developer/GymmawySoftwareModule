@@ -217,7 +217,7 @@
                                         <a data-bs-toggle="modal"
                                            data-bs-target="#trainerLedger{{ $trainer->id }}"
                                            data-trainer="{{ $trainer->id }}"
-                                           data-fetch-url="{{ url(route('sw.pendingPTTrainerCommissions', ['trainer' => $trainer->id], false)) }}"
+                                           data-fetch-url="{{ route('sw.pendingPTTrainerCommissions', $trainer->id) }}"
                                            class="btn btn-icon btn-bg-light btn-active-color-warning btn-sm"
                                            title="{{ trans('sw.view_commissions') }}">
                                             <i class="ki-outline ki-dollar fs-2"></i>
@@ -381,8 +381,18 @@
                 const $summary = modal.find('.ledger-summary');
                 const $settleButton = modal.find('[data-action="settle-selected"]');
 
+                if (!response) {
+                    console.error('Empty response received');
+                    $body.html(`<tr><td colspan="6" class="text-center text-danger">${trainerLedgerI18n.errorText}</td></tr>`);
+                    $summary.addClass('d-none');
+                    $settleButton.prop('disabled', true);
+                    return;
+                }
+
                 const commissions = response.commissions || [];
                 const totals = response.totals || {amount: 0, count: 0};
+
+                console.log('Rendering ledger rows:', { commissionsCount: commissions.length, totals });
 
                 if (!commissions.length) {
                     $body.html(`<tr><td colspan="6" class="text-center text-muted">${trainerLedgerI18n.noCommissions}</td></tr>`);
@@ -392,25 +402,34 @@
                 }
 
                 const rows = commissions.map(function (item) {
+                    const sessionDate = item.session_date || '-';
+                    const memberName = item.member_name || '-';
+                    const memberCode = item.member_code || '';
+                    const className = item.class_name || '-';
+                    const commissionAmount = item.commission_amount || '0.00';
+                    const commissionRate = item.commission_rate || '0.00';
+                    const commissionId = item.id || '';
+
                     return `<tr>
                         <td class="text-center">
-                            <input type="checkbox" class="form-check-input commission-select" value="${item.id}">
+                            <input type="checkbox" class="form-check-input commission-select" value="${commissionId}">
                         </td>
-                        <td>${item.session_date ?? '-'}</td>
+                        <td>${sessionDate}</td>
                         <td>
-                            <div class="fw-semibold text-gray-900">${item.member_name ?? '-'}</div>
-                            <span class="text-muted fs-7">${item.member_code ?? ''}</span>
+                            <div class="fw-semibold text-gray-900">${memberName}</div>
+                            ${memberCode ? `<span class="text-muted fs-7">${memberCode}</span>` : ''}
                         </td>
-                        <td>${item.class_name ?? '-'}</td>
-                        <td class="text-end">${item.commission_amount ?? '0.00'}</td>
-                        <td class="text-end">${item.commission_rate ?? '0.00'}%</td>
+                        <td>${className}</td>
+                        <td class="text-end">${commissionAmount}</td>
+                        <td class="text-end">${commissionRate}%</td>
                     </tr>`;
                 }).join('');
 
                 $body.html(rows);
 
-                const sessionsLabel = trainerLedgerI18n.sessionsLabel.replace(':count', totals.count ?? 0);
-                modal.find('.ledger-total-amount').text(parseFloat(totals.amount ?? 0).toFixed(2));
+                const sessionsLabel = trainerLedgerI18n.sessionsLabel.replace(':count', totals.count || 0);
+                const totalAmount = parseFloat(totals.amount || 0).toFixed(2);
+                modal.find('.ledger-total-amount').text(totalAmount);
                 modal.find('.ledger-session-count').text(sessionsLabel);
                 $summary.removeClass('d-none');
                 $settleButton.prop('disabled', false);
@@ -438,20 +457,31 @@
             function loadTrainerLedger(modal) {
                 const fetchUrl = modal.data('fetchUrl');
                 if (!fetchUrl) {
+                    console.error('No fetch URL found for trainer ledger');
                     return;
                 }
                 const $body = modal.find('.trainer-ledger-body');
                 $body.html(`<tr><td colspan="6" class="text-center text-muted">${trainerLedgerI18n.loading}</td></tr>`);
 
-                $.get(fetchUrl, collectFilters())
-                    .done(function (response) {
+                const filters = collectFilters();
+                console.log('Loading trainer ledger:', { fetchUrl, filters });
+
+                $.ajax({
+                    url: fetchUrl,
+                    type: 'GET',
+                    data: filters,
+                    dataType: 'json',
+                    success: function (response) {
+                        console.log('Trainer ledger response:', response);
                         renderLedgerRows(modal, response || {});
-                    })
-                    .fail(function () {
-                        $body.html(`<tr><td colspan="6" class="text-center text-danger">${trainerLedgerI18n.errorText}</td></tr>`);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Trainer ledger error:', { xhr, status, error, responseText: xhr.responseText });
+                        $body.html(`<tr><td colspan="6" class="text-center text-danger">${trainerLedgerI18n.errorText} (${xhr.status}: ${error})</td></tr>`);
                         modal.find('.ledger-summary').addClass('d-none');
                         modal.find('[data-action="settle-selected"]').prop('disabled', true);
-                    });
+                    }
+                });
             }
 
             function selectedCommissionIds(modal) {
@@ -516,37 +546,89 @@
                 });
             }
 
-            $('.trainer-ledger-modal').on('show.bs.modal', function (event) {
-                const modal = $(this);
-                const trigger = $(event.relatedTarget);
-                modal.data('fetchUrl', trigger.data('fetchUrl'));
-                modal.data('trainerId', trigger.data('trainer'));
-                modal.find('.ledger-summary').addClass('d-none');
-                modal.find('.ledger-total-amount').text('0.00');
-                modal.find('.ledger-session-count').text(trainerLedgerI18n.sessionsLabel.replace(':count', 0));
-                loadTrainerLedger(modal);
-            });
+            // Ensure DOM is ready before binding events
+            $(document).ready(function() {
+                console.log('Binding trainer ledger modal events...');
+                
+                // Bind event to all existing modals
+                $('.trainer-ledger-modal').on('show.bs.modal', function (event) {
+                    console.log('Modal show event triggered');
+                    const modal = $(this);
+                    const trigger = $(event.relatedTarget);
+                    
+                    console.log('Modal:', modal);
+                    console.log('Trigger:', trigger);
+                    console.log('Fetch URL from trigger:', trigger.data('fetchUrl'));
+                    console.log('Trainer ID from trigger:', trigger.data('trainer'));
+                    
+                    const fetchUrl = trigger.data('fetchUrl') || modal.data('fetchUrl');
+                    const trainerId = trigger.data('trainer') || modal.data('trainerId');
+                    
+                    modal.data('fetchUrl', fetchUrl);
+                    modal.data('trainerId', trainerId);
+                    
+                    console.log('Final fetch URL:', fetchUrl);
+                    console.log('Final trainer ID:', trainerId);
+                    
+                    modal.find('.ledger-summary').addClass('d-none');
+                    modal.find('.ledger-total-amount').text('0.00');
+                    modal.find('.ledger-session-count').text(trainerLedgerI18n.sessionsLabel.replace(':count', 0));
+                    
+                    if (fetchUrl) {
+                        loadTrainerLedger(modal);
+                    } else {
+                        console.error('No fetch URL found for modal');
+                    }
+                });
 
-            $('.trainer-ledger-modal').on('hidden.bs.modal', function () {
-                $(this).find('.trainer-ledger-body').empty();
-            });
+                // Also bind click event directly to the button as fallback
+                $('[data-bs-target^="#trainerLedger"]').on('click', function(e) {
+                    console.log('Button clicked:', this);
+                    const target = $(this).data('bsTarget') || $(this).attr('data-bs-target');
+                    console.log('Target modal:', target);
+                    
+                    // Small delay to ensure modal is shown before loading data
+                    setTimeout(function() {
+                        const modal = $(target);
+                        if (modal.length) {
+                            const fetchUrl = $(e.currentTarget).data('fetchUrl') || modal.data('fetchUrl');
+                            const trainerId = $(e.currentTarget).data('trainer') || modal.data('trainerId');
+                            
+                            console.log('Fallback: Loading ledger for trainer:', trainerId, 'URL:', fetchUrl);
+                            
+                            if (fetchUrl && modal.is(':visible')) {
+                                modal.data('fetchUrl', fetchUrl);
+                                modal.data('trainerId', trainerId);
+                                loadTrainerLedger(modal);
+                            }
+                        }
+                    }, 300);
+                });
 
-            $('.trainer-ledger-modal [data-action="settle-selected"]').on('click', function () {
-                const modal = $(this).closest('.trainer-ledger-modal');
-                settleTrainerCommissions(modal);
-            });
+                $('.trainer-ledger-modal').on('hidden.bs.modal', function () {
+                    $(this).find('.trainer-ledger-body').empty();
+                });
 
-            $('.select2').select2({
-                width: '100%',
-                allowClear: true,
-                placeholder: "{{ trans('admin.choose')}}..."
-            });
+                // Use event delegation for settle button (in case it's added dynamically)
+                $(document).on('click', '.trainer-ledger-modal [data-action="settle-selected"]', function () {
+                    const modal = $(this).closest('.trainer-ledger-modal');
+                    settleTrainerCommissions(modal);
+                });
 
-            $('.datepicker').datepicker({
-                format: 'yyyy-mm-dd',
-                autoclose: true,
-                todayHighlight: true
-            });
+                // Initialize Select2
+                $('.select2').select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: "{{ trans('admin.choose')}}..."
+                });
+
+                // Initialize datepicker
+                $('.datepicker').datepicker({
+                    format: 'yyyy-mm-dd',
+                    autoclose: true,
+                    todayHighlight: true
+                });
+            }); // End document.ready
         })(jQuery);
     </script>
 @endsection

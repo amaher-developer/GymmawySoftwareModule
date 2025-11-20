@@ -29,11 +29,17 @@
     <link rel="apple-touch-icon" href="{{asset('resources/assets/front/images/favicon.ico')}}" type="image/x-icon"/>
 
     <!--begin::Fonts(mandatory for all pages)-->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700"></noscript>
     <!--end::Fonts-->
 
     @if($lang == 'ar')
-        <link href="https://fonts.googleapis.com/css2?family=Droid+Arabic+Kufi&display=swap" rel="stylesheet">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Droid+Arabic+Kufi&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+        <noscript><link href="https://fonts.googleapis.com/css2?family=Droid+Arabic+Kufi&display=swap" rel="stylesheet"></noscript>
         <style>
             body, .menu-title, .title, .nav-link, .sub-menu span, .user-info h4, .user-info span {
                 font-family: 'Droid Arabic Kufi', Arial, sans-serif !important;
@@ -103,7 +109,8 @@
     @endif
 
 
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css"></noscript>
     <link rel="stylesheet" href="{{asset('resources/assets/admin/global/scripts/css/datepicker3.css')}}">
     <link rel="stylesheet" href="{{asset('resources/assets/admin/global/scripts/software/custom_qr_scanner.css')}}">
     <link rel="stylesheet" href="{{asset('resources/assets/admin/global/scripts/software/renew_member.css')}}">
@@ -547,7 +554,7 @@
                                      data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end"
                                      data-kt-menu-flip="bottom">
                                     <i class="ki-outline  ki-notification fs-1"></i>
-                                    @if(auth()->guard('sw')->user()->unreadNotifications->count() > 0)
+                                    @if(($unreadNotificationsCount ?? 0) > 0)
                                         <span
                                             class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 mt-4 start-50 animation-blink"></span>
                                     @endif
@@ -560,7 +567,7 @@
                                          style="background-image:url('{{asset('resources/assets/media/misc/menu-header-bg.jpg')}}')">
                                         <!--begin::Title-->
                                         <h3 class="fw-semibold px-9 mt-10 mb-6">{{trans('sw.notifications')}}
-                                            <span class="fs-8 opacity-75 ps-3 bold">{!! trans_choice('sw.notifications_message', auth()->guard('sw')->user()->unreadNotifications->count()) !!}</span></h3>
+                                            <span class="fs-8 opacity-75 ps-3 bold">{!! trans_choice('sw.notifications_message', $unreadNotificationsCount ?? 0) !!}</span></h3>
                                         <!--end::Title-->
                                     </div>
                                     <!--end::Heading-->
@@ -568,7 +575,7 @@
                                     <div>
                                         <!--begin::Items-->
                                         <div class="scroll-y mh-325px my-5 px-8">
-                                            @if(auth()->guard('sw')->user()->unreadNotifications->count() == 0)
+                                            @if(($unreadNotificationsCount ?? 0) == 0)
                                                 <!--begin::Item-->
                                                 <div class="d-flex flex-stack py-4">
                                                     <!--begin::Section-->
@@ -592,7 +599,7 @@
                                                 </div>
                                                 <!--end::Item-->
                                             @else
-                                                @foreach(auth()->guard('sw')->user()->unreadNotifications as $notification)
+                                                @foreach($unreadNotifications ?? [] as $notification)
                                                     <!--begin::Item-->
                                                     <div class="d-flex flex-stack py-4">
                                                         <!--begin::Section-->
@@ -614,7 +621,7 @@
                                                         </div>
                                                         <!--end::Section-->
                                                         <!--begin::Label-->
-                                                        <span class="badge badge-light fs-8">{{\Carbon\Carbon::createFromTimeStamp(strtotime($notification->data['data']['created_at']))->diffForHumans()}}</span>
+                                                        <span class="badge badge-light fs-8">{{$notification->formatted_time ?? ''}}</span>
                                                         <!--end::Label-->
                                                     </div>
                                                     <!--end::Item-->
@@ -963,15 +970,15 @@
 <script src="{{asset('resources/assets/admin/global/plugins/bootstrap/js/bootstrap.min.js')}}"
         type="text/javascript"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.min.js" type="text/javascript"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.ui.min.js" type="text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.min.js" type="text/javascript" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.ui.min.js" type="text/javascript" defer></script>
 
-<script src="{{asset('resources/assets/admin/global/plugins/js.cookie.min.js')}}" type="text/javascript"></script>
+<script src="{{asset('resources/assets/admin/global/plugins/js.cookie.min.js')}}" type="text/javascript" defer></script>
 <script src="{{asset('resources/assets/admin/global/plugins/jquery-slimscroll/jquery.slimscroll.min.js')}}"
-        type="text/javascript"></script>
-<script src="{{asset('resources/assets/admin/global/plugins/jquery.blockui.min.js')}}" type="text/javascript"></script>
+        type="text/javascript" defer></script>
+<script src="{{asset('resources/assets/admin/global/plugins/jquery.blockui.min.js')}}" type="text/javascript" defer></script>
 <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-switch/js/bootstrap-switch.min.js')}}"
-        type="text/javascript"></script>
+        type="text/javascript" defer></script>
 
 
 <!-- BEGIN Sweet Alert SCRIPTS -->
@@ -998,13 +1005,13 @@
 <!--End of Tawk.to Script-->
 
 <!-- Internal Select2.min js -->
-<script src="{{asset('resources/assets/admin/global/scripts/js/select2.min.js')}}"></script>
-<script src="{{asset('resources/assets/admin/global/scripts/js/bootstrap-datepicker.js')}}"></script>
+<script src="{{asset('resources/assets/admin/global/scripts/js/select2.min.js')}}" defer></script>
+<script src="{{asset('resources/assets/admin/global/scripts/js/bootstrap-datepicker.js')}}" defer></script>
 
 {{--<script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>--}}
-<script type="text/javascript" src="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/daterangepicker.js"></script>
-<script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript"></script>
-<script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-pickers.js"></script>
+<script type="text/javascript" src="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/daterangepicker.js" defer></script>
+<script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript" defer></script>
+<script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-pickers.js" type="text/javascript" defer></script>
 
 <!-- QR Scanner -->
 {{--<script type="module">--}}
@@ -1060,6 +1067,37 @@
     <!-- End Renew-->
 @endif
 <script>
+    // Fix modal backdrop not being removed after modal close
+    $(document).on('hidden.bs.modal', '.modal', function () {
+        // Remove all backdrop elements if they still exist
+        $('.modal-backdrop').remove();
+        // Remove modal-open class from body
+        $('body').removeClass('modal-open');
+        // Remove padding from body that Bootstrap adds for scrollbar
+        var bodyPadding = $('body').css('padding-right');
+        if (bodyPadding && bodyPadding !== '0px' && bodyPadding !== '0') {
+            $('body').css('padding-right', '');
+        }
+    });
+    
+    // Additional cleanup for Bootstrap 5 modals (vanilla JS)
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        document.addEventListener('hidden.bs.modal', function (event) {
+            // Remove backdrop if exists
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+            // Remove modal-open class
+            document.body.classList.remove('modal-open');
+            // Remove padding if it was added by Bootstrap
+            const bodyPadding = window.getComputedStyle(document.body).getPropertyValue('padding-right');
+            if (bodyPadding && bodyPadding !== '0px' && bodyPadding !== '0') {
+                document.body.style.paddingRight = '';
+            }
+        });
+    }
+    
     $(".modal").each(function (l) {
         $(this).on("show.bs.modal", function (l) {
             var o = $(this).attr("data-easein");

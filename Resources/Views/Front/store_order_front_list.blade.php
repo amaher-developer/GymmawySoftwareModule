@@ -221,7 +221,7 @@
                                 <span class="fw-bold text-success">{{ number_format($order->amount_paid, 2) }}</span>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ $order->member->name ?? trans('sw.guest') }}</span>
+                                <span class="fw-bold">{{ $order->member?->name ?? trans('sw.guest') }}</span>
                             </td>
                             <td class="pe-0">
                                 <div class="d-flex flex-column">
@@ -426,7 +426,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="fs-7 text-muted">{{ trans('sw.customer') }}:</div>
-                                <div class="fw-bold text-gray-900">{{ $order->member->name ?? trans('sw.guest') }}</div>
+                                <div class="fw-bold text-gray-900">{{ $order->member?->name ?? trans('sw.guest') }}</div>
                             </div>
                             <div class="col-md-6 text-end">
                                 <div class="fs-7 text-muted">{{ trans('sw.payment_type') }}:</div>

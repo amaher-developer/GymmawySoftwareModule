@@ -125,14 +125,15 @@ class PTEnrollmentService
     ): void {
         $classType = $attributes['class_type'] ?? $class->class_type ?? 'private';
         $trainerId = $attributes['class_trainer_id'] ?? $attributes['pt_trainer_id'] ?? null;
+        $hasExistingTrainer = $existingMember?->class_trainer_id || $existingMember?->pt_trainer_id;
 
-        if ($classType === 'private' && !$trainerId && !$existingMember?->class_trainer_id) {
+        if ($classType === 'private' && !$trainerId && !$hasExistingTrainer) {
             throw ValidationException::withMessages([
                 'class_trainer_id' => trans('sw.required_field'),
             ]);
         }
 
-        if (in_array($classType, ['group', 'mixed'], true) && !$trainerId && !$existingMember?->class_trainer_id) {
+        if (in_array($classType, ['group', 'mixed'], true) && !$trainerId && !$hasExistingTrainer) {
             throw ValidationException::withMessages([
                 'class_trainer_id' => trans('sw.pt_group_trainer_assignment_message'),
             ]);
@@ -162,7 +163,24 @@ class PTEnrollmentService
 
         $selectedTrainerId = $attributes['class_trainer_id'] ?? $existingMember?->class_trainer_id;
         $target['class_trainer_id'] = $selectedTrainerId;
-        $target['pt_trainer_id'] = $this->resolveTrainerId($selectedTrainerId);
+        
+        // If class_trainer_id exists, resolve trainer_id from it
+        // If resolution fails or class_trainer_id is empty, use pt_trainer_id directly from attributes
+        if ($selectedTrainerId) {
+            $resolvedTrainerId = $this->resolveTrainerId($selectedTrainerId);
+            $target['pt_trainer_id'] = $resolvedTrainerId ?? $attributes['pt_trainer_id'] ?? $existingMember?->pt_trainer_id ?? null;
+        } else {
+            $target['pt_trainer_id'] = $attributes['pt_trainer_id'] ?? $existingMember?->pt_trainer_id ?? null;
+        }
+        
+        // Note: pt_trainer_id validation is handled in validateEnrollmentPayload
+        // This ensures we have a value, but if null here it means validation passed with existing member's trainer
+        if (!$target['pt_trainer_id'] && !$existingMember && ($classType === 'private' || in_array($classType, ['group', 'mixed'], true))) {
+            // This should have been caught by validation, but throw as safety check
+            throw ValidationException::withMessages([
+                'pt_trainer_id' => trans('sw.required_field'),
+            ]);
+        }
 
         $target['start_date'] = $this->resolveDate($attributes, 'start_date', $existingMember?->start_date);
         $target['end_date'] = $this->resolveDate($attributes, 'end_date', $existingMember?->end_date);

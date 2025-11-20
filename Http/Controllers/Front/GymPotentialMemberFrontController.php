@@ -49,15 +49,48 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $members = GymPotentialMember::branch()->where('type', 1)->onlyTrashed()->with(['member.member_subscription_info', 'user' => function($q){
-                $q->withTrashed();
-            }])->orderBy('id', 'DESC');
+            // Optimize: Use select to limit columns
+            $members = GymPotentialMember::branch()->where('type', 1)->onlyTrashed()
+                ->select('id', 'name', 'phone', 'national_id', 'status', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
+                ->with([
+                    'member' => function($q) {
+                        $q->select('id', 'name', 'phone');
+                    },
+                    'member.member_subscription_info' => function($q) {
+                        $q->select('id', 'member_id', 'status');
+                    },
+                    'user' => function($q){
+                        $q->select('id', 'name')->withTrashed();
+                    }
+                ])
+                ->orderBy('id', 'DESC');
         }
         else
         {
-            $members = GymPotentialMember::branch()->where('type', 1)->with(['member.member_subscription_info', 'activity', 'pt_subscription', 'subscription', 'user' => function($q){
-                $q->withTrashed();
-            }])->orderBy('id', 'DESC');
+            // Optimize: Use select to limit columns
+            $members = GymPotentialMember::branch()->where('type', 1)
+                ->select('id', 'name', 'phone', 'national_id', 'status', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
+                ->with([
+                    'member' => function($q) {
+                        $q->select('id', 'name', 'phone');
+                    },
+                    'member.member_subscription_info' => function($q) {
+                        $q->select('id', 'member_id', 'status');
+                    },
+                    'activity' => function($q) {
+                        $q->select('id', 'name_ar', 'name_en');
+                    },
+                    'pt_subscription' => function($q) {
+                        $q->select('id', 'name_ar', 'name_en');
+                    },
+                    'subscription' => function($q) {
+                        $q->select('id', 'name_ar', 'name_en');
+                    },
+                    'user' => function($q){
+                        $q->select('id', 'name')->withTrashed();
+                    }
+                ])
+                ->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -88,11 +121,36 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         if ($this->limit) {
             $members = $members->paginate($this->limit)->onEachSide(1);
             $total = $members->total();
+            // Process paginated results
+            $members->getCollection()->transform(function($member) {
+                return $this->processPotentialMemberForBlade($member);
+            });
         } else {
             $members = $members->get();
             $total = $members->count();
+            // Process collection results
+            $members = $members->map(function($member) {
+                return $this->processPotentialMemberForBlade($member);
+            });
         }
-        return view('software::Front.potential_member_front_list', compact('members', 'title', 'total', 'search_query'));
+        
+        // Pre-format date inputs (move @php blocks from Blade to Controller)
+        $formatted_from_date = request('from') ? strip_tags(request('from')) : '';
+        $formatted_to_date = request('to') ? strip_tags(request('to')) : '';
+        $formatted_search = request('search') ? strip_tags(request('search')) : '';
+        
+        return view('software::Front.potential_member_front_list', compact('members', 'title', 'total', 'search_query', 'formatted_from_date', 'formatted_to_date', 'formatted_search'));
+    }
+
+    /**
+     * Process potential member data for Blade view (moved from Blade to Controller)
+     * Pre-computes values to avoid logic in Blade templates
+     */
+    private function processPotentialMemberForBlade($member)
+    {
+        // All relationships are already eager-loaded, no additional processing needed
+        // This method is here for consistency and future enhancements
+        return $member;
     }
 
     public function updatePotentialMember(){

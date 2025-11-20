@@ -245,7 +245,16 @@ class GymPTMemberFrontController extends GymGenericFrontController
         })->get();
         $trainers = GymPTTrainer::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_pt_member', true)->get();
-        $classes = GymPTClass::branch()->isSystem()->with(['pt_subscription_trainer'])->get();
+        // Optimize: Add eager loading for classTrainers and trainer relation to prevent lazy loading
+        $classes = GymPTClass::branch()->isSystem()->with([
+            'pt_subscription_trainer',
+            'classTrainers' => function($q) {
+                $q->select('id', 'class_id', 'trainer_id', 'commission_rate', 'session_count', 'is_active');
+            },
+            'classTrainers.trainer' => function($q) {
+                $q->select('id', 'name');
+            }
+        ])->get();
         $billingSettings = SwBillingService::getSettings();
         $paymentTypes = GymPaymentType::orderBy('payment_id')->get();
         return view('software::Front.pt_member_front_create', [
@@ -316,6 +325,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
             'member_id' => $memberSubscription->id,
             'pt_subscription_id' => $member_inputs['pt_subscription_id'],
             'class_trainer_id' => $request->input('class_trainer_id'),
+            'pt_trainer_id' => $request->input('pt_trainer_id'), // Fallback if class_trainer_id is empty
             'class_type' => $class->class_type,
             'classes' => $calculatedSessions,
             'total_sessions' => $calculatedSessions,
@@ -445,7 +455,15 @@ class GymPTMemberFrontController extends GymGenericFrontController
         })->get();
         $trainers = GymPTTrainer::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_pt_member', true)->get();
-        $classes = GymPTClass::branch()->isSystem()->get();
+        // Optimize: Add eager loading for classTrainers and trainer relation to prevent lazy loading
+        $classes = GymPTClass::branch()->isSystem()->with([
+            'classTrainers' => function($q) {
+                $q->select('id', 'class_id', 'trainer_id', 'commission_rate', 'session_count', 'is_active');
+            },
+            'classTrainers.trainer' => function($q) {
+                $q->select('id', 'name');
+            }
+        ])->get();
         $title = trans('sw.pt_member_edit');
         $member->loadMissing('zatcaInvoice');
         $billingSettings = SwBillingService::getSettings();
@@ -887,12 +905,28 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return null;
         }
 
+        // Check if there's an existing attendee for this specific slot
         $existing = GymPTMemberAttendee::where('pt_member_id', $member->id)
             ->where('session_date', $nextSlot)
             ->first();
 
         if ($existing) {
+            // If attendee exists for this slot, refresh member data and return it
+            $member->refresh();
             return $existing;
+        }
+        
+        // Also check if there's an attendee for today (to prevent duplicate attendance on same day)
+        $todayStart = Carbon::today();
+        $todayEnd = Carbon::today()->endOfDay();
+        $todayAttendee = GymPTMemberAttendee::where('pt_member_id', $member->id)
+            ->whereBetween('session_date', [$todayStart, $todayEnd])
+            ->first();
+            
+        if ($todayAttendee) {
+            // If attendance already recorded today, refresh and return existing
+            $member->refresh();
+            return $todayAttendee;
         }
 
         $attendee = GymPTMemberAttendee::create([
@@ -927,14 +961,50 @@ class GymPTMemberFrontController extends GymGenericFrontController
 
     private function memberPTAttendeesById($id){
         $id = $id;
-        $member = GymPTMember::branch()->with(['member', 'pt_subscription', 'pt_class', 'classTrainer'])->where('id', $id)->first();
+        $member = GymPTMember::with(['member', 'pt_subscription', 'pt_class', 'classTrainer'])->where('id', $id);
+        // Apply branch restriction:
+        // 1. If allow_member_in_branches is false, always apply for all users
+        // 2. If allow_member_in_branches is true but user is not super user, apply branch restriction
+        // 3. Only super users with allow_member_in_branches=true can access all branches
+        $userSw = $this->user_sw ?? Auth::guard('sw')->user();
+        $isSuperUser = $userSw ? ($userSw->is_super_user ?? false) : false;
+        $allowCrossBranch = @$this->mainSettings->allow_member_in_branches ?? false;
+        
+        if(!$allowCrossBranch || !$isSuperUser){
+            // Use direct branch_setting_id from user instead of scope to avoid Auth issues
+            $branchId = $userSw ? ($userSw->branch_setting_id ?? 1) : 1;
+            $member = $member->where('branch_setting_id', $branchId);
+        }
+        $member = $member->first();
         if(!$member) {
             return '';
         }
 
+        // Store initial attendee count to detect if new one was created
+        $todayStart = Carbon::today();
+        $todayEnd = Carbon::today()->endOfDay();
+        $existingTodayCount = GymPTMemberAttendee::where('pt_member_id', $member->id)
+            ->whereBetween('session_date', [$todayStart, $todayEnd])
+            ->count();
+
         $attendee = $this->recordMemberAttendance($member);
+        
+        // Always refresh member to get latest data
+        $member->refresh();
+        
         if ($attendee) {
-            $member->refresh();
+            // Check if a new attendee was created (count increased)
+            $newTodayCount = GymPTMemberAttendee::where('pt_member_id', $member->id)
+                ->whereBetween('session_date', [$todayStart, $todayEnd])
+                ->count();
+            
+            // Only update remaining_sessions if a new attendee was actually created
+            if ($newTodayCount > $existingTodayCount) {
+                // The adjustRemainingSessions was already called in recordMemberAttendance
+                // Just refresh to ensure we have latest data
+                $member->refresh();
+            }
+            
             $totalSessions = $member->sessions_total ?? $member->total_sessions ?? $member->classes ?? 0;
             $usedSessions = $member->sessions_used ?? ($totalSessions - ($member->remaining_sessions ?? 0));
             return $member->pt_subscription->name.' ('.$usedSessions.' / '.$totalSessions.') ';
@@ -943,12 +1013,27 @@ class GymPTMemberFrontController extends GymGenericFrontController
     }
     public function memberPTAttendees(Request $request){
 
-        if(@$request->id){
-            return $this->memberPTAttendeesById(@$request->id);
+        // Use id if provided
+        $idToUse = @$request->id;
+        if($idToUse){
+            // Try id first
+            $result = $this->memberPTAttendeesById($idToUse);
+            if(!empty($result)){
+                return $result;
+            }
+            // If id failed and no code provided, return error
+            if(!@$request->code){
+                return Response::json(['msg' => trans('sw.no_code_found'), 'member' => null, 'status' => false], 200);
+            }
+            // If id failed but code is provided, fall through to code path
         }
 
-
+        // Use code path (handles code parameter and phone search)
         $code = preg_replace("/[^0-9]/", "",$request->code);
+        // If id was provided but failed, and code is empty, use id as code
+        if(@$request->id && empty($code)){
+            $code = preg_replace("/[^0-9]/", "", $request->id);
+        }
         $enquiry =intval($request->enquiry);
         $msg = '';
         $member = GymPTMember::with(['member' => function ($query){
@@ -959,8 +1044,18 @@ class GymPTMemberFrontController extends GymGenericFrontController
             ->when(@$enquiry && (strlen(intval($code)) >= 5), function ($q) use ($code){
                 $q->orWhereHas('member', function ($q) use ($code){ $q->where('phone', 'like', '%' . $code . '%');});
             });
-        if(@!$this->mainSettings->allow_member_in_branches){
-            $member = $member->branch();
+        // Apply branch restriction:
+        // 1. If allow_member_in_branches is false, always apply for all users
+        // 2. If allow_member_in_branches is true but user is not super user, apply branch restriction
+        // 3. Only super users with allow_member_in_branches=true can access all branches
+        $userSw = $this->user_sw ?? Auth::guard('sw')->user();
+        $isSuperUser = $userSw ? ($userSw->is_super_user ?? false) : false;
+        $allowCrossBranch = @$this->mainSettings->allow_member_in_branches ?? false;
+        
+        if(!$allowCrossBranch || !$isSuperUser){
+            // Use direct branch_setting_id from user instead of scope to avoid Auth issues
+            $branchId = $userSw ? ($userSw->branch_setting_id ?? 1) : 1;
+            $member = $member->where('branch_setting_id', $branchId);
         }
         $member = $member->first();
         $status = false;

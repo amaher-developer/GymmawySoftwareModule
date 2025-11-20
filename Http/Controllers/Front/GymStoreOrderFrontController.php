@@ -53,13 +53,22 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $orders = $this->StoreOrderRepository->with('order_product.product')->onlyTrashed()->orderBy('id', 'DESC');
+            // Optimize: Add eager loading for member relation to prevent lazy loading
+            $orders = $this->StoreOrderRepository->with(['order_product.product', 'member' => function($q) {
+                $q->select('id', 'name', 'phone');
+            }])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $orders = $this->StoreOrderRepository->with(['order_product.product'=>function($q){
+            // Optimize: Add eager loading for member relation to prevent lazy loading
+            $orders = $this->StoreOrderRepository->with([
+                'order_product.product' => function($q){
 //                $q->withTrashed();
-            }])->orderBy('id', 'DESC');
+                },
+                'member' => function($q) {
+                    $q->select('id', 'name', 'phone');
+                }
+            ])->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -399,7 +408,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         $subscription_price = round(($order_inputs['amount_before_discount'] - @$order_inputs['discount_value'] + $vat), 2);
 
         if (($order_inputs['amount_paid'] < 0) || @($order_inputs['amount_paid'] > $subscription_price)) {
-            return redirect(route('sw.createStoreOrder'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less')]);
+            return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less')]);
         }
 
         if(empty($order_inputs['products'])){
@@ -408,7 +417,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             'message' => trans('admin.something_wrong'),
             'type' => 'error'
         ]);
-            return redirect(route('sw.createStoreOrder'));
+            return redirect(route('sw.createStoreOrderPOS'));
         }
 
         $order = GymStoreOrder::create($order_inputs);

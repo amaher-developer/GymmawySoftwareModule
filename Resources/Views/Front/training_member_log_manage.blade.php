@@ -88,6 +88,16 @@
                     <div class="fs-7 text-muted">{{ trans('sw.add_note_desc') }}</div>
                 </button>
             </div>
+            @php
+                // Check if training AI feature is enabled
+                $features = is_array($mainSettings->features ?? null) 
+                    ? $mainSettings->features 
+                    : (is_string($mainSettings->features ?? null) 
+                        ? json_decode($mainSettings->features, true) 
+                        : []);
+                $active_training_ai = isset($features['active_training_ai']) && $features['active_training_ai'];
+            @endphp
+            @if($active_training_ai)
             <div class="col-md-3 col-sm-6">
                 <button type="button" class="btn btn-light-primary w-100 py-4" data-bs-toggle="modal" data-bs-target="#aiModal">
                     <i class="ki-outline ki-robot fs-2x mb-2"></i>
@@ -95,6 +105,7 @@
                     <div class="fs-7 text-muted">{{ trans('sw.ai_generate_plan_desc') }}</div>
                 </button>
             </div>
+            @endif
         </div>
     </div>
 </div>

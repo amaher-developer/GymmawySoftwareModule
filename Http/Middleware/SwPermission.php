@@ -6,19 +6,24 @@ use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Modules\Generic\Models\Setting;
-
+use Illuminate\Support\Facades\Session;
+use Modules\Generic\Models\Setting; 
+use App\Helpers\CurrentSwUser;
 class SwPermission
 {
     /**
-     * Ensure mainSettings is loaded
+     * Ensure mainSettings is loaded (cached for performance)
      */
-    private function ensureMainSettings()
+    private function ensureMainSettings($user = null)
     {
-        $mainSettings = Cache::store('file')->get('mainSettings');
+        // Use Laravel's default cache driver instead of 'file' store for better performance
+        $branchId = $user ? ($user->branch_setting_id ?? 1) : 1;
+        $cacheKey = 'mainSettings_' . $branchId;
+        $mainSettings = Cache::get($cacheKey);
         
         if (!$mainSettings) {
-            $mainSettings = Setting::branch()->first();
+            // Direct query using branch ID (faster than using scope)
+            $mainSettings = Setting::where('id', $branchId)->first();
             
             if (!$mainSettings) {
                 $mainSettings = new \stdClass();
@@ -31,7 +36,8 @@ class SwPermission
                 $mainSettings->active_training = false;
             }
             
-            Cache::store('file')->put('mainSettings', $mainSettings, 600);
+            // Cache for 10 minutes (600 seconds)
+            Cache::put($cacheKey, $mainSettings, 600);
         }
         
         return $mainSettings;
@@ -39,13 +45,47 @@ class SwPermission
 
     public function handle($request, Closure $next)
     {
+        // Get user once and reuse it throughout the middleware
+        $user = Auth::guard('sw')->user();
+        config(['sw.current_sw_user' => $user]);
+        
+        // Cache user in helper to avoid repeated Auth calls in models
+        CurrentSwUser::set($user);
+
+        // If no user is authenticated, allow to continue (other middleware will handle auth)
+        if (!$user) {
+            return $next($request);
+        }
+        
+        // Check work time for non-super users
+        // This ensures users with time bounds are logged out if outside their work hours
+        if (!$user->is_super_user && $user->start_time_work && $user->end_time_work) {
+            $start_time_work = Carbon::parse($user->start_time_work)->toDateTimeString();
+            $end_time_work = str_replace('00:00:00', '24:00:00', Carbon::parse($user->end_time_work)->toDateTimeString());
+            
+            // If same time, allow access (24/7 access - no time restriction)
+            $isSameTime = Carbon::parse($user->start_time_work)->toDateTimeString() == Carbon::parse($user->end_time_work)->toDateTimeString();
+            
+            // Check if current time is outside work hours
+            if (!$isSameTime) {
+                $now = Carbon::now()->toDateTimeString();
+                $isOutsideWorkHours = !(($start_time_work <= $now) && ($end_time_work >= $now));
+                
+                if ($isOutsideWorkHours) {
+                    // Force logout and redirect to login page
+                    Auth::guard('sw')->logout();
+                    Session::flush();
+                    return redirect()->route('sw.login')->withErrors(['error' => trans('auth.failed_time')]);
+                }
+            }
+        }
+        
         $route = \Request::route()->getName();
-        $route = str_replace('sw.', '',$route);
+        $route = str_replace('sw.', '', $route);
         $default_permissions = ['dashboard', 'dashboardMini', 'dashboardPTMini', 'showStoreOrder', 'showOrderSubscriptionNonMember', 'showOrderSubscriptionPOSNonMember', 'showStoreOrderVendor', 'showOrder', 'memberAttendees', 'membersRefresh', 'showMemberProfile', 'creditMemberBalance'
-            , 'memberPTAttendees', 'getPTMemberAjax', 'getStoreMemberAjax', 'getPTTrainerAjax'
+            , 'pendingPTTrainerCommissions', 'memberPTAttendees', 'getPTMemberAjax', 'getStoreMemberAjax', 'getPTTrainerAjax'
             , 'memberActivityMembershipAttendees'
             , 'memberInvitationAttendees', 'editUserProfile', 'listUserJson'
-            , 'listReservation', 'getReservationMemberAjax', 'createReservationMemberAjax', 'deleteReservationMemberAjax'
             , 'listUserLog', 'downloadCard', 'memberSubscriptionRenew', 'downloadQRCode', 'downloadCode', 'downloadStoreProductBarcode', 'downloadMemberBarcode'
             , 'showOrderSubscription', 'showOrderSubscriptionPOS'
             , 'showOrderPTSubscription', 'showOrderPTSubscriptionPOS'
@@ -53,35 +93,54 @@ class SwPermission
             , 'listSwPayment', 'updatePotentialMember'
             , 'listHelperTools',  'calculateCalories', 'calculateCaloriesResult', 'calculateBMI', 'calculateBMIResult', 'calculateIBW', 'calculateIBWResult', 'calculateWater', 'calculateWaterResult', 'calculateVatPercentage', 'calculateVatPercentageResult'
             , 'listPTMemberCalendar', 'listPTMemberInClassCalendar'
+            , 'listPTSessions', 'showPTSession'
+            , 'listTrainingMedicine', 'createTrainingMedicine', 'editTrainingMedicine', 'deleteTrainingMedicine'
+            , 'listTrainingMemberLog', 'showTrainingMemberLog', 'addTrainingAssessment', 'addMemberTrainingPlan'
+            , 'addMemberTrainingMedicine', 'addMemberTrainingFile', 'addMemberTrainingTrack', 'addMemberTrainingNote'
+            , 'generateMemberAiPlan', 'generateAiPlan', 'saveAiPlanTemplate', 'assignAiPlanToMember', 'downloadPlanPDF'
             , 'userAttendees', 'userAttendeesStore'
             , 'fingerprintRefresh'
-            , 'getNonMemberReservation', 'createReservationNonMemberAjax', 'deleteReservationNonMemberAjax'
-            , 'reservation.events', 'reservation.slots', 'reservation.checkOverlap', 'reservation.ajaxCreate', 'reservation.ajaxUpdate', 'reservation.ajaxGet'
-            , 'reservation.confirm', 'reservation.cancel', 'reservation.attend', 'reservation.missed'
             , 'exportTodayPTMemberExcel', 'exportTodayPTMemberPDF', 'exportTodayMemberExcel', 'exportTodayMemberPDF'
             , 'exportTodayNonMemberExcel', 'exportTodayNonMemberPDF', 'exportExpireMemberExcel', 'exportExpireMemberPDF'
             , 'exportSubscriptionMemberExcel', 'exportSubscriptionMemberPDF', 'exportPTSubscriptionMemberExcel', 'exportPTSubscriptionMemberPDF'
-
             , 'reportUserNotificationsList'
+            // Reservation Permissions
+           // , 'listReservation', 'createReservation', 'editReservation', 'deleteReservation'
+            //, 'changeReservationStatus', 'confirmReservation', 'cancelReservation', 'attendReservation', 'markMissedReservation'
+            , 'getReservationMemberAjax', 'createReservationMemberAjax', 'deleteReservationMemberAjax'
+            //, 'getNonMemberReservation', 'createReservationNonMemberAjax', 'deleteReservationNonMemberAjax'
+            , 'reservation.events', 'reservation.slots', 'reservation.checkOverlap', 'reservation.ajaxCreate', 'reservation.ajaxUpdate', 'reservation.ajaxGet'
+            , 'reservation.confirm', 'reservation.cancel', 'reservation.attend', 'reservation.missed'
         ];
-        $permissions = @array_merge($default_permissions , (array)@Auth::guard('sw')->user()->permissions);
+        
+        // Merge permissions once
+        $userPermissions = is_array($user->permissions) ? $user->permissions : [];
+        $permissions = array_merge($default_permissions, $userPermissions);
 
-        // Ensure mainSettings is loaded
-        $mainSettings = $this->ensureMainSettings();
+        // Ensure mainSettings is loaded (cached) - pass user to avoid another query
+        $mainSettings = $this->ensureMainSettings($user);
+        
+        // Share mainSettings with views to avoid duplicate cache queries
+        \Illuminate\Support\Facades\View::share('mainSettings', $mainSettings);
         
         // Check if mainSettings has sw_end_date
-        if(isset($mainSettings->sw_end_date)) {
-            if(Carbon::parse($mainSettings->sw_end_date)->addDays(2)->toDateString() <= Carbon::now()->toDateString()){
-                if(in_array($route, $default_permissions)){
-                    Auth::guard('sw')->user()->is_super_user = false;
+        if (isset($mainSettings->sw_end_date)) {
+            $expiryDate = Carbon::parse($mainSettings->sw_end_date)->addDays(2)->toDateString();
+            $today = Carbon::now()->toDateString();
+            
+            if ($expiryDate <= $today) {
+                if (in_array($route, $default_permissions)) {
+                    $user->is_super_user = false;
                     return $next($request);
                 }
-            }else if(@in_array($route, $permissions) || (@Auth::guard('sw')->user()->is_super_user)) {
-                return $next($request);
+            } else {
+                if (in_array($route, $permissions) || $user->is_super_user) {
+                    return $next($request);
+                }
             }
         } else {
             // If sw_end_date is not set, just check permissions
-            if(@in_array($route, $permissions) || (@Auth::guard('sw')->user()->is_super_user)) {
+            if (in_array($route, $permissions) || $user->is_super_user) {
                 return $next($request);
             }
         }

@@ -110,21 +110,40 @@ class SALA  {
 
     public function getBalance()
     {
-        $app_id = $this->sms_username;
-        $app_sec = $this->sms_password;
-        $app_token = $this->sms_api_token;//"api secret";
-        $base_url = "https://api2.smsala.com/";
-        $response = Http::withOptions([
-            'verify' => false, // Disable SSL verification
-        ])->get($base_url.'CheckBalance', [
+        try {
+            $app_id = $this->sms_username;
+            $app_sec = $this->sms_password;
+            $app_token = $this->sms_api_token;//"api secret";
+            $base_url = "https://api2.smsala.com/";
+            
+            $response = Http::withOptions([
+                'verify' => false, // Disable SSL verification
+            ])->timeout(10)->withoutRedirecting()->get($base_url.'CheckBalance', [
 //            'api_id' => $app_id,
 //            'api_password' => $app_sec,
-            'apiToken' => $app_token,
-        ]);
+                'apiToken' => $app_token,
+            ]);
 
-        $result = $response->json();
-        return @($result['ReturnData']['Balance']/0.2);
+            if (!$response->successful()) {
+                \Log::warning('SALA getBalance failed: ' . $response->status() . ' - ' . $response->body());
+                return (object)['data' => (object)['points' => 0]];
+            }
 
+            $result = $response->json();
+            
+            if (isset($result['ReturnData']['Balance'])) {
+                return (object)['data' => (object)['points' => (int)($result['ReturnData']['Balance']/0.2)]];
+            }
+            
+            return (object)['data' => (object)['points' => 0]];
+            
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            \Log::error('SALA getBalance ConnectionException: ' . $e->getMessage());
+            return (object)['data' => (object)['points' => 0]];
+        } catch (\Exception $e) {
+            \Log::error('SALA getBalance Exception: ' . $e->getMessage());
+            return (object)['data' => (object)['points' => 0]];
+        }
     }
 
 

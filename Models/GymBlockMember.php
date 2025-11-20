@@ -20,7 +20,7 @@ class GymBlockMember extends GenericModel
 
     public function scopeBranch($query)
     {
-        return $query->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
+        return $query->where('branch_setting_id', parent::getCurrentBranchId());
     }
 
     public function toArray()

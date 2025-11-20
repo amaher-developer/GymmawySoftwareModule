@@ -10,6 +10,7 @@ use Modules\Software\Models\GymUser;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 use Intervention\Image\Facades\Image;
 
 class GymUserAdminController extends GenericAdminController
@@ -93,6 +94,12 @@ class GymUserAdminController extends GenericAdminController
     public function store(GymUserRequest $request)
     {
         $gymuser_inputs = $this->prepare_inputs($request->except(['_token']));
+        
+        // Encrypt password if provided
+        if(isset($gymuser_inputs['password']) && !empty($gymuser_inputs['password'])){
+            $gymuser_inputs['password'] = Hash::make($gymuser_inputs['password']);
+        }
+        
         $this->GymUserRepository->create($gymuser_inputs);
         sweet_alert()->success('Done', 'GymUser Added successfully');
         return redirect(route('listGymUser'));
@@ -109,6 +116,15 @@ class GymUserAdminController extends GenericAdminController
     {
         $gymuser =$this->GymUserRepository->withTrashed()->find($id);
         $gymuser_inputs = $this->prepare_inputs($request->except(['_token']));
+        
+        // Encrypt password if provided
+        if(isset($gymuser_inputs['password']) && !empty($gymuser_inputs['password'])){
+            $gymuser_inputs['password'] = Hash::make($gymuser_inputs['password']);
+        } else {
+            // Remove password from inputs if not provided (to keep current password)
+            unset($gymuser_inputs['password']);
+        }
+        
         $gymuser->update($gymuser_inputs);
         sweet_alert()->success('Done', 'GymUser Updated successfully');
         return redirect(route('listGymUser'));

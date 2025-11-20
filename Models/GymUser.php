@@ -37,7 +37,7 @@ class GymUser extends Authenticatable
 
     public function scopeBranch($query)
     {
-        return $query->where('branch_setting_id', @@Auth::guard('sw')->user()->branch_setting_id ?? 1);
+        return $query->where('branch_setting_id', GenericModel::getCurrentBranchId());
     }
     
     // Commented out to avoid double hashing - passwords should be hashed before being saved

@@ -26,8 +26,12 @@ class GymPTSessionFrontController extends GymGenericFrontController
     {
         $title = trans('sw.pt_sessions');
 
+        // Optimize: Add select to limit columns and ensure pt_subscription is eager loaded
         $classes = GymPTClass::branch()
-            ->with('pt_subscription')
+            ->select('id', 'name_ar', 'name_en', 'pt_subscription_id')
+            ->with(['pt_subscription' => function($q) {
+                $q->select('id', 'name_ar', 'name_en');
+            }])
             ->orderBy('name_' . $this->lang, 'asc')
             ->get();
 
@@ -59,7 +63,18 @@ class GymPTSessionFrontController extends GymGenericFrontController
         $trainerFilter = $request->integer('trainer_id');
         $statusFilter = $request->input('status');
 
-        $trainerAssignments = GymPTClassTrainer::with(['class', 'trainer'])
+        // Optimize: Add eager loading for class.pt_subscription to prevent lazy loading
+        $trainerAssignments = GymPTClassTrainer::with([
+            'class' => function($q) {
+                $q->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'schedule');
+            },
+            'class.pt_subscription' => function($q) {
+                $q->select('id', 'name_ar', 'name_en');
+            },
+            'trainer' => function($q) {
+                $q->select('id', 'name');
+            }
+        ])
             ->where('is_active', true)
             ->when($branchId, function ($query, $branchId) {
                 $query->where('branch_setting_id', $branchId);
@@ -72,8 +87,12 @@ class GymPTSessionFrontController extends GymGenericFrontController
             })
             ->get();
 
+        // Optimize: Add select to limit columns and ensure pt_subscription is eager loaded
         $classesNeedingFallback = GymPTClass::branch()
-            ->with('pt_subscription')
+            ->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'schedule')
+            ->with(['pt_subscription' => function($q) {
+                $q->select('id', 'name_ar', 'name_en');
+            }])
             ->when($classFilter, function ($query) use ($classFilter) {
                 $query->where('id', $classFilter);
             })
@@ -182,8 +201,12 @@ class GymPTSessionFrontController extends GymGenericFrontController
             abort(404);
         }
 
+        // Optimize: Add select to limit columns and ensure pt_subscription is eager loaded
         $class = GymPTClass::branch()
-            ->with('pt_subscription')
+            ->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'max_members')
+            ->with(['pt_subscription' => function($q) {
+                $q->select('id', 'name_ar', 'name_en');
+            }])
             ->find($decoded['class_id']);
 
         if (!$class) {

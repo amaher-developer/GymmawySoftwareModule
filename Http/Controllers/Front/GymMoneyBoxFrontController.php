@@ -9,6 +9,7 @@ use Modules\Software\Exports\NonMembersExport;
 use Modules\Software\Http\Requests\GymMoneyBoxRequest;
 use Modules\Software\Http\Requests\GymOrderRequest;
 use Modules\Software\Models\GymMoneyBox;
+use Modules\Software\Models\GymMoneyBoxType;
 use Modules\Software\Models\GymOrder;
 use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymSubscription;
@@ -386,11 +387,15 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.add_to_money_box');
+        $payment_types = GymPaymentType::get();
+        $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_add_front_form', [
             'order' => new GymMoneyBox(),
             'title' => $title,
             'billingSettings' => config('sw_billing') ? \Modules\Billing\Services\SwBillingService::getSettings() : [],
+            'payment_types' => $payment_types,
+            'money_box_types' => $money_box_types,
         ]);
     }
     private function calculateVat($amount){
@@ -441,9 +446,15 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function createWithdraw()
     {
         $title = trans('sw.withdraw_from_money_box');
+        $payment_types = GymPaymentType::get();
+        $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_withdraw_front_form', [
-            'order' => new GymMoneyBox(), 'title' => $title]);
+            'order' => new GymMoneyBox(),
+            'title' => $title,
+            'payment_types' => $payment_types,
+            'money_box_types' => $money_box_types,
+        ]);
     }
 
     public function storeWithdraw(GymMoneyBoxRequest $request)
@@ -476,9 +487,15 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function createWithdrawEarnings()
     {
         $title = trans('sw.withdraw_earning');
+        $payment_types = GymPaymentType::get();
+        $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_withdraw_earnings_front_form', [
-            'order' => new GymMoneyBox(), 'title' => $title]);
+            'order' => new GymMoneyBox(),
+            'title' => $title,
+            'payment_types' => $payment_types,
+            'money_box_types' => $money_box_types,
+        ]);
     }
 
     public function storeWithdrawEarnings(GymMoneyBoxRequest $request)

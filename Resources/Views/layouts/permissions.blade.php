@@ -76,30 +76,43 @@ if(!isset($permission_group->permissions)){
                             <select id="permission_section_select" class="form-select permission-section-select">
                                 <option value="admins">{{ trans('sw.users') }}</option>
                                 <option value="memberships">{{ trans('sw.memberships') }}</option>
+                                @if(@$mainSettings->active_activity)
                                 <option value="activities">{{ trans('sw.activities') }}</option>
+                                @endif
                                 <option value="unsubscribedClients">{{ trans('sw.daily_clients') }}</option>
                                 <option value="subscribedClients">{{ trans('sw.subscribed_clients') }}</option>
                                 <option value="moneybox">{{ trans('sw.moneybox') }}</option>
-                                @if($mainSettings->active_pt)
+                                @if(@$mainSettings->active_pt)
                                 <option value="pt">{{ trans('sw.pt') }}</option>
                                 @endif
-                                @if($mainSettings->active_training)
+                                @if(@$mainSettings->active_training)
                                 <option value="training">{{ trans('sw.training') }}</option>
                                 @endif
-                                @if($mainSettings->active_store)
+                                @if(@$mainSettings->active_store)
                                 <option value="store">{{ trans('sw.store') }}</option>
                                 @endif
                                 <option value="potentialMembers">{{ trans('sw.potential_clients') }}</option>
-                                @if($mainSettings->active_website || $mainSettings->active_mobile)
+                                @if(@$mainSettings->active_website || @$mainSettings->active_mobile)
                                 <option value="reservationMembers">{{ trans('sw.reservation_clients') }}</option>
                                 @endif
-                                @if($mainSettings->active_mobile)
+                                @if(@$mainSettings->active_mobile)
                                 <option value="banners">{{ trans('sw.media') }}</option>
                                 @endif
+                                @if(@$mainSettings->active_activity_reservation)
                                 <option value="reservations">{{ trans('sw.reservations') }}</option>
+                                @endif
+                                @if(@$mainSettings->active_loyalty)
+                                <option value="loyalty">{{ trans('sw.loyalty_points') }}</option>
+                                @endif
                                 <option value="statistics">{{ trans('sw.statistics') }}</option>
                                 <option value="reports">{{ trans('sw.reports') }}</option>
+                                @if(@$mainSettings->active_sms || @$mainSettings->active_telegram || @$mainSettings->active_wa || @$mainSettings->active_notification || @$mainSettings->active_mobile)
+                                <option value="messages">{{ trans('sw.messages') }}</option>
+                                @endif
+                                <option value="settings">{{ trans('sw.settings') }}</option>
+                                @if(@$mainSettings->active_ai)
                                 <option value="aiReports">{{ trans('sw.ai_reports') }}</option>
+                                @endif
                             </select>
                             <span class="perm-badge" id="permission_count_badge">0 selected</span>
                         </div>
@@ -122,11 +135,13 @@ if(!isset($permission_group->permissions)){
                                 {{ trans('sw.memberships')}}
                             </a>
                         </li>
+                        @if(@$mainSettings->active_activity)
                         <li class="nav-item">
                             <a class="nav-link" href="#activities" data-toggle="tab">
                                 {{ trans('sw.activities')}}
                             </a>
                         </li>
+                        @endif
                         <li class="nav-item">
                             <a class="nav-link" href="#unsubscribedClients" data-toggle="tab">
                                 {{ trans('sw.daily_clients')}}
@@ -182,11 +197,20 @@ if(!isset($permission_group->permissions)){
                             </a>
                         </li>
                                         @endif
+                        @if(@$mainSettings->active_activity_reservation)
                         <li class="nav-item">
                             <a class="nav-link" href="#reservations" data-toggle="tab">
                                 {{ trans('sw.reservations') }}
                             </a>
                         </li>
+                        @endif
+                        @if(@$mainSettings->active_loyalty)
+                        <li class="nav-item">
+                            <a class="nav-link" href="#loyalty" data-toggle="tab">
+                                {{ trans('sw.loyalty_points') }}
+                            </a>
+                        </li>
+                        @endif
                         <li class="nav-item">
                             <a class="nav-link" href="#statistics" data-toggle="tab">
                                 {{ trans('sw.statistics') }}
@@ -197,11 +221,25 @@ if(!isset($permission_group->permissions)){
                                 {{ trans('sw.reports') }}
                             </a>
                         </li>
+                        @if(@$mainSettings->active_sms || @$mainSettings->active_telegram || @$mainSettings->active_wa || @$mainSettings->active_notification || @$mainSettings->active_mobile)
+                        <li class="nav-item">
+                            <a class="nav-link" href="#messages" data-toggle="tab">
+                                {{ trans('sw.messages') }}
+                            </a>
+                        </li>
+                        @endif
+                        <li class="nav-item">
+                            <a class="nav-link" href="#settings" data-toggle="tab">
+                                {{ trans('sw.settings') }}
+                            </a>
+                        </li>
+                        @if(@$mainSettings->active_ai)
                         <li class="nav-item">
                             <a class="nav-link" href="#aiReports" data-toggle="tab">
                                 {{ trans('sw.ai_reports') }}
                             </a>
                         </li>
+                        @endif
                                 </ul>
                     <!--end::Tab navigation-->
 
@@ -258,6 +296,64 @@ if(!isset($permission_group->permissions)){
                                                                             type="checkbox"> <span>{{ trans('sw.attendees_report')}}</span></label>
                                             </div>
 
+                                            <div class="col-lg-12 mt-3">
+                                                <hr class="perm-hr"/>
+                                                <h6 class="mb-2">{{ trans('sw.employee_transactions') }}</h6>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listUserTransaction"
+                                                                            @if(@in_array('listUserTransaction', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createUserTransaction"
+                                                                            @if(@in_array('createUserTransaction', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editUserTransaction"
+                                                                            @if(@in_array('editUserTransaction', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteUserTransaction"
+                                                                            @if(@in_array('deleteUserTransaction', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete')}}</span></label>
+                                            </div>
+
+                                            <div class="col-lg-12 mt-3">
+                                                <hr class="perm-hr"/>
+                                                <h6 class="mb-2">{{ trans('sw.permission_groups') }}</h6>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listUserPermission"
+                                                                            @if(@in_array('listUserPermission', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createUserPermission"
+                                                                            @if(@in_array('createUserPermission', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editUserPermission"
+                                                                            @if(@in_array('editUserPermission', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteUserPermission"
+                                                                            @if(@in_array('deleteUserPermission', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete')}}</span></label>
+                                            </div>
+
                                         </div>
                                     </div>
                                     <div class="tab-pane " id="memberships">
@@ -308,6 +404,7 @@ if(!isset($permission_group->permissions)){
 
                                         </div>
                                     </div>
+                                    @if(@$mainSettings->active_activity)
                                     <div class="tab-pane " id="activities">
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
@@ -363,6 +460,7 @@ if(!isset($permission_group->permissions)){
 
                                         </div>
                                     </div>
+                                    @endif
                                     <div class="tab-pane " id="unsubscribedClients">
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
@@ -494,6 +592,30 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="listBlockMember"
+                                                                            @if(@in_array('listBlockMember', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list')}}</span> <small>({{ trans('sw.block_list') }})</small></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createBlockMember"
+                                                                            @if(@in_array('createBlockMember', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add')}}</span> <small>({{ trans('sw.block_list') }})</small></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editBlockMember"
+                                                                            @if(@in_array('editBlockMember', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit')}}</span> <small>({{ trans('sw.block_list') }})</small></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteBlockMember"
+                                                                            @if(@in_array('deleteBlockMember', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete')}}</span> <small>({{ trans('sw.block_list') }})</small></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="createMemberPayAmountRemainingForm"
                                                                             @if(@in_array('createMemberPayAmountRemainingForm', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.pay_remaining')}}</span></label>
@@ -528,38 +650,6 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('exportMemberPDF', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
                                             </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportRenewMemberList"
-                                                                            @if(@in_array('reportRenewMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.memberships_renewal_report')}}</span></label>
-                                            </div>
-
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportDetailMemberList"
-                                                                            @if(@in_array('reportDetailMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.memberships_detail_report')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportSubscriptionMemberList"
-                                                                            @if(@in_array('reportSubscriptionMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.report_subscriptions')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportTodayMemberList"
-                                                                            @if(@in_array('reportTodayMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.client_attendees_today')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportExpireMemberList"
-                                                                            @if(@in_array('reportExpireMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.memberships_expire_report')}}</span></label>
-                                            </div>
-
 
                                         </div>
                                     </div>
@@ -594,18 +684,6 @@ if(!isset($permission_group->permissions)){
                                                                             value="createMoneyBoxWithdrawEarnings"
                                                                             @if(@in_array('createMoneyBoxWithdrawEarnings', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.withdraw_earning')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="listMoneyBox"
-                                                                            @if(@in_array('listMoneyBox', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.money_report')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="listMoneyBoxDaily"
-                                                                            @if(@in_array('listMoneyBoxDaily', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.money_daily_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -840,6 +918,26 @@ if(!isset($permission_group->permissions)){
                                                                             type="checkbox"> <span>{{ trans('sw.edit_pt_trainers_schedule')}}</span></label>
                                             </div>
 
+                                            <div class="clearfix"></div>
+
+                                            <!-- PT Sessions Permissions -->
+                                            <div class="col-lg-12 mt-3">
+                                                <hr class="perm-hr"/>
+                                                <h6 class="mb-2">{{ trans('sw.pt_sessions') }}</h6>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listPTSessions"
+                                                                            @if(@in_array('listPTSessions', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }} {{ trans('sw.pt_sessions') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="showPTSession"
+                                                                            @if(@in_array('showPTSession', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.view') }} {{ trans('sw.pt_session') }}</span></label>
+                                            </div>
+
                                         </div>
                                     </div>
 
@@ -962,7 +1060,123 @@ if(!isset($permission_group->permissions)){
                                                                             type="checkbox"> <span>{{ trans('sw.training_track_delete')}}</span></label>
                                             </div>
 
+                                            <div class="clearfix"></div>
 
+                                            <!-- Training Medicine Permissions -->
+                                            <div class="col-lg-12 mt-3">
+                                                <hr class="perm-hr"/>
+                                                <h6 class="mb-2">{{ trans('sw.training_medicine') }}</h6>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listTrainingMedicine"
+                                                                            @if(@in_array('listTrainingMedicine', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }} {{ trans('sw.training_medicine') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createTrainingMedicine"
+                                                                            @if(@in_array('createTrainingMedicine', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add') }} {{ trans('sw.training_medicine') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editTrainingMedicine"
+                                                                            @if(@in_array('editTrainingMedicine', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit') }} {{ trans('sw.training_medicine') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteTrainingMedicine"
+                                                                            @if(@in_array('deleteTrainingMedicine', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }} {{ trans('sw.training_medicine') }}</span></label>
+                                            </div>
+
+                                            <div class="clearfix"></div>
+
+                                            <!-- Training Member Log Permissions -->
+                                            <div class="col-lg-12 mt-3">
+                                                <hr class="perm-hr"/>
+                                                <h6 class="mb-2">{{ trans('sw.training_member_log') }}</h6>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listTrainingMemberLog"
+                                                                            @if(@in_array('listTrainingMemberLog', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }} {{ trans('sw.training_member_log') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="showTrainingMemberLog"
+                                                                            @if(@in_array('showTrainingMemberLog', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.view') }} {{ trans('sw.training_member_log') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="addTrainingAssessment"
+                                                                            @if(@in_array('addTrainingAssessment', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add_assessment') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="addMemberTrainingPlan"
+                                                                            @if(@in_array('addMemberTrainingPlan', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add_training_plan') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="addMemberTrainingMedicine"
+                                                                            @if(@in_array('addMemberTrainingMedicine', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add_training_medicine') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="addMemberTrainingFile"
+                                                                            @if(@in_array('addMemberTrainingFile', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add_training_file') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="addMemberTrainingTrack"
+                                                                            @if(@in_array('addMemberTrainingTrack', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add_training_track') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="addMemberTrainingNote"
+                                                                            @if(@in_array('addMemberTrainingNote', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add_training_note') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="generateMemberAiPlan"
+                                                                            @if(@in_array('generateMemberAiPlan', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.generate_ai_plan') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="generateAiPlan"
+                                                                            @if(@in_array('generateAiPlan', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.generate_ai_plan_template') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="saveAiPlanTemplate"
+                                                                            @if(@in_array('saveAiPlanTemplate', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.save_ai_plan_template') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="assignAiPlanToMember"
+                                                                            @if(@in_array('assignAiPlanToMember', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.assign_ai_plan_to_member') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="downloadPlanPDF"
+                                                                            @if(@in_array('downloadPlanPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.download_plan_pdf') }}</span></label>
+                                            </div>
 
                                         </div>
                                     </div>
@@ -1015,8 +1229,8 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
-                                                                            value="createStoreOrder"
-                                                                            @if(@in_array('createStoreOrder', $permission_group->permissions)) checked @endif
+                                                                            value="createStoreOrderPOS"
+                                                                            @if(@in_array('createStoreOrderPOS', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.sell_products')}}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
@@ -1136,12 +1350,14 @@ if(!isset($permission_group->permissions)){
                                     </div>
 
                                     <!--begin::Reservations Tab-->
+                                    @if(@$mainSettings->active_activity_reservation)
                                     <div class="tab-pane" id="reservations">
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
                                             <i class="ki-outline ki-calendar-tick"></i> {{ trans('sw.reservations') }}
                                         </div>
                                         <div class="row pt-2 pb-2">
+                                            <!-- Basic CRUD Permissions -->
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="listReservation"
@@ -1166,6 +1382,8 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('deleteReservation', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
                                             </div>
+                                            
+                                            <!-- Status Change Permissions -->
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="changeReservationStatus"
@@ -1199,6 +1417,101 @@ if(!isset($permission_group->permissions)){
                                         </div>
                                     </div>
                                     <!--end::Reservations Tab-->
+                                    @endif
+
+                                    @if(@$mainSettings->active_loyalty)
+                                    <div class="tab-pane " id="loyalty">
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-star"></i> {{ trans('sw.loyalty_points') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-12 mt-2">
+                                                <h6 class="mb-2">{{ trans('sw.loyalty_point_rules') }}</h6>
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listLoyaltyPointRule"
+                                                                            @if(@in_array('listLoyaltyPointRule', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createLoyaltyPointRule"
+                                                                            @if(@in_array('createLoyaltyPointRule', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editLoyaltyPointRule"
+                                                                            @if(@in_array('editLoyaltyPointRule', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteLoyaltyPointRule"
+                                                                            @if(@in_array('deleteLoyaltyPointRule', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
+                                            </div>
+
+                       		        	<div class="col-lg-12 mt-4">
+                                                <h6 class="mb-2">{{ trans('sw.loyalty_campaigns') }}</h6>
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listLoyaltyCampaign"
+                                                                            @if(@in_array('listLoyaltyCampaign', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createLoyaltyCampaign"
+                                                                            @if(@in_array('createLoyaltyCampaign', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editLoyaltyCampaign"
+                                                                            @if(@in_array('editLoyaltyCampaign', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteLoyaltyCampaign"
+                                                                            @if(@in_array('deleteLoyaltyCampaign', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
+                                            </div>
+
+                                            <div class="col-lg-12 mt-4">
+                                                <h6 class="mb-2">{{ trans('sw.loyalty_transactions') }}</h6>
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listLoyaltyTransaction"
+                                                                            @if(@in_array('listLoyaltyTransaction', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createLoyaltyTransaction"
+                                                                            @if(@in_array('createLoyaltyTransaction', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.manual_points_adjustment') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportLoyaltyTransaction"
+                                                                            @if(@in_array('exportLoyaltyTransaction', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.excel_download') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="loyaltyMemberHistory"
+                                                                            @if(@in_array('loyaltyMemberHistory', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.loyalty_points_history') }}</span></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
 
                                     <div class="tab-pane " id="banners">
                                         <hr class="perm-hr"/>
@@ -1403,6 +1716,140 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                         </div>
                                     </div>
+                                    <!--begin::Messages Tab-->
+                                    @if(@$mainSettings->active_sms || @$mainSettings->active_telegram || @$mainSettings->active_wa || @$mainSettings->active_notification || @$mainSettings->active_mobile)
+                                    <div class="tab-pane " id="messages">
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-message-notif"></i> {{ trans('sw.messages') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            @if(@$mainSettings->active_sms)
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createSMS"
+                                                                            @if(@in_array('createSMS', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.sms_add') }}</span></label>
+                                            </div>
+                                            @endif
+                                            @if(@$mainSettings->active_telegram)
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createTelegram"
+                                                                            @if(@in_array('createTelegram', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.telegram_add') }}</span></label>
+                                            </div>
+                                            @endif
+                                            @if(@$mainSettings->active_wa)
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createWA"
+                                                                            @if(@in_array('createWA', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.wa_add') }}</span></label>
+                                            </div>
+                                            @if(@env('WA_GATEWAY') == 'ULTRA')
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createWAUltra"
+                                                                            @if(@in_array('createWAUltra', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.wa_add') }} (Ultra)</span></label>
+                                            </div>
+                                            @endif
+                                            @endif
+                                            @if(@$mainSettings->active_mobile)
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createMyNotification"
+                                                                            @if(@in_array('createMyNotification', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.app_add') }}</span></label>
+                                            </div>
+                                            @endif
+                                            @if(@$mainSettings->active_notification && !@$mainSettings->active_mobile)
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createNotification"
+                                                                            @if(@in_array('createNotification', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.g_application') }}</span></label>
+                                            </div>
+                                            @endif
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editEventNotification"
+                                                                            @if(@in_array('editEventNotification', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.message_settings') }}</span></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--end::Messages Tab-->
+                                    @endif
+                                    <!--begin::Settings Tab-->
+                                    <div class="tab-pane " id="settings">
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-gear"></i> {{ trans('sw.settings') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <!-- Sale Channel Permissions -->
+                                            <div class="col-lg-12">
+                                                <h5 class="mb-3">{{ trans('sw.sale_channels') }}</h5>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listSaleChannel"
+                                                                            @if(@in_array('listSaleChannel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createSaleChannel"
+                                                                            @if(@in_array('createSaleChannel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editSaleChannel"
+                                                                            @if(@in_array('editSaleChannel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteSaleChannel"
+                                                                            @if(@in_array('deleteSaleChannel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
+                                            </div>
+                                            
+                                            <!-- Group Discount Permissions -->
+                                            <div class="col-lg-12 mt-4">
+                                                <h5 class="mb-3">{{ trans('sw.group_discounts') }}</h5>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listGroupDiscount"
+                                                                            @if(@in_array('listGroupDiscount', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createGroupDiscount"
+                                                                            @if(@in_array('createGroupDiscount', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editGroupDiscount"
+                                                                            @if(@in_array('editGroupDiscount', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteGroupDiscount"
+                                                                            @if(@in_array('deleteGroupDiscount', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--end::Settings Tab-->
+                                    @if(@$mainSettings->active_ai)
                                     <div class="tab-pane " id="aiReports">
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
@@ -1429,6 +1876,7 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                         </div>
                                     </div>
+                                    @endif
                                 </div>
                                 </div>
                     <!--end::Tab content-->

@@ -427,6 +427,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+@php
+    // Check if training AI feature is enabled (check once at the top if not already defined)
+    if (!isset($active_training_ai)) {
+        $features = is_array($mainSettings->features ?? null) 
+            ? $mainSettings->features 
+            : (is_string($mainSettings->features ?? null) 
+                ? json_decode($mainSettings->features, true) 
+                : []);
+        $active_training_ai = isset($features['active_training_ai']) && $features['active_training_ai'];
+    }
+@endphp
+
 {{-- Plan Modal --}}
 <div class="modal fade" id="planModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -452,10 +464,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="mb-5">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label required mb-0">{{ trans('sw.select_plan') }}</label>
+                                @if($active_training_ai)
                                 <button type="button" class="btn btn-sm btn-light-primary" onclick="openAiPlanGenerator()">
                                     <i class="ki-outline ki-abstract-26 fs-4 me-1"></i>
                                     {{ trans('sw.generate_with_ai') }}
                                 </button>
+                                @endif
                             </div>
                             <select name="plan_id" id="plan_id_select" class="form-select form-select-lg" required>
                                 <option value="">-- {{ trans('sw.choose') }} --</option>
@@ -937,7 +951,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="fileModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="{{ route('sw.addMemberTrainingFile', $member->id) }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('sw.addMemberTrainingFile', $member->id) }}" method="POST" enctype="multipart/form-data" id="fileUploadForm">
                 @csrf
                 <div class="modal-header">
                     <h2 class="fw-bold">{{ trans('sw.upload_file') }}</h2>
@@ -948,8 +962,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="modal-body scroll-y mx-5 mx-xl-15 my-7">
                     <div class="mb-5">
                         <label class="form-label required">{{ trans('sw.file') }}</label>
-                        <input type="file" name="file" class="form-control" required />
-                        <div class="form-text">{{ trans('sw.max_file_size_10mb') }}</div>
+                        <input type="file" name="file" id="file_input" class="form-control" required accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt" />
+                        <div class="form-text">
+                            {{ trans('sw.max_file_size_2mb') ?? 'Maximum file size: 2MB' }}
+                            <br>
+                            {{ trans('sw.allowed_file_types') ?? 'Allowed file types' }}: PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG, GIF, TXT
+                        </div>
+                        <div id="file_error" class="text-danger mt-2" style="display: none;"></div>
+                        <div id="file_info" class="text-muted mt-2" style="display: none;"></div>
                     </div>
                     <div class="mb-5">
                         <label class="form-label">{{ trans('sw.file_title') }}</label>
@@ -958,7 +978,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('sw.cancel') }}</button>
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger" id="file_submit_btn">
                         <i class="ki-outline ki-check fs-2"></i> {{ trans('sw.upload') }}
                     </button>
                 </div>
@@ -966,6 +986,166 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    // Maximum file size in bytes (2MB = 2 * 1024 * 1024)
+    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2097152 bytes
+    
+    // Allowed file types/extensions
+    const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif', 'txt'];
+    const ALLOWED_MIME_TYPES = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'text/plain'
+    ];
+    
+    // Format bytes to human readable format
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    
+    // Get file extension from filename
+    function getFileExtension(filename) {
+        return filename.split('.').pop().toLowerCase();
+    }
+    
+    // Check if file type is allowed
+    function validateFileType(file) {
+        if (!file) return false;
+        
+        const fileName = file.name;
+        const fileExtension = getFileExtension(fileName);
+        const fileType = file.type;
+        
+        // Check extension
+        const isValidExtension = ALLOWED_EXTENSIONS.includes(fileExtension);
+        
+        // Check MIME type (if available)
+        const isValidMimeType = !fileType || ALLOWED_MIME_TYPES.includes(fileType);
+        
+        return isValidExtension && isValidMimeType;
+    }
+    
+    // Check if file size is valid
+    function validateFileSize(file) {
+        if (!file) return false;
+        
+        const fileSize = file.size;
+        return fileSize <= MAX_FILE_SIZE;
+    }
+    
+    // Validate file (both size and type)
+    function validateFile(file) {
+        if (!file) return { valid: false, message: '' };
+        
+        const fileSize = file.size;
+        const fileName = file.name;
+        
+        // Clear previous errors
+        $('#file_error').hide().text('');
+        $('#file_info').hide().text('');
+        
+        // Check file type
+        if (!validateFileType(file)) {
+            const fileExtension = getFileExtension(fileName);
+            const allowedTypesStr = ALLOWED_EXTENSIONS.join(', ').toUpperCase();
+            $('#file_error')
+                .html('<i class="ki-outline ki-information-5 fs-5 me-2"></i>' + 
+                      '{{ trans('sw.invalid_file_type') ?? "Invalid file type" }}: .' + fileExtension + 
+                      '<br><small>{{ trans('sw.allowed_file_types') ?? "Allowed file types" }}: ' + allowedTypesStr + '</small>')
+                .show();
+            $('#file_submit_btn').prop('disabled', true).addClass('btn-secondary').removeClass('btn-danger');
+            return { valid: false, message: 'invalid_type' };
+        }
+        
+        // Check file size
+        if (!validateFileSize(file)) {
+            const fileSizeFormatted = formatBytes(fileSize);
+            const maxSizeFormatted = formatBytes(MAX_FILE_SIZE);
+            $('#file_error')
+                .html('<i class="ki-outline ki-information-5 fs-5 me-2"></i>' + 
+                      '{{ trans('sw.file_size_exceeded') ?? "File size exceeded" }}: ' + 
+                      fileSizeFormatted + ' ({{ trans('sw.max') ?? "Max" }}: ' + maxSizeFormatted + ')')
+                .show();
+            $('#file_submit_btn').prop('disabled', true).addClass('btn-secondary').removeClass('btn-danger');
+            return { valid: false, message: 'invalid_size' };
+        }
+        
+        // File is valid
+        const fileSizeFormatted = formatBytes(fileSize);
+        $('#file_info')
+            .html('<i class="ki-outline ki-check-circle fs-5 me-2 text-success"></i>' + 
+                  '{{ trans('sw.file_selected') ?? "File selected" }}: ' + fileName + ' (' + fileSizeFormatted + ')')
+            .show();
+        $('#file_submit_btn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-danger');
+        return { valid: true, message: '' };
+    }
+    
+    // Initialize when modal is shown
+    $('#fileModal').on('shown.bs.modal', function() {
+        const fileInput = $('#file_input');
+        const fileForm = $('#fileUploadForm');
+        
+        // Clear previous values
+        fileInput.val('');
+        $('#file_error').hide().text('');
+        $('#file_info').hide().text('');
+        $('#file_submit_btn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-danger');
+        
+        // Handle file selection
+        fileInput.on('change', function() {
+            const file = this.files[0];
+            validateFile(file);
+        });
+        
+        // Validate before form submission
+        fileForm.on('submit', function(e) {
+            const fileInput = document.getElementById('file_input');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                e.preventDefault();
+                $('#file_error')
+                    .html('<i class="ki-outline ki-information-5 fs-5 me-2"></i>' + 
+                          '{{ trans('sw.please_select_file') ?? "Please select a file" }}')
+                    .show();
+                return false;
+            }
+            
+            const validation = validateFile(file);
+            if (!validation.valid) {
+                e.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+    });
+    
+    // Reset when modal is hidden
+    $('#fileModal').on('hidden.bs.modal', function() {
+        $('#file_input').off('change');
+        $('#fileUploadForm').off('submit');
+        $('#file_input').val('');
+        $('#file_error').hide().text('');
+        $('#file_info').hide().text('');
+        $('#file_submit_btn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-danger');
+    });
+})();
+</script>
 
 {{-- Note Modal --}}
 <div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
@@ -997,6 +1177,18 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 {{-- AI Modal --}}
+@php
+    // Check if training AI feature is enabled (check once at the top if not already defined)
+    if (!isset($active_training_ai)) {
+        $features = is_array($mainSettings->features ?? null) 
+            ? $mainSettings->features 
+            : (is_string($mainSettings->features ?? null) 
+                ? json_decode($mainSettings->features, true) 
+                : []);
+        $active_training_ai = isset($features['active_training_ai']) && $features['active_training_ai'];
+    }
+@endphp
+@if($active_training_ai)
 <div class="modal fade" id="aiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1046,8 +1238,10 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+@endif
 
 {{-- AI Plan Generator Modal --}}
+@if($active_training_ai)
 <div class="modal fade" id="aiPlanGeneratorModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
@@ -1311,9 +1505,11 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+@endif
 
 <script>
 // AI Plan Generator Functions
+@if($active_training_ai)
 let aiPlanTaskCounter = 0;
 
 function openAiPlanGenerator() {
@@ -1630,6 +1826,7 @@ function collectAiPlanData() {
         tasks
     };
 }
+@endif
 </script>
 
 
