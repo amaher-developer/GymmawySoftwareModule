@@ -1710,16 +1710,17 @@
 </div>
 </div>
 
-@if($sidebarMetricsEnabled && $sidebarRenderStartedAt)
-    @php
-    /*
-        \Log::debug('sidebar blade render timing', [
-            'duration_ms' => round((microtime(true) - $sidebarRenderStartedAt) * 1000, 2),
-            'route' => optional(request()->route())->getName(),
-        ]);
-        */
-    @endphp
-@endif
+
+@php
+/*
+if($sidebarMetricsEnabled && $sidebarRenderStartedAt){
+    \Log::debug('sidebar blade render timing', [
+        'duration_ms' => round((microtime(true) - $sidebarRenderStartedAt) * 1000, 2),
+        'route' => optional(request()->route())->getName(),
+    ]);
+}
+    */
+@endphp
 
 
 
