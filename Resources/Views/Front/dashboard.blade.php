@@ -54,7 +54,7 @@
                 <div class="card-body pt-8">
                     <!--begin::Actions Grid-->
                     <div class="row g-1">
-                        @if($swUser && (in_array('listSubscription', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
+                        @if($swUser && @$mainSettings->active_subscription && (in_array('listSubscription', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
                                 <a href="{{route('sw.listSubscription')}}" class="btn btn-light-primary btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
                                     <i class="ki-outline ki-credit-cart fs-1 mb-2"></i>
@@ -62,7 +62,7 @@
                                 </a>
                             </div>
                         @endif
-                        @if($swUser && (in_array('listActivity', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
+                        @if($swUser && (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && (in_array('listActivity', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
                                 <a href="{{route('sw.listActivity')}}" class="btn btn-light-info btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
                                     <i class="ki-outline ki-list fs-1 mb-2"></i>
@@ -70,7 +70,7 @@
                                 </a>
                             </div>
                         @endif
-                        @if($swUser && (in_array('listMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
+                        @if($swUser && @$mainSettings->active_subscription && (in_array('listMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
                                 <a href="{{route('sw.listMember')}}" class="btn btn-light-danger btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
                                     <i class="ki-outline ki-people fs-1 mb-2"></i>
@@ -78,7 +78,7 @@
                                 </a>
                             </div>
                         @endif
-                        @if($swUser && (in_array('createMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
+                        @if($swUser && @$mainSettings->active_subscription && (in_array('createMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
                                 <a href="{{route('sw.createMember')}}" class="btn btn-light-success btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
                                     <i class="ki-outline ki-user-plus fs-1 mb-2"></i>
@@ -86,7 +86,7 @@
                                 </a>
                             </div>
                         @endif
-                        @if($swUser && (in_array('listNonMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
+                        @if($swUser && (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && (in_array('listNonMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
                                 <a href="{{route('sw.listNonMember')}}" class="btn btn-light-warning btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
                                     <i class="ki-outline ki-people fs-1 mb-2"></i>
@@ -94,7 +94,7 @@
                                 </a>
                             </div>
                         @endif
-                        @if($swUser && (in_array('createNonMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
+                        @if($swUser && (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && (in_array('createNonMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
                                 <a href="{{route('sw.createNonMember')}}" class="btn btn-light-secondary btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
                                     <i class="ki-outline ki-user-plus fs-1 mb-2"></i>

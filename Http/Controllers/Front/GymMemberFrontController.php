@@ -337,6 +337,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->updateSubscriptionsStatus([], true);
         if(@$this->mainSettings->active_zk)
             $this->updateFpStatus();
+        Cache::flush();
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_processed'),

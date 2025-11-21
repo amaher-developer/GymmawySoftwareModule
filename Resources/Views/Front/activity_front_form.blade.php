@@ -297,6 +297,7 @@
             </div>
             <!--end::Activity Details-->
             
+            @if(isset($mainSettings->active_activity_reservation) && $mainSettings->active_activity_reservation)
             <!--begin::Reservation Settings-->
             <div class="card card-flush py-4">
                 <!--begin::Card header-->
@@ -452,7 +453,7 @@
                 <!--end::Card body-->
             </div>
             <!--end::Reservation Settings-->
-            
+            @endif
             <!--begin::Form Actions-->
             <div class="d-flex justify-content-end">
                 <!--begin::Button-->

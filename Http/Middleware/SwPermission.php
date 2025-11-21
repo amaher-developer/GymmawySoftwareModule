@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Modules\Generic\Models\Setting; 
 use App\Helpers\CurrentSwUser;
@@ -16,10 +17,12 @@ class SwPermission
      */
     private function ensureMainSettings($user = null)
     {
+        //$startedAt = microtime(true);
         // Use Laravel's default cache driver instead of 'file' store for better performance
         $branchId = $user ? ($user->branch_setting_id ?? 1) : 1;
         $cacheKey = 'mainSettings_' . $branchId;
         $mainSettings = Cache::get($cacheKey);
+        //$source = $mainSettings ? 'cache' : 'database';
         
         if (!$mainSettings) {
             // Direct query using branch ID (faster than using scope)
@@ -39,6 +42,15 @@ class SwPermission
             // Cache for 10 minutes (600 seconds)
             Cache::put($cacheKey, $mainSettings, 600);
         }
+
+        // if (config('app.debug')) {
+        //     $durationMs = round((microtime(true) - $startedAt) * 1000, 2);
+        //     Log::debug('mainSettings load timing', [
+        //         'branch_id' => $branchId,
+        //         'source' => $source,
+        //         'duration_ms' => $durationMs,
+        //     ]);
+        // }
         
         return $mainSettings;
     }

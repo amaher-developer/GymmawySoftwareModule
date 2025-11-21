@@ -114,7 +114,8 @@ class GymSettingFrontController extends GymGenericFrontController
 
         SwBillingService::flushSettingsCache();
         
-        Cache::store('file')->clear();
+        //Cache::store('file')->clear();
+        Cache::flush();
         
         // Flash success message
         session()->flash('sweet_flash_message', [

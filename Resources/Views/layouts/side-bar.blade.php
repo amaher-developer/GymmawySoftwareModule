@@ -1,5 +1,7 @@
 @php
     $identifier = request()->segment(3);
+    //$sidebarMetricsEnabled = config('app.debug');
+    //$sidebarRenderStartedAt = $sidebarMetricsEnabled ? microtime(true) : null;
 @endphp
 <style>
     .sub-menu span {
@@ -246,9 +248,10 @@
                     <!--end:Menu link-->
 
                     <!--begin:Menu sub-->
-                    <div class="menu-sub menu-sub-accordion">
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
+            <div class="menu-sub menu-sub-accordion">
+                <!--begin:Menu item-->
+                @if (@$mainSettings->active_subscription)
+                <div class="menu-item">
                             <!--begin:Menu link-->
                             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/statistics') && !Request::is(($lang ?? 'ar') . '/statistics/*')) active @endif"
                                 href="{{ route('sw.statistics') }}">
@@ -258,11 +261,13 @@
                                 <span class="menu-title">{{ trans('sw.general_statistics') }}</span>
                             </a>
                             <!--end:Menu link-->
-                        </div>
-                        <!--end:Menu item-->
+                </div>
+                @endif
+                <!--end:Menu item-->
 
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
+                <!--begin:Menu item-->
+                @if (@$mainSettings->active_subscription)
+                <div class="menu-item">
                             <!--begin:Menu link-->
                             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/statistics/member-subscription')) active @endif"
                                 href="{{ route('sw.memberSubscriptionStatistics') }}">
@@ -272,11 +277,13 @@
                                 <span class="menu-title">{{ trans('sw.member_subscription_statistics') }}</span>
                             </a>
                             <!--end:Menu link-->
-                        </div>
-                        <!--end:Menu item-->
+                </div>
+                @endif
+                <!--end:Menu item-->
 
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
+                <!--begin:Menu item-->
+                @if (@$mainSettings->active_store)
+                <div class="menu-item">
                             <!--begin:Menu link-->
                             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/statistics/store')) active @endif"
                                 href="{{ route('sw.storeStatistics') }}">
@@ -286,11 +293,13 @@
                                 <span class="menu-title">{{ trans('sw.store_statistics') }}</span>
                             </a>
                             <!--end:Menu link-->
-                        </div>
-                        <!--end:Menu item-->
+                </div>
+                @endif
+                <!--end:Menu item-->
 
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
+                <!--begin:Menu item-->
+                @if (@$mainSettings->active_pt)
+                <div class="menu-item">
                             <!--begin:Menu link-->
                             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/statistics/pt-subscription')) active @endif"
                                 href="{{ route('sw.ptSubscriptionStatistics') }}">
@@ -300,11 +309,13 @@
                                 <span class="menu-title">{{ trans('sw.pt_subscription_statistics') }}</span>
                             </a>
                             <!--end:Menu link-->
-                        </div>
-                        <!--end:Menu item-->
+                </div>
+                @endif
+                <!--end:Menu item-->
 
-                        <!--begin:Menu item-->
-                        <div class="menu-item">
+                <!--begin:Menu item-->
+                @if (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation)
+                <div class="menu-item">
                             <!--begin:Menu link-->
                             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/statistics/non-member')) active @endif"
                                 href="{{ route('sw.nonMemberStatistics') }}">
@@ -314,7 +325,8 @@
                                 <span class="menu-title">{{ trans('sw.non_member_statistics') }}</span>
                             </a>
                             <!--end:Menu link-->
-                        </div>
+                </div>
+                @endif
                         <!--end:Menu item-->
                     </div><!--end:Menu sub-->
                 </div>
@@ -364,9 +376,8 @@
 
                     <!--begin:Menu sub-->
                     <div class="menu-sub menu-sub-accordion">
-                        @if ($swUser && (
-                            (@$mainSettings->active_subscription && isset($permissionsMap['listMember'])) ||
-                                $isSuperUser))
+                        @if (@$mainSettings->active_subscription && ($swUser  && (isset($permissionsMap['listMember']) ||
+                                $isSuperUser)))
                             <!--begin:Menu item-->
                             <div class="menu-item">
                                 <!--begin:Menu link-->
@@ -382,9 +393,8 @@
                             <!--end:Menu item-->
                         @endif
 
-                        @if ($swUser && (
-                            (@$mainSettings->active_activity && isset($permissionsMap['listNonMember'])) ||
-                                $isSuperUser))
+                        @if ((@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && ($swUser && (isset($permissionsMap['listNonMember']) ||
+                                $isSuperUser)))
                             <!--begin:Menu item-->
                             <div class="menu-item">
                                 <!--begin:Menu link-->
@@ -881,7 +891,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportRenewMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_subscription && (isset($permissionsMap['reportRenewMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -897,7 +907,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportExpireMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_subscription && (isset($permissionsMap['reportExpireMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -913,7 +923,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportDetailMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_subscription && (isset($permissionsMap['reportDetailMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -929,7 +939,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportSubscriptionMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_subscription && (isset($permissionsMap['reportSubscriptionMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -945,7 +955,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportFreezeMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_subscription && (isset($permissionsMap['reportFreezeMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -961,7 +971,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportPTSubscriptionMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_pt && (isset($permissionsMap['reportPTSubscriptionMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -977,7 +987,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportTodayMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_subscription && (isset($permissionsMap['reportTodayMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -993,7 +1003,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportTodayPTMemberList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_pt && (isset($permissionsMap['reportTodayPTMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1009,7 +1019,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportTodayNonMemberList']) || $isSuperUser))
+    @if ($swUser && (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && (isset($permissionsMap['reportTodayNonMemberList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1041,7 +1051,7 @@
         <!--end:Menu item-->
     @endif
 
-    @if ($swUser && (isset($permissionsMap['reportStoreList']) || $isSuperUser))
+    @if ($swUser && @$mainSettings->active_store && (isset($permissionsMap['reportStoreList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
@@ -1529,7 +1539,7 @@
            
 
             {{-- Subscriptions (moved under Settings) --}}
-            @if ($swUser && ((@$mainSettings->active_subscription && isset($permissionsMap['listSubscription'])) || $isSuperUser))
+            @if (@$mainSettings->active_subscription && ($swUser && (isset($permissionsMap['listSubscription']) || $isSuperUser)))  
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription*')) active @endif"
                         href="{{ route('sw.listSubscription') }}">
@@ -1541,7 +1551,7 @@
                 </div>
             @endif
  {{-- Activities (moved under Settings) --}}
-            @if ($swUser && ((@$mainSettings->active_activity && isset($permissionsMap['listActivity'])) || $isSuperUser))
+            @if ((@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && ($swUser && (isset($permissionsMap['listActivity']) || $isSuperUser)    ))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/activity*')) active @endif"
                         href="{{ route('sw.listActivity') }}">
@@ -1553,16 +1563,8 @@
                 </div>
             @endif
             
-            @php
-                $features = is_array($mainSettings->features ?? null)
-                    ? $mainSettings->features 
-                    : (is_string($mainSettings->features ?? null) 
-                        ? json_decode($mainSettings->features, true) 
-                        : []);
-                $active_activity_reservation = isset($features['active_activity_reservation']) && $features['active_activity_reservation'];
-            @endphp
             
-            @if ($swUser && $active_activity_reservation && (isset($permissionsMap['listReservation']) || isset($permissionsMap['createReservation']) || isset($permissionsMap['editReservation']) || $isSuperUser))
+            @if ($swUser && @$mainSettings->active_activity_reservation && (isset($permissionsMap['listReservation']) || isset($permissionsMap['createReservation']) || isset($permissionsMap['editReservation']) || $isSuperUser))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/reservation*')) active @endif"
                         href="{{ route('sw.listReservation') }}">
@@ -1708,6 +1710,16 @@
 </div>
 </div>
 
+@if($sidebarMetricsEnabled && $sidebarRenderStartedAt)
+    @php
+    /*
+        \Log::debug('sidebar blade render timing', [
+            'duration_ms' => round((microtime(true) - $sidebarRenderStartedAt) * 1000, 2),
+            'route' => optional(request()->route())->getName(),
+        ]);
+        */
+    @endphp
+@endif
 
 
 
@@ -1731,46 +1743,3 @@
 
 
 
-
-
-{{-- 
-    Commented out GYM management section safely
-    Entire block wrapped to avoid any Blade @if/@endif parsing
-    NOTHING inside this block will be parsed by Blade
------------------------------------------------------------------------------------
-    @if (\Illuminate\Support\Facades\Auth::user() && \Illuminate\Support\Facades\Auth::user()->gym)
-        <li aria-haspopup="true" class="nav-item @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) active open @endif">
-            <a href="javascript:;" 
-               class="nav-link nav-toggle @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) open @endif">
-                <i class="icon-settings"></i>
-                <span class="title"> {{trans('global.gym_management')}}</span>
-                <span class="selected"></span>
-                <span class="arrow @if (Request::is(($lang ?? 'ar') . '/user/gym/subscription*') || Request::is(($lang ?? 'ar') . '/user/gym/member*') || Request::is(($lang ?? 'ar') . '/user/gym/order*')) open @endif"></span>
-            </a>
-
-            <ul class="sub-menu">
-                <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/subscription*') ? 'active open' : '' }}">
-                    <a href="" class="nav-link ">
-                        <i class="icon-notebook "></i>
-                        <span class="title">{{trans('global.subscriptions')}}</span>
-                    </a>
-                </li>
-                <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/member*') ? 'active open' : '' }}">
-                    <a href="" class="nav-link ">
-                        <i class="icon-notebook "></i>
-                        <span class="title">{{trans('global.members')}}</span>
-                    </a>
-                </li>
-                <li class="nav-item  {{Request::is(($lang ?? 'ar').'/user/gym/order*') ? 'active open' : '' }}">
-                    <a href="" class="nav-link ">
-                        <i class="icon-notebook "></i>
-                        <span class="title">{{trans('global.orders')}}</span>
-                    </a>
-                </li>
-            </ul>
-        </li>
-    @endif
------------------------------------------------------------------------------------
---}}
-
-<!-- END MEGA MENU -->

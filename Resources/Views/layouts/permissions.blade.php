@@ -79,8 +79,12 @@ if(!isset($permission_group->permissions)){
                                 @if(@$mainSettings->active_activity)
                                 <option value="activities">{{ trans('sw.activities') }}</option>
                                 @endif
+                                @if(@$mainSettings->active_activity || @$mainSettings->active_activity_reservation)
                                 <option value="unsubscribedClients">{{ trans('sw.daily_clients') }}</option>
+                                @endif
+                                @if(@$mainSettings->active_subscription)
                                 <option value="subscribedClients">{{ trans('sw.subscribed_clients') }}</option>
+                                @endif
                                 <option value="moneybox">{{ trans('sw.moneybox') }}</option>
                                 @if(@$mainSettings->active_pt)
                                 <option value="pt">{{ trans('sw.pt') }}</option>
@@ -142,16 +146,20 @@ if(!isset($permission_group->permissions)){
                             </a>
                         </li>
                         @endif
+                        @if(@$mainSettings->active_activity || @$mainSettings->active_activity_reservation)
                         <li class="nav-item">
                             <a class="nav-link" href="#unsubscribedClients" data-toggle="tab">
                                 {{ trans('sw.daily_clients')}}
                             </a>
                         </li>
+                        @endif
+                        @if(@$mainSettings->active_subscription)
                         <li class="nav-item">
                             <a class="nav-link" href="#subscribedClients" data-toggle="tab">
                                 {{ trans('sw.subscribed_clients')}}
                             </a>
                         </li>
+                        @endif
                         <li class="nav-item">
                             <a class="nav-link" href="#moneybox" data-toggle="tab">
                                 {{ trans('sw.moneybox')}}
@@ -461,6 +469,7 @@ if(!isset($permission_group->permissions)){
                                         </div>
                                     </div>
                                     @endif
+                                    @if(@$mainSettings->active_activity || @$mainSettings->active_activity_reservation)
                                     <div class="tab-pane " id="unsubscribedClients">
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
@@ -528,6 +537,8 @@ if(!isset($permission_group->permissions)){
 
                                         </div>
                                     </div>
+                                    @endif
+                                    @if(@$mainSettings->active_subscription)
                                     <div class="tab-pane " id="subscribedClients">
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
@@ -653,6 +664,7 @@ if(!isset($permission_group->permissions)){
 
                                         </div>
                                     </div>
+                                    @endif
                                     <div class="tab-pane " id="moneybox">
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
