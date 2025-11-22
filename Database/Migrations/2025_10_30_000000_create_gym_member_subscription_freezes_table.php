@@ -1,9 +1,12 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\ForeignKeyDefinition;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 return new class extends Migration
@@ -21,13 +24,17 @@ return new class extends Migration
             $table->text('reason')->nullable();
             $table->text('admin_note')->nullable();
             $table->timestamps();
-
-            // Short custom FK name to avoid MySQL 64-char identifier limit
-            $table->foreign('member_subscription_id', 'fk_gms_freezes_sub')
-                ->references('id')
-                ->on('sw_gym_member_subscription')
-                ->onDelete('cascade');
         });
+
+        $this->addForeignIfPossible(
+            'sw_gym_member_subscription_freezes',
+            'member_subscription_id',
+            'sw_gym_member_subscription',
+            'id',
+            function (ForeignKeyDefinition $foreign) {
+                $foreign->onDelete('cascade')->indexName('fk_gms_freezes_sub');
+            }
+        );
 
         // Backfill existing freeze data from sw_gym_member_subscription
         try {
@@ -74,6 +81,55 @@ return new class extends Migration
     {
         Schema::dropIfExists('sw_gym_member_subscription_freezes');
     }
-};
+    
+    private function addForeignIfPossible(
+        string $table,
+        string $column,
+        string $referenceTable,
+        string $referenceColumn = 'id',
+        ?callable $callback = null
+    ): void {
+        if (!Schema::hasTable($table) || !Schema::hasTable($referenceTable)) {
+            return;
+        }
 
+        $constraint = DB::table('information_schema.KEY_COLUMN_USAGE')
+            ->where('TABLE_SCHEMA', Schema::getConnection()->getDatabaseName())
+            ->where('TABLE_NAME', $table)
+            ->where('COLUMN_NAME', $column)
+            ->value('CONSTRAINT_NAME');
+
+        if ($constraint && $this->foreignKeyExists($table, $constraint)) {
+            return;
+        }
+
+        try {
+            Schema::table($table, function (Blueprint $blueprint) use ($column, $referenceTable, $referenceColumn, $callback) {
+                $foreign = $blueprint->foreign($column)->references($referenceColumn)->on($referenceTable);
+
+                if ($callback) {
+                    $callback($foreign);
+                }
+            });
+        } catch (QueryException $e) {
+            Log::warning(sprintf(
+                'Skipping FK creation %s -> %s.%s: %s',
+                "{$table}.{$column}",
+                $referenceTable,
+                $referenceColumn,
+                $e->getMessage()
+            ));
+        }
+    }
+
+    private function foreignKeyExists(string $table, string $constraint): bool
+    {
+        return DB::table('information_schema.TABLE_CONSTRAINTS')
+            ->where('TABLE_SCHEMA', Schema::getConnection()->getDatabaseName())
+            ->where('TABLE_NAME', $table)
+            ->where('CONSTRAINT_NAME', $constraint)
+            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+            ->exists();
+    }
+};
 

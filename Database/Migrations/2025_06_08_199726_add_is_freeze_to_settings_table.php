@@ -14,11 +14,12 @@ class AddIsFreezeToSettingsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasColumn('settings', 'is_freeze')) {
+            return;
+        }
+
         Schema::table('settings', function (Blueprint $table) {
-            if (!Schema::hasColumn('settings', 'is_freeze')) {
-                $table->boolean('is_freeze')->default(1);
-            }
-            $table->boolean('is_freeze')->nullable();
+            $table->boolean('is_freeze')->default(1)->nullable();
         });
 
     }
@@ -30,6 +31,10 @@ class AddIsFreezeToSettingsTable extends Migration
      */
     public function down()
     {
+        if (!Schema::hasColumn('settings', 'is_freeze')) {
+            return;
+        }
+
         Schema::table('settings', function (Blueprint $table) {
             $table->dropColumn('is_freeze');
         });

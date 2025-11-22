@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Modules\Generic\Models\Setting;
 
 class CreateSwGymEventNotificationsTable extends Migration
 {
@@ -34,12 +35,20 @@ class CreateSwGymEventNotificationsTable extends Migration
             $table->timestamps();
         });
 
-        $setting = \Modules\Generic\Models\Setting::first();
+        $setting = Setting::first();
         $events = ['sms_new_member' , 'sms_renew_member', 'sms_before_expired_member', 'sms_expired_member'];
         foreach ($events as $event){
-            \Modules\Software\Models\GymEventNotification::create(
-                ['event_code' => str_replace('sms_', '', $event), 'title_ar' => trans('sw.'.$event, [], 'ar'), 'title_en' => trans('sw.'.$event, [], 'en'), 'message' => @$setting[$event.'_message'] ?? '', 'status' => @$setting[$event] ?? 0]
-            );
+            $messageKey = $event.'_message';
+            $message = $setting && isset($setting->$messageKey) ? $setting->$messageKey : '';
+            $status = $setting && isset($setting->$event) ? $setting->$event : 0;
+            
+            \Modules\Software\Models\GymEventNotification::create([
+                'event_code' => str_replace('sms_', '', $event),
+                'title_ar' => trans('sw.'.$event, [], 'ar'),
+                'title_en' => trans('sw.'.$event, [], 'en'),
+                'message' => $message,
+                'status' => $status
+            ]);
         }
 
         Schema::create('sw_gym_member_credits', function (Blueprint $table) {
@@ -92,7 +101,7 @@ class CreateSwGymEventNotificationsTable extends Migration
 
         });
 
-        $settings = \Modules\Generic\Models\Setting::get();
+        $settings = Setting::all();
         foreach ($settings as $setting){
             $setting->active_subscription = 1;
             $setting->active_activity = 1;

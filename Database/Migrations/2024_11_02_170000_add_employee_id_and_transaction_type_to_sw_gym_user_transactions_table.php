@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
@@ -43,7 +44,7 @@ class AddEmployeeIdAndTransactionTypeToSwGymUserTransactionsTable extends Migrat
     {
         Schema::table('sw_gym_user_transactions', function (Blueprint $table) {
             if (Schema::hasColumn('sw_gym_user_transactions', 'employee_id')) {
-                $table->dropForeign(['employee_id']);
+                $this->dropForeignIfExists('sw_gym_user_transactions', 'employee_id');
                 $table->dropColumn('employee_id');
             }
             
@@ -55,6 +56,31 @@ class AddEmployeeIdAndTransactionTypeToSwGymUserTransactionsTable extends Migrat
                 $table->dropColumn('notes');
             }
         });
+    }
+    private function dropForeignIfExists(string $table, string $column, ?string $constraint = null): void
+    {
+        $constraint = $constraint ?? $this->guessForeignKeyName($table, $column);
+
+        if ($this->foreignKeyExists($table, $constraint)) {
+            DB::statement(sprintf('ALTER TABLE `%s` DROP FOREIGN KEY `%s`', $table, $constraint));
+        }
+    }
+
+    private function guessForeignKeyName(string $table, string $column): string
+    {
+        return "{$table}_{$column}_foreign";
+    }
+
+    private function foreignKeyExists(string $table, string $constraint): bool
+    {
+        $database = Schema::getConnection()->getDatabaseName();
+
+        return DB::table('information_schema.TABLE_CONSTRAINTS')
+            ->where('TABLE_SCHEMA', $database)
+            ->where('TABLE_NAME', $table)
+            ->where('CONSTRAINT_NAME', $constraint)
+            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+            ->exists();
     }
 }
 

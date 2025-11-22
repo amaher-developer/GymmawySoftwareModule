@@ -1,8 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Schema\ForeignKeyDefinition;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Migration to create loyalty transactions table
@@ -23,21 +27,12 @@ class CreateSwLoyaltyTransactionsTable extends Migration
 
             // Member association
             $table->unsignedInteger('member_id')->index();
-            $table->foreign('member_id')->references('id')
-                ->on('sw_gym_members')
-                ->onDelete('cascade');
 
             // Rule association (optional - may not apply to manual transactions)
             $table->unsignedInteger('rule_id')->nullable();
-            $table->foreign('rule_id')->references('id')
-                ->on('sw_loyalty_point_rules')
-                ->onDelete('set null');
 
             // Campaign association (optional - only when campaign is active)
             $table->unsignedInteger('campaign_id')->nullable();
-            $table->foreign('campaign_id')->references('id')
-                ->on('sw_loyalty_campaigns')
-                ->onDelete('set null');
 
             // Points and transaction details
             $table->integer('points')->comment('Positive for earn/add, negative for redeem/deduct');
@@ -68,9 +63,6 @@ class CreateSwLoyaltyTransactionsTable extends Migration
 
             // Admin tracking (for manual transactions)
             $table->unsignedInteger('created_by')->nullable();
-            $table->foreign('created_by')->references('id')
-                ->on('sw_gym_users')
-                ->onDelete('set null');
 
             $table->softDeletes();
             $table->timestamps();
@@ -79,6 +71,38 @@ class CreateSwLoyaltyTransactionsTable extends Migration
             $table->index(['member_id', 'type']);
             $table->index(['member_id', 'expires_at']);
         });
+
+        $this->addForeignIfPossible(
+            'sw_loyalty_transactions',
+            'member_id',
+            'sw_gym_members',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('cascade')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_loyalty_transactions',
+            'rule_id',
+            'sw_loyalty_point_rules',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_loyalty_transactions',
+            'campaign_id',
+            'sw_loyalty_campaigns',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_loyalty_transactions',
+            'created_by',
+            'sw_gym_users',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
     }
 
     /**
@@ -89,6 +113,55 @@ class CreateSwLoyaltyTransactionsTable extends Migration
     public function down()
     {
         Schema::dropIfExists('sw_loyalty_transactions');
+    }
+    private function addForeignIfPossible(
+        string $table,
+        string $column,
+        string $referenceTable,
+        string $referenceColumn = 'id',
+        ?callable $callback = null
+    ): void {
+        if (!Schema::hasTable($table) || !Schema::hasTable($referenceTable)) {
+            return;
+        }
+
+        $constraint = DB::table('information_schema.KEY_COLUMN_USAGE')
+            ->where('TABLE_SCHEMA', Schema::getConnection()->getDatabaseName())
+            ->where('TABLE_NAME', $table)
+            ->where('COLUMN_NAME', $column)
+            ->value('CONSTRAINT_NAME');
+
+        if ($constraint && $this->foreignKeyExists($table, $constraint)) {
+            return;
+        }
+
+        try {
+            Schema::table($table, function (Blueprint $blueprint) use ($column, $referenceTable, $referenceColumn, $callback) {
+                $foreign = $blueprint->foreign($column)->references($referenceColumn)->on($referenceTable);
+
+                if ($callback) {
+                    $callback($foreign);
+                }
+            });
+        } catch (QueryException $e) {
+            Log::warning(sprintf(
+                'Skipping FK creation %s -> %s.%s: %s',
+                "{$table}.{$column}",
+                $referenceTable,
+                $referenceColumn,
+                $e->getMessage()
+            ));
+        }
+    }
+
+    private function foreignKeyExists(string $table, string $constraint): bool
+    {
+        return DB::table('information_schema.TABLE_CONSTRAINTS')
+            ->where('TABLE_SCHEMA', Schema::getConnection()->getDatabaseName())
+            ->where('TABLE_NAME', $table)
+            ->where('CONSTRAINT_NAME', $constraint)
+            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+            ->exists();
     }
 }
 

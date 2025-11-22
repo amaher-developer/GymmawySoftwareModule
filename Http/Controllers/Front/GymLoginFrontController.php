@@ -68,10 +68,8 @@ class GymLoginFrontController extends GymGenericFrontController
                 (($start_time_work <= Carbon::now()->toDateTimeString()) && ($end_time_work >= Carbon::now()->toDateTimeString()))){
                 Auth::guard('sw')->getLastAttempted();
                 View::share('swUser',$getUser);
-                // Check if we need to redirect to the language-prefixed route
-                $lang = $this->lang ?? 'ar';
-                $prefix = ($lang != 'ar' && $lang != 'en') ? '' : $lang;
-                return redirect('/' . $prefix);
+                // Redirect to dashboard after successful login
+                return redirect()->route('sw.dashboard');
             }
             return redirect()->back()->withErrors(['error' => trans('auth.failed_time')]);
         }

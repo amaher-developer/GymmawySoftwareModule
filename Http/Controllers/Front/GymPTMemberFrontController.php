@@ -881,42 +881,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return null;
         }
 
-        $searchStart = Carbon::parse($member->start_date ?? $member->joining_date ?? $today)->startOfDay();
-        if ($today->greaterThan($searchStart)) {
-            $searchStart = $today->copy();
-        }
-
-        $searchEnd = $member->end_date
-            ? $member->end_date->copy()->endOfDay()
-            : ($member->expire_date ? Carbon::parse($member->expire_date)->endOfDay() : $today->copy()->addMonths(3));
-
-        if ($searchEnd->lt($searchStart)) {
-            return null;
-        }
-
-        $nextSlot = $this->sessionService->resolveNextScheduledSlot(
-            $class,
-            $member->classTrainer,
-            $searchStart,
-            $searchEnd
-        );
-
-        if (!$nextSlot) {
-            return null;
-        }
-
-        // Check if there's an existing attendee for this specific slot
-        $existing = GymPTMemberAttendee::where('pt_member_id', $member->id)
-            ->where('session_date', $nextSlot)
-            ->first();
-
-        if ($existing) {
-            // If attendee exists for this slot, refresh member data and return it
-            $member->refresh();
-            return $existing;
-        }
-        
-        // Also check if there's an attendee for today (to prevent duplicate attendance on same day)
+        // Check if there's an attendee for today (to prevent duplicate attendance on same day)
         $todayStart = Carbon::today();
         $todayEnd = Carbon::today()->endOfDay();
         $todayAttendee = GymPTMemberAttendee::where('pt_member_id', $member->id)
@@ -929,16 +894,20 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return $todayAttendee;
         }
 
+        // Use current date/time for session_date instead of requiring a scheduled slot
+        // This allows sessions to be deducted without dependency on session scheduling
+        $sessionDate = Carbon::now();
+
         $attendee = GymPTMemberAttendee::create([
             'pt_member_id' => $member->id,
             'session_id' => null,
-            'session_date' => $nextSlot,
+            'session_date' => $sessionDate,
             'user_id' => optional(Auth::guard('sw')->user())->id,
             'branch_setting_id' => $member->branch_setting_id ?? $class->branch_setting_id ?? @$this->user_sw->branch_setting_id,
             'attended' => true,
         ]);
 
-        $this->commissionService->recordForAttendance($attendee, $nextSlot, $member->classTrainer);
+        $this->commissionService->recordForAttendance($attendee, $sessionDate, $member->classTrainer);
         $this->enrollmentService->adjustRemainingSessions($member, -1);
 
         GymMemberAttendee::create([

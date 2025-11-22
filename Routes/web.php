@@ -82,3 +82,13 @@ Route::group(array('middleware' => ['front', 'lang', 'initialize_user'],'prefix'
         }
     // }
 });
+
+
+Route::get('/env-check', function () {
+    return [
+        'APP_NAME' => env('APP_NAME'),
+        'DB_DATABASE' => env('DB_DATABASE'),
+        'current_host' => $_SERVER['HTTP_HOST'] ?? 'N/A',
+        'APP_NAME_AR' => env('APP_NAME_AR') ?? 'N/A'
+    ];
+});

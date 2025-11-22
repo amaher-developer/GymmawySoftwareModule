@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use Modules\Generic\Models\Setting; 
+use Modules\Generic\Models\Setting;
 use App\Helpers\CurrentSwUser;
 class SwPermission
 {
@@ -21,8 +21,22 @@ class SwPermission
         // Use Laravel's default cache driver instead of 'file' store for better performance
         $branchId = $user ? ($user->branch_setting_id ?? 1) : 1;
         $cacheKey = 'mainSettings_' . $branchId;
-        $mainSettings = Cache::get($cacheKey);
-        //$source = $mainSettings ? 'cache' : 'database';
+        $mainSettings = null;
+        $source = 'database';
+        
+        // Try to get from cache, but handle unserialize errors gracefully
+        try {
+            $mainSettings = Cache::get($cacheKey);
+            if ($mainSettings) {
+                $source = 'cache';
+            }
+        } catch (\Exception $e) {
+            // Cache entry is corrupted (likely due to charset change), clear it
+            Cache::forget($cacheKey);
+            if (config('app.debug')) {
+                Log::warning('Cache unserialize error for ' . $cacheKey . ': ' . $e->getMessage());
+            }
+        }
         
         if (!$mainSettings) {
             // Direct query using branch ID (faster than using scope)
@@ -37,10 +51,28 @@ class SwPermission
                 $mainSettings->active_store = false;
                 $mainSettings->active_pt = false;
                 $mainSettings->active_training = false;
+            } else {
+                // Decode JSON columns if they exist
+                $jsonColumns = ['features', 'vat_details', 'reservation_details', 'wa_details', 'integrations', 'billing', 'limits', 'social_media', 'images', 'cover_images'];
+                foreach ($jsonColumns as $column) {
+                    if (isset($mainSettings->$column) && is_string($mainSettings->$column)) {
+                        $decoded = json_decode($mainSettings->$column, true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $mainSettings->$column = $decoded;
+                        }
+                    }
+                }
             }
             
             // Cache for 10 minutes (600 seconds)
-            Cache::put($cacheKey, $mainSettings, 600);
+            try {
+                Cache::put($cacheKey, $mainSettings, 600);
+            } catch (\Exception $e) {
+                // If caching fails, log but don't fail the request
+                if (config('app.debug')) {
+                    Log::warning('Failed to cache mainSettings: ' . $e->getMessage());
+                }
+            }
         }
 
         // if (config('app.debug')) {

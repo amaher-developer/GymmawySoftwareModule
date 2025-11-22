@@ -1,7 +1,11 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Schema\ForeignKeyDefinition;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class UpdatePtSchemaPhase1 extends Migration
@@ -63,17 +67,23 @@ class UpdatePtSchemaPhase1 extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();
-
-            $table->foreign('class_id')
-                ->references('id')
-                ->on('sw_gym_pt_classes')
-                ->onDelete('cascade');
-
-            $table->foreign('trainer_id')
-                ->references('id')
-                ->on('sw_gym_pt_trainers')
-                ->onDelete('cascade');
         });
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_class_trainers',
+            'class_id',
+            'sw_gym_pt_classes',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('cascade')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_class_trainers',
+            'trainer_id',
+            'sw_gym_pt_trainers',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('cascade')
+        );
     }
 
     private function createSessionTable(): void
@@ -92,22 +102,31 @@ class UpdatePtSchemaPhase1 extends Migration
             $table->enum('status', ['pending', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
             $table->softDeletes();
-
-            $table->foreign('class_id')
-                ->references('id')
-                ->on('sw_gym_pt_classes')
-                ->onDelete('cascade');
-
-            $table->foreign('class_trainer_id')
-                ->references('id')
-                ->on('sw_gym_pt_class_trainers')
-                ->onDelete('set null');
-
-            $table->foreign('trainer_id')
-                ->references('id')
-                ->on('sw_gym_pt_trainers')
-                ->onDelete('set null');
         });
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_sessions',
+            'class_id',
+            'sw_gym_pt_classes',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('cascade')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_sessions',
+            'class_trainer_id',
+            'sw_gym_pt_class_trainers',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_sessions',
+            'trainer_id',
+            'sw_gym_pt_trainers',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
     }
 
     private function createCommissionTable(): void
@@ -129,27 +148,39 @@ class UpdatePtSchemaPhase1 extends Migration
             $table->unsignedBigInteger('paid_by')->nullable()->index();
             $table->timestamps();
             $table->softDeletes();
-
-            $table->foreign('trainer_id')
-                ->references('id')
-                ->on('sw_gym_pt_trainers')
-                ->onDelete('cascade');
-
-            $table->foreign('pt_member_id')
-                ->references('id')
-                ->on('sw_gym_pt_members')
-                ->onDelete('cascade');
-
-            $table->foreign('session_id')
-                ->references('id')
-                ->on('sw_gym_pt_sessions')
-                ->onDelete('set null');
-
-            $table->foreign('paid_by')
-                ->references('id')
-                ->on('sw_gym_users')
-                ->onDelete('set null');
         });
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_commissions',
+            'trainer_id',
+            'sw_gym_pt_trainers',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('cascade')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_commissions',
+            'pt_member_id',
+            'sw_gym_pt_members',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('cascade')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_commissions',
+            'session_id',
+            'sw_gym_pt_sessions',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
+
+        $this->addForeignIfPossible(
+            'sw_gym_pt_commissions',
+            'paid_by',
+            'sw_gym_users',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
     }
 
     private function updateClassesTable(): void
@@ -231,21 +262,21 @@ class UpdatePtSchemaPhase1 extends Migration
             }
         });
 
-        Schema::table('sw_gym_pt_members', function (Blueprint $table) {
-            if (Schema::hasColumn('sw_gym_pt_members', 'class_id')) {
-                $table->foreign('class_id')
-                    ->references('id')
-                    ->on('sw_gym_pt_classes')
-                    ->onDelete('set null');
-            }
+        $this->addForeignIfPossible(
+            'sw_gym_pt_members',
+            'class_id',
+            'sw_gym_pt_classes',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
 
-            if (Schema::hasColumn('sw_gym_pt_members', 'class_trainer_id')) {
-                $table->foreign('class_trainer_id')
-                    ->references('id')
-                    ->on('sw_gym_pt_class_trainers')
-                    ->onDelete('set null');
-            }
-        });
+        $this->addForeignIfPossible(
+            'sw_gym_pt_members',
+            'class_trainer_id',
+            'sw_gym_pt_class_trainers',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
     }
 
     private function updateMemberAttendeesTable(): void
@@ -268,14 +299,13 @@ class UpdatePtSchemaPhase1 extends Migration
             }
         });
 
-        Schema::table('sw_gym_pt_member_attendees', function (Blueprint $table) {
-            if (Schema::hasColumn('sw_gym_pt_member_attendees', 'session_id')) {
-                $table->foreign('session_id')
-                    ->references('id')
-                    ->on('sw_gym_pt_sessions')
-                    ->onDelete('set null');
-            }
-        });
+        $this->addForeignIfPossible(
+            'sw_gym_pt_member_attendees',
+            'session_id',
+            'sw_gym_pt_sessions',
+            'id',
+            fn (ForeignKeyDefinition $foreign) => $foreign->onDelete('set null')
+        );
     }
 
     private function revertClassesTable(): void
@@ -315,12 +345,12 @@ class UpdatePtSchemaPhase1 extends Migration
     {
         Schema::table('sw_gym_pt_members', function (Blueprint $table) {
             if (Schema::hasColumn('sw_gym_pt_members', 'class_trainer_id')) {
-                $table->dropForeign(['class_trainer_id']);
+                $this->dropForeignIfExists('sw_gym_pt_members', 'class_trainer_id');
                 $table->dropColumn('class_trainer_id');
             }
 
             if (Schema::hasColumn('sw_gym_pt_members', 'class_id')) {
-                $table->dropForeign(['class_id']);
+                $this->dropForeignIfExists('sw_gym_pt_members', 'class_id');
                 $table->dropColumn('class_id');
             }
 
@@ -362,7 +392,7 @@ class UpdatePtSchemaPhase1 extends Migration
     {
         Schema::table('sw_gym_pt_member_attendees', function (Blueprint $table) {
             if (Schema::hasColumn('sw_gym_pt_member_attendees', 'session_id')) {
-                $table->dropForeign(['session_id']);
+                $this->dropForeignIfExists('sw_gym_pt_member_attendees', 'session_id');
                 $table->dropColumn('session_id');
             }
 
@@ -378,6 +408,73 @@ class UpdatePtSchemaPhase1 extends Migration
                 $table->dropSoftDeletes();
             }
         });
+    }
+
+    private function dropForeignIfExists(string $table, string $column, ?string $constraint = null): void
+    {
+        $constraint = $constraint ?? $this->guessForeignKeyName($table, $column);
+
+        if ($this->foreignKeyExists($table, $constraint)) {
+            DB::statement(sprintf('ALTER TABLE `%s` DROP FOREIGN KEY `%s`', $table, $constraint));
+        }
+    }
+
+    private function guessForeignKeyName(string $table, string $column): string
+    {
+        return "{$table}_{$column}_foreign";
+    }
+
+    private function foreignKeyExists(string $table, string $constraint): bool
+    {
+        $database = Schema::getConnection()->getDatabaseName();
+
+        return DB::table('information_schema.TABLE_CONSTRAINTS')
+            ->where('TABLE_SCHEMA', $database)
+            ->where('TABLE_NAME', $table)
+            ->where('CONSTRAINT_NAME', $constraint)
+            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+            ->exists();
+    }
+
+    private function addForeignIfPossible(
+        string $table,
+        string $column,
+        string $referenceTable,
+        string $referenceColumn = 'id',
+        ?callable $callback = null
+    ): void {
+        if (
+            !Schema::hasTable($table) ||
+            !Schema::hasColumn($table, $column) ||
+            !Schema::hasTable($referenceTable) ||
+            !Schema::hasColumn($referenceTable, $referenceColumn)
+        ) {
+            return;
+        }
+
+        $constraint = $this->guessForeignKeyName($table, $column);
+
+        if ($this->foreignKeyExists($table, $constraint)) {
+            return;
+        }
+
+        try {
+            Schema::table($table, function (Blueprint $blueprint) use ($column, $referenceTable, $referenceColumn, $callback, $constraint) {
+                $foreign = $blueprint->foreign($column, $constraint)->references($referenceColumn)->on($referenceTable);
+
+                if ($callback) {
+                    $callback($foreign);
+                }
+            });
+        } catch (QueryException $e) {
+            Log::warning(sprintf(
+                'Skipping FK creation %s -> %s.%s: %s',
+                "{$table}.{$column}",
+                $referenceTable,
+                $referenceColumn,
+                $e->getMessage()
+            ));
+        }
     }
 }
 
