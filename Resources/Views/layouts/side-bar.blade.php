@@ -179,8 +179,8 @@
             <div class="aside-user d-flex align-items-sm-center justify-content-center py-5">
                 <!--begin::Symbol-->
                 <div class="symbol symbol-50px">
-                    <img src="{{ @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png') }}"
-                        alt="">
+                    <img src="{{ @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.webp') }}"
+                        alt="" loading="lazy">
                 </div>
                 <!--end::Symbol-->
 

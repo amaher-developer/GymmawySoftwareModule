@@ -25,30 +25,86 @@
     <meta content="" name="author"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <!-- Resource Hints for Performance -->
+    <link rel="preconnect" href="{{asset('')}}" crossorigin>
+
     <link rel="shortcut icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
     <link rel="apple-touch-icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
+    
+    <!-- Preload Critical Fonts -->
+    <link rel="preload" href="{{asset('fonts/inter/Inter-Regular.woff2')}}" as="font" type="font/woff2" crossorigin>
+    @if($lang == 'ar')
+    <link rel="preload" href="{{asset('fonts/droid-arabic-kufi/DroidKufi-Regular.woff2')}}" as="font" type="font/woff2" crossorigin>
+    @endif
 
     <!--begin::Fonts(mandatory for all pages)-->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700"></noscript>
+    <style>
+        /* Inter Font - Local - Optimized for LCP */
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("fonts/inter/Inter-Regular.woff2")}}') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: optional;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("fonts/inter/Inter-Medium.woff2")}}') format('woff2');
+            font-weight: 500;
+            font-style: normal;
+            font-display: optional;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("fonts/inter/Inter-SemiBold.woff2")}}') format('woff2');
+            font-weight: 600;
+            font-style: normal;
+            font-display: optional;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("fonts/inter/Inter-Bold.woff2")}}') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+            font-display: optional;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("fonts/inter/Inter-Light.woff2")}}') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            font-display: optional;
+        }
+    </style>
     <!--end::Fonts-->
 
     @if($lang == 'ar')
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Droid+Arabic+Kufi&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-        <noscript><link href="https://fonts.googleapis.com/css2?family=Droid+Arabic+Kufi&display=swap" rel="stylesheet"></noscript>
         <style>
+            /* Droid Arabic Kufi Font - Local */
+            @font-face {
+                font-family: 'Droid Arabic Kufi';
+                src: url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Regular.woff2")}}') format('woff2'),
+                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Regular.woff")}}') format('woff'),
+                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Regular.ttf")}}') format('truetype');
+                font-weight: 400;
+                font-style: normal;
+                font-display: optional;
+            }
+            @font-face {
+                font-family: 'Droid Arabic Kufi';
+                src: url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Bold.woff2")}}') format('woff2'),
+                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Bold.woff")}}') format('woff'),
+                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Bold.ttf")}}') format('truetype');
+                font-weight: 700;
+                font-style: normal;
+                font-display: optional;
+            }
             body, .menu-title, .title, .nav-link, .sub-menu span, .user-info h4, .user-info span {
                 font-family: 'Droid Arabic Kufi', Arial, sans-serif !important;
             }
         </style>
         <!--begin::Global Stylesheets Bundle(mandatory for all pages)-->
-        <link href="{{asset('resources/assets/new_front')}}/plugins/global/plugins.bundle.rtl.css" rel="stylesheet"
-              type="text/css"/>
-        <link href="{{asset('resources/assets/new_front')}}/css/style.bundle.rtl.css" rel="stylesheet" type="text/css"/>
+        @vite(['resources/css/app-rtl.css'])
         <!--end::Global Stylesheets Bundle-->
 
         <style>
@@ -74,9 +130,7 @@
         </style>
     @else
         <!--begin::Global Stylesheets Bundle(mandatory for all pages)-->
-        <link href="{{asset('resources/assets/new_front')}}/plugins/global/plugins.bundle.css" rel="stylesheet"
-              type="text/css"/>
-        <link href="{{asset('resources/assets/new_front')}}/css/style.bundle.css" rel="stylesheet" type="text/css"/>
+        @vite(['resources/css/app.css'])
         <!--end::Global Stylesheets Bundle-->
 
         <style>
@@ -109,11 +163,33 @@
     @endif
 
 
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css"></noscript>
-    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/css/datepicker3.css')}}">
-    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.css')}}">
-    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/renew_member.css')}}">
+    <!-- Non-critical CSS - Load asynchronously -->
+    <link rel="preload" href="{{asset('resources/assets/new_front/global/scripts/css/datepicker3.css')}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/css/datepicker3.css')}}"></noscript>
+    <link rel="preload" href="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.css')}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.css')}}"></noscript>
+    <link rel="preload" href="{{asset('resources/assets/new_front/global/scripts/software/renew_member.css')}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/renew_member.css')}}"></noscript>
+    
+    <!-- Critical CSS for LCP element (Quick Actions) -->
+    <style>
+        /* Immediate font fallback for LCP */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .btn-light-primary, .btn-light-info, .btn-light-danger, .btn-light-success, .btn-light-warning, .btn-light-secondary, .btn-light-dark {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 90px;
+        }
+        .fw-bold.fs-7.text-center {
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-align: center;
+            display: block;
+        }
+    </style>
     <style>
         .modal-content-demo .modal-body h6 {
             color: #242f48;
@@ -347,7 +423,7 @@
                 <!--begin::Logo-->
                 <a href="{{route('home')}}">
                     <img alt="Logo" src="{{$mainSettings->logo_white}}"
-                         class="h-25px logo"/>
+                         class="h-25px logo" loading="lazy"/>
                 </a>
                 <!--end::Logo-->
                 <!--begin::Aside toggler-->
@@ -399,7 +475,7 @@
                     <div class="d-flex align-items-center flex-grow-1 flex-lg-grow-0">
                         <a href="index.html" class="d-lg-none">
                             <img alt="Logo" src="{{asset('resources/assets/new_front/')}}/media/logos/demo13-small.svg"
-                                 class="h-25px"/>
+                                 class="h-25px" loading="lazy"/>
                         </a>
                     </div>
                     <!--end::Mobile logo-->
@@ -700,8 +776,8 @@
                                     class="topbar-item cursor-pointer symbol px-3 px-lg-5 me-n3 me-lg-n5 symbol-30px symbol-md-35px"
                                     data-kt-menu-trigger="click" data-kt-menu-attach="parent"
                                     data-kt-menu-placement="bottom-end" data-kt-menu-flip="bottom">
-                                    <img src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png')}}"
-                                         alt="metronic"/>
+                                    <img src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.webp')}}"
+                                         alt="metronic" loading="lazy"/>
                                 </div>
                                 <!--begin::User account menu-->
                                 <div
@@ -713,7 +789,7 @@
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-50px me-5">
                                                 <img alt="Logo"
-                                                     src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png')}}"/>
+                                                     src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.webp')}}" loading="lazy"/>
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Username-->
@@ -961,14 +1037,19 @@
 <!--begin::Javascript-->
 
 <!--begin::Global Javascript Bundle(mandatory for all pages)-->
-<script src="{{asset('resources/assets/new_front/')}}/plugins/global/plugins.bundle.js"></script>
-<script src="{{asset('resources/assets/new_front/')}}/js/scripts.bundle.js"></script>
+@vite(['resources/js/app.js'])
 <!--end::Global Javascript Bundle-->
+
+<!-- Load CSS asynchronously script -->
+<script>
+    /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+    (function(w){"use strict";var loadCSS=function(href,before,media,attributes){var doc=w.document;var ss=doc.createElement("link");var ref;if(before){ref=before}else{var refs=(doc.body||doc.getElementsByTagName("head")[0]).childNodes;ref=refs[refs.length-1];}var sheets=doc.styleSheets;ss.rel="stylesheet";ss.href=href;ss.media="only x";if(attributes){for(var attribute in attributes){if(attributes.hasOwnProperty(attribute)){ss.setAttribute(attribute,attributes[attribute]);}}}function ready(cb){if(doc.body){return cb();}setTimeout(function(){ready(cb);});}ready(function(){ref.parentNode.insertBefore(ss,before?ref:ref.nextSibling);});var onloadcssdefined=function(cb){var resolvedHref=ss.href;var i=sheets.length;while(i--){if(sheets[i].href===resolvedHref){return cb();}}setTimeout(function(){onloadcssdefined(cb);});};ss.onloadcssdefined=onloadcssdefined;onloadcssdefined(function(){if(ss.media!=="all"){ss.media=media||"all";}});return ss;};if(typeof exports!=="undefined"){exports.loadCSS=loadCSS;}else{w.loadCSS=loadCSS;}}(typeof global!=="undefined"?global:this));
+</script>
 
 <!-- BEGIN CORE PLUGINS -->
 <script src="{{asset('resources/assets/new_front/global/plugins/jquery.min.js')}}" type="text/javascript"></script>
 <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap/js/bootstrap.min.js')}}"
-        type="text/javascript"></script>
+        type="text/javascript" defer></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.min.js" type="text/javascript" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.ui.min.js" type="text/javascript" defer></script>
@@ -986,7 +1067,7 @@
       rel="stylesheet"
       type="text/css"/>
 <script src="{{asset('resources/assets/new_front/global/plugins/sweet-alerts/sweetalert_2.js')}}"
-        type="text/javascript"></script>
+        type="text/javascript" defer></script>
 @include('generic::flash')
 @include('software::layouts.notifications')
 @include('software::layouts.backup')
@@ -1009,9 +1090,7 @@
 <script src="{{asset('resources/assets/new_front/global/scripts/js/bootstrap-datepicker.js')}}" defer></script>
 
 {{--<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>--}}
-<script type="text/javascript" src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker.js" defer></script>
 <script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript" defer></script>
-<script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-pickers.js" type="text/javascript" defer></script>
 
 <!-- QR Scanner -->
 {{--<script type="module">--}}
@@ -1020,7 +1099,7 @@
 {{--</script>--}}
 {{--<script type="module" language="JavaScript"  src="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.js')}}"></script>--}}
 <script type="text/javascript" language="JavaScript"
-        src="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner_logic.js')}}"></script>
+        src="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner_logic.js')}}" defer></script>
 
 
 <!-- Start Renew Member -->
@@ -1053,7 +1132,7 @@
     var trans_old_membership = '{{trans('sw.old_membership')}}';
     var trans_renew_membership = '{{trans('sw.renew_membership')}}';
     var trans_unfreeze_membership = '{{trans('sw.unfreeze_membership')}}';
-    var default_avatar_image = '{{asset('uploads/settings/default.jpg')}}';
+    var default_avatar_image = '{{asset('uploads/settings/default.webp')}}';
 
     var lang = '{{$lang}}';
     var isRtl = (lang === 'ar');
@@ -1120,7 +1199,7 @@
 
     }
 </script>
-<script src="{{asset('resources/assets/new_front/global/plugins/bootbox/bootbox.min.js')}}" type="text/javascript"></script>
+<script src="{{asset('resources/assets/new_front/global/plugins/bootbox/bootbox.min.js')}}" type="text/javascript" defer></script>
 <script>
     $('#site_on_off').click(function () {
         bootbox.dialog({
