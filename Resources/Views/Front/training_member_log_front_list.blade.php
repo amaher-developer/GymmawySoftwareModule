@@ -20,7 +20,7 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/daterangepicker-bs3.css"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker-bs3.css"/>
     <style>
         /* Actions column styling */
         .actions-column {
@@ -255,17 +255,18 @@
 
 @section('scripts')
     @parent
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     <script type="text/javascript"
-            src="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/moment.min.js"></script>
+            src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/moment.min.js"></script>
     <script type="text/javascript"
-            src="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/daterangepicker.js"></script>
-    <script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript"></script>
-    <script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-pickers.js"></script>
+            src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker.js"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-pickers.js"></script>
     <script>
         jQuery(document).ready(function () {
             ComponentsPickers.init();
         });
     </script>
 @endsection
+

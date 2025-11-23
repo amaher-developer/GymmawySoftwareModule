@@ -45,3 +45,4 @@ class GymUserPermission extends GenericModel
 
 }
 
+

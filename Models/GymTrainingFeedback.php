@@ -38,3 +38,4 @@ class GymTrainingFeedback extends GenericModel
     }
 }
 
+

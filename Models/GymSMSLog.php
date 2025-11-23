@@ -40,3 +40,4 @@ class GymSMSLog extends GenericModel
     }
 
 }
+

@@ -122,3 +122,4 @@ class LoyaltyPointRule extends GenericModel
     }
 }
 
+

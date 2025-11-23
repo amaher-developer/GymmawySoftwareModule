@@ -207,3 +207,4 @@ class GymTrainingPlanFrontController extends GymGenericFrontController
     }
 }
 
+

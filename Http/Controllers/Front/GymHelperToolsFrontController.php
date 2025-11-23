@@ -194,3 +194,4 @@ class GymHelperToolsFrontController extends GymGenericFrontController
     }
 
 }
+

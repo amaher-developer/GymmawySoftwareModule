@@ -51,7 +51,7 @@ class GymSubscription extends GenericModel
         $image = $this->getRawOriginal('image');
 
         if (!$image) {
-            return asset('resources/assets/front/img/blank-image.svg');
+            return asset('resources/assets/new_front/img/blank-image.svg');
         }
 
         if (filter_var($image, FILTER_VALIDATE_URL)) {
@@ -79,7 +79,7 @@ class GymSubscription extends GenericModel
             return asset($relativePath);
         }
 
-        return asset('resources/assets/front/img/blank-image.svg');
+        return asset('resources/assets/new_front/img/blank-image.svg');
     }
 
     public function member_subscriptions(){
@@ -123,3 +123,4 @@ class GymSubscription extends GenericModel
     }
 
 }
+

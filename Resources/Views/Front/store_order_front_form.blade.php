@@ -282,7 +282,7 @@
 @section('scripts')
     @parent
     <script type="text/javascript"
-            src="{{asset('resources/assets/admin/global/plugins/fuelux/js/spinner.min.js')}}"></script>
+            src="{{asset('resources/assets/new_front/global/plugins/fuelux/js/spinner.min.js')}}"></script>
 
     <script>
         // Initialize Select2 for dropdowns
@@ -522,3 +522,5 @@
         });
     </script>
 @endsection
+
+

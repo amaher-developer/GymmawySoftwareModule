@@ -65,3 +65,4 @@ class GymUserTransaction extends GenericModel
         return $this->attributes['advance_discount_month'] ?? null;
     }
 }
+

@@ -96,3 +96,4 @@ class GymPTClass extends GenericModel
         return parent::toArray();
     }
 }
+

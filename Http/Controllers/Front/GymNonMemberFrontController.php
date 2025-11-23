@@ -939,3 +939,4 @@ class GymNonMemberFrontController extends GymGenericFrontController
 
 
 }
+

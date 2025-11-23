@@ -43,3 +43,4 @@ class GymUserRequest extends FormRequest
         return $return;
     }
 }
+

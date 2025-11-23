@@ -27,7 +27,7 @@
             <div class="clearfix"></div>
             <div class="row">
                 <div class="col-md-12 text-center">
-                    <img alt="user-img" class="maher-img-backup text-center avatar-xl brround mCS_img_loaded" src="{{asset('resources/assets/front/img/cloud-database.png')}}">
+                    <img alt="user-img" class="maher-img-backup text-center avatar-xl brround mCS_img_loaded" src="{{asset('resources/assets/new_front/img/cloud-database.png')}}">
                 </div>
             </div>
             <div class="clearfix"></div>
@@ -72,7 +72,7 @@
         if(!email || !password ){
             document.getElementById('backup_result').innerHTML = '<div class="alert alert-danger">{{trans('sw.error_login')}}</div>';
         }else{
-            $('<div id="loading_div" align="center" style="width: 100%;background-position: center;padding-top: 50px;"><img id="loading" src="{{asset('resources/assets/front/img/loading1.gif')}}" /></div>').insertAfter('#backup_result');
+            $('<div id="loading_div" align="center" style="width: 100%;background-position: center;padding-top: 50px;"><img id="loading" src="{{asset('resources/assets/new_front/img/loading1.gif')}}" /></div>').insertAfter('#backup_result');
             $('#db_form_group').hide();
             $.ajax({
                 url: "{{route('sw.backupDB')}}",
@@ -128,3 +128,5 @@
     }
 </script>
 @endif
+
+

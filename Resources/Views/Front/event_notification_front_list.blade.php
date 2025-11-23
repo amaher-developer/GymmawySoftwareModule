@@ -21,7 +21,7 @@
 @endsection
 @section('styles')
 {{--    <link href="../../assets/admin/pages/css/pricing-table-rtl.css" rel="stylesheet" type="text/css"/>--}}
-    <link href="{{asset('resources/assets/admin/pages/css/pricing-table-rtl.css')}}" rel="stylesheet" type="text/css" />
+    <link href="{{asset('resources/assets/new_front/pages/css/pricing-table-rtl.css')}}" rel="stylesheet" type="text/css" />
     <style>
         .form-section {
             margin: 30px 0;
@@ -212,3 +212,5 @@
     </script>
 
 @endsection
+
+

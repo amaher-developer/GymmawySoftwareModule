@@ -22,3 +22,5 @@ class CategoryResource extends JsonResource
             ];
     }
 }
+
+

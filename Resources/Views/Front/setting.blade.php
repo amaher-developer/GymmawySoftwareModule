@@ -22,8 +22,8 @@
 
 @section('form_title') {{ @$title }} @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/admin/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css')}}"/>
-    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/admin/global/plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css')}}"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/new_front/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css')}}"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/new_front/global/plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css')}}"/>
     <style>
         .form .form-bordered .form-group {
             margin: 0;
@@ -743,7 +743,7 @@
 @endsection
 @section('scripts')
     <script type="text/javascript"
-            src="{{asset('resources/assets/admin/custom/bootstrapValidator.js')}}"></script>
+            src="{{asset('resources/assets/new_front/custom/bootstrapValidator.js')}}"></script>
     
     <!--CKEditor Build Bundles:: Only include the relevant bundles accordingly-->
     <script src="{{asset('resources/assets/new_front/plugins/custom/ckeditor/ckeditor-classic.bundle.js')}}"></script>
@@ -839,3 +839,5 @@
         });
     </script>
 @endsection
+
+

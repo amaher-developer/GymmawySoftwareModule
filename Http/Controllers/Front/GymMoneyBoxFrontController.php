@@ -742,3 +742,4 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
 
 }
+

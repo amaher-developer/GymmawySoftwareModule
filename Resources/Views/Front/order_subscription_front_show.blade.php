@@ -132,7 +132,7 @@
             }
         }
     </style>
-    <link href="{{asset('resources/assets/front/')}}/css/jquery.signature.css" rel="stylesheet">
+    <link href="{{asset('resources/assets/new_front/')}}/css/jquery.signature.css" rel="stylesheet">
 @endsection
 @section('form_title') {{ @$title }} @endsection
 @section('page_body')
@@ -2672,3 +2672,5 @@ $(document).on('change', '.qb-activity-select', function(){
 
 @endif
 @endsection
+
+

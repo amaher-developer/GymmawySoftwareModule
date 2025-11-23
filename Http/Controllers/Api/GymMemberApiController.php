@@ -290,3 +290,4 @@ class GymMemberApiController extends GenericApiController
         return $result;
     }
 }
+

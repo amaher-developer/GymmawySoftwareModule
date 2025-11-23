@@ -13,8 +13,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <link rel="stylesheet" data-them="" href="https://demo.gymmawy.com/resources/assets/front/css/styles.css">
-    <link rel="stylesheet" type="text/css" href="https://demo.gymmawy.com/resources/assets/front/js/specific/revolution-slider/css/settings.css" media="screen" />
+    <link rel="stylesheet" data-them="" href="https://demo.gymmawy.com/resources/assets/new_front/css/styles.css">
+    <link rel="stylesheet" type="text/css" href="https://demo.gymmawy.com/resources/assets/new_front/js/specific/revolution-slider/css/settings.css" media="screen" />
     <!--[if IE]>
     <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
@@ -24,8 +24,8 @@
     <!-- Googl Font -->
     <link href="http://fonts.googleapis.com/css?family=Open+Sans:100,400,600,700,300" rel="stylesheet" type="text/css">
     <link href="http://fonts.googleapis.com/css?family=Lato:300,400,300italic,400italic" rel="stylesheet" type="text/css">
-    <link rel="shortcut icon" href="https://sw.gymmawy.com/resources/assets/front/img/logo/favicon.ico" type="image/x-icon" />
-    <link rel="apple-touch-icon" href="https://sw.gymmawy.com/resources/assets/front/img/logo/favicon.ico" type="image/x-icon" />
+    <link rel="shortcut icon" href="https://sw.gymmawy.com/resources/assets/new_front/img/logo/favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="https://sw.gymmawy.com/resources/assets/new_front/img/logo/favicon.ico" type="image/x-icon" />
 </head>
 <body class="responsive">
 <!-- WORKS SECTION -->
@@ -55,7 +55,7 @@
                                 <ul class="icons-media">
                                     <li><a data-animated-link="fadeOut" href="{{route('web.template', ['url' => 'https://okab.pixeldima.com/business-finance-rtl/'])}}" data-lightbox="image"><i class="fa fa-search"></i></a>
                                     </li>
-                                    {{--                                    <li><a data-animated-link="fadeOut" href="https://demo.gymmawy.com/resources/assets/front/single-project-v2.html"><i class="fa fa-link"></i></a>--}}
+                                    {{--                                    <li><a data-animated-link="fadeOut" href="https://demo.gymmawy.com/resources/assets/new_front/single-project-v2.html"><i class="fa fa-link"></i></a>--}}
                                     {{--                                    </li>--}}
                                 </ul>
                                 <div class="work-info">
@@ -77,7 +77,7 @@
                                 <ul class="icons-media">
                                     <li><a data-animated-link="fadeOut" href="{{route('web.template', ['url' => 'https://templates.hibootstrap.com/fiyn/rtl/index.html'])}}" data-lightbox="image"><i class="fa fa-search"></i></a>
                                     </li>
-{{--                                    <li><a data-animated-link="fadeOut" href="https://demo.gymmawy.com/resources/assets/front/single-project-v1.html"><i class="fa fa-link"></i></a>--}}
+{{--                                    <li><a data-animated-link="fadeOut" href="https://demo.gymmawy.com/resources/assets/new_front/single-project-v1.html"><i class="fa fa-link"></i></a>--}}
 {{--                                    </li>--}}
                                 </ul>
                                 <div class="work-info">
@@ -208,7 +208,7 @@
         "brandSetting":{
             "brandName":"جيماوي | برنامج ادارة جيم",
             "brandSubTitle":"سيتم الرد عليك خلال 24 ساعة",
-            "brandImg":"https://demo.gymmawy.com/resources/assets/front/images/favicon.ico",
+            "brandImg":"https://demo.gymmawy.com/resources/assets/new_front/images/favicon.ico",
             "welcomeText":"تواصل معنا",
             "backgroundColor":"#0a5f54",
             "ctaText":"ابدأ المحادثة",
@@ -240,3 +240,5 @@
 </style>
 </body>
 </html>
+
+

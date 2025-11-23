@@ -29,8 +29,8 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/admin/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css')}}"/>
-    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/admin/global/plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css')}}"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/new_front/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css')}}"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/new_front/global/plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css')}}"/>
     <style>
         /*.input-small {*/
         /*    width: 200px !important;*/
@@ -155,10 +155,10 @@
     <!--end::Category Form-->
 @endsection
 @section('scripts')
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/plugins/bootstrap-timepicker/js/bootstrap-timepicker.min.js')}}"></script>
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/plugins/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/plugins/bootstrap-timepicker/js/bootstrap-timepicker.min.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js')}}"></script>
 
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/plugins/fuelux/js/spinner.min.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/plugins/fuelux/js/spinner.min.js')}}"></script>
   <script>
 
         $('.timepicker-24').timepicker({
@@ -187,3 +187,5 @@
     </script>
 
 @endsection
+
+

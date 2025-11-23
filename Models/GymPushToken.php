@@ -18,3 +18,4 @@ class GymPushToken extends GenericModel
         return $this->belongsTo(GymMember::class, 'member_id');
     }
 }
+

@@ -45,3 +45,4 @@ class GymPTSession extends GenericModel
     }
 }
 
+

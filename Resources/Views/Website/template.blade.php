@@ -16,10 +16,10 @@
     <link rel="stylesheet" media="all" href="https://public-assets.envato-static.com/assets/market/core/index-110c978a609a3a5b20b74d239a342c8e9c92180d3bb577d5d9d7fa5aaeb30efc.css" />
     <link rel="stylesheet" media="all" href="https://public-assets.envato-static.com/assets/market/pages/preview/index-004d35cdd5d555cdd3e956d1b916825642de06529f0fe91fd9f390813761d2fc.css" />
 
-    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/front/img/logo/favicon.ico" sizes="72x72" />
-    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/front/img/logo/favicon.ico" sizes="114x114" />
-    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/front/img/logo/favicon.ico" sizes="144x144" />
-    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/front/img/logo/favicon.ico" />
+    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/new_front/img/logo/favicon.ico" sizes="72x72" />
+    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/new_front/img/logo/favicon.ico" sizes="114x114" />
+    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/new_front/img/logo/favicon.ico" sizes="144x144" />
+    <link rel="apple-touch-icon-precomposed" type="image/x-icon" href="https://gymmawy.com/resources/assets/new_front/img/logo/favicon.ico" />
 
     <script src="https://public-assets.envato-static.com/assets/market/pages/full_screen_preview/index-3434ecc8ee72db55dde518bd4f2a3f85d6c73b0dde839027aaedb790e40a4beb.js" nonce="puNCsAgeHFHxFAFwWM8FNg=="></script>
 
@@ -79,3 +79,5 @@
 
 
 </body></html>
+
+

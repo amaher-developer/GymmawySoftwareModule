@@ -231,3 +231,4 @@ class GymCustomerFrontController extends GymGenericFrontController
 
 
 }
+

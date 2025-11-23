@@ -28,3 +28,4 @@ class GymBannerRequest extends FormRequest
         ];
     }
 }
+

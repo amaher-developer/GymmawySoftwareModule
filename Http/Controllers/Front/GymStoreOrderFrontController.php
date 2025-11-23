@@ -876,3 +876,4 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     }
 
 }
+

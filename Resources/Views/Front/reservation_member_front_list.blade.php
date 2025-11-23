@@ -20,7 +20,7 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
     <style>
         /* Actions column styling */
         .actions-column {
@@ -351,8 +351,8 @@
 @section('scripts')
     @parent
 
-    <script   src="{{asset('resources/assets/admin/global/scripts/software/renew_member.js')}}"></script>
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+    <script   src="{{asset('resources/assets/new_front/global/scripts/software/renew_member.js')}}"></script>
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     <script>
         function list_renew_membership(id) {
@@ -469,3 +469,5 @@
     </script>
 
 @endsection
+
+

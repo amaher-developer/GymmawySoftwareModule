@@ -32,3 +32,4 @@ class GymMoneyBoxTypeRequest extends FormRequest
         ];
     }
 }
+

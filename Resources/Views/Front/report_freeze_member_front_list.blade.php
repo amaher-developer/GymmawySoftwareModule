@@ -20,7 +20,7 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
     <style>
         .avatar-md {
             width: 48px !important;
@@ -518,7 +518,7 @@
 
 @section('scripts')
     @parent
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>
     <script>
         jQuery(document).ready(function () {
             var today = new Date();
@@ -548,4 +548,6 @@
         });
     </script>
 @endsection
+
+
 

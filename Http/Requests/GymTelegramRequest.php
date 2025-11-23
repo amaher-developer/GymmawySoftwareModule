@@ -29,3 +29,4 @@ class GymTelegramRequest extends FormRequest
         ];
     }
 }
+

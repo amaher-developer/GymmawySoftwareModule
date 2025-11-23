@@ -8,3 +8,4 @@ class GymUserApiController extends GenericApiController
 {
 
 }
+

@@ -41,3 +41,4 @@ class GymTrainingTask extends GenericModel
     }
 
 }
+

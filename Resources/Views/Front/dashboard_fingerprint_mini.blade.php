@@ -58,7 +58,7 @@
         <div class="row">
 
             <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 text-center" >
-                <img style="width: 200px; padding: 20px" src="{{asset('resources/assets/front/img/fp_image.png')}}">
+                <img style="width: 200px; padding: 20px" src="{{asset('resources/assets/new_front/img/fp_image.png')}}">
             </div>
 
             <div style="clear: both;float: none"></div>
@@ -161,3 +161,5 @@
 </script>
 
 @endsection
+
+

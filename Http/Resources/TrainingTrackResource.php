@@ -22,10 +22,12 @@ class TrainingTrackResource extends JsonResource
             [
                 "id" => $this->id,
                 "title" => Carbon::parse(@$this->created_at)->translatedFormat('d F Y'),
-                "image" =>  asset('resources/assets/front/images/report_track.png'),
+                "image" =>  asset('resources/assets/new_front/images/report_track.png'),
                 "short_content" => trans('sw.report_msg', ['name' => 'ahmed maher']),
                 "is_new" => @$this->is_new ? $this->is_new : 0,
                 "new_title" => @$this->is_new ? trans('sw.new') : '',
             ];
     }
 }
+
+

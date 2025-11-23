@@ -312,3 +312,5 @@
 </div>
 <!--end::Training Plans-->
 @endsection
+
+

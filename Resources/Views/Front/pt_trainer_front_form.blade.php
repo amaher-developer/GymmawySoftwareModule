@@ -30,7 +30,7 @@
 @endsection
 @section('form_title') {{ @$title }} @endsection
 @section('styles')
-    <link href="{{asset('/')}}resources/assets/admin/global/scripts/css/fileupload.css" rel="stylesheet"
+    <link href="{{asset('/')}}resources/assets/new_front/global/scripts/css/fileupload.css" rel="stylesheet"
           type="text/css"/>
    <style>
         .tag-orange {
@@ -216,8 +216,8 @@
 
 @section('scripts')
     @parent
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/scripts/js/fileupload.js')}}"></script>
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/scripts/js/file-upload.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/scripts/js/fileupload.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/scripts/js/file-upload.js')}}"></script>
     <script>
         $(document).ready(function () {
             if (typeof KTImageInput !== 'undefined') {
@@ -226,3 +226,5 @@
         });
     </script>
 @endsection
+
+

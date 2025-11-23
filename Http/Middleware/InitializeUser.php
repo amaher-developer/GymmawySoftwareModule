@@ -94,3 +94,4 @@ class InitializeUser
         return $next($request);
     }
 }
+

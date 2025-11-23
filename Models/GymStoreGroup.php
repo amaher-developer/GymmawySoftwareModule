@@ -48,3 +48,4 @@ class GymStoreGroup extends GenericModel
     }
 
 }
+

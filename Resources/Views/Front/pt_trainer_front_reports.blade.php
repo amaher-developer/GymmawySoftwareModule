@@ -31,8 +31,8 @@
 @endsection
 @section('styles')
     <!-- BEGIN PAGE LEVEL STYLES -->
-    <link href="{{asset('resources/assets/admin/global/plugins/fullcalendar/fullcalendar.min.css')}}" rel="stylesheet"/>
-    <link href='{{asset('resources/assets/admin/global/plugins/fullcalendar/fullcalendar.print.css')}}' rel='stylesheet' media='print' />
+    <link href="{{asset('resources/assets/new_front/global/plugins/fullcalendar/fullcalendar.min.css')}}" rel="stylesheet"/>
+    <link href='{{asset('resources/assets/new_front/global/plugins/fullcalendar/fullcalendar.print.css')}}' rel='stylesheet' media='print' />
     <!-- END PAGE LEVEL STYLES -->
 @endsection
 @section('page_body')
@@ -262,22 +262,22 @@
 @endsection
 
 @section('scripts')
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     @parent
 
 
     <!-- IMPORTANT! Load jquery-ui-1.10.3.custom.min.js before bootstrap.min.js to fix bootstrap tooltip conflict with jquery ui tooltip -->
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-ui/jquery-ui-1.10.3.custom.min.js')}}" type="text/javascript"></script>--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-ui/jquery-ui-1.10.3.custom.min.js')}}" type="text/javascript"></script>--}}
 
     <!-- END CORE PLUGINS -->
     <!-- BEGIN PAGE LEVEL PLUGINS -->
     <!-- IMPORTANT! fullcalendar depends on jquery-ui-1.10.3.custom.min.js for drag & drop support -->
-    <script src="{{asset('resources/assets/admin/global/plugins/moment.min.js')}}"></script>
-    <script src="{{asset('resources/assets/admin/global/plugins/fullcalendar/fullcalendar.min.js')}}"></script>
+    <script src="{{asset('resources/assets/new_front/global/plugins/moment.min.js')}}"></script>
+    <script src="{{asset('resources/assets/new_front/global/plugins/fullcalendar/fullcalendar.min.js')}}"></script>
     <!-- END PAGE LEVEL PLUGINS -->
 
-    <script src='{{asset('resources/assets/admin/global/plugins/fullcalendar/lang-all.js')}}'></script>
+    <script src='{{asset('resources/assets/new_front/global/plugins/fullcalendar/lang-all.js')}}'></script>
     <script>
 
         $(document).ready(function() {
@@ -402,3 +402,5 @@
 
 
 @endsection
+
+

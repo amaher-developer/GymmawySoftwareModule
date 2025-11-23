@@ -152,3 +152,4 @@ class GymWAUltraFrontController extends GymGenericFrontController
 
 
 }
+

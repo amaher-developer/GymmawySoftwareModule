@@ -435,3 +435,4 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     }
 
 }
+

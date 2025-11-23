@@ -21,9 +21,9 @@
 @endsection
 @section('styles')
     @if($lang == 'ar')
-        <link rel="stylesheet" type="text/css" href="{{asset('/')}}/resources/assets/admin/global/plugins/datatables/plugins/bootstrap/datatables.bootstrap-rtl.css"/>
+        <link rel="stylesheet" type="text/css" href="{{asset('/')}}/resources/assets/new_front/global/plugins/datatables/plugins/bootstrap/datatables.bootstrap-rtl.css"/>
     @else
-        <link rel="stylesheet" type="text/css" href="{{asset('/')}}/resources/assets/admin/global/plugins/datatables/plugins/bootstrap/datatables.bootstrap.css"/>
+        <link rel="stylesheet" type="text/css" href="{{asset('/')}}/resources/assets/new_front/global/plugins/datatables/plugins/bootstrap/datatables.bootstrap.css"/>
     @endif
 @endsection
 @section('list_add_button')
@@ -131,8 +131,8 @@
     @parent
 
 
-    <script type="text/javascript" src="{{asset('/')}}/resources/assets/admin/global/plugins/datatables/media/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript" src="{{asset('/')}}/resources/assets/admin/global/plugins/datatables/plugins/bootstrap/datatables.bootstrap.js"></script>
+    <script type="text/javascript" src="{{asset('/')}}/resources/assets/new_front/global/plugins/datatables/media/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="{{asset('/')}}/resources/assets/new_front/global/plugins/datatables/plugins/bootstrap/datatables.bootstrap.js"></script>
 
     <script>
 
@@ -223,3 +223,4 @@
     </script>
 
 @endsection
+

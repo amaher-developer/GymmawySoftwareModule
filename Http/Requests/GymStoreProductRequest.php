@@ -48,3 +48,4 @@ class GymStoreProductRequest extends FormRequest
         ];
     }
 }
+

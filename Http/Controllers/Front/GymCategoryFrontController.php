@@ -307,3 +307,4 @@ class GymCategoryFrontController extends GymGenericFrontController
     }
 
 }
+

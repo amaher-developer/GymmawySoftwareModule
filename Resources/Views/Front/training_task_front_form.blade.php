@@ -22,7 +22,7 @@
 @section('styles')
 
     <link rel="stylesheet" type="text/css"
-          href="{{asset('resources/assets/admin/global/plugins/bootstrap-summernote/summernote.css')}}">
+          href="{{asset('resources/assets/new_front/global/plugins/bootstrap-summernote/summernote.css')}}">
 
 <style>
     .member-info li{
@@ -211,7 +211,7 @@
 @section('sub_scripts')
 
     <script type="text/javascript"
-            src="{{asset('resources/assets/admin/global/plugins/bootstrap-summernote/summernote.min.js')}}"></script>
+            src="{{asset('resources/assets/new_front/global/plugins/bootstrap-summernote/summernote.min.js')}}"></script>
     <script>
 
         $('#member_id').keyup(function () {
@@ -281,3 +281,5 @@
         });
     </script>
 @endsection
+
+

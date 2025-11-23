@@ -42,3 +42,4 @@ class GymTrainingAssessment extends GenericModel
     }
 }
 
+

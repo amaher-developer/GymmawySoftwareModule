@@ -16,3 +16,4 @@ class GymMemberSubscriptionFreeze extends GenericModel
 }
 
 
+

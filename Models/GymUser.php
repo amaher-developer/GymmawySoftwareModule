@@ -103,3 +103,4 @@ class GymUser extends Authenticatable
     }
 
 }
+

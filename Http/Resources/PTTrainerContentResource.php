@@ -27,3 +27,5 @@ class PTTrainerContentResource extends JsonResource
             ];
     }
 }
+
+

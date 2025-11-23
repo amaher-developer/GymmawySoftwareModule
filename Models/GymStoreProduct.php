@@ -66,7 +66,7 @@ class GymStoreProduct extends GenericModel
             if (@env('APP_WEBSITE')) {
                 return @env('APP_WEBSITE') . 'placeholder_black.png';
             }
-            return asset('resources/assets/front/img/blank-image.svg');
+            return asset('resources/assets/new_front/img/blank-image.svg');
         }
 
         if (filter_var($image, FILTER_VALIDATE_URL)) {
@@ -96,7 +96,7 @@ class GymStoreProduct extends GenericModel
             return @env('APP_WEBSITE') . 'placeholder_black.png';
         }
 
-        return asset('resources/assets/front/img/blank-image.svg');
+        return asset('resources/assets/new_front/img/blank-image.svg');
     }
 
     public function getBarcodeImageAttribute()
@@ -141,3 +141,4 @@ class GymStoreProduct extends GenericModel
     }
 
 }
+

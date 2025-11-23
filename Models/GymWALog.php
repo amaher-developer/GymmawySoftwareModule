@@ -42,3 +42,4 @@ class GymWALog extends GenericModel
     }
 
 }
+

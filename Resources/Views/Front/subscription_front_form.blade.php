@@ -120,7 +120,7 @@
                                 <input type="file" name="image" class="form-control mb-3" id="gym_image" accept="image/*" />
                                 <div class="text-center">
                                     <label for="gym_image" style="cursor: pointer;">
-                                        <img id="preview" src="{{ @$subscription->image ?? 'https://gymmawy.com/resources/assets/front/img/blank-image.svg' }}"
+                                        <img id="preview" src="{{ @$subscription->image ?? 'https://gymmawy.com/resources/assets/new_front/img/blank-image.svg' }}"
                                              style="height: 160px;width: 100%;max-width: 400px;object-fit: contain;border: 2px dashed #c2cad8;border-radius: 8px;padding: 10px;"
                                              alt="preview image"/>
                                     </label>
@@ -773,4 +773,6 @@
         });
     </script>
 @endsection
+
+
 

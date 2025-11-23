@@ -87,3 +87,4 @@ class GymUserLog extends GenericModel
     }
 
 }
+

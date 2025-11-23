@@ -26,3 +26,4 @@ class GymReservationRequest extends FormRequest
     }
 }
 
+

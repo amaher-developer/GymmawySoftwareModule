@@ -767,3 +767,4 @@
         });
     </script>
 @endsection
+

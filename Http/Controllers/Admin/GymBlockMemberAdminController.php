@@ -209,3 +209,4 @@ class GymBlockMemberAdminController extends GenericAdminController
     }
 
 }
+

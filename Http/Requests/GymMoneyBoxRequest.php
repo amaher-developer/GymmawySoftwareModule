@@ -30,3 +30,4 @@ class GymMoneyBoxRequest extends FormRequest
 
 
 }
+

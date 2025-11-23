@@ -351,3 +351,4 @@ class GymBlockMemberFrontController extends GymGenericFrontController
     }
 
 }
+

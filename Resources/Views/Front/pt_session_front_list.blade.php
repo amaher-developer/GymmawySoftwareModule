@@ -14,7 +14,7 @@
 @endsection
 
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/admin/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}"/>
+    <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}"/>
     <style>
         .session-status-badge {
             text-transform: capitalize;
@@ -205,7 +205,7 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js') }}" type="text/javascript"></script>
+    <script src="{{ asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js') }}" type="text/javascript"></script>
     <script>
         (function ($) {
             'use strict';
@@ -225,6 +225,8 @@
         })(jQuery);
     </script>
 @endpush
+
+
 
 
 

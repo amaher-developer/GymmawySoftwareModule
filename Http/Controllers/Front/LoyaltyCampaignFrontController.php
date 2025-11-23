@@ -180,3 +180,4 @@ class LoyaltyCampaignFrontController extends GymGenericFrontController
     }
 }
 
+

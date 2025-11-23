@@ -53,3 +53,4 @@ class GymMemberSystem extends GenericModel
     }
 
 }
+

@@ -43,3 +43,4 @@ class GymZKFingerprint extends GenericModel
     }
 
 }
+

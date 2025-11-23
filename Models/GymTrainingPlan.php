@@ -59,3 +59,4 @@ class GymTrainingPlan extends GenericModel
     }
 
 }
+

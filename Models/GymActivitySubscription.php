@@ -46,3 +46,4 @@ class GymActivitySubscription extends GenericModel
     }
 
 }
+

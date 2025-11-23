@@ -20,10 +20,12 @@ class TrainingPlanResource extends JsonResource
             [
                 "id" => $this->id,
                 "title" => $this->title,
-                "image" => $this->type = TypeConstants::DIET_PLAN_TYPE ? asset('resources/assets/front/images/diet_training.png') : asset('resources/assets/front/images/bar_training.png'),
+                "image" => $this->type = TypeConstants::DIET_PLAN_TYPE ? asset('resources/assets/new_front/images/diet_training.png') : asset('resources/assets/new_front/images/bar_training.png'),
                 "short_content" => $this->title,
                 "is_new" => @$this->is_new ? $this->is_new : 0,
                 "new_title" => @$this->is_new ? trans('sw.new') : '',
             ];
     }
 }
+
+

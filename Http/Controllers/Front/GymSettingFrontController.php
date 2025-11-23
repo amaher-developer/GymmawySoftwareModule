@@ -873,3 +873,4 @@ class GymSettingFrontController extends GymGenericFrontController
         return redirect(route('sw.listStoreGroup'));
     }
 }
+

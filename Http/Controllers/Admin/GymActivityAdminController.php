@@ -209,3 +209,4 @@ class GymActivityAdminController extends GenericAdminController
     }
 
 }
+

@@ -187,3 +187,4 @@ class LoyaltyTransactionFrontController extends GymGenericFrontController
     }
 }
 
+

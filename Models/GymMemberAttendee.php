@@ -47,3 +47,4 @@ class GymMemberAttendee extends GenericModel
     }
 
 }
+

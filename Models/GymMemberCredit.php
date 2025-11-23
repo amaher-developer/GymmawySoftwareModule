@@ -47,3 +47,4 @@ class GymMemberCredit extends GenericModel
     }
 
 }
+

@@ -54,3 +54,4 @@ class GymPTClassRequest extends FormRequest
         ];
     }
 }
+

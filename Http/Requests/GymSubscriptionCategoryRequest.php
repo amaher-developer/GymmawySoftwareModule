@@ -30,3 +30,4 @@ class GymSubscriptionCategoryRequest extends FormRequest
     }
 }
 
+

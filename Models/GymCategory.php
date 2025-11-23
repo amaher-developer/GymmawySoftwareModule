@@ -44,3 +44,4 @@ class GymCategory extends GenericModel
     }
 
 }
+

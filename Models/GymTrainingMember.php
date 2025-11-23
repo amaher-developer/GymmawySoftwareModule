@@ -48,3 +48,4 @@ class GymTrainingMember extends GenericModel
     }
 
 }
+

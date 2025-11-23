@@ -39,7 +39,7 @@ class GymSaleChannel extends GenericModel
         if($image)
             return asset(self::$uploads_path.$image);
 
-        return asset('resources/assets/front/img/blank-image.svg');
+        return asset('resources/assets/new_front/img/blank-image.svg');
     }
 
 
@@ -60,3 +60,4 @@ class GymSaleChannel extends GenericModel
     }
 
 }
+

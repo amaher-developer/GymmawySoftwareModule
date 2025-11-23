@@ -30,3 +30,4 @@ class GymUserPermissionRequest extends FormRequest
     }
 }
 
+

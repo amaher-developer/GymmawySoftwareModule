@@ -20,7 +20,7 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
     <style>
         .tag-red {
             background-color: #ec2d38 !important;
@@ -527,7 +527,7 @@
 @endsection
 
 @section('scripts')
- <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+ <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     @parent
     <script>
@@ -673,3 +673,4 @@
     </script>
 
 @endsection
+

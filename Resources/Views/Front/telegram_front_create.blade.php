@@ -125,8 +125,8 @@
                         <!-- Image Upload -->
                         <div class="fv-row">
                             <label class="form-label">{{ trans('sw.upload_image')}}</label>
-                            <div class="image-input image-input-outline" data-kt-image-input="true" style="background-image: url('https://gymmawy.com/resources/assets/front/img/logo/default.png')">
-                                <div class="image-input-wrapper w-125px h-125px" style="background-image: url('https://gymmawy.com/resources/assets/front/img/logo/default.png');"></div>
+                            <div class="image-input image-input-outline" data-kt-image-input="true" style="background-image: url('https://gymmawy.com/resources/assets/new_front/img/logo/default.png')">
+                                <div class="image-input-wrapper w-125px h-125px" style="background-image: url('https://gymmawy.com/resources/assets/new_front/img/logo/default.png');"></div>
                                 <label class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow" data-kt-image-input-action="change" data-bs-toggle="tooltip" title="Change image">
                                     <i class="ki-outline ki-pencil fs-7"></i>
                                     <input type="file" name="image" accept=".png, .jpg, .jpeg" />
@@ -162,3 +162,5 @@
 @section('scripts')
     
 @endsection
+
+

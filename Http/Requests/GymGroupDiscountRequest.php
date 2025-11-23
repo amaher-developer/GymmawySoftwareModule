@@ -32,3 +32,4 @@ class GymGroupDiscountRequest extends FormRequest
         ];
     }
 }
+

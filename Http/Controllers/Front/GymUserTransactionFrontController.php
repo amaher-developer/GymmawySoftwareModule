@@ -514,3 +514,4 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     }
 }
 
+

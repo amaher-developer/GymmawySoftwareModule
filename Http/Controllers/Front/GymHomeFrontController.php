@@ -1107,3 +1107,4 @@ class GymHomeFrontController extends GymGenericFrontController
     }
 
 }
+

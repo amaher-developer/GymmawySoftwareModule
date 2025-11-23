@@ -195,3 +195,5 @@
     <!--end::Loyalty Point Rule Form-->
 
 @endsection
+
+

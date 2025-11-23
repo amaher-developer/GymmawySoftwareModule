@@ -24,3 +24,4 @@ class GymReservationUsage extends GenericModel
     ];
 }
 
+

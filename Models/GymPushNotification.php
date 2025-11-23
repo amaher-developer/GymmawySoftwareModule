@@ -16,3 +16,4 @@ class GymPushNotification extends GenericModel
     }
 
 }
+

@@ -40,3 +40,5 @@
         'formMethod' => isset($class) && $class->exists ? 'PUT' : 'POST',
     ])
 @endsection
+
+

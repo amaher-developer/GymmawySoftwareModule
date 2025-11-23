@@ -2442,7 +2442,7 @@ class GymMemberFrontController extends GymGenericFrontController
             }
             // member code under barcode (left side)
             $img->text(($code), 200, 320, function ($font) {
-                $font->file(base_path('resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
                 $font->align('center');
@@ -2455,7 +2455,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
             // add member name on image (right band)
             $img->text($name, ($canvasWidth - 250), 120, function ($font) {
-                $font->file(base_path('resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
                 $font->align('center');
@@ -2464,13 +2464,13 @@ class GymMemberFrontController extends GymGenericFrontController
             });
             // add gym phone on image
             $img->text($setting->phone, ($canvasWidth - 350), 240, function ($font) {
-                $font->file(base_path('resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
             // add gym email on image
             $img->text($setting->support_email, ($canvasWidth - 350), 300, function ($font) {
-                $font->file(base_path('resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
@@ -2516,7 +2516,7 @@ class GymMemberFrontController extends GymGenericFrontController
             // add barcode on image
             $img->place(base_path('uploads/barcodes/' . $code . '.png'), 'bottom-left', 100, 200);
             $img->text(($code), 200, 320, function ($font) {
-                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
                 $font->align('center');
@@ -2529,7 +2529,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
             // add member name on image
             $img->text($name, 650, 105, function ($font) {
-                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
                 $font->align('center');
@@ -2538,13 +2538,13 @@ class GymMemberFrontController extends GymGenericFrontController
             });
             // add gym phone on image
             $img->text($setting->phone, 500, 220, function ($font) {
-                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
             // add gym email on image
             $img->text($setting->support_email, 500, 300, function ($font) {
-                $font->file(base_path('./resources/assets/front/fonts/Janna LT Bold.ttf'));
+                $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
@@ -2996,3 +2996,4 @@ dd('ssss');
 
     }
 }
+

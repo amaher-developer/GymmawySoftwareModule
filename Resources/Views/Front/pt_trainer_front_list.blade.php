@@ -14,7 +14,7 @@
 @endsection
 
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/admin/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}"/>
+    <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}"/>
     <style>
         .actions-column {
             min-width: 120px;
@@ -352,7 +352,7 @@
 
 @section('scripts')
     @parent
-    <script src="{{ asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js') }}" type="text/javascript"></script>
+    <script src="{{ asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js') }}" type="text/javascript"></script>
     <script>
         (function ($) {
             'use strict';
@@ -632,3 +632,5 @@
         })(jQuery);
     </script>
 @endsection
+
+

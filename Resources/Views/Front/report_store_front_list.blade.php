@@ -20,7 +20,7 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
     <style>
         .avatar-md {
             width: 48px !important;
@@ -193,7 +193,7 @@
                         @foreach($orders as $key=> $order)
                             @php
                                 $member = $order->member ?? null;
-                                $customerImage = $member && !empty($member->image) ? $member->image : asset('resources/assets/front/img/blank-image.svg');
+                                $customerImage = $member && !empty($member->image) ? $member->image : asset('resources/assets/new_front/img/blank-image.svg');
                                 $customerName = $member->name ?? ($order->customer_name ?? 'N/A');
                                 $customerPhone = $member->phone ?? ($order->customer_phone ?? trans('sw.not_specified'));
                                 $orderProducts = collect($order->order_product ?? []);
@@ -463,7 +463,7 @@
 @endsection
 
 @section('scripts')
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     @parent
     <script>
@@ -516,3 +516,4 @@
         });
     </script>
 @endsection
+

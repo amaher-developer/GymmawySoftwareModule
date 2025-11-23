@@ -151,3 +151,4 @@ class LoyaltyPointRuleFrontController extends GymGenericFrontController
     }
 }
 
+

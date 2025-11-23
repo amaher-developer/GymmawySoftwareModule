@@ -29,3 +29,5 @@ class ZKNewMemberResource extends JsonResource
             ];
     }
 }
+
+

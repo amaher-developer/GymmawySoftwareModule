@@ -46,3 +46,4 @@ class GymReservation extends GenericModel
         return $this->belongsTo(GymActivity::class, 'activity_id')->withTrashed();
     }
 }
+

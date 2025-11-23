@@ -1213,3 +1213,4 @@ class GymPTMemberFrontController extends GymGenericFrontController
         return  Response::json(['status' => true], 200);
     }
 }
+

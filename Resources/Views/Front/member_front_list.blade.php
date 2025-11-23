@@ -20,8 +20,8 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/admin/global/plugins/pick-hours-availability-calendar/mark-your-calendar.css')}}">
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
+    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/new_front/global/plugins/pick-hours-availability-calendar/mark-your-calendar.css')}}">
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
     <style>
         .avatar-md {
             width: 48px !important;
@@ -1410,11 +1410,11 @@
 
 @section('scripts')
     @parent
-    <script   src="{{asset('resources/assets/admin/global/scripts/software/renew_member.js')}}"></script>
+    <script   src="{{asset('resources/assets/new_front/global/scripts/software/renew_member.js')}}"></script>
 
     <script src="https://momentjs.com/downloads/moment.js"></script>
 {{--    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>--}}
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/plugins/pick-hours-availability-calendar/mark-your-calendar.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/plugins/pick-hours-availability-calendar/mark-your-calendar.js')}}"></script>
     <script type="text/javascript">
         // Loyalty Points Variables for Pay Remaining Modal
         var payLoyaltyMoneyToPointRate = 0;
@@ -1455,7 +1455,7 @@
       
 
     </script>
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     <script>
          function list_renew_membership(id) {
@@ -2752,3 +2752,5 @@ $(document).on('change', '.qb-activity-select', function(){
 @endif
 
 @endsection
+
+

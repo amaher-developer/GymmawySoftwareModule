@@ -235,3 +235,4 @@ class GymPTMember extends GenericModel
         return parent::toArray();
     }
 }
+

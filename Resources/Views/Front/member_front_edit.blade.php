@@ -31,7 +31,7 @@
 @section('form_title') {{ @$title }} @endsection
 @section('styles')
     <!---Internal Fileupload css-->
-    <link href="{{asset('/')}}resources/assets/admin/global/scripts/css/fileupload.css" rel="stylesheet"
+    <link href="{{asset('/')}}resources/assets/new_front/global/scripts/css/fileupload.css" rel="stylesheet"
           type="text/css"/>
 
         <style>
@@ -756,12 +756,12 @@
 
 
 @section('sub_scripts')
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript"></script>--}}
-{{--    <script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-pickers.js"></script>--}}
-<script   src="{{asset('resources/assets/admin/global/scripts/software/renew_member.js')}}"></script>
+{{--    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript"></script>--}}
+{{--    <script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-pickers.js"></script>--}}
+<script   src="{{asset('resources/assets/new_front/global/scripts/software/renew_member.js')}}"></script>
 
 <script>
 
@@ -1220,8 +1220,8 @@
     </script>
 
     <!--Internal Fileuploads js-->
-    <script src="{{asset('/')}}resources/assets/admin/global/scripts/js/fileupload.js"></script>
-    <script src="{{asset('/')}}resources/assets/admin/global/scripts/js/file-upload.js"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/js/fileupload.js"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/js/file-upload.js"></script>
 
 
     <script>
@@ -1241,3 +1241,5 @@
     </script>
 
 @endsection
+
+

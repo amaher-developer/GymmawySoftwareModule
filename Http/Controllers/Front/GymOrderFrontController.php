@@ -779,3 +779,4 @@ class GymOrderFrontController extends GymGenericFrontController
         return $inputs;
     }
 }
+

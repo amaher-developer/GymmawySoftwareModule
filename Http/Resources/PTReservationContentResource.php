@@ -29,3 +29,5 @@ class PTReservationContentResource extends JsonResource
 
     }
 }
+
+

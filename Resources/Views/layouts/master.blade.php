@@ -15,7 +15,7 @@
     </noscript>
 
     <!-- Favicon -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{asset('resources/assets/front/img/logo/favicon.ico')}}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{asset('resources/assets/new_front/img/logo/favicon.ico')}}">
 
     <meta charset="utf-8"/>
     <title>{{$mainSettings->name}}</title>
@@ -25,8 +25,8 @@
     <meta content="" name="author"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <link rel="shortcut icon" href="{{asset('resources/assets/front/images/favicon.ico')}}" type="image/x-icon"/>
-    <link rel="apple-touch-icon" href="{{asset('resources/assets/front/images/favicon.ico')}}" type="image/x-icon"/>
+    <link rel="shortcut icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
+    <link rel="apple-touch-icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
 
     <!--begin::Fonts(mandatory for all pages)-->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -111,9 +111,9 @@
 
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css"></noscript>
-    <link rel="stylesheet" href="{{asset('resources/assets/admin/global/scripts/css/datepicker3.css')}}">
-    <link rel="stylesheet" href="{{asset('resources/assets/admin/global/scripts/software/custom_qr_scanner.css')}}">
-    <link rel="stylesheet" href="{{asset('resources/assets/admin/global/scripts/software/renew_member.css')}}">
+    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/css/datepicker3.css')}}">
+    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.css')}}">
+    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/renew_member.css')}}">
     <style>
         .modal-content-demo .modal-body h6 {
             color: #242f48;
@@ -700,7 +700,7 @@
                                     class="topbar-item cursor-pointer symbol px-3 px-lg-5 me-n3 me-lg-n5 symbol-30px symbol-md-35px"
                                     data-kt-menu-trigger="click" data-kt-menu-attach="parent"
                                     data-kt-menu-placement="bottom-end" data-kt-menu-flip="bottom">
-                                    <img src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/front/img/avatar_placeholder_white.png')}}"
+                                    <img src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png')}}"
                                          alt="metronic"/>
                                 </div>
                                 <!--begin::User account menu-->
@@ -713,7 +713,7 @@
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-50px me-5">
                                                 <img alt="Logo"
-                                                     src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/front/img/avatar_placeholder_white.png')}}"/>
+                                                     src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png')}}"/>
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Username-->
@@ -966,26 +966,26 @@
 <!--end::Global Javascript Bundle-->
 
 <!-- BEGIN CORE PLUGINS -->
-<script src="{{asset('resources/assets/admin/global/plugins/jquery.min.js')}}" type="text/javascript"></script>
-<script src="{{asset('resources/assets/admin/global/plugins/bootstrap/js/bootstrap.min.js')}}"
+<script src="{{asset('resources/assets/new_front/global/plugins/jquery.min.js')}}" type="text/javascript"></script>
+<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap/js/bootstrap.min.js')}}"
         type="text/javascript"></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.min.js" type="text/javascript" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.ui.min.js" type="text/javascript" defer></script>
 
-<script src="{{asset('resources/assets/admin/global/plugins/js.cookie.min.js')}}" type="text/javascript" defer></script>
-<script src="{{asset('resources/assets/admin/global/plugins/jquery-slimscroll/jquery.slimscroll.min.js')}}"
+<script src="{{asset('resources/assets/new_front/global/plugins/js.cookie.min.js')}}" type="text/javascript" defer></script>
+<script src="{{asset('resources/assets/new_front/global/plugins/jquery-slimscroll/jquery.slimscroll.min.js')}}"
         type="text/javascript" defer></script>
-<script src="{{asset('resources/assets/admin/global/plugins/jquery.blockui.min.js')}}" type="text/javascript" defer></script>
-<script src="{{asset('resources/assets/admin/global/plugins/bootstrap-switch/js/bootstrap-switch.min.js')}}"
+<script src="{{asset('resources/assets/new_front/global/plugins/jquery.blockui.min.js')}}" type="text/javascript" defer></script>
+<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-switch/js/bootstrap-switch.min.js')}}"
         type="text/javascript" defer></script>
 
 
 <!-- BEGIN Sweet Alert SCRIPTS -->
-<link href="{{asset('resources/assets/admin/global/plugins/sweet-alerts/sweetalert_2.css')}}"
+<link href="{{asset('resources/assets/new_front/global/plugins/sweet-alerts/sweetalert_2.css')}}"
       rel="stylesheet"
       type="text/css"/>
-<script src="{{asset('resources/assets/admin/global/plugins/sweet-alerts/sweetalert_2.js')}}"
+<script src="{{asset('resources/assets/new_front/global/plugins/sweet-alerts/sweetalert_2.js')}}"
         type="text/javascript"></script>
 @include('generic::flash')
 @include('software::layouts.notifications')
@@ -1005,22 +1005,22 @@
 <!--End of Tawk.to Script-->
 
 <!-- Internal Select2.min js -->
-<script src="{{asset('resources/assets/admin/global/scripts/js/select2.min.js')}}" defer></script>
-<script src="{{asset('resources/assets/admin/global/scripts/js/bootstrap-datepicker.js')}}" defer></script>
+<script src="{{asset('resources/assets/new_front/global/scripts/js/select2.min.js')}}" defer></script>
+<script src="{{asset('resources/assets/new_front/global/scripts/js/bootstrap-datepicker.js')}}" defer></script>
 
-{{--<script src="{{asset('resources/assets/admin/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>--}}
-<script type="text/javascript" src="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/daterangepicker.js" defer></script>
-<script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript" defer></script>
-<script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-pickers.js" type="text/javascript" defer></script>
+{{--<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>--}}
+<script type="text/javascript" src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker.js" defer></script>
+<script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript" defer></script>
+<script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-pickers.js" type="text/javascript" defer></script>
 
 <!-- QR Scanner -->
 {{--<script type="module">--}}
-{{--    import QrScanner from "{{asset('resources/assets/admin/global/scripts/qr/qr-scanner.min.js')}}";--}}
-{{--    QrScanner.WORKER_PATH = "{{asset('resources/assets/admin/global/scripts/qr/qr-scanner-worker.min.js')}}"--}}
+{{--    import QrScanner from "{{asset('resources/assets/new_front/global/scripts/qr/qr-scanner.min.js')}}";--}}
+{{--    QrScanner.WORKER_PATH = "{{asset('resources/assets/new_front/global/scripts/qr/qr-scanner-worker.min.js')}}"--}}
 {{--</script>--}}
-{{--<script type="module" language="JavaScript"  src="{{asset('resources/assets/admin/global/scripts/software/custom_qr_scanner.js')}}"></script>--}}
+{{--<script type="module" language="JavaScript"  src="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.js')}}"></script>--}}
 <script type="text/javascript" language="JavaScript"
-        src="{{asset('resources/assets/admin/global/scripts/software/custom_qr_scanner_logic.js')}}"></script>
+        src="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner_logic.js')}}"></script>
 
 
 <!-- Start Renew Member -->
@@ -1063,7 +1063,7 @@
 
 </script>
 @if((\Request::route()->getName() !=  'sw.editMember') && (\Request::route()->getName() !=  'sw.listMember'))
-    <script type="module" src="{{asset('resources/assets/admin/global/scripts/software/renew_member.js')}}"></script>
+    <script type="module" src="{{asset('resources/assets/new_front/global/scripts/software/renew_member.js')}}"></script>
     <!-- End Renew-->
 @endif
 <script>
@@ -1120,7 +1120,7 @@
 
     }
 </script>
-<script src="{{asset('resources/assets/admin/global/plugins/bootbox/bootbox.min.js')}}" type="text/javascript"></script>
+<script src="{{asset('resources/assets/new_front/global/plugins/bootbox/bootbox.min.js')}}" type="text/javascript"></script>
 <script>
     $('#site_on_off').click(function () {
         bootbox.dialog({
@@ -1197,4 +1197,6 @@
 </body>
 <!--end::Body-->
 </html>
+
+
 

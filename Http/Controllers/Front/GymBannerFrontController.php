@@ -350,3 +350,4 @@ class GymBannerFrontController extends GymGenericFrontController
 
 
 }
+

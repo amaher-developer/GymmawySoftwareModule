@@ -153,3 +153,4 @@ class GymGenericFrontController extends GenericFrontController
 
 
 }
+

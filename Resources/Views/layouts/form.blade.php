@@ -1,27 +1,27 @@
 @extends('software::layouts.master')
 @section('styles')
-{{--    <link href="{{asset('resources/assets/admin/global/plugins/fancybox/source/jquery.fancybox.css')}}"--}}
+{{--    <link href="{{asset('resources/assets/new_front/global/plugins/fancybox/source/jquery.fancybox.css')}}"--}}
 {{--          rel="stylesheet" type="text/css"/>--}}
-{{--    <link href="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/blueimp-gallery/blueimp-gallery.min.css')}}"--}}
+{{--    <link href="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/blueimp-gallery/blueimp-gallery.min.css')}}"--}}
 {{--          rel="stylesheet" type="text/css"/>--}}
-{{--    <link href="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/css/jquery.fileupload.css')}}"--}}
+{{--    <link href="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/css/jquery.fileupload.css')}}"--}}
 {{--          rel="stylesheet" type="text/css"/>--}}
-{{--    <link href="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/css/jquery.fileupload-ui.css')}}"--}}
+{{--    <link href="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/css/jquery.fileupload-ui.css')}}"--}}
 {{--          rel="stylesheet" type="text/css"/>--}}
 
-    <link href="{{asset('resources/assets/admin/global/plugins/bootstrap-select/css/bootstrap-select.min.css')}}"
+    <link href="{{asset('resources/assets/new_front/global/plugins/bootstrap-select/css/bootstrap-select.min.css')}}"
           rel="stylesheet" type="text/css"/>
 
     <link rel="stylesheet" type="text/css"
-          href="{{asset('resources/assets/admin/global/plugins/select2/css/select2.min.css')}}">
+          href="{{asset('resources/assets/new_front/global/plugins/select2/css/select2.min.css')}}">
     <link rel="stylesheet" type="text/css"
-          href="{{asset('resources/assets/admin/global/plugins/select2/css/select2-bootstrap.min.css')}}">
+          href="{{asset('resources/assets/new_front/global/plugins/select2/css/select2-bootstrap.min.css')}}">
 
     <link rel="stylesheet" type="text/css"
-          href="{{asset('resources/assets/admin/custom/bootstrapValidator.css')}}"/>
+          href="{{asset('resources/assets/new_front/custom/bootstrapValidator.css')}}"/>
 
 {{--    <link rel="stylesheet" type="text/css"--}}
-{{--          href="{{asset('resources/assets/admin/global/plugins/bootstrap-wysihtml5/bootstrap-wysihtml5.css')}}"/>--}}
+{{--          href="{{asset('resources/assets/new_front/global/plugins/bootstrap-wysihtml5/bootstrap-wysihtml5.css')}}"/>--}}
 
 <style>
     .spinner-input {
@@ -103,46 +103,48 @@
 @endsection
 
 @section('scripts')
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/fancybox/source/jquery.fancybox.pack.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/fancybox/source/jquery.fancybox.pack.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/vendor/jquery.ui.widget.js')}}"
+    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/vendor/jquery.ui.widget.js')}}"
             type="text/javascript"></script>
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/vendor/tmpl.min.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/vendor/tmpl.min.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/vendor/load-image.min.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/vendor/load-image.min.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/vendor/canvas-to-blob.min.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/vendor/canvas-to-blob.min.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/blueimp-gallery/jquery.blueimp-gallery.min.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/blueimp-gallery/jquery.blueimp-gallery.min.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.iframe-transport.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.iframe-transport.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.fileupload.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.fileupload.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.fileupload-process.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.fileupload-process.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.fileupload-image.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.fileupload-image.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.fileupload-audio.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.fileupload-audio.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.fileupload-video.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.fileupload-video.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.fileupload-validate.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.fileupload-validate.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/global/plugins/jquery-file-upload/js/jquery.fileupload-ui.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/global/plugins/jquery-file-upload/js/jquery.fileupload-ui.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-{{--    <script src="{{asset('resources/assets/admin/pages/scripts/form-fileupload.min.js')}}"--}}
+{{--    <script src="{{asset('resources/assets/new_front/pages/scripts/form-fileupload.min.js')}}"--}}
 {{--            type="text/javascript"></script>--}}
-    <script src="{{asset('resources/assets/admin/global/plugins/bootstrap-select/js/bootstrap-select.min.js')}}"
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-select/js/bootstrap-select.min.js')}}"
             type="text/javascript"></script>
-    <script src="{{asset('resources/assets/admin/pages/scripts/components-bootstrap-select.min.js')}}"
+    <script src="{{asset('resources/assets/new_front/pages/scripts/components-bootstrap-select.min.js')}}"
             type="text/javascript"></script>
 
 
 {{--    <script type="text/javascript"--}}
-{{--            src="{{asset('resources/assets/admin/global/plugins/select2/js/select2.full.min.js')}}"></script>--}}
+{{--            src="{{asset('resources/assets/new_front/global/plugins/select2/js/select2.full.min.js')}}"></script>--}}
 {{--    <script type="text/javascript"--}}
-{{--            src="{{asset('resources/assets/admin/global/plugins/bootstrap-wysihtml5/bootstrap-wysihtml5.js')}}"></script>--}}
+{{--            src="{{asset('resources/assets/new_front/global/plugins/bootstrap-wysihtml5/bootstrap-wysihtml5.js')}}"></script>--}}
 
     @yield('sub_scripts')
 @endsection
+
+

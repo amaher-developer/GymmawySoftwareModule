@@ -57,3 +57,4 @@ class GymNonMember extends GenericModel
 
 
 }
+

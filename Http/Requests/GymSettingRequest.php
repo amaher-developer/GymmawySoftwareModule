@@ -28,3 +28,4 @@ class GymSettingRequest extends FormRequest
         ];
     }
 }
+

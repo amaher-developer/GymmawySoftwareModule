@@ -30,3 +30,4 @@ class GymNonMemberRequest extends FormRequest
         ];
     }
 }
+

@@ -10,7 +10,7 @@
 <html lang="{{ $lang }}" direction="{{ $lang == 'ar' ? 'rtl' : 'ltr' }}" style="direction: {{ $lang == 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <title>{{$member->name}}</title>
-    <link rel="shortcut icon" href="{{asset('resources/assets/front/images/favicon.ico')}}" type="image/x-icon"/>
+    <link rel="shortcut icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700" />
     @if($lang == 'ar')
         <link href="{{asset('resources/assets/new_front/plugins/global/plugins.bundle.rtl.css')}}" rel="stylesheet" type="text/css" />
@@ -531,3 +531,5 @@
 
 </body>
 </html>
+
+

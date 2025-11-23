@@ -94,3 +94,4 @@ class GymPTApiController extends GymGenericApiController
         return $this->successResponse();
     }
 }
+

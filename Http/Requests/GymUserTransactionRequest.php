@@ -62,3 +62,4 @@ class GymUserTransactionRequest extends FormRequest
     }
 }
 
+

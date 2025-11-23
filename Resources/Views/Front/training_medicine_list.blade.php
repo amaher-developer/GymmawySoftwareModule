@@ -308,3 +308,5 @@
 </div>
 <!--end::Medicines-->
 @endsection
+
+

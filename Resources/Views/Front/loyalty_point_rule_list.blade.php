@@ -196,3 +196,5 @@
 <!--end::Loyalty Point Rules-->
 
 @endsection
+
+

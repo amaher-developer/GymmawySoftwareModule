@@ -46,3 +46,4 @@ class GymTrainingMedicineRequest extends FormRequest
         ];
     }
 }
+

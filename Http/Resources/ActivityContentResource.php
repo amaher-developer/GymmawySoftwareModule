@@ -28,3 +28,5 @@ class ActivityContentResource extends JsonResource
             ];
     }
 }
+
+

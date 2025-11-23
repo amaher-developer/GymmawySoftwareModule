@@ -197,7 +197,7 @@
                         <div class="image-input image-input-outline">
                             <label for="gym_image" class="cursor-pointer">
                                 <img id="preview" 
-                                     src="{{ $activity->image ?: 'https://gymmawy.com/resources/assets/front/img/blank-image.svg' }}"
+                                     src="{{ $activity->image ?: 'https://gymmawy.com/resources/assets/new_front/img/blank-image.svg' }}"
                                      class="rounded border border-gray-300"
                                      style="height: 120px; width: 120px; object-fit: contain;"
                                      alt="Activity preview image"/>
@@ -475,7 +475,7 @@
 @endsection
 @section('scripts')
     {{-- External Libraries --}}
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/plugins/fuelux/js/spinner.min.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/plugins/fuelux/js/spinner.min.js')}}"></script>
 
     {{-- Form Initialization --}}
   <script>
@@ -575,3 +575,5 @@
         });
     </script>
 @endsection
+
+

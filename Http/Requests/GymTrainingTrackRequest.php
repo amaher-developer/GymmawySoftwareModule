@@ -32,3 +32,4 @@ class GymTrainingTrackRequest extends FormRequest
         ];
     }
 }
+

@@ -30,3 +30,4 @@ class GymSwPaymentApiController extends GenericApiController
         return redirect(route('sw.listSwPayment'));
     }
 }
+

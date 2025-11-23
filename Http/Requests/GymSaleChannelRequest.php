@@ -32,3 +32,4 @@ class GymSaleChannelRequest extends FormRequest
         ];
     }
 }
+

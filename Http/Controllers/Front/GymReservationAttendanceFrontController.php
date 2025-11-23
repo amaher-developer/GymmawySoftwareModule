@@ -59,3 +59,4 @@ class GymReservationAttendanceFrontController extends GymGenericFrontController
     }
 }
 
+

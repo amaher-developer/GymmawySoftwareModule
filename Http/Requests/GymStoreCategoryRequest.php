@@ -30,3 +30,4 @@ class GymStoreCategoryRequest extends FormRequest
     }
 }
 
+

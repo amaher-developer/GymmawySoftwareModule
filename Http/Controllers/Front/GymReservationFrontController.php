@@ -1062,3 +1062,4 @@ class GymReservationFrontController extends GymGenericFrontController
         return response()->json(['success' => true, 'status' => 'missed']);
     }
 }
+

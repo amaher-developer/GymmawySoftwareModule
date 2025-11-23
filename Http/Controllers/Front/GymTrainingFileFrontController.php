@@ -370,3 +370,4 @@ class GymTrainingFileFrontController extends GymGenericFrontController
     }
 
 }
+

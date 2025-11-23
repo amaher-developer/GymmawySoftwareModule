@@ -38,3 +38,4 @@ class GymTrainingNotification extends GenericModel
     }
 }
 
+

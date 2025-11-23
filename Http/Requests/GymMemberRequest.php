@@ -60,3 +60,4 @@ class GymMemberRequest extends FormRequest
     }
 
 }
+

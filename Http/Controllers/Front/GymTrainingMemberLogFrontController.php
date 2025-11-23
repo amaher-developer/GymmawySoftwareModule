@@ -1474,3 +1474,4 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         }
     }
 }
+

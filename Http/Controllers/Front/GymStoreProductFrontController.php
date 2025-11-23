@@ -478,3 +478,4 @@ class GymStoreProductFrontController extends GymGenericFrontController
     }
 
 }
+

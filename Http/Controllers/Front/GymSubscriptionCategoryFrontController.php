@@ -263,3 +263,4 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
 
 }
 
+

@@ -42,3 +42,4 @@ class GymTrainingMedicine extends GenericModel
     }
 
 }
+

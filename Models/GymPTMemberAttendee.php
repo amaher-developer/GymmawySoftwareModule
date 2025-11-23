@@ -39,3 +39,4 @@ class GymPTMemberAttendee extends GenericModel
     }
 
 }
+

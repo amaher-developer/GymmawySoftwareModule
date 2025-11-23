@@ -43,3 +43,4 @@ class GymOrder extends GenericModel
     }
 
 }
+

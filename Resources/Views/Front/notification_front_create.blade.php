@@ -93,7 +93,7 @@
                     <a href="https://onelink.to/gymmawy" target="_blank">
                     <div class="tile image selected">
                         <div class="tile-body">
-                            <img src="{{asset('resources/assets/front/images/onlink_to_gymmawy_small.png')}}" alt="">
+                            <img src="{{asset('resources/assets/new_front/images/onlink_to_gymmawy_small.png')}}" alt="">
                         </div>
                         <div class="tile-object">
                             <div class="name">
@@ -135,7 +135,7 @@
                     <div class="form-group row">
                         @if(count($members) > 0)
                         <label class="col-md-8"><input type="checkbox" id="check_all" onclick="" value="1" checked=""> {{ trans('sw.all_clients')}}</label>
-{{--                        <div class="col-md-4"><a href="https://play.google.com/store/apps/details?id=com.gymmawy" target="_blank"><img src="{{asset('resources/assets/front/images/play_store_icon.png')}}" style="width: 140px;"></a></div>--}}
+{{--                        <div class="col-md-4"><a href="https://play.google.com/store/apps/details?id=com.gymmawy" target="_blank"><img src="{{asset('resources/assets/new_front/images/play_store_icon.png')}}" style="width: 140px;"></a></div>--}}
                         <div style="clear: both;float: none"><hr/></div>
                         <div class="radio-list col-md-12 ">
                             @foreach($members as $member)
@@ -184,3 +184,5 @@
         });
     </script>
 @endsection
+
+

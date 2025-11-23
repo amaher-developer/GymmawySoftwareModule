@@ -32,3 +32,4 @@ class GymBlockMemberRequest extends FormRequest
         ];
     }
 }
+

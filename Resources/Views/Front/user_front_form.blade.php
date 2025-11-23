@@ -21,8 +21,8 @@
 @section('form_title') {{ @$title }} @endsection
 @section('styles')
     {{-- Required CSS Libraries --}}
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css"/>
-    <link href="{{asset('/')}}resources/assets/admin/global/scripts/css/fileupload.css" rel="stylesheet"
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css"/>
+    <link href="{{asset('/')}}resources/assets/new_front/global/scripts/css/fileupload.css" rel="stylesheet"
           type="text/css"/>
 
     <style>
@@ -423,13 +423,13 @@
 
 @section('sub_scripts')
     {{-- Required JavaScript Libraries --}}
-    <script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript"></script>
-    <script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-pickers.js"></script>
-    <script type="text/javascript" src="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-timepicker/js/bootstrap-timepicker.min.js"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-pickers.js"></script>
+    <script type="text/javascript" src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-timepicker/js/bootstrap-timepicker.min.js"></script>
     
     {{-- File Upload Scripts --}}
-    <script src="{{asset('/')}}resources/assets/admin/global/scripts/js/fileupload.js"></script>
-    <script src="{{asset('/')}}resources/assets/admin/global/scripts/js/file-upload.js"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/js/fileupload.js"></script>
+    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/js/file-upload.js"></script>
 
     {{-- Form Initialization --}}
     <script>
@@ -539,4 +539,6 @@
     </script>
 
 @endsection
+
+
 

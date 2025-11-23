@@ -32,7 +32,7 @@ class GymPTTrainer extends GenericModel
             return asset(self::$uploads_path . $image);
         }
 
-        return asset('resources/assets/front/img/blank-image.svg');
+        return asset('resources/assets/new_front/img/blank-image.svg');
     }
 
     public function classAssignments()

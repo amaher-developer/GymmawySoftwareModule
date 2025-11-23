@@ -3,7 +3,7 @@
 
 <head>
     <!-- Favicon -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{asset('resources/assets/front/img/logo/favicon.ico')}}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{asset('resources/assets/new_front/img/logo/favicon.ico')}}">
 
     <meta charset="utf-8"/>
     <title>{{$mainSettings->name}}</title>
@@ -217,3 +217,5 @@
 </body>
 
 </html>
+
+

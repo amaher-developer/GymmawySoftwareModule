@@ -28,3 +28,4 @@ class GymStoreApiController extends GymGenericApiController
         return $this->successResponse();
     }
 }
+

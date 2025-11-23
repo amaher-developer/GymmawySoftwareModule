@@ -36,3 +36,4 @@ class GymTrainingMemberRequest extends FormRequest
         ];
     }
 }
+

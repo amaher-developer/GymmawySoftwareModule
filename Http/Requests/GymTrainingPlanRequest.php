@@ -27,3 +27,4 @@ class GymTrainingPlanRequest extends FormRequest
         ];
     }
 }
+

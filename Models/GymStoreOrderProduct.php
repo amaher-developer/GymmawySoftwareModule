@@ -43,3 +43,4 @@ class GymStoreOrderProduct extends GenericModel
     }
 
 }
+

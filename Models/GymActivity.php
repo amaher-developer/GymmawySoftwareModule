@@ -46,7 +46,7 @@ class GymActivity extends GenericModel
     {
         $image = $this->getRawOriginal('image');
         if (!$image) {
-            return asset('resources/assets/front/img/blank-image.svg');
+            return asset('resources/assets/new_front/img/blank-image.svg');
         }
 
         if (filter_var($image, FILTER_VALIDATE_URL)) {
@@ -72,7 +72,7 @@ class GymActivity extends GenericModel
             return asset($relativePath);
         }
 
-        return asset('resources/assets/front/img/blank-image.svg');
+        return asset('resources/assets/new_front/img/blank-image.svg');
     }
 
     public function getContentAttribute()
@@ -109,3 +109,4 @@ class GymActivity extends GenericModel
     }
 
 }
+

@@ -108,3 +108,4 @@ class GymMoneyBox extends GenericModel
     }
 
 }
+

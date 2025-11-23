@@ -168,7 +168,7 @@
                         <input id="gym_image" name="image" type="file" class="form-control mb-2">
                         <label for="gym_image" style="cursor: pointer;">
                             <img id="preview" @if($product->image) src="{{$product->image}}"
-                                 @else src="https://gymmawy.com/resources/assets/front/img/blank-image.svg" @endif
+                                 @else src="https://gymmawy.com/resources/assets/new_front/img/blank-image.svg" @endif
                                  style="height: 120px;width: 120px;object-fit: contain;border: 1px solid #c2cad8;"
                                  alt="preview image"/>
                         </label>
@@ -449,3 +449,5 @@
 
     </script>
 @endsection
+
+

@@ -22,3 +22,5 @@ class NotificationResource extends JsonResource
             ];
     }
 }
+
+

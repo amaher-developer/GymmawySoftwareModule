@@ -209,3 +209,4 @@ class GymNonMemberAdminController extends GenericAdminController
     }
 
 }
+

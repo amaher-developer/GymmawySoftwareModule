@@ -29,3 +29,4 @@ class GymStoreOrderRequest extends FormRequest
         ];
     }
 }
+

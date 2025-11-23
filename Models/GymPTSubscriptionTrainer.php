@@ -43,3 +43,4 @@ class GymPTSubscriptionTrainer extends GenericModel
     }
 
 }
+

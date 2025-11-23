@@ -39,3 +39,4 @@ class GymMemberNotificationLog extends GenericModel
     }
 
 }
+

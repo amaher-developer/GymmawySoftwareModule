@@ -58,3 +58,4 @@ class GymTrainingApiController extends GymGenericApiController
     }
 
 }
+

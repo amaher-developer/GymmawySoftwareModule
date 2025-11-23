@@ -46,7 +46,7 @@ class SwPermission
                 $mainSettings = new \stdClass();
                 $mainSettings->name = 'Gym System';
                 $mainSettings->description = 'Gym Management System';
-                $mainSettings->logo_white = asset('resources/assets/front/images/logo.png');
+                $mainSettings->logo_white = asset('resources/assets/new_front/images/logo.png');
                 $mainSettings->sw_end_date = '2099-12-31';
                 $mainSettings->active_store = false;
                 $mainSettings->active_pt = false;
@@ -193,3 +193,4 @@ class SwPermission
     }
 
 }
+

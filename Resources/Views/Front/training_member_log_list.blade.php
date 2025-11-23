@@ -296,3 +296,5 @@
 </div>
 <!--end::Member Training Management-->
 @endsection
+
+

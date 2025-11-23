@@ -8,3 +8,4 @@ class MoneyBoxApiController extends GenericApiController
 {
 
 }
+

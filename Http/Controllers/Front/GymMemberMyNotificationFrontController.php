@@ -58,7 +58,7 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
         $data['title'] = $user_inputs['title'];
         $data['body'] = $msg;
 
-        $data['image'] =  $this->mainSettings->logo ? $this->mainSettings->logo : 'https://gymmawy.com/resources/assets/front/img/logo/default.png';
+        $data['image'] =  $this->mainSettings->logo ? $this->mainSettings->logo : 'https://gymmawy.com/resources/assets/new_front/img/logo/default.png';
         $data['sound'] = 'default';
         $data['badge'] = '1';
         $data['e'] = 1;
@@ -139,3 +139,4 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
 
 
 }
+

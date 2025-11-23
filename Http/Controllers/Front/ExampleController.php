@@ -112,3 +112,4 @@ class ExampleController extends GymGenericFrontController
         ]);
     }
 }
+

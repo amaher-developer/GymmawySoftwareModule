@@ -41,3 +41,4 @@ class GymTrainingFile extends GenericModel
     }
 
 }
+

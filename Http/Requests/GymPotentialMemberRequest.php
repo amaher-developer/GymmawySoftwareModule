@@ -31,3 +31,4 @@ class GymPotentialMemberRequest extends FormRequest
         ];
     }
 }
+

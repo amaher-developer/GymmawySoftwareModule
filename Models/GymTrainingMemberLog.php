@@ -50,3 +50,4 @@ class GymTrainingMemberLog extends GenericModel
     }
 }
 
+

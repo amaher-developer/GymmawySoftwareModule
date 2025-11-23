@@ -23,3 +23,5 @@ class CategoryWithSubscriptionResource extends JsonResource
                 ];
     }
 }
+
+

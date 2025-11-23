@@ -32,3 +32,4 @@ class GymPaymentTypeRequest extends FormRequest
         ];
     }
 }
+

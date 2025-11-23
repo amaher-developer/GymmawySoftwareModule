@@ -26,3 +26,5 @@ class StoreResource extends JsonResource
             ];
     }
 }
+
+

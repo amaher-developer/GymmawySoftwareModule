@@ -376,3 +376,4 @@ class GymReservationMemberFrontController extends GymGenericFrontController
 
 
 }
+

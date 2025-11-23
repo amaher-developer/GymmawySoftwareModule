@@ -449,3 +449,4 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
 
 
 }
+

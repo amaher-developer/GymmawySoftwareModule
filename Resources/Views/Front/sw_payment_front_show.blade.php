@@ -20,9 +20,9 @@
 @endsection
 @section('styles')
     @if($lang=='ar')
-        <link href="{{asset('resources/assets/admin/pages/css/invoice-rtl.css')}}" rel="stylesheet" type="text/css"/>
+        <link href="{{asset('resources/assets/new_front/pages/css/invoice-rtl.css')}}" rel="stylesheet" type="text/css"/>
     @else
-        <link href="{{asset('resources/assets/admin/pages/css/invoice.css')}}" rel="stylesheet" type="text/css"/>
+        <link href="{{asset('resources/assets/new_front/pages/css/invoice.css')}}" rel="stylesheet" type="text/css"/>
     @endif
 
 @endsection
@@ -37,7 +37,7 @@
 
             <div class="col-xs-6 invoice-logo-space">
                 @if($mainSettings->logo)
-                    <img src="https://gymmawy.com/resources/assets/front/img/logo/default_ar.png" class="img-responsive" alt="" style="height: 120px;object-fit: contain;"/>
+                    <img src="https://gymmawy.com/resources/assets/new_front/img/logo/default_ar.png" class="img-responsive" alt="" style="height: 120px;object-fit: contain;"/>
                 @endif
             </div>
             <div class="col-xs-6">
@@ -186,3 +186,5 @@
 @section('sub_scripts')
 
 @endsection
+
+

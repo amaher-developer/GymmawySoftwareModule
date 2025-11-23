@@ -77,3 +77,4 @@ class GymPotentialMember extends GenericModel
 
 
 }
+

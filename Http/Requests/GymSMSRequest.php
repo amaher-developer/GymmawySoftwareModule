@@ -29,3 +29,4 @@ class GymSMSRequest extends FormRequest
         ];
     }
 }
+

@@ -137,3 +137,4 @@ class GymTrainingMedicineFrontController extends GymGenericFrontController
         return redirect()->route('sw.listTrainingMedicine');
     }
 }
+

@@ -24,3 +24,5 @@ class SubscriptionActivityResource extends JsonResource
             ];
     }
 }
+
+

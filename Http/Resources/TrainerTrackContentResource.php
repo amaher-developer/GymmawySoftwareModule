@@ -22,7 +22,7 @@ class TrainerTrackContentResource extends JsonResource
 
                 "id" => $this->id,
                 "title" => Carbon::parse(@$this->created_at)->translatedFormat('d F Y'),
-                "image" => asset('resources/assets/front/images/report_track.png'),
+                "image" => asset('resources/assets/new_front/images/report_track.png'),
                 "height" => @$this->height .' cm ',
                 "weight" => @$this->weight . ' kg ',
                 "report" => @$this->notes,
@@ -31,3 +31,5 @@ class TrainerTrackContentResource extends JsonResource
             ];
     }
 }
+
+

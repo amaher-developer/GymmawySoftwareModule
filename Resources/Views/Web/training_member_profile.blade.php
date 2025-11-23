@@ -190,7 +190,7 @@
                                     <div class="col-md-3">
                                         <ul class="list-unstyled profile-nav">
                                             <li>
-                                                <img src="http://localhost/gym/gymmawy/resources/assets/front/img/logo/default.png" class="img-responsive" alt=""/>
+                                                <img src="http://localhost/gym/gymmawy/resources/assets/new_front/img/logo/default.png" class="img-responsive" alt=""/>
                                                 <a href="#" class="profile-edit">
                                                     edit </a>
                                             </li>
@@ -1547,3 +1547,5 @@
 
     </script>
 @endsection
+
+

@@ -1,10 +1,10 @@
 @extends('software::Web.master')
 @section('styles')
 
-    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/admin/global/plugins/pick-hours-availability-calendar/mark-your-calendar.css')}}">
+    <link rel="stylesheet" type="text/css" href="{{asset('resources/assets/new_front/global/plugins/pick-hours-availability-calendar/mark-your-calendar.css')}}">
 
     <link rel="stylesheet" type="text/css"
-          href="{{asset('/')}}resources/assets/admin/global/plugins/bootstrap-daterangepicker/daterangepicker-bs3.css"/>
+          href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker-bs3.css"/>
 
     <style id="jsbin-css">
         .invoice-block {
@@ -217,7 +217,7 @@
 @section('scripts')
     <script src="https://momentjs.com/downloads/moment.js"></script>
     {{--    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>--}}
-    <script type="text/javascript" src="{{asset('resources/assets/admin/global/plugins/pick-hours-availability-calendar/mark-your-calendar.js')}}"></script>
+    <script type="text/javascript" src="{{asset('resources/assets/new_front/global/plugins/pick-hours-availability-calendar/mark-your-calendar.js')}}"></script>
     <script type="text/javascript">
 
         function create_reservation(){
@@ -482,3 +482,5 @@
 
     </script>
 @endsection
+
+

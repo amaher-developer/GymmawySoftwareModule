@@ -45,3 +45,4 @@ class GymGroupDiscount extends GenericModel
     }
 
 }
+

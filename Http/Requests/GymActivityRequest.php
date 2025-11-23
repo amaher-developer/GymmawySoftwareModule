@@ -32,3 +32,4 @@ class GymActivityRequest extends FormRequest
         ];
     }
 }
+

@@ -28,3 +28,4 @@ class GymSettingApiController extends GenericApiController
         return  Response::json(['last_migrate' => $last_migrate], 200);
     }
 }
+

@@ -66,3 +66,4 @@ class GymSubscriptionApiController extends GymGenericApiController
         return $this->successResponse();
     }
 }
+

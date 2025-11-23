@@ -29,3 +29,4 @@ class GymPTSubscriptionRequest extends FormRequest
         ];
     }
 }
+

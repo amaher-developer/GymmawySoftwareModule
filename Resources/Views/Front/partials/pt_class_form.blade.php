@@ -482,9 +482,9 @@
 @once('pt-class-form-styles')
     @section('sub_styles')
         @parent
-        <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/admin/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css') }}"/>
-        <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/admin/global/plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css') }}"/>
-        <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/admin/global/plugins/jquery-minicolors/jquery.minicolors.css') }}"/>
+        <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/new_front/global/plugins/bootstrap-timepicker/css/bootstrap-timepicker.min.css') }}"/>
+        <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/new_front/global/plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css') }}"/>
+        <link rel="stylesheet" type="text/css" href="{{ asset('resources/assets/new_front/global/plugins/jquery-minicolors/jquery.minicolors.css') }}"/>
         <style>
             .pt-class-form-wrapper .table thead th {
                 white-space: nowrap;
@@ -516,9 +516,9 @@
 @once('pt-class-form-scripts')
     @section('sub_scripts')
         @parent
-        <script src="{{ asset('resources/assets/admin/global/plugins/bootstrap-timepicker/js/bootstrap-timepicker.min.js') }}" type="text/javascript"></script>
-        <script src="{{ asset('resources/assets/admin/global/plugins/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js') }}" type="text/javascript"></script>
-        <script src="{{ asset('resources/assets/admin/global/plugins/jquery-minicolors/jquery.minicolors.min.js') }}" type="text/javascript"></script>
+        <script src="{{ asset('resources/assets/new_front/global/plugins/bootstrap-timepicker/js/bootstrap-timepicker.min.js') }}" type="text/javascript"></script>
+        <script src="{{ asset('resources/assets/new_front/global/plugins/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js') }}" type="text/javascript"></script>
+        <script src="{{ asset('resources/assets/new_front/global/plugins/jquery-minicolors/jquery.minicolors.min.js') }}" type="text/javascript"></script>
         <script>
             (function ($, bootstrap) {
                 'use strict';
@@ -920,4 +920,6 @@
         }
     </script>
 @endsection
+
+
 

@@ -197,3 +197,4 @@ class GymMemberSystemFrontController extends GymGenericFrontController
         return $inputs;
     }
 }
+

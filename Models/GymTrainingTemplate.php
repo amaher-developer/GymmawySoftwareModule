@@ -35,3 +35,4 @@ class GymTrainingTemplate extends GenericModel
     }
 }
 
+

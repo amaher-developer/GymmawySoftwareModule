@@ -69,3 +69,4 @@ class GymNotificationFrontController extends GymGenericFrontController
     }
 }
 ?>
+

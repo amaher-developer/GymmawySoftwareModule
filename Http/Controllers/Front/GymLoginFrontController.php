@@ -84,3 +84,4 @@ class GymLoginFrontController extends GymGenericFrontController
     }
 
 }
+

@@ -197,3 +197,4 @@ class GymUserPermissionFrontController extends GymGenericFrontController
     }
 }
 
+

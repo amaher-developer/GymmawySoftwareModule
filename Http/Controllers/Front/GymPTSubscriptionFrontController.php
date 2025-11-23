@@ -295,3 +295,4 @@ class GymPTSubscriptionFrontController extends GymGenericFrontController
     }
 
 }
+

@@ -255,7 +255,7 @@
 <div id="band" class="container text-center">
     <h3>{{$home->name}}</h3>
     {{--    <p><em>We love music!</em></p>--}}
-{{--    <img src="https://training.gymmawy.com/resources/assets/front/images/188.svg" alt="Me" class="w3-image w3-padding-32" style="width: 70%;padding-bottom: 20px">--}}
+{{--    <img src="https://training.gymmawy.com/resources/assets/new_front/images/188.svg" alt="Me" class="w3-image w3-padding-32" style="width: 70%;padding-bottom: 20px">--}}
     <img src="{{$home->logo}}" alt="" class="w3-image w3-padding-32" style="width: 40%;padding-bottom: 20px">
     <p>{{strip_tags($home->about)}}</p>
     <br>
@@ -325,3 +325,5 @@
 
 </body>
 </html>
+
+

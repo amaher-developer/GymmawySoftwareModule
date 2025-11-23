@@ -415,3 +415,4 @@ class GymPTClassFrontController extends GymGenericFrontController
         }
     }
 }
+

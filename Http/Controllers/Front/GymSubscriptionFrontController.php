@@ -533,3 +533,4 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         return $inputs;
     }
 }
+

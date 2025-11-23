@@ -54,3 +54,4 @@ class GymNonMemberTime extends GenericModel
     }
 
 }
+

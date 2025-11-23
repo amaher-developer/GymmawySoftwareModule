@@ -468,3 +468,4 @@ class GymGenericApiController extends GenericController
         return $this->response;
     }
 }
+

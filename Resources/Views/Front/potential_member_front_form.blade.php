@@ -21,8 +21,8 @@
 @section('form_title') {{ @$title }} @endsection
 @section('styles')
 {{--    <link rel="stylesheet" type="text/css"--}}
-{{--          href="{{asset('/')}}resources/assets/admin//global/plugins/select2/select2.css"/>--}}
-{{--    <link href="{{asset('/')}}resources/assets/admin/global/css/plugins-rtl.css" rel="stylesheet" type="text/css"/>--}}
+{{--          href="{{asset('/')}}resources/assets/new_front//global/plugins/select2/select2.css"/>--}}
+{{--    <link href="{{asset('/')}}resources/assets/new_front/global/css/plugins-rtl.css" rel="stylesheet" type="text/css"/>--}}
 {{--<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/css/select2.min.css" />--}}
 <style>
     .tag-orange {
@@ -177,14 +177,14 @@
     </script>
 
 
-    {{--    <script src="{{asset('/')}}resources/assets/admin/global/plugins/jquery.min.js" type="text/javascript"></script>--}}
+    {{--    <script src="{{asset('/')}}resources/assets/new_front/global/plugins/jquery.min.js" type="text/javascript"></script>--}}
 
 {{--        <script type="text/javascript"--}}
-{{--                src="{{asset('resources/assets/admin/global/plugins/select2/js/select2.full.min.js')}}"></script>--}}
-{{--    <script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript"></script>--}}
-{{--    <script src="{{asset('/')}}resources/assets/admin/pages/scripts/components-dropdowns.js"></script>--}}
+{{--                src="{{asset('resources/assets/new_front/global/plugins/select2/js/select2.full.min.js')}}"></script>--}}
+{{--    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript"></script>--}}
+{{--    <script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-dropdowns.js"></script>--}}
 {{--    <script type="text/javascript"--}}
-{{--            src="{{asset('/')}}resources/assets/admin/global/plugins/select2/select2.js"></script>--}}
+{{--            src="{{asset('/')}}resources/assets/new_front/global/plugins/select2/select2.js"></script>--}}
 {{--    <script>--}}
 {{--        var ComponentsDropdowns = function () {--}}
 {{--            var handleSelect2 = function () {--}}
@@ -205,3 +205,5 @@
 {{--            ComponentsDropdowns.init();--}}
 {{--    </script>--}}
 @endsection
+
+

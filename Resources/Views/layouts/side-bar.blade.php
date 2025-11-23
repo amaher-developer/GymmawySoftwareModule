@@ -135,7 +135,7 @@
 {{--    <div class="dropdown user-pro-body"> --}}
 {{--        <div class=""> --}}
 {{--            <img alt="user-img" class="avatar avatar-xl brround mCS_img_loaded" --}}
-{{--                 src="{{$swUser->image ? $swUser->image : asset('resources/assets/front/img/avatar_placeholder_white.png')}}" --}}
+{{--                 src="{{$swUser->image ? $swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png')}}" --}}
 {{--                 style=" --}}
 {{--    width: 60px; --}}
 {{--    height: 60px; --}}
@@ -179,7 +179,7 @@
             <div class="aside-user d-flex align-items-sm-center justify-content-center py-5">
                 <!--begin::Symbol-->
                 <div class="symbol symbol-50px">
-                    <img src="{{ @$swUser->image ? @$swUser->image : asset('resources/assets/front/img/avatar_placeholder_white.png') }}"
+                    <img src="{{ @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png') }}"
                         alt="">
                 </div>
                 <!--end::Symbol-->
@@ -1721,6 +1721,8 @@ if($sidebarMetricsEnabled && $sidebarRenderStartedAt){
 }
     */
 @endphp
+
+
 
 
 

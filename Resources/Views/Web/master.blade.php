@@ -28,28 +28,28 @@
     <!-- Fonts END -->
 
     <!-- Global styles START -->
-    <link href="{{asset('resources/assets/admin/global/plugins/font-awesome/css/font-awesome.min.css')}}"
+    <link href="{{asset('resources/assets/new_front/global/plugins/font-awesome/css/font-awesome.min.css')}}"
           rel="stylesheet">
     @if(app()->getLocale('lang')=='ar')
-    <link href="{{asset('resources/assets/admin/global/plugins/bootstrap/css/bootstrap-rtl.min.css')}}"
+    <link href="{{asset('resources/assets/new_front/global/plugins/bootstrap/css/bootstrap-rtl.min.css')}}"
           rel="stylesheet">
     <!-- Global styles END -->
     <!-- Theme styles START -->
-    <link href="{{asset('resources/assets/admin/global/css/components-rtl.css')}}" rel="stylesheet">
-    <link href="{{asset('resources/assets/admin/frontend/css/style-rtl.css')}}" rel="stylesheet">
+    <link href="{{asset('resources/assets/new_front/global/css/components-rtl.css')}}" rel="stylesheet">
+    <link href="{{asset('resources/assets/new_front/frontend/css/style-rtl.css')}}" rel="stylesheet">
     @else
 
-        <link href="{{asset('resources/assets/admin/global/plugins/bootstrap/css/bootstrap.min.css')}}"
+        <link href="{{asset('resources/assets/new_front/global/plugins/bootstrap/css/bootstrap.min.css')}}"
               rel="stylesheet">
         <!-- Global styles END -->
         <!-- Theme styles START -->
-        <link href="{{asset('resources/assets/admin/global/css/components.css')}}" rel="stylesheet">
-        <link href="{{asset('resources/assets/admin/frontend/css/style.css')}}" rel="stylesheet">
+        <link href="{{asset('resources/assets/new_front/global/css/components.css')}}" rel="stylesheet">
+        <link href="{{asset('resources/assets/new_front/frontend/css/style.css')}}" rel="stylesheet">
     @endif
-    <link href="{{asset('resources/assets/admin/pages/css/portfolio.css')}}" rel="stylesheet">
-    <link href="{{asset('resources/assets/admin/frontend/css/style-responsive.css')}}" rel="stylesheet">
-    <link href="{{asset('resources/assets/admin/frontend/css/themes/red.css')}}" rel="stylesheet" id="style-color">
-    <link href="{{asset('resources/assets/admin/frontend/css/custom.css')}}" rel="stylesheet">
+    <link href="{{asset('resources/assets/new_front/pages/css/portfolio.css')}}" rel="stylesheet">
+    <link href="{{asset('resources/assets/new_front/frontend/css/style-responsive.css')}}" rel="stylesheet">
+    <link href="{{asset('resources/assets/new_front/frontend/css/themes/red.css')}}" rel="stylesheet" id="style-color">
+    <link href="{{asset('resources/assets/new_front/frontend/css/custom.css')}}" rel="stylesheet">
     <!-- Theme styles END -->
     <style>
         .card {
@@ -172,7 +172,7 @@
                 <p style="font-weight: bold;color: #fff !important;font-size: 16px;"> {{trans('sw.dev_des')}} <a
                         href="https://demo.gymmawy.com" target="_blank" style="text-decoration: none;"><img
                             style="width: 24px;"
-                            src="https://kythara.gymmawy.com/resources/assets/front/img/logo/favicon.ico"> {{trans('sw.gymmawy')}}
+                            src="https://kythara.gymmawy.com/resources/assets/new_front/img/logo/favicon.ico"> {{trans('sw.gymmawy')}}
                     </a></p>
             </div>
             <!-- END COPYRIGHT -->
@@ -195,15 +195,17 @@
     </div>
 </div>
 <!-- END FOOTER -->
-<script src="{{asset('/')}}resources/assets/admin/global/scripts/metronic.js" type="text/javascript"></script>
+<script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript"></script>
 
-<script src="{{asset('resources/assets/admin/global/plugins/jquery.min.js')}}" type="text/javascript"></script>
-<script src="{{asset('resources/assets/admin/global/plugins/jquery-migrate.min.js')}}" type="text/javascript"></script>
-<script src="{{asset('resources/assets/admin/global/plugins/bootstrap/js/bootstrap.min.js')}}"
+<script src="{{asset('resources/assets/new_front/global/plugins/jquery.min.js')}}" type="text/javascript"></script>
+<script src="{{asset('resources/assets/new_front/global/plugins/jquery-migrate.min.js')}}" type="text/javascript"></script>
+<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap/js/bootstrap.min.js')}}"
         type="text/javascript"></script>
-<script src="{{asset('resources/assets/admin/frontend/scripts/back-to-top.js')}}" type="text/javascript"></script>
+<script src="{{asset('resources/assets/new_front/frontend/scripts/back-to-top.js')}}" type="text/javascript"></script>
 <!-- END CORE PLUGINS -->
 @yield('scripts')
 </body>
 <!-- END BODY -->
 </html>
+
+

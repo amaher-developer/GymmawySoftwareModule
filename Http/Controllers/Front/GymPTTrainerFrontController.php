@@ -706,3 +706,4 @@ class GymPTTrainerFrontController extends GymGenericFrontController
         return "{$classId}|{$trainerId}|" . $slot->format('Y-m-d H:i:s');
     }
 }
+

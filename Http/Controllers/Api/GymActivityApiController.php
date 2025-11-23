@@ -45,3 +45,4 @@ class GymActivityApiController extends GymGenericApiController
         return $this->successResponse();
     }
 }
+

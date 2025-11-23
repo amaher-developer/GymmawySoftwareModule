@@ -2369,3 +2369,4 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
 
 }
+
