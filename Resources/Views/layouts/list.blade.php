@@ -80,7 +80,24 @@
 
 @section('scripts')
     <script>
-        $('[data-toggle="tooltip"]').tooltip();
+        // Wait for Bootstrap to be ready before initializing tooltips
+        $(document).ready(function() {
+            if (typeof $.fn.tooltip !== 'undefined') {
+                $('[data-toggle="tooltip"]').tooltip();
+            } else {
+                // Wait for Bootstrap to load
+                var checkBootstrap = setInterval(function() {
+                    if (typeof $.fn.tooltip !== 'undefined') {
+                        clearInterval(checkBootstrap);
+                        $('[data-toggle="tooltip"]').tooltip();
+                    }
+                }, 50);
+                // Stop checking after 5 seconds
+                setTimeout(function() {
+                    clearInterval(checkBootstrap);
+                }, 5000);
+            }
+        });
         $(document).on('click', '.confirm_delete', function (event) {
             var $this = $(this);
             var tr = $this.closest('tr');

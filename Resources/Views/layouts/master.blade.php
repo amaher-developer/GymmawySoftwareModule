@@ -25,55 +25,46 @@
     <meta content="" name="author"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Resource Hints for Performance -->
-    <link rel="preconnect" href="{{asset('')}}" crossorigin>
-
     <link rel="shortcut icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
     <link rel="apple-touch-icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
-    
-    <!-- Preload Critical Fonts -->
-    <link rel="preload" href="{{asset('fonts/inter/Inter-Regular.woff2')}}" as="font" type="font/woff2" crossorigin>
-    @if($lang == 'ar')
-    <link rel="preload" href="{{asset('fonts/droid-arabic-kufi/DroidKufi-Regular.woff2')}}" as="font" type="font/woff2" crossorigin>
-    @endif
 
     <!--begin::Fonts(mandatory for all pages)-->
     <style>
-        /* Inter Font - Local - Optimized for LCP */
+        /* Inter Font - Local */
         @font-face {
             font-family: 'Inter';
-            src: url('{{asset("fonts/inter/Inter-Regular.woff2")}}') format('woff2');
-            font-weight: 400;
-            font-style: normal;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Inter';
-            src: url('{{asset("fonts/inter/Inter-Medium.woff2")}}') format('woff2');
-            font-weight: 500;
-            font-style: normal;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Inter';
-            src: url('{{asset("fonts/inter/Inter-SemiBold.woff2")}}') format('woff2');
-            font-weight: 600;
-            font-style: normal;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Inter';
-            src: url('{{asset("fonts/inter/Inter-Bold.woff2")}}') format('woff2');
-            font-weight: 700;
-            font-style: normal;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Inter';
-            src: url('{{asset("fonts/inter/Inter-Light.woff2")}}') format('woff2');
+            src: url('{{asset("public/fonts/inter/Inter-Light.woff2")}}') format('woff2');
             font-weight: 300;
             font-style: normal;
-            font-display: optional;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("public/fonts/inter/Inter-Regular.woff2")}}') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("public/fonts/inter/Inter-Medium.woff2")}}') format('woff2');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("public/fonts/inter/Inter-SemiBold.woff2")}}') format('woff2');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Inter';
+            src: url('{{asset("public/fonts/inter/Inter-Bold.woff2")}}') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
         }
     </style>
     <!--end::Fonts-->
@@ -83,28 +74,30 @@
             /* Droid Arabic Kufi Font - Local */
             @font-face {
                 font-family: 'Droid Arabic Kufi';
-                src: url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Regular.woff2")}}') format('woff2'),
-                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Regular.woff")}}') format('woff'),
-                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Regular.ttf")}}') format('truetype');
+                src: url('{{asset("public/fonts/droid-arabic-kufi/DroidKufi-Regular.woff2")}}') format('woff2'),
+                     url('{{asset("public/fonts/droid-arabic-kufi/DroidKufi-Regular.woff")}}') format('woff'),
+                     url('{{asset("public/fonts/droid-arabic-kufi/DroidKufi-Regular.ttf")}}') format('truetype');
                 font-weight: 400;
                 font-style: normal;
-                font-display: optional;
+                font-display: swap;
             }
             @font-face {
                 font-family: 'Droid Arabic Kufi';
-                src: url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Bold.woff2")}}') format('woff2'),
-                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Bold.woff")}}') format('woff'),
-                     url('{{asset("fonts/droid-arabic-kufi/DroidKufi-Bold.ttf")}}') format('truetype');
+                src: url('{{asset("public/fonts/droid-arabic-kufi/DroidKufi-Bold.woff2")}}') format('woff2'),
+                     url('{{asset("public/fonts/droid-arabic-kufi/DroidKufi-Bold.woff")}}') format('woff'),
+                     url('{{asset("public/fonts/droid-arabic-kufi/DroidKufi-Bold.ttf")}}') format('truetype');
                 font-weight: 700;
                 font-style: normal;
-                font-display: optional;
+                font-display: swap;
             }
             body, .menu-title, .title, .nav-link, .sub-menu span, .user-info h4, .user-info span {
                 font-family: 'Droid Arabic Kufi', Arial, sans-serif !important;
             }
         </style>
         <!--begin::Global Stylesheets Bundle(mandatory for all pages)-->
-        @vite(['resources/css/app-rtl.css'])
+        <link href="{{asset('resources/assets/new_front')}}/plugins/global/plugins.bundle.rtl.css" rel="stylesheet"
+              type="text/css"/>
+        <link href="{{asset('resources/assets/new_front')}}/css/style.bundle.rtl.css" rel="stylesheet" type="text/css"/>
         <!--end::Global Stylesheets Bundle-->
 
         <style>
@@ -130,7 +123,9 @@
         </style>
     @else
         <!--begin::Global Stylesheets Bundle(mandatory for all pages)-->
-        @vite(['resources/css/app.css'])
+        <link href="{{asset('resources/assets/new_front')}}/plugins/global/plugins.bundle.css" rel="stylesheet"
+              type="text/css"/>
+        <link href="{{asset('resources/assets/new_front')}}/css/style.bundle.css" rel="stylesheet" type="text/css"/>
         <!--end::Global Stylesheets Bundle-->
 
         <style>
@@ -163,33 +158,9 @@
     @endif
 
 
-    <!-- Non-critical CSS - Load asynchronously -->
-    <link rel="preload" href="{{asset('resources/assets/new_front/global/scripts/css/datepicker3.css')}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/css/datepicker3.css')}}"></noscript>
-    <link rel="preload" href="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.css')}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.css')}}"></noscript>
-    <link rel="preload" href="{{asset('resources/assets/new_front/global/scripts/software/renew_member.css')}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/renew_member.css')}}"></noscript>
-    
-    <!-- Critical CSS for LCP element (Quick Actions) -->
-    <style>
-        /* Immediate font fallback for LCP */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        }
-        .btn-light-primary, .btn-light-info, .btn-light-danger, .btn-light-success, .btn-light-warning, .btn-light-secondary, .btn-light-dark {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 90px;
-        }
-        .fw-bold.fs-7.text-center {
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-align: center;
-            display: block;
-        }
-    </style>
+    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/css/datepicker3.css')}}">
+    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/custom_qr_scanner.css')}}">
+    <link rel="stylesheet" href="{{asset('resources/assets/new_front/global/scripts/software/renew_member.css')}}">
     <style>
         .modal-content-demo .modal-body h6 {
             color: #242f48;
@@ -423,7 +394,7 @@
                 <!--begin::Logo-->
                 <a href="{{route('home')}}">
                     <img alt="Logo" src="{{$mainSettings->logo_white}}"
-                         class="h-25px logo" loading="lazy"/>
+                         class="h-25px logo"/>
                 </a>
                 <!--end::Logo-->
                 <!--begin::Aside toggler-->
@@ -475,7 +446,7 @@
                     <div class="d-flex align-items-center flex-grow-1 flex-lg-grow-0">
                         <a href="index.html" class="d-lg-none">
                             <img alt="Logo" src="{{asset('resources/assets/new_front/')}}/media/logos/demo13-small.svg"
-                                 class="h-25px" loading="lazy"/>
+                                 class="h-25px"/>
                         </a>
                     </div>
                     <!--end::Mobile logo-->
@@ -776,8 +747,8 @@
                                     class="topbar-item cursor-pointer symbol px-3 px-lg-5 me-n3 me-lg-n5 symbol-30px symbol-md-35px"
                                     data-kt-menu-trigger="click" data-kt-menu-attach="parent"
                                     data-kt-menu-placement="bottom-end" data-kt-menu-flip="bottom">
-                                    <img src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.webp')}}"
-                                         alt="metronic" loading="lazy"/>
+                                    <img src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png')}}"
+                                         alt="metronic"/>
                                 </div>
                                 <!--begin::User account menu-->
                                 <div
@@ -789,7 +760,7 @@
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-50px me-5">
                                                 <img alt="Logo"
-                                                     src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.webp')}}" loading="lazy"/>
+                                                     src="{{@$swUser && @$swUser->image ? @$swUser->image : asset('resources/assets/new_front/img/avatar_placeholder_white.png')}}"/>
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Username-->
@@ -1037,19 +1008,61 @@
 <!--begin::Javascript-->
 
 <!--begin::Global Javascript Bundle(mandatory for all pages)-->
-@vite(['resources/js/app.js'])
-<!--end::Global Javascript Bundle-->
-
-<!-- Load CSS asynchronously script -->
+<script src="{{asset('resources/assets/new_front/')}}/plugins/global/plugins.bundle.js"></script>
+<script src="{{asset('resources/assets/new_front/')}}/js/scripts.bundle.js"></script>
+<!-- Fix: Ensure KTThemeMode is initialized before KTThemeModeUser uses it -->
 <script>
-    /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
-    (function(w){"use strict";var loadCSS=function(href,before,media,attributes){var doc=w.document;var ss=doc.createElement("link");var ref;if(before){ref=before}else{var refs=(doc.body||doc.getElementsByTagName("head")[0]).childNodes;ref=refs[refs.length-1];}var sheets=doc.styleSheets;ss.rel="stylesheet";ss.href=href;ss.media="only x";if(attributes){for(var attribute in attributes){if(attributes.hasOwnProperty(attribute)){ss.setAttribute(attribute,attributes[attribute]);}}}function ready(cb){if(doc.body){return cb();}setTimeout(function(){ready(cb);});}ready(function(){ref.parentNode.insertBefore(ss,before?ref:ref.nextSibling);});var onloadcssdefined=function(cb){var resolvedHref=ss.href;var i=sheets.length;while(i--){if(sheets[i].href===resolvedHref){return cb();}}setTimeout(function(){onloadcssdefined(cb);});};ss.onloadcssdefined=onloadcssdefined;onloadcssdefined(function(){if(ss.media!=="all"){ss.media=media||"all";}});return ss;};if(typeof exports!=="undefined"){exports.loadCSS=loadCSS;}else{w.loadCSS=loadCSS;}}(typeof global!=="undefined"?global:this));
+    (function() {
+        // Wait for scripts.bundle.js to load
+        function patchKTThemeModeUser() {
+            // Check if KTThemeModeUser exists and hasn't been patched yet
+            if (typeof KTThemeModeUser !== 'undefined' && typeof KTThemeModeUser.init === 'function') {
+                // Check if already patched
+                if (KTThemeModeUser._patched) return;
+                KTThemeModeUser._patched = true;
+                
+                // Save original init
+                var originalInit = KTThemeModeUser.init;
+                
+                // Override init to wait for KTThemeMode
+                KTThemeModeUser.init = function() {
+                    function waitForKTThemeMode() {
+                        // Check if KTThemeMode exists and has the 'on' method
+                        if (typeof KTThemeMode === 'undefined' || typeof KTThemeMode.on !== 'function') {
+                            setTimeout(waitForKTThemeMode, 10);
+                            return;
+                        }
+                        // KTThemeMode is ready, call original init
+                        try {
+                            originalInit.call(this);
+                        } catch(e) {
+                            console.warn('KTThemeModeUser.init error:', e);
+                        }
+                    }
+                    waitForKTThemeMode();
+                };
+            } else {
+                // Keep checking if not ready yet
+                setTimeout(patchKTThemeModeUser, 10);
+            }
+        }
+        
+        // Start patching immediately after script loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(patchKTThemeModeUser, 50);
+            });
+        } else {
+            setTimeout(patchKTThemeModeUser, 50);
+        }
+    })();
 </script>
+<!--end::Global Javascript Bundle-->
 
 <!-- BEGIN CORE PLUGINS -->
 <script src="{{asset('resources/assets/new_front/global/plugins/jquery.min.js')}}" type="text/javascript"></script>
 <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap/js/bootstrap.min.js')}}"
-        type="text/javascript" defer></script>
+        type="text/javascript"></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.min.js" type="text/javascript" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.2.2/velocity.ui.min.js" type="text/javascript" defer></script>
@@ -1132,7 +1145,7 @@
     var trans_old_membership = '{{trans('sw.old_membership')}}';
     var trans_renew_membership = '{{trans('sw.renew_membership')}}';
     var trans_unfreeze_membership = '{{trans('sw.unfreeze_membership')}}';
-    var default_avatar_image = '{{asset('uploads/settings/default.webp')}}';
+    var default_avatar_image = '{{asset('uploads/settings/default.jpg')}}';
 
     var lang = '{{$lang}}';
     var isRtl = (lang === 'ar');
@@ -1180,7 +1193,9 @@
     $(".modal").each(function (l) {
         $(this).on("show.bs.modal", function (l) {
             var o = $(this).attr("data-easein");
+            if (typeof velocity !== 'undefined' && $(".modal-dialog").length) {
             "shake" == o ? $(".modal-dialog").velocity("callout." + o) : "pulse" == o ? $(".modal-dialog").velocity("callout." + o) : "tada" == o ? $(".modal-dialog").velocity("callout." + o) : "flash" == o ? $(".modal-dialog").velocity("callout." + o) : "bounce" == o ? $(".modal-dialog").velocity("callout." + o) : "swing" == o ? $(".modal-dialog").velocity("callout." + o) : $(".modal-dialog").velocity("transition." + o)
+            }
         })
     });
 

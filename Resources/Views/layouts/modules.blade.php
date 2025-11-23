@@ -223,7 +223,7 @@
                 </div>
 
                 <div class="text-center mb-5">
-                    <img id="client_img" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;" src="{{asset('uploads/settings/default.webp')}}" loading="lazy">
+                    <img id="client_img" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;" src="{{asset('uploads/settings/default.jpg')}}">
                     <h3 id="client_name" class="mt-3 mb-0"></h3>
                     <p class="text-muted" id="client_code"></p>
                 </div>
