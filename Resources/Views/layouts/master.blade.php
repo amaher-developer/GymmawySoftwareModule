@@ -1103,7 +1103,9 @@
 <script src="{{asset('resources/assets/new_front/global/scripts/js/bootstrap-datepicker.js')}}" defer></script>
 
 {{--<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>--}}
+<script type="text/javascript" src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker.js" defer></script>
 <script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript" defer></script>
+<script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-pickers.js" type="text/javascript" defer></script>
 
 <!-- QR Scanner -->
 {{--<script type="module">--}}
