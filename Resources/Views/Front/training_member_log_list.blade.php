@@ -205,7 +205,7 @@
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-50px me-3">
                                         @if(isset($member->image) && $member->image)
-                                        <img alt="avatar" class="rounded-circle" src="{{asset('uploads/members/'.$member->image)}}">
+                                        <img alt="avatar" class="rounded-circle" src="{{$member->image}}">
                                         @else
                                         <div class="symbol-label fs-3 bg-light-primary text-primary">
                                             {{ substr($member->name, 0, 1) }}
