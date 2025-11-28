@@ -118,7 +118,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $earnings = ($revenues - $expenses);
 
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         ($sorders->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $i => $payment_type){
 //                if(($item->member_subscription_id != null || $item->member_pt_subscription_id != null) && (@$item->payment_type == $payment_type->payment_id) && ($item->operation == TypeConstants::Add) ){
@@ -199,7 +199,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                     ,'total_add_to_money_box', 'total_withdraw_from_money_box'
                     ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores'//, 'total_non_members'
                     , 'orders', 'title', 'total', 'search_query', 'users', 'subscriptions'
-                    , 'payment_expenses', 'payment_revenues'));
+                    , 'payment_expenses', 'payment_revenues', 'payment_types'));
     }
 
     function exportExcel(){
@@ -387,7 +387,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.add_to_money_box');
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_add_front_form', [
@@ -446,7 +446,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function createWithdraw()
     {
         $title = trans('sw.withdraw_from_money_box');
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_withdraw_front_form', [
@@ -487,7 +487,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function createWithdrawEarnings()
     {
         $title = trans('sw.withdraw_earning');
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_withdraw_earnings_front_form', [
@@ -656,7 +656,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $earnings = ($revenues - $expenses);
 
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         ($sorders->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $i => $payment_type){
 //                if(($item->member_subscription_id != null || $item->member_pt_subscription_id != null) && (@$item->payment_type == $payment_type->payment_id) && ($item->operation == TypeConstants::Add) ){
