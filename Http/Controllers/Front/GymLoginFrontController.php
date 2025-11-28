@@ -11,6 +11,7 @@ use Modules\Software\Models\GymSubscription;
 use Modules\Software\Models\GymUser;
 use Carbon\Carbon;
 use http\Env\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\View;
@@ -80,6 +81,14 @@ class GymLoginFrontController extends GymGenericFrontController
     {
         Auth::guard('sw')->logout();
         Session::flush();
+        try {
+            Artisan::call('cache:clear');
+            Artisan::call('config:clear');
+            Artisan::call('route:clear');
+            Artisan::call('view:clear');
+        } catch (\Throwable $e) {
+            \Log::error('Failed to clear caches on logout', ['error' => $e->getMessage()]);
+        }
         return redirect(route('sw.login'));
     }
 
