@@ -363,6 +363,8 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $billingSettings = SwBillingService::getSettings();
         $vat = 0;
         $non_member_inputs = $this->prepare_inputs($request->except(['_token']));
+        $non_member_inputs['discount_value'] = (float) ($non_member_inputs['discount_value'] ?? 0);
+        $non_member_inputs['discount_type'] = $non_member_inputs['discount_type'] ?? null;
         $activities = GymActivity::branch()->whereIn('id', $request->activities);
         $non_member_inputs['amount_before_discount'] = $activities->pluck('price')->sum();
         if(@$this->mainSettings->vat_details['vat_percentage']) {
@@ -476,6 +478,8 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $member = $this->NonMemberRepository->withTrashed()->find($id);
         $billingSettings = SwBillingService::getSettings();
         $non_member_inputs = $this->prepare_inputs($request->except(['_token', 'diff_amount_paid_input']));
+        $non_member_inputs['discount_value'] = (float) ($non_member_inputs['discount_value'] ?? 0);
+        $non_member_inputs['discount_type'] = $non_member_inputs['discount_type'] ?? null;
         $activities = GymActivity::branch()->whereIn('id', $request->activities);
         $vat = 0;
 
