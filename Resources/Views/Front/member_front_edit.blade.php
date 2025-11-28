@@ -827,7 +827,7 @@
                             output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
                         }
                     }
-                    $('#EditMembershipSelect').html(output);
+                    $('#EditMembershipSelect').html(output).trigger('change.select2');
 
                     setMembershipDate(data.member_membership);
                 },
@@ -962,7 +962,10 @@
     var selectedMembershipMaxExtensionDays = 0;
     var selectedMembershipMaxFreezeExtensionSum = 0;
 
-    $("#EditMembershipSelect").select2();
+    $("#EditMembershipSelect").select2({
+        dropdownParent: $('#modelEditMembership'),
+        width: '100%'
+    });
 
     function setMembershipDate(record) {
         selectedMembershipPrice = 0;

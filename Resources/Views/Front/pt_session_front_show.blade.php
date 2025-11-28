@@ -190,49 +190,92 @@
     </div>
 @endsection
 
-@push('scripts')
+@section('scripts')
     <script>
         (function ($) {
             'use strict';
-
             const attendanceRoute = "{{ route('sw.memberPTAttendees') }}";
+            const $form = $('#session_attendance_form');
+            const $codeInput = $('#attendance_code');
+            const $message = $('#attendance_message');
+            const $submitButton = $form.find('button[type="submit"]');
+            const sessionContext = {
+                virtualId: "{{ $session->id }}",
+                sessionDate: "{{ optional($session->session_date)->format('Y-m-d H:i:s') }}",
+                classId: "{{ $session->class->id }}",
+                classTrainerId: "{{ $session->class_trainer_id }}"
+            };
 
             function showMessage(message, status) {
-                const $message = $('#attendance_message');
                 $message
                     .removeClass('d-none alert-success alert-danger alert-info')
                     .addClass(status ? 'alert-success' : 'alert-danger')
                     .html(message);
             }
 
-            $('#session_attendance_form').on('submit', function (event) {
-                event.preventDefault();
-                const code = $('#attendance_code').val().trim();
-                if (!code) {
+            function toggleSubmitting(isSubmitting) {
+                $submitButton.prop('disabled', isSubmitting);
+                if (isSubmitting) {
+                    $submitButton.attr('data-kt-indicator', 'on');
+                } else {
+                    $submitButton.removeAttr('data-kt-indicator');
+                }
+            }
+
+            function submitAttendance(code) {
+                const trimmed = (code || '').trim();
+                if (!trimmed) {
                     showMessage("{{ trans('sw.scan_input_required') }}", false);
                     return;
                 }
 
-                $.get(attendanceRoute, {
-                    code: code,
-                    enquiry: 0
-                }).done(function (data) {
+                toggleSubmitting(true);
+                const requestData = {
+                    code: trimmed,
+                    enquiry: 0,
+                    session_virtual_id: sessionContext.virtualId,
+                    session_date: sessionContext.sessionDate,
+                    class_id: sessionContext.classId,
+                    class_trainer_id: sessionContext.classTrainerId
+                };
+
+                $.get(attendanceRoute, requestData).done(function (data) {
                     showMessage(data.msg || "{{ trans('sw.attendance_recorded_successfully') }}", data.status);
+
                     if (data.status) {
+                        // Remove ?code from the URL so we don't re-submit on reload
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('code');
+                        window.history.replaceState({}, '', url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : ''));
+
                         setTimeout(function () {
                             window.location.reload();
                         }, 800);
                     }
                 }).fail(function () {
                     showMessage("{{ trans('sw.attendance_error') }}", false);
+                }).always(function () {
+                    toggleSubmitting(false);
+                    $codeInput.val('').focus();
                 });
+            }
+
+            $form.on('submit', function (event) {
+                event.preventDefault();
+                submitAttendance($codeInput.val());
             });
 
-            // auto focus
-            $('#attendance_code').focus();
+            // Auto focus and handle ?code=... prefill (e.g. barcode scanners that append to URL)
+            $codeInput.focus();
+            const params = new URLSearchParams(window.location.search);
+            const initialCode = params.get('code');
+            if (initialCode) {
+                $codeInput.val(initialCode);
+                submitAttendance(initialCode);
+            }
         })(jQuery);
     </script>
-@endpush
+@endsection
 
 
 

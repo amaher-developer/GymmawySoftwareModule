@@ -224,13 +224,17 @@ class GymPTSessionFrontController extends GymGenericFrontController
         }
 
         $slot = Carbon::createFromTimestamp($decoded['timestamp'])->timezone(config('app.timezone'));
+        $slotUtc = $slot->copy()->setTimezone('UTC');
 
         $attendeeQuery = GymPTMemberAttendee::with([
             'pt_member.member',
             'pt_member.pt_subscription',
             'user',
         ])
-            ->where('session_date', $slot->copy())
+            ->whereBetween('session_date', [
+                $slotUtc->copy()->subSeconds(60),
+                $slotUtc->copy()->addSeconds(60),
+            ])
             ->whereHas('pt_member', function ($query) use ($class, $classTrainer) {
                 $query->where(function ($inner) use ($class) {
                     $inner->where('class_id', $class->id)
@@ -275,6 +279,7 @@ class GymPTSessionFrontController extends GymGenericFrontController
             'session_date' => $slot,
             'class' => $class,
             'trainer' => $classTrainer?->trainer,
+            'class_trainer_id' => $classTrainer?->id,
             'status' => $status,
             'attendee_count' => $attendees->count(),
             'max_members' => $class->max_members,
@@ -300,8 +305,8 @@ class GymPTSessionFrontController extends GymGenericFrontController
         );
 
         $attendanceLookup = GymPTMemberAttendee::whereBetween('session_date', [
-            $slot->copy()->addDay()->startOfDay(),
-            $slot->copy()->addWeeks(2)->endOfDay(),
+            $slotUtc->copy()->addDay()->startOfDay(),
+            $slotUtc->copy()->addWeeks(2)->endOfDay(),
         ])
             ->whereHas('pt_member', function ($query) use ($class, $classTrainer) {
                 $query->where(function ($inner) use ($class) {
@@ -371,7 +376,8 @@ class GymPTSessionFrontController extends GymGenericFrontController
 
     protected function buildTimelineKey(int $classId, int $trainerId, Carbon $slot): string
     {
-        return "{$classId}|{$trainerId}|" . $slot->format('Y-m-d H:i:s');
+        $normalized = $slot->copy()->setTimezone('UTC')->format('Y-m-d H:i:s');
+        return "{$classId}|{$trainerId}|{$normalized}";
     }
 }
 

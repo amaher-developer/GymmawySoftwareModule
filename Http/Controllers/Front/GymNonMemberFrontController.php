@@ -16,6 +16,7 @@ use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymNonMember;
 use Modules\Software\Models\GymNonMemberTime;
 use Modules\Software\Models\GymSaleChannel;
+use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymUserLog;
 use Modules\Software\Repositories\GymActivityRepository;
 use Modules\Software\Repositories\GymNonMemberRepository;
@@ -159,7 +160,8 @@ class GymNonMemberFrontController extends GymGenericFrontController
             });
         }
         
-        return view('software::Front.nonmember_front_list', compact('members', 'activities','title', 'total', 'search_query', 'upcomingReservations', 'active_activity_reservation', 'formatted_from_date', 'formatted_to_date', 'formatted_search'));
+        $payment_types = GymPaymentType::branch()->get();
+        return view('software::Front.nonmember_front_list', compact('members', 'activities','title', 'total', 'search_query', 'upcomingReservations', 'active_activity_reservation', 'formatted_from_date', 'formatted_to_date', 'formatted_search', 'payment_types'));
     }
 
     /**
@@ -343,7 +345,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $activities = GymActivity::branch()->isSystem()->get();
         $selectedActivities = []; // Empty array for new non-member
         $billingSettings = SwBillingService::getSettings();
-
+        $payment_types = GymPaymentType::branch()->get();
         return view('software::Front.nonmember_front_form', [
             'activities' => $activities,
             'channels' => $channels,
@@ -352,6 +354,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
             'member' => new GymNonMember(),
             'title' => $title,
             'billingSettings' => $billingSettings,
+            'payment_types' => $payment_types
         ]);
     }
 
@@ -454,7 +457,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
             return  $activity['name_'.$this->lang];
         }, $member->activities));
         $activities = GymActivity::branch()->isSystem()->get();
-
+        $payment_types = GymPaymentType::branch()->get();
         $channels = GymSaleChannel::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_non_member', true)->get();
         $title = trans('sw.non_member_edit');
@@ -464,6 +467,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
             'discounts' => $discounts,
             'activities' => $activities, 'title'=>$title, 'selectedActivities' => $selectedActivities,
             'billingSettings' => $billingSettings,
+            'payment_types' => $payment_types
         ]);
     }
 

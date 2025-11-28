@@ -30,6 +30,7 @@ class GymUserTransactionRequest extends FormRequest
             'financial_month' => 'required|date_format:Y-m',
             'notes' => 'nullable|string',
             'deduction_month' => 'nullable|date_format:Y-m',
+            'payment_type' => 'required|exists:sw_gym_payment_types,payment_id',
         ];
 
         // Make deduction_month required if transaction_type is advance
@@ -58,6 +59,8 @@ class GymUserTransactionRequest extends FormRequest
             'financial_month.date_format' => trans('sw.invalid_date_format'),
             'deduction_month.required' => trans('sw.deduction_month_required_for_advance'),
             'deduction_month.date_format' => trans('sw.invalid_date_format'),
+            'payment_type.required' => trans('sw.payment_type_required'),
+            'payment_type.exists' => trans('sw.payment_type_invalid'),
         ];
     }
 }

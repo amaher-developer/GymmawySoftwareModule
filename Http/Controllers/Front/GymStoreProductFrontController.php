@@ -10,6 +10,7 @@ use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymPTSubscription;
 use Modules\Software\Models\GymStoreOrderVendor;
 use Modules\Software\Models\GymStoreProduct;
+use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymStoreCategory;
 use Modules\Software\Repositories\GymStoreProductRepository;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
@@ -197,7 +198,13 @@ class GymStoreProductFrontController extends GymGenericFrontController
     {
         $title = trans('sw.store_product_add');
         $categories = GymStoreCategory::branch()->get();
-        return view('software::Front.store_product_front_form', ['product' => new GymStoreProduct(), 'title'=>$title, 'categories'=>$categories]);
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        return view('software::Front.store_product_front_form', [
+            'product' => new GymStoreProduct(),
+            'title' => $title,
+            'categories' => $categories,
+            'payment_types' => $payment_types,
+        ]);
     }
 
     public function store(GymStoreProductRequest $request)
@@ -272,8 +279,14 @@ class GymStoreProductFrontController extends GymGenericFrontController
         $product = $this->StoreProductRepository->withTrashed()->find($id);
         $title = trans('sw.store_product_edit');
         $categories = GymStoreCategory::branch()->get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
 
-        return view('software::Front.store_product_front_form', ['product' => $product,'title'=>$title, 'categories'=>$categories]);
+        return view('software::Front.store_product_front_form', [
+            'product' => $product,
+            'title' => $title,
+            'categories' => $categories,
+            'payment_types' => $payment_types,
+        ]);
     }
 
     public function update(GymStoreProductRequest $request, $id)

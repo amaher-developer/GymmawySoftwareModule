@@ -297,9 +297,10 @@
                             <!--end::Label-->
                             <!--begin::Select-->
                             <select class="form-select form-select-solid mb-2" name="vendor_payment_type" id="vendor_payment_type">
-                                @foreach($payment_types as $payment_type)
+                                <option value="">{{ trans('sw.choose')}}</option>
+                                @foreach(($payment_types ?? collect()) as $payment_type)
                                     <option value="{{$payment_type->payment_id}}"
-                                            @if(@old('payment_type',$order->payment_type) == $payment_type->payment_id) selected="" @endif>{{$payment_type->name}}</option>
+                                            @if((string)old('vendor_payment_type') === (string)$payment_type->payment_id) selected @endif>{{$payment_type->name}}</option>
                                 @endforeach
                             </select>
                             <!--end::Select-->
@@ -432,6 +433,13 @@
                 placeholder: "{{ trans('sw.select_store_category')}}",
                 allowClear: true,
                 width: '100%'
+            });
+
+            $('#vendor_payment_type').select2({
+                placeholder: "{{ trans('sw.choose')}}",
+                allowClear: true,
+                width: '100%',
+                minimumResultsForSearch: Infinity
             });
         });
 

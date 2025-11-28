@@ -538,7 +538,8 @@ class GymMemberFrontController extends GymGenericFrontController
         $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
         $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         $billingSettings = SwBillingService::getSettings();
-//        $this->mainSettings->last_barcode_number = $this->mainSettings->last_barcode_number + 1;
+        $payment_types = GymPaymentType::branch()->get();
+        //        $this->mainSettings->last_barcode_number = $this->mainSettings->last_barcode_number + 1;
 //        $maxId = str_pad(($this->mainSettings->last_barcode_number), 14, 0, STR_PAD_LEFT);
 
         return view('software::Front.member_front_create', [
@@ -551,6 +552,7 @@ class GymMemberFrontController extends GymGenericFrontController
             'title' => $title,
             'billingSettings' => $billingSettings,
             'invoice' => $invoice,
+            'payment_types' => $payment_types,
         ]);
     }
 
@@ -889,8 +891,9 @@ class GymMemberFrontController extends GymGenericFrontController
         $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
         $maxId = GymMember::withTrashed()->max('id');
         $vat = ($member->member_subscription_info->subscription->price * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100));
-        $title = trans('sw.member_edit');
-        return view('software::Front.member_front_edit', ['member' => $member, 'member_subscriptions' => $member_subscriptions, 'subscriptions' => $subscriptions, 'discounts' => $discounts, 'channels' => $channels, 'users' => $users, 'maxId' => $maxId, 'title' => $title, 'vat' => @(float)$vat]);
+        $title = trans('sw.member_edit');   
+        $payment_types = GymPaymentType::branch()->get();
+        return view('software::Front.member_front_edit', ['member' => $member, 'member_subscriptions' => $member_subscriptions, 'subscriptions' => $subscriptions, 'discounts' => $discounts, 'channels' => $channels, 'users' => $users, 'maxId' => $maxId, 'title' => $title, 'vat' => @(float)$vat, 'payment_types' => $payment_types]);
     }
 
     public function update(GymMemberRequest $request, $id)

@@ -16,6 +16,10 @@ class GymPaymentType extends GenericModel
     public static $uploads_path='uploads/order/';
     public static $thumbnails_uploads_path='uploads/orders/thumbnails/';
 
+    public function scopeBranch($query)
+    {
+        return $query->where('branch_setting_id', parent::getCurrentBranchId());
+    }
 
     public function getNameAttribute()
     {

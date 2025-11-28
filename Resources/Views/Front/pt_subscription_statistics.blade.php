@@ -57,13 +57,13 @@
                                 <input class="form-control form-control-solid" placeholder="{{ trans('sw.select_date_range') }}" id="kt_daterangepicker_4" readonly/>
                             </div>
                             <div class="col-md-2 text-end">
-                                <button type="button" class="btn btn-primary w-100" id="apply_filter_btn">
+                                <button type="button" class="btn btn-primary w-100" id="apply_filter_btn"  onclick="applyFilter()">
                                     <i class="ki-outline ki-filter fs-2"></i>
                                     {{ trans('sw.apply') }}
                                 </button>
                             </div>
                             <div class="col-md-2 text-end">
-                                <button type="button" class="btn btn-secondary w-100" id="reset_filter_btn">
+                                <button type="button" class="btn btn-secondary w-100" id="reset_filter_btn"  onclick="resetFilter()">
                                     <i class="ki-outline ki-cross fs-2"></i>
                                     {{ trans('sw.reset') }}
                                 </button>
@@ -530,7 +530,7 @@
 
         function applyFilter() {
             var inputVal = $("#kt_daterangepicker_4").val();
-            var url = '{{ route('sw.statistics') }}';
+            var url = '{{ route('sw.ptSubscriptionStatistics') }}';
             
             if (inputVal) {
                 var dateRange = $("#kt_daterangepicker_4").data('daterangepicker');

@@ -857,7 +857,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
         return $inputs;
     }
 
-    private function recordMemberAttendance(GymPTMember $member): ?GymPTMemberAttendee
+    private function recordMemberAttendance(GymPTMember $member, ?Carbon $sessionDate = null, array $sessionContext = []): ?GymPTMemberAttendee
     {
         $member->loadMissing(['member.member_subscription_info', 'pt_class', 'classTrainer']);
         $class = $member->pt_class ?? GymPTClass::find($member->pt_class_id);
@@ -881,33 +881,31 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return null;
         }
 
-        // Check if there's an attendee for today (to prevent duplicate attendance on same day)
-        $todayStart = Carbon::today();
-        $todayEnd = Carbon::today()->endOfDay();
-        $todayAttendee = GymPTMemberAttendee::where('pt_member_id', $member->id)
-            ->whereBetween('session_date', [$todayStart, $todayEnd])
-            ->first();
-            
-        if ($todayAttendee) {
-            // If attendance already recorded today, refresh and return existing
-            $member->refresh();
-            return $todayAttendee;
-        }
+        $useExactSlot = !empty($sessionContext);
+        $sessionDateLocal = $sessionDate ? $sessionDate->copy() : Carbon::now();
+        $sessionDateUtc = $sessionDateLocal->copy()->setTimezone('UTC');
 
-        // Use current date/time for session_date instead of requiring a scheduled slot
-        // This allows sessions to be deducted without dependency on session scheduling
-        $sessionDate = Carbon::now();
+        [$windowStart, $windowEnd] = $this->buildDuplicateWindow($sessionDateUtc, $useExactSlot);
+
+        $duplicateQuery = GymPTMemberAttendee::where('pt_member_id', $member->id)
+            ->whereBetween('session_date', [$windowStart, $windowEnd]);
+
+        $existingAttendee = $duplicateQuery->first();
+        if ($existingAttendee) {
+            $member->refresh();
+            return $existingAttendee;
+        }
 
         $attendee = GymPTMemberAttendee::create([
             'pt_member_id' => $member->id,
             'session_id' => null,
-            'session_date' => $sessionDate,
+            'session_date' => $sessionDateUtc,
             'user_id' => optional(Auth::guard('sw')->user())->id,
             'branch_setting_id' => $member->branch_setting_id ?? $class->branch_setting_id ?? @$this->user_sw->branch_setting_id,
             'attended' => true,
         ]);
 
-        $this->commissionService->recordForAttendance($attendee, $sessionDate, $member->classTrainer);
+        $this->commissionService->recordForAttendance($attendee, $sessionDateLocal, $member->classTrainer);
         $this->enrollmentService->adjustRemainingSessions($member, -1);
 
         GymMemberAttendee::create([
@@ -928,7 +926,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
         return $attendee;
     }
 
-    private function memberPTAttendeesById($id){
+    private function memberPTAttendeesById($id, array $sessionContext = []){
         $id = $id;
         $member = GymPTMember::with(['member', 'pt_subscription', 'pt_class', 'classTrainer'])->where('id', $id);
         // Apply branch restriction:
@@ -949,14 +947,18 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return '';
         }
 
+        if (!empty($sessionContext) && !$this->memberMatchesSessionContext($member, $sessionContext)) {
+            return '';
+        }
+
         // Store initial attendee count to detect if new one was created
-        $todayStart = Carbon::today();
-        $todayEnd = Carbon::today()->endOfDay();
+        $sessionDateUtc = ($sessionContext['session_date'] ?? Carbon::now())->copy()->setTimezone('UTC');
+        [$windowStart, $windowEnd] = $this->buildDuplicateWindow($sessionDateUtc, !empty($sessionContext));
         $existingTodayCount = GymPTMemberAttendee::where('pt_member_id', $member->id)
-            ->whereBetween('session_date', [$todayStart, $todayEnd])
+            ->whereBetween('session_date', [$windowStart, $windowEnd])
             ->count();
 
-        $attendee = $this->recordMemberAttendance($member);
+        $attendee = $this->recordMemberAttendance($member, $sessionContext['session_date'] ?? null, $sessionContext);
         
         // Always refresh member to get latest data
         $member->refresh();
@@ -964,7 +966,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
         if ($attendee) {
             // Check if a new attendee was created (count increased)
             $newTodayCount = GymPTMemberAttendee::where('pt_member_id', $member->id)
-                ->whereBetween('session_date', [$todayStart, $todayEnd])
+                ->whereBetween('session_date', [$windowStart, $windowEnd])
                 ->count();
             
             // Only update remaining_sessions if a new attendee was actually created
@@ -981,12 +983,12 @@ class GymPTMemberFrontController extends GymGenericFrontController
         return '';
     }
     public function memberPTAttendees(Request $request){
-
+        $sessionContext = $this->resolveSessionContext($request);
         // Use id if provided
         $idToUse = @$request->id;
         if($idToUse){
             // Try id first
-            $result = $this->memberPTAttendeesById($idToUse);
+            $result = $this->memberPTAttendeesById($idToUse, $sessionContext);
             if(!empty($result)){
                 return $result;
             }
@@ -1029,6 +1031,13 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $member = $member->first();
         $status = false;
         if($member) {
+            if (!empty($sessionContext) && !$this->memberMatchesSessionContext($member, $sessionContext)) {
+                return Response::json([
+                    'msg' => trans('sw.member_not_in_session'),
+                    'member' => $member,
+                    'status' => false,
+                ], 200);
+            }
             if(($member->workouts_per_day > 0) && ($member->pt_member_attendees_count >= $member->workouts_per_day)){
                 $msg = trans('sw.workouts_per_day_msg', ['visits' => $member->pt_member_attendees_count, 'classes' => $member->workouts_per_day]);
                 return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
@@ -1059,7 +1068,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
                     }
 
                     if(!$enquiry) {
-                        $attendee = $this->recordMemberAttendance($member);
+                        $attendee = $this->recordMemberAttendance($member, $sessionContext['session_date'] ?? null, $sessionContext);
                         if (!$attendee) {
                             return Response::json([
                                 'msg' => trans('sw.no_available_sessions'),
@@ -1154,6 +1163,76 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return 1;
         }
         return trans('admin.operation_failed');
+    }
+
+    private function resolveSessionContext(Request $request): array
+    {
+        $context = [];
+
+        $virtualId = $request->input('session_virtual_id') ?? $request->input('session_id');
+        if ($virtualId) {
+            $decoded = $this->sessionService->decodeVirtualSessionId($virtualId);
+            if ($decoded) {
+                $context['virtual_id'] = $virtualId;
+                $context['class_id'] = $decoded['class_id'] ?? null;
+                $context['class_trainer_id'] = $decoded['class_trainer_id'] ?? null;
+                if (isset($decoded['timestamp'])) {
+                    $context['session_date'] = Carbon::createFromTimestamp($decoded['timestamp'])
+                        ->timezone(config('app.timezone'));
+                }
+            }
+        }
+
+        if (!isset($context['session_date']) && $request->filled('session_date')) {
+            try {
+                $context['session_date'] = Carbon::parse($request->input('session_date'));
+            } catch (\Throwable $e) {
+                // ignore invalid date input
+            }
+        }
+
+        if ($request->filled('class_id')) {
+            $context['class_id'] = (int) $request->input('class_id');
+        }
+
+        if ($request->filled('class_trainer_id')) {
+            $context['class_trainer_id'] = (int) $request->input('class_trainer_id');
+        }
+
+        return array_filter($context, fn ($value) => !is_null($value) && $value !== '');
+    }
+
+    private function memberMatchesSessionContext(GymPTMember $member, array $context): bool
+    {
+        if (empty($context)) {
+            return true;
+        }
+
+        $memberClassId = $member->class_id ?? $member->pt_class_id ?? null;
+        if (isset($context['class_id']) && $context['class_id'] && $memberClassId && (int) $memberClassId !== (int) $context['class_id']) {
+            return false;
+        }
+
+        if (isset($context['class_trainer_id']) && $context['class_trainer_id'] && $member->class_trainer_id && (int) $member->class_trainer_id !== (int) $context['class_trainer_id']) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function buildDuplicateWindow(Carbon $sessionDateUtc, bool $exactSlot = false): array
+    {
+        if ($exactSlot) {
+            return [$sessionDateUtc->copy(), $sessionDateUtc->copy()];
+        }
+
+        $localStart = $sessionDateUtc->copy()->timezone(config('app.timezone'))->startOfDay();
+        $localEnd = $sessionDateUtc->copy()->timezone(config('app.timezone'))->endOfDay();
+
+        return [
+            $localStart->copy()->timezone('UTC'),
+            $localEnd->copy()->timezone('UTC'),
+        ];
     }
 
     public function listPTMemberCalendar($member){

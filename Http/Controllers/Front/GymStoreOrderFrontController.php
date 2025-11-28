@@ -321,16 +321,39 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         $order_inputs['amount_before_discount'] = $amount_before_discount;
         $order_inputs['discount_value'] = $request->discount_value ? @$request->discount_value : 0;
 
+        // Ensure VAT is always initialized
+        $vat = 0;
+        if(@$this->mainSettings->vat_details['vat_percentage']) {
+            $vat = ($amount_before_discount - $order_inputs['discount_value']) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
+            $order_inputs['vat'] = round($vat, 2);
+        } else {
+            $order_inputs['vat'] = 0;
+        }
+
+        // Calculate the final order total including VAT, before considering store balance deduction
+        $finalOrderTotal = ($amount_before_discount - $order_inputs['discount_value']) + $order_inputs['vat'];
+        $order_inputs['total_amount'] = $finalOrderTotal; // Store this for the order record
+
         if($request->member_id){
             if(!isset($member)) {
                 $member = GymMember::branch()->where('id', (int)@$request->member_id)->first();
             }
             $order_inputs['member_id'] = @$member->id;
 
-            if(@$request->store_member_use_balance && ((@$member->member_balance() < $order_inputs['amount_paid'] ) && (!@$this->mainSettings->store_postpaid))){
-                return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
+            if(@$request->store_member_use_balance){
+                if(!@$this->mainSettings->store_postpaid && @$member->store_balance < $finalOrderTotal){
+                    return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
+                }
+                // Deduct from member's balance
+                $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
+                // Set order amount_paid to 0 as it's paid from balance
+                $order_inputs['amount_paid'] = 0;
+                $order_inputs['amount_remaining'] = 0;
+            } else {
+                // If not using store balance, amount_paid is what was submitted, remaining is total - paid
+                $order_inputs['amount_paid'] = $request->amount_paid; // This should come from the form
+                $order_inputs['amount_remaining'] = $finalOrderTotal - $order_inputs['amount_paid'];
             }
-
         }
 
         // Handle loyalty points redemption - MUST BE BEFORE VAT CALCULATION
@@ -426,6 +449,12 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
         $order = GymStoreOrder::create($order_inputs);
         $order_id = $order->id;
+        
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('sw.order_created_successfully'),
+            'type' => 'success'
+        ]);
         
         // Update redemption transaction with order ID if points were redeemed
         if (isset($redemptionTransaction) && $redemptionTransaction) {

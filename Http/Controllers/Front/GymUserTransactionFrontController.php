@@ -7,6 +7,7 @@ use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Requests\GymUserTransactionRequest;
 use Modules\Software\Models\GymUserTransaction;
 use Modules\Software\Models\GymUser;
+use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Repositories\GymUserTransactionRepository;
 use Carbon\Carbon;
 use Illuminate\Container\Container as Application;
@@ -82,10 +83,12 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     {
         $title = trans('sw.employee_transaction_add');
         $employees = GymUser::branch()->orderBy('name', 'ASC')->get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         return view('software::Front.user_transaction_front_form', [
             'transaction' => new GymUserTransaction(),
             'title' => $title,
-            'employees' => $employees
+            'employees' => $employees,
+            'payment_types' => $payment_types,
         ]);
     }
 
@@ -98,7 +101,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
         }
         
         $transaction = $this->TransactionRepository->create($inputs);
-
+        $transaction->payment_type = $inputs['payment_type'];
         // Create money box entry for this transaction
         $this->createMoneyBoxEntry($transaction);
         
@@ -126,10 +129,12 @@ class GymUserTransactionFrontController extends GymGenericFrontController
         $transaction = $this->TransactionRepository->withTrashed()->find($id);
         $title = trans('sw.employee_transaction_edit');
         $employees = GymUser::branch()->orderBy('name', 'ASC')->get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         return view('software::Front.user_transaction_front_form', [
             'transaction' => $transaction,
             'title' => $title,
-            'employees' => $employees
+            'employees' => $employees,
+            'payment_types' => $payment_types,
         ]);
     }
 
@@ -289,6 +294,10 @@ class GymUserTransactionFrontController extends GymGenericFrontController
             $inputs['advance_discount_year'] = null;
         }
 
+        if (isset($inputs['payment_type'])) {
+            $inputs['payment_type'] = (int)$inputs['payment_type'];
+        }
+
         return $inputs;
     }
 
@@ -344,7 +353,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
             'amount_before' => $amount_before,
             'operation' => $operation,
             'notes' => $notes,
-            'payment_type' => 0, // Cash by default
+            'payment_type' => $transaction->payment_type ?? 0,
         ]);
     }
 
@@ -427,7 +436,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
             'amount_before' => $amount_before,
             'operation' => $operation,
             'notes' => $correctionNotes,
-            'payment_type' => 0,
+            'payment_type' => $transaction->payment_type ?? 0,
         ]);
     }
 
@@ -457,7 +466,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
             'amount_before' => $amount_before,
             'operation' => $operation,
             'notes' => $notes,
-            'payment_type' => 0,
+            'payment_type' => $transaction->payment_type ?? 0,
         ]);
     }
 
@@ -489,7 +498,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
             'amount_before' => $amount_before,
             'operation' => 1, // Withdraw - money going out
             'notes' => $advanceGivenNotes,
-            'payment_type' => 0,
+            'payment_type' => $transaction->payment_type ?? 0,
         ]);
 
         // Update amount_before for the deduction entry
@@ -509,7 +518,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
             'amount_before' => $amount_before,
             'operation' => 0, // Addition - money coming back
             'notes' => $advanceDeductionNotes,
-            'payment_type' => 0,
+            'payment_type' => $transaction->payment_type ?? 0,
         ]);
     }
 }

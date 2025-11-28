@@ -384,7 +384,15 @@
                                 <!--end::Table-->
                             </div>
                             <!--end::Table container-->
-                            
+                            @if ($errors->any())
+                            <div class="alert alert-danger fv-plugins-message-container fv-plugins-message-container--enabled invalid-feedback">
+                                    <div data-field="amount_paid" data-validator="notEmpty">
+                                        @if ($errors->has('amount_paid'))
+                                            {{ $errors->first('amount_paid') }}
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
                             <!--begin::Summary-->
                             <div class="d-flex flex-stack bg-success rounded-3 p-6 mb-11">
                                 <!--begin::Content-->
@@ -479,6 +487,7 @@
                                 <!--begin::Title-->
                                 <h1 class="fw-bold text-gray-800 mb-5">{{ trans('sw.payment_method')}}</h1>
                                 <!--end::Title-->
+                                
                                 <!--begin::Radio group-->
                                 <div class="d-flex flex-equal gap-5 gap-xxl-9 px-0 mb-12" data-kt-buttons="true" data-kt-buttons-target="[data-kt-button]">
                                     @foreach($payment_types as $payment_type)
@@ -809,6 +818,12 @@
         $('#amount_paid').val(total.toFixed(2));
         $('#amount_remaining').val(0);
         
+        // Adjust amount_paid if using store balance
+        const useStoreBalance = $('#store_member_use_balance').is(':checked');
+        if (useStoreBalance && selectedMemberId) {
+            $('#amount_paid').val(0);
+        }
+
         // Calculate and display estimated loyalty points earning
         @if(@$mainSettings->active_loyalty)
         if (loyaltyMoneyToPointRate > 0 && total > 0) {
@@ -909,36 +924,25 @@
         
         const balanceElement = $('#pos_member_balance');
         balanceElement.removeClass('member-balance-positive member-balance-negative');
-        const balanceValue = parseFloat(member.balance) || 0;
+        const balanceValue = parseFloat(member.store_balance) || 0;
         selectedMemberBalance = balanceValue;
         
         balanceElement.text(balanceValue.toFixed(2));
-        if (balanceValue > 0) {
+        // Always enable use_balance_wrapper if postpaid is enabled
+        if (storePostpaidEnabled) {
+            $('#store_member_use_balance_wrapper').removeClass('d-none');
+            $('#store_member_use_balance').prop('disabled', false);
+        } else if (balanceValue > 0) {
             balanceElement.addClass('member-balance-positive');
             $('#store_member_use_balance_wrapper').removeClass('d-none');
             $('#store_member_use_balance').prop('disabled', false);
-        } else if (balanceValue < 0) {
-            balanceElement.addClass('member-balance-negative');
-            if (storePostpaidEnabled) {
-                $('#store_member_use_balance_wrapper').removeClass('d-none');
-                $('#store_member_use_balance').prop('disabled', false);
-            } else {
-                $('#store_member_use_balance_wrapper').addClass('d-none');
-                $('#store_member_use_balance').prop('checked', false).prop('disabled', true);
-                $('#use_balance_notice').addClass('d-none');
-            }
         } else {
-            balanceElement.removeClass('member-balance-positive member-balance-negative');
-            if (storePostpaidEnabled) {
-                $('#store_member_use_balance_wrapper').removeClass('d-none');
-                $('#store_member_use_balance').prop('disabled', false);
-            } else {
-                $('#store_member_use_balance_wrapper').addClass('d-none');
-                $('#store_member_use_balance').prop('checked', false).prop('disabled', true);
-                $('#use_balance_notice').addClass('d-none');
-            }
+            balanceElement.addClass('member-balance-negative');
+            $('#store_member_use_balance_wrapper').addClass('d-none');
+            $('#store_member_use_balance').prop('checked', false).prop('disabled', true);
+            $('#use_balance_notice').addClass('d-none');
         }
-        
+
         $('#member_info_card').removeClass('d-none');
     }
     
@@ -1009,6 +1013,8 @@
         } else {
             $('#use_balance_notice').addClass('d-none');
         }
+        // Trigger total recalculation to update amount_paid
+        calculateTotal();
     });
     
     // Form submission
@@ -1017,6 +1023,23 @@
             e.preventDefault();
             Swal.fire({
                 text: "{{ trans('sw.please_add_products_to_cart')}}",
+                icon: "warning",
+                buttonsStyling: false,
+                confirmButtonText: "{{ trans('sw.ok')}}",
+                customClass: {
+                    confirmButton: "btn btn-primary"
+                }
+            });
+            return false;
+        }
+
+        const useStoreBalance = $('#store_member_use_balance').is(':checked');
+        const currentOrderTotal = parseFloat($('#total_display').text().replace(currencySymbol, '')) || 0;
+
+        if (useStoreBalance && !storePostpaidEnabled && selectedMemberBalance < currentOrderTotal) {
+            e.preventDefault();
+            Swal.fire({
+                text: "{{ trans('sw.amount_paid_validate_must_less_balance')}}",
                 icon: "warning",
                 buttonsStyling: false,
                 confirmButtonText: "{{ trans('sw.ok')}}",

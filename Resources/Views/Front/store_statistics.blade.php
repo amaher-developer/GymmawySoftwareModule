@@ -665,7 +665,7 @@
 
         function applyFilter() {
             var inputVal = $("#kt_daterangepicker_4").val();
-            var url = '{{ route('sw.statistics') }}';
+            var url = '{{ route('sw.storeStatistics') }}';
             
             if (inputVal) {
                 var dateRange = $("#kt_daterangepicker_4").data('daterangepicker');

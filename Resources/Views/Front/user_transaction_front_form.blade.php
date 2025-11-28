@@ -114,6 +114,23 @@
                             </div>
                             <!--end::Amount-->
 
+                            <!--begin::Payment Type-->
+                            <div class="col-md-6 mb-10">
+                                <div class="fv-row">
+                                    <label class="required form-label">{{ trans('sw.payment_type')}}</label>
+                                    <select name="payment_type" id="payment_type" class="form-select" data-control="select2" data-hide-search="true" required>
+                                        <option value="">{{ trans('sw.choose')}}</option>
+                                        @foreach(($payment_types ?? collect()) as $payment_type)
+                                            <option value="{{ $payment_type->payment_id }}"
+                                                {{ (string)old('payment_type', $transaction->payment_type) === (string)$payment_type->payment_id ? 'selected' : '' }}>
+                                                {{ $payment_type->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <!--end::Payment Type-->
+
                             <!--begin::Financial Month-->
                             <div class="col-md-6 mb-10">
                                 <div class="fv-row">
@@ -183,6 +200,9 @@
     jQuery(document).ready(function() {
         // Initialize Select2
         $('#employee_id').select2();
+        $('#payment_type').select2({
+            minimumResultsForSearch: Infinity
+        });
 
         // Show/Hide deduction month based on transaction type
         function toggleDeductionMonth() {
