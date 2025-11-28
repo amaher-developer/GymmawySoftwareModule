@@ -1557,7 +1557,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         })); //->where('operation', 0)->sum('amount'));
 
         $payment_revenues = $this->payment_revenues;
-
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
         //        $cache_expenses = ($sorders->where('payment_type', TypeConstants::CASH_PAYMENT)->where('operation', 1)->sum('amount'));
         ($sorders->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $i => $payment_type) {
