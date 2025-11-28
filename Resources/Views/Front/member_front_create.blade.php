@@ -262,7 +262,19 @@
                                 <label class="form-label required">{{ trans('sw.membership')}}</label>
                                 <select id="membership" name="subscription_id" class="form-select select2" data-control="select2">
                                     @foreach($subscriptions as $subscription)
-                                        <option value="{{$subscription->id}}" price="{{$subscription->price}}" expire_date="{{\Carbon\Carbon::now()->addDays($subscription->period)->toDateString()}}" period="{{@$subscription->period}}" discount_value="{{@$subscription->default_discount_value}}" discount_type="{{@$subscription->default_discount_type}}" required>{{$subscription->name}}</option>
+                                        @php
+                                            $periodDays = is_numeric($subscription->period) ? (int)$subscription->period : 0;
+                                            $defaultExpire = \Carbon\Carbon::now()->addDays($periodDays)->toDateString();
+                                        @endphp
+                                        <option value="{{$subscription->id}}"
+                                                price="{{$subscription->price}}"
+                                                expire_date="{{$defaultExpire}}"
+                                                period="{{@$subscription->period}}"
+                                                discount_value="{{@$subscription->default_discount_value}}"
+                                                discount_type="{{@$subscription->default_discount_type}}"
+                                                required>
+                                            {{$subscription->name}}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
