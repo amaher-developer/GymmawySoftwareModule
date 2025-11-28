@@ -136,7 +136,7 @@ class SwPermission
             , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS'
             , 'listSwPayment', 'updatePotentialMember'
             , 'listHelperTools',  'calculateCalories', 'calculateCaloriesResult', 'calculateBMI', 'calculateBMIResult', 'calculateIBW', 'calculateIBWResult', 'calculateWater', 'calculateWaterResult', 'calculateVatPercentage', 'calculateVatPercentageResult'
-            , 'listPTMemberCalendar', 'listPTMemberInClassCalendar'
+            , 'storePTMember', 'listPTMemberCalendar', 'listPTMemberInClassCalendar'
             , 'listPTSessions', 'showPTSession'
             , 'listTrainingMedicine', 'createTrainingMedicine', 'editTrainingMedicine', 'deleteTrainingMedicine'
             , 'listTrainingMemberLog', 'showTrainingMemberLog', 'addTrainingAssessment', 'addMemberTrainingPlan'
