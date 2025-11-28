@@ -737,7 +737,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             ,'total_add_to_money_box', 'total_withdraw_from_money_box'
             ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores', 'total_non_members'
             , 'orders', 'title', 'total', 'search_query', 'users', 'subscriptions'
-            , 'payment_expenses', 'payment_revenues'));
+            , 'payment_expenses', 'payment_revenues', 'payment_types'));
     }
 
 
