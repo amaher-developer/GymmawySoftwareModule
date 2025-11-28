@@ -133,7 +133,7 @@ class SwPermission
             , 'listUserLog', 'downloadCard', 'memberSubscriptionRenew', 'downloadQRCode', 'downloadCode', 'downloadStoreProductBarcode', 'downloadMemberBarcode'
             , 'showOrderSubscription', 'showOrderSubscriptionPOS'
             , 'showOrderPTSubscription', 'showOrderPTSubscriptionPOS'
-            , 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS'
+            , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS'
             , 'listSwPayment', 'updatePotentialMember'
             , 'listHelperTools',  'calculateCalories', 'calculateCaloriesResult', 'calculateBMI', 'calculateBMIResult', 'calculateIBW', 'calculateIBWResult', 'calculateWater', 'calculateWaterResult', 'calculateVatPercentage', 'calculateVatPercentageResult'
             , 'listPTMemberCalendar', 'listPTMemberInClassCalendar'

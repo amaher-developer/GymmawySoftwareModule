@@ -35,7 +35,7 @@ Route::prefix('store/order')
         
         Route::name('sw.createStoreOrderPOS')
             ->get('create-pos', 'Front\GymStoreOrderFrontController@createPOS');
-        Route::name('sw.createStoreOrderPOS')
+        Route::name('sw.storeStoreOrderPOS')
             ->post('store-pos', 'Front\GymStoreOrderFrontController@storePOS');
 
 
