@@ -1655,6 +1655,7 @@
             @endif
 
             <!--begin:Menu item-->
+            @if ($swUser && (isset($permissionsMap['listBlockMember']) || $isSuperUser))
             <div class="menu-item">
                 <!--begin:Menu link-->
                 <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/block-member*')) active @endif"
@@ -1666,6 +1667,7 @@
                 </a>
                 <!--end:Menu link-->
             </div>
+            @endif
             <!--end:Menu item-->
 
             @if (@$mainSettings->active_loyalty && ($isSuperUser || isset($permissionsMap['listLoyaltyPointRule'])))
