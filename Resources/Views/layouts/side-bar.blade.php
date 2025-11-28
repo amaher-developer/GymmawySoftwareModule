@@ -2,6 +2,19 @@
     $identifier = request()->segment(3);
     //$sidebarMetricsEnabled = config('app.debug');
     //$sidebarRenderStartedAt = $sidebarMetricsEnabled ? microtime(true) : null;
+
+    $showSettingsMenu = $isSuperUser
+        || isset($permissionsMap['listUser'])
+        || isset($permissionsMap['listPTTrainer'])
+        || isset($permissionsMap['listPaymentType'])
+        || isset($permissionsMap['listMoneyBoxType'])
+        || isset($permissionsMap['listGroupDiscount'])
+        || isset($permissionsMap['listSaleChannel'])
+        || isset($permissionsMap['listBlockMember'])
+        || (isset($permissionsMap['listSubscription']) && @$mainSettings->active_subscription)
+        || ((isset($permissionsMap['listActivity']) || isset($permissionsMap['listReservation'])) && (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation))
+        || (isset($permissionsMap['listReservation']) && @$mainSettings->active_activity_reservation)
+        || ((isset($permissionsMap['listLoyaltyPointRule']) || isset($permissionsMap['listLoyaltyCampaign'])) && @$mainSettings->active_loyalty);
 @endphp
 <style>
     .sub-menu span {
@@ -1462,7 +1475,7 @@
     <!--end:Menu item-->
 @endif
 
-@if ($swUser)
+@if ($swUser && $showSettingsMenu)
     <!--begin:Menu item-->
     <div data-kt-menu-trigger="click"
         class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
