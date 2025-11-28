@@ -1545,7 +1545,11 @@ class GymUserLogFrontController extends GymGenericFrontController
             $expenses = ($sorders->where('operation', 1)->sum('amount'));
             $earnings = ($revenues - $expenses);
 
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        if ($payment_types->isEmpty()) {
+            $payment_types = GymPaymentType::orderBy('id')->get();
+        }
+
         ($sorders->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $i => $payment_type){
                 if((@$item->payment_type == $payment_type->payment_id) && ($item->operation == TypeConstants::Add) ){
@@ -1557,7 +1561,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         })); //->where('operation', 0)->sum('amount'));
 
         $payment_revenues = $this->payment_revenues;
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+
         //        $cache_expenses = ($sorders->where('payment_type', TypeConstants::CASH_PAYMENT)->where('operation', 1)->sum('amount'));
         ($sorders->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $i => $payment_type) {
@@ -1627,7 +1631,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 //                ,'total_add_to_money_box', 'total_withdraw_from_money_box'
                 ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores', 'total_moneybox'
                 , 'orders', 'title', 'total', 'search_query'
-                , 'payment_expenses', 'payment_revenues'));
+                , 'payment_expenses', 'payment_revenues', 'payment_types'));
 
     }
 
