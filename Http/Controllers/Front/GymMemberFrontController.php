@@ -2184,7 +2184,11 @@ class GymMemberFrontController extends GymGenericFrontController
             $notify_data['e'] = 1;
             $notify_data['title'] = @$msg;
             $notify_data['body'] = @$msg;
-            $push = (new FirebaseApiController())->push([$member->id], $notify_data);
+            if (class_exists(FirebaseApiController::class)) {
+                (new FirebaseApiController())->push([$member->id], $notify_data);
+            } else {
+                Log::warning('FirebaseApiController class missing; skipping push notification.');
+            }
         }
 
         // update status of member
