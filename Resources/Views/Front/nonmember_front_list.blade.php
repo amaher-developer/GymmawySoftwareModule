@@ -24,21 +24,19 @@
     <style>
         /* Actions column styling */
         .actions-column {
-            min-width: 120px;
+            min-width: 140px;
             text-align: right;
+            white-space: nowrap;
         }
 
-        .actions-column .btn {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            display: inline-flex;
+        .actions-column .menu-link {
+            display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 0.5rem;
         }
 
-        .actions-column .d-flex {
-            gap: 0.25rem;
+        .actions-column .menu-link i {
+            font-size: 1rem;
         }
 
         .invoice-block {
@@ -280,82 +278,88 @@
                                 </div>
                             </td>
                             <td class="text-end actions-column">
-                                <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
-                                    <!--begin::WhatsApp-->
-                                    <a href="https://web.whatsapp.com/send?phone={{ ((substr( $member->phone, 0, 1 ) === "+") || (substr( $member->phone, 0, 2 ) === "00")) ? $member->phone : '+'.env('APP_COUNTRY_CODE').$member->phone}}"
-                                       target="_blank" class="btn btn-icon btn-bg-light btn-active-color-success btn-sm" title="{{ trans('sw.whatsapp')}}">
-                                        <i class="ki-outline ki-message-text-2 fs-2"></i>
-                                    </a>
-                                    <!--end::WhatsApp-->
-                                    
-                                    <!--begin::Invoice-->
-                                    <a href="{{route('sw.showOrderSubscriptionNonMember',$member->id)}}"
-                                       class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm" title="{{ trans('sw.invoice')}}">
-                                        <i class="ki-outline ki-document fs-2"></i>
-                                    </a>
-                                    <!--end::Invoice-->
-                                    
+                                <a href="#" class="btn btn-sm btn-light btn-flex btn-center btn-active-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                                    {{ trans('admin.actions') }}
+                                    <i class="ki-outline ki-down fs-5 ms-1"></i>
+                                </a>
+                                <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold fs-7 w-200px py-4" data-kt-menu="true">
+                                    <div class="menu-item px-3">
+                                        <a href="https://web.whatsapp.com/send?phone={{ ((substr( $member->phone, 0, 1 ) === '+') || (substr( $member->phone, 0, 2 ) === '00')) ? $member->phone : '+'.env('APP_COUNTRY_CODE').$member->phone}}"
+                                           target="_blank" class="menu-link px-3" title="{{ trans('sw.whatsapp')}}">
+                                            <i class="ki-outline ki-message-text-2 text-success"></i>
+                                            <span>{{ trans('sw.whatsapp')}}</span>
+                                        </a>
+                                    </div>
+                                    <div class="menu-item px-3">
+                                        <a href="{{route('sw.showOrderSubscriptionNonMember',$member->id)}}"
+                                           class="menu-link px-3" title="{{ trans('sw.invoice')}}">
+                                            <i class="ki-outline ki-document text-primary"></i>
+                                            <span>{{ trans('sw.invoice')}}</span>
+                                        </a>
+                                    </div>
+
                                     @if($active_activity_reservation)
-                                    <!--begin::Upcoming Reservations Button-->
-                                    @if($member->reservations_count > 0)
-                                        <button type="button" 
-                                                class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm position-relative" 
-                                                title="{{ trans('sw.upcoming_reservations') }} ({{ $member->reservations_count }})"
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#upcomingReservationsModal{{ $member->id }}">
-                                            <i class="ki-outline ki-calendar-tick fs-2"></i>
-                                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                                                {{ $member->reservations_count }}
-                                                <span class="visually-hidden">{{ trans('sw.upcoming_reservations') }}</span>
-                                            </span>
-                                        </button>
+                                        @if($member->reservations_count > 0)
+                                        <div class="menu-item px-3">
+                                            <a href="javascript:void(0)" class="menu-link px-3 position-relative"
+                                               title="{{ trans('sw.upcoming_reservations') }} ({{ $member->reservations_count }})"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#upcomingReservationsModal{{ $member->id }}">
+                                                <i class="ki-outline ki-calendar-tick text-primary"></i>
+                                                <span>{{ trans('sw.upcoming_reservations') }}</span>
+                                                <span class="badge badge-circle bg-danger ms-2">{{ $member->reservations_count }}</span>
+                                            </a>
+                                        </div>
+                                        @endif
+
+                                        @if((in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user) && !empty($member->activities))
+                                        <div class="menu-item px-3">
+                                            <a href="javascript:void(0)"
+                                               class="menu-link px-3"
+                                               title="{{ trans('sw.quick_booking') }}"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#quickBookModal{{ $member->id }}"
+                                               onclick="openQuickBookModal({{ $member->id }}, {{ json_encode($member->activities) }})">
+                                                <i class="ki-outline ki-calendar-add text-success"></i>
+                                                <span>{{ trans('sw.quick_booking') }}</span>
+                                            </a>
+                                        </div>
+                                        @endif
                                     @endif
-                                    <!--end::Upcoming Reservations Button-->
-                                    
-                                    <!--begin::Quick Book Button-->
-                                    @if((in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user) && !empty($member->activities))
-                                        <button type="button" 
-                                                class="btn btn-icon btn-bg-light btn-active-color-success btn-sm" 
-                                                title="{{ trans('sw.quick_booking') }}"
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#quickBookModal{{ $member->id }}"
-                                                onclick="openQuickBookModal({{ $member->id }}, {{ json_encode($member->activities) }})">
-                                            <i class="ki-outline ki-calendar-add fs-2"></i>
-                                        </button>
-                                    @endif
-                                    <!--end::Quick Book Button-->
-                                    @endif
-                                    
+
                                     @if(in_array('editNonMember', (array)$swUser->permissions) || $swUser->is_super_user)
-                                        <!--begin::Edit-->
+                                    <div class="menu-item px-3">
                                         <a href="{{route('sw.editNonMember',$member->id)}}"
-                                           class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm" title="{{ trans('admin.edit')}}">
-                                            <i class="ki-outline ki-pencil fs-2"></i>
+                                           class="menu-link px-3" title="{{ trans('admin.edit')}}">
+                                            <i class="ki-outline ki-pencil text-primary"></i>
+                                            <span>{{ trans('admin.edit')}}</span>
                                         </a>
-                                        <!--end::Edit-->
+                                    </div>
                                     @endif
-                                
-                                @if(in_array('deleteNonMember', (array)$swUser->permissions) || $swUser->is_super_user)
-                                    @if(request('trashed'))
-                                        <!--begin::Enable-->
-                                        <a title="{{ trans('admin.enable')}}"
-                                           href="{{route('sw.deleteNonMember',$member->id)}}"
-                                           class="confirm_delete btn btn-icon btn-bg-light btn-active-color-success btn-sm" title="{{ trans('admin.enable')}}">
-                                            <i class="ki-outline ki-check-circle fs-2"></i>
-                                        </a>
-                                        <!--end::Enable-->
-                                    @else
-                                        <!--begin::Delete-->
-                                        <a title="{{ trans('admin.disable')}}"
-                                           data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => $member->price])}}"
-                                           href="{{route('sw.deleteNonMember',$member->id).'?refund=1&total_amount='.@$member->price}}"
-                                           data-swal-amount="{{@$member->price}}"
-                                           class="confirm_delete btn btn-icon btn-bg-light btn-active-color-danger btn-sm" title="{{ trans('admin.disable')}}">
-                                            <i class="ki-outline ki-trash fs-2"></i>
-                                        </a>
-                                        <!--end::Delete-->
+
+                                    @if(in_array('deleteNonMember', (array)$swUser->permissions) || $swUser->is_super_user)
+                                        @if(request('trashed'))
+                                        <div class="menu-item px-3">
+                                            <a title="{{ trans('admin.enable')}}"
+                                               href="{{route('sw.deleteNonMember',$member->id)}}"
+                                               class="menu-link px-3 confirm_delete" title="{{ trans('admin.enable')}}">
+                                                <i class="ki-outline ki-check-circle text-success"></i>
+                                                <span>{{ trans('admin.enable')}}</span>
+                                            </a>
+                                        </div>
+                                        @else
+                                        <div class="menu-item px-3">
+                                            <a title="{{ trans('admin.disable')}}"
+                                               data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => $member->price])}}"
+                                               href="{{route('sw.deleteNonMember',$member->id).'?refund=1&total_amount='.@$member->price}}"
+                                               data-swal-amount="{{@$member->price}}"
+                                               class="menu-link px-3 confirm_delete" title="{{ trans('admin.disable')}}">
+                                                <i class="ki-outline ki-trash text-danger"></i>
+                                                <span>{{ trans('admin.disable')}}</span>
+                                            </a>
+                                        </div>
+                                        @endif
                                     @endif
-                                @endif
                                 </div>
                             </td>
                         </tr>

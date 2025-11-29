@@ -35,34 +35,33 @@
 
         /* Actions column styling */
         .actions-column {
-            min-width: 200px !important;
+            min-width: 140px !important;
             white-space: nowrap;
         }
 
-        .actions-column .d-flex {
-            gap: 0.25rem;
-            flex-wrap: wrap;
+        .actions-column .actions-menu {
+            min-width: 240px;
         }
 
-        .actions-column .btn {
-            margin: 0;
-            padding: 0.375rem;
-            width: 32px;
-            height: 32px;
-            display: inline-flex;
+        .actions-column .menu-link {
+            display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .actions-column .menu-link i {
+            font-size: 1rem;
         }
 
         @media (max-width: 1200px) {
             .actions-column {
-                min-width: 150px !important;
+                min-width: 120px !important;
             }
         }
 
         @media (max-width: 992px) {
             .actions-column {
-                min-width: 120px !important;
+                min-width: 100px !important;
             }
         }
 
@@ -471,7 +470,7 @@
                                     @if(@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Freeze) <i class="fa fa-info-circle"></i> @endif
                                     {!! @$member->member_subscription_info->statusName !!}
                                 </span>
-                                @if($has_coming)<span class="badge ">{{ trans('sw.coming')}}</span>@endif
+                                @if($has_coming)<span class="badge bg-secondary">{{ trans('sw.coming')}}</span>@endif
                             </td>
                             <td class="pe-0">
                                 <span class="fw-bold">{{ $member->phone }}</span>
@@ -583,171 +582,174 @@
                                 </div>
                             </td>
                             <td class="text-end actions-column">
-                                <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
-                                    <!--begin::Profile-->
-                                    <button data-target="#modalProfileMember" data-toggle="modal" href="#" onclick="show_profile_member('{{$member->id}}')"
-                                        style="cursor: pointer;"
-                                        member_id="{{$member->id}}"
-                                        member_name="{{$member->name}}"
-                                       class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm modalProfileBtn"
-                                       title="{{ trans('sw.member_profile')}}">
-                                        <i class="ki-outline ki-user fs-2"></i>
-                                    </button>
-                                    <!--end::Profile-->
-                                
-                                    <!--begin::WhatsApp-->
-                                    <a href="https://web.whatsapp.com/send?phone={{ ((substr( $member->phone, 0, 1 ) === "+") || (substr( $member->phone, 0, 2 ) === "00")) ? $member->phone : '+'.env('APP_COUNTRY_CODE').$member->phone}}"
-                                       target="_blank" class="btn btn-icon btn-bg-light btn-active-color-success btn-sm" title="{{ trans('sw.whatsapp')}}">
-                                        <i class="ki-outline ki-message-text-2 fs-2"></i>
-                                    </a>
-                                    <!--end::WhatsApp-->
-
+                                <a href="#" class="btn btn-sm btn-light btn-flex btn-center btn-active-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                                    {{ trans('admin.actions') }}
+                                    <i class="ki-outline ki-down fs-5 ms-1"></i>
+                                </a>
+                                <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold fs-7 w-250px py-4 actions-menu" data-kt-menu="true">
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)" class="menu-link px-3 modalProfileBtn"
+                                           data-target="#modalProfileMember"
+                                           data-toggle="modal"
+                                           onclick="show_profile_member('{{$member->id}}')"
+                                           member_id="{{$member->id}}"
+                                           member_name="{{$member->name}}"
+                                           title="{{ trans('sw.member_profile')}}">
+                                            <i class="ki-outline ki-user text-primary"></i>
+                                            <span>{{ trans('sw.member_profile')}}</span>
+                                        </a>
+                                    </div>
+                                    <div class="menu-item px-3">
+                                        <a href="https://web.whatsapp.com/send?phone={{ ((substr( $member->phone, 0, 1 ) === '+') || (substr( $member->phone, 0, 2 ) === '00')) ? $member->phone : '+'.env('APP_COUNTRY_CODE').$member->phone}}"
+                                           target="_blank" class="menu-link px-3" title="{{ trans('sw.whatsapp')}}">
+                                            <i class="ki-outline ki-message-text-2 text-success"></i>
+                                            <span>{{ trans('sw.whatsapp')}}</span>
+                                        </a>
+                                    </div>
                                     @if((@$member->member_subscriptions_count < \Modules\Software\Classes\TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM) && (in_array('memberSubscriptionRenewStore', (array)$swUser->permissions) || $swUser->is_super_user))
-                                        <!--begin::Renew-->
-                                        <a class="btn btn-icon btn-bg-light btn-active-color-info btn-sm"
-                                            onclick="list_renew_membership('{{@$member->member_subscription_info->id}}')"
-                                            expire_msg="{{ trans('sw.expire_date_msg', ['date' => @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString()])}}"
-                                            expire_color="@if(@$member->member_subscription_info->status == 0) green @else red @endif"
-                                            title="{{ trans('sw.renew_membership')}}"
-                                            id="list_member_{{@$member->member_subscription_info->id}}" style="cursor: pointer;"
-                                            data-target="#modelRenew" data-toggle="modal">
-                                            <i class="ki-outline ki-arrows-circle fs-2"></i>
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)"
+                                           class="menu-link px-3"
+                                           onclick="list_renew_membership('{{@$member->member_subscription_info->id}}')"
+                                           expire_msg="{{ trans('sw.expire_date_msg', ['date' => @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString()])}}"
+                                           expire_color="@if(@$member->member_subscription_info->status == 0) green @else red @endif"
+                                           id="list_member_{{@$member->member_subscription_info->id}}"
+                                           data-target="#modelRenew" data-toggle="modal"
+                                           title="{{ trans('sw.renew_membership')}}">
+                                            <i class="ki-outline ki-arrows-circle text-info"></i>
+                                            <span>{{ trans('sw.renew_membership')}}</span>
                                         </a>
-                                        <!--end::Renew-->
+                                    </div>
                                     @endif
-
                                     @if(in_array('createMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user)
-                                        <!--begin::Pay-->
-                                        <a data-target="#modalPays_{{$member->id}}" data-toggle="modal" href="#"
-                                           id="{{@$member->member_subscription_info->id}}" style="cursor: pointer;"
-                                           class="btn btn-icon btn-bg-light btn-active-color-warning btn-sm btn-indigos"
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)"
+                                           data-target="#modalPays_{{$member->id}}" data-toggle="modal"
+                                           id="{{@$member->member_subscription_info->id}}"
+                                           class="menu-link px-3 btn-indigo btn-indigos"
                                            title="{{ trans('sw.pay_remaining')}}">
-                                            <i class="ki-outline ki-dollar fs-2"></i>
+                                            <i class="ki-outline ki-dollar text-warning"></i>
+                                            <span>{{ trans('sw.pay_remaining')}}</span>
                                         </a>
-                                        <!--end::Pay-->
+                                    </div>
                                     @endif
-
                                     @if(in_array('creditMemberBalanceAdd', (array)$swUser->permissions) || $swUser->is_super_user)
-                                        <!--begin::Credit-->
-                                        <a data-toggle="modal" href="#" onclick="modal_credits('{{@$member->id}}')"
-                                           id="{{@$member->member_subscription_info->id}}" style="cursor: pointer;"
-                                           class="btn btn-icon btn-bg-light btn-active-color-success btn-sm btn-indigos"
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)"
+                                           class="menu-link px-3 btn-indigos"
+                                           id="{{@$member->member_subscription_info->id}}"
+                                           onclick="modal_credits('{{@$member->id}}')"
                                            title="{{ trans('sw.add_credit')}}">
-                                            <i class="ki-outline ki-dollar fs-2"></i>
+                                            <i class="ki-outline ki-dollar text-success"></i>
+                                            <span>{{ trans('sw.add_credit')}}</span>
                                         </a>
-                                        <!--end::Credit-->
+                                    </div>
+                                    @endif
+                                    @if(@$member->member_subscription_info->id)
+                                    <div class="menu-item px-3">
+                                        <a href="{{route('sw.showOrderSubscription',@$member->member_subscription_info->id)}}"
+                                           class="menu-link px-3 btn-indigo"
+                                           title="{{ trans('sw.invoice')}}">
+                                            <i class="ki-outline ki-document text-primary"></i>
+                                            <span>{{ trans('sw.invoice')}}</span>
+                                        </a>
+                                    </div>
                                     @endif
 
-                                    @if(@$member->member_subscription_info->id)
-                                        <!--begin::Invoice-->
-                                        <a href="{{route('sw.showOrderSubscription',@$member->member_subscription_info->id)}}" style="cursor: pointer;"
-                                           class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm btn-indigo"
-                                           title="{{ trans('sw.invoice')}}">
-                                            <i class="ki-outline ki-document fs-2"></i>
-                                        </a>
-                                        <!--end::Invoice-->
-                                    @endif
-                                    
                                     @if($active_activity_reservation)
-                                    <!--begin::Upcoming Reservations Button-->
-                                    @php
-                                        $memberReservations = $upcomingReservations[$member->id] ?? collect();
+                                        @php
+                                            $memberReservations = $upcomingReservations[$member->id] ?? collect();
                                         @endphp
-                                    @if($memberReservations->count() > 0)
-                                        <button type="button" 
-                                                class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm position-relative" 
-                                                title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#upcomingReservationsModal{{ $member->id }}">
-                                            <i class="ki-outline ki-calendar-tick fs-2"></i>
-                                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                                                {{ $memberReservations->count() }}
-                                                <span class="visually-hidden">{{ trans('sw.upcoming_reservations') }}</span>
-                                            </span>
-                                        </button>
-                                    @endif
-                                    <!--end::Upcoming Reservations Button-->
-                                    
-                                    <!--begin::Quick Book Button-->
-                                    @php
-                                        $memberActivities = @$member->member_subscription_info->activities ?? [];
-                                        // Filter activities to get only those with activity data
-                                        $hasValidActivities = false;
-                                        if (!empty($memberActivities) && is_array($memberActivities)) {
-                                            foreach ($memberActivities as $act) {
-                                                if (isset($act['activity']['id'])) {
-                                                    $hasValidActivities = true;
-                                                    break;
+                                        @if($memberReservations->count() > 0)
+                                        <div class="menu-item px-3">
+                                            <a href="javascript:void(0)" class="menu-link px-3 position-relative"
+                                               title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#upcomingReservationsModal{{ $member->id }}">
+                                                <i class="ki-outline ki-calendar-tick text-primary"></i>
+                                                <span>{{ trans('sw.upcoming_reservations') }}</span>
+                                                <span class="badge badge-circle bg-danger ms-2">{{ $memberReservations->count() }}</span>
+                                            </a>
+                                        </div>
+                                        @endif
+
+                                        @php
+                                            $memberActivities = @$member->member_subscription_info->activities ?? [];
+                                            $hasValidActivities = false;
+                                            if (!empty($memberActivities) && is_array($memberActivities)) {
+                                                foreach ($memberActivities as $act) {
+                                                    if (isset($act['activity']['id'])) {
+                                                        $hasValidActivities = true;
+                                                        break;
+                                                    }
                                                 }
                                             }
-                                        }
-                                    @endphp
-                                    @if((in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user) && $hasValidActivities)
-                                        <button type="button" 
-                                                class="btn btn-icon btn-bg-light btn-active-color-success btn-sm" 
-                                                title="{{ trans('sw.quick_booking') }}"
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#quickBookModal{{ $member->id }}"
-                                                onclick="openQuickBookModal({{ $member->id }}, {{ json_encode($memberActivities) }})">
-                                            <i class="ki-outline ki-calendar-add fs-2"></i>
-                                        </button>
-                                    @endif
-                                    <!--end::Quick Book Button-->
+                                        @endphp
+                                        @if((in_array('createReservation', (array)$swUser->permissions ?? []) || @$swUser->is_super_user) && $hasValidActivities)
+                                        <div class="menu-item px-3">
+                                            <a href="javascript:void(0)"
+                                               class="menu-link px-3"
+                                               title="{{ trans('sw.quick_booking') }}"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#quickBookModal{{ $member->id }}"
+                                               onclick="openQuickBookModal({{ $member->id }}, {{ json_encode($memberActivities) }})">
+                                                <i class="ki-outline ki-calendar-add text-success"></i>
+                                                <span>{{ trans('sw.quick_booking') }}</span>
+                                            </a>
+                                        </div>
+                                        @endif
                                     @endif
 
                                     @if(in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user)
                                         @if((@($member->member_subscription_info->number_times_freeze) > 0) && (@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Active))
-                                            <!--begin::Freeze (open form modal)-->
-                                            <a href="#" 
-                                               class="btn btn-icon btn-bg-light btn-active-color-info btn-sm open_freeze_modal"
+                                        <div class="menu-item px-3">
+                                            <a href="javascript:void(0)"
+                                               class="menu-link px-3 open_freeze_modal"
                                                data-member_id="{{$member->id}}"
                                                data-member_name="{{$member->name}}"
                                                data-subscription_name="{{@$member->member_subscription_info->subscription->name}}"
                                                data-freeze_limit="{{@$member->member_subscription_info->freeze_limit}}"
                                                data-times_left="{{@$member->member_subscription_info->number_times_freeze}}"
                                                title="{{ trans('sw.freeze_account')}}">
-                                                <i class="ki-outline ki-cross-circle fs-2"></i>
+                                                <i class="ki-outline ki-cross-circle text-info"></i>
+                                                <span>{{ trans('sw.freeze_account')}}</span>
                                             </a>
-                                            <!--end::Freeze-->
+                                        </div>
                                         @endif
                                     @endif
 
                                     @if(in_array('editMember', (array)$swUser->permissions) || $swUser->is_super_user)
-                                        <!--begin::Edit-->
-                                        <a href="{{route('sw.editMember',$member->id)}}" class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
-                                           title="{{ trans('admin.edit')}}">
-                                            <i class="ki-outline ki-pencil fs-2"></i>
+                                    <div class="menu-item px-3">
+                                        <a href="{{route('sw.editMember',$member->id)}}" class="menu-link px-3" title="{{ trans('admin.edit')}}">
+                                            <i class="ki-outline ki-pencil text-primary"></i>
+                                            <span>{{ trans('admin.edit')}}</span>
                                         </a>
-                                        <!--end::Edit-->
+                                    </div>
                                     @endif
 
                                     @if(in_array('deleteMember', (array)$swUser->permissions) || $swUser->is_super_user)
                                         @if(request('trashed'))
-                                            <!--begin::Enable-->
-                                            <a title="{{ trans('admin.enable')}}"
-                                               href="{{route('sw.deleteMember',$member->id)}}"
-                                               class="confirm_delete btn btn-icon btn-bg-light btn-active-color-success btn-sm" title="{{ trans('admin.enable')}}">
-                                                <i class="ki-outline ki-check-circle fs-2"></i>
+                                        <div class="menu-item px-3">
+                                            <a title="{{ trans('admin.enable')}}" href="{{route('sw.deleteMember',$member->id)}}"
+                                               class="menu-link px-3 confirm_delete" title="{{ trans('admin.enable')}}">
+                                                <i class="ki-outline ki-check-circle text-success"></i>
+                                                <span>{{ trans('admin.enable')}}</span>
                                             </a>
-                                            <!--end::Enable-->
+                                        </div>
                                         @else
-                                            <!--begin::Delete-->
-                                            {{-- <a title="{{ trans('sw.disable_without_refund')}}"
-                                               data-swal-text="{{ trans('sw.disable_without_refund')}}"
-                                               href="{{route('sw.deleteMember',$member->id).'?refund=0'}}"
-                                               class="confirm_delete btn btn-icon btn-bg-light btn-active-color-secondary btn-sm" title="{{ trans('sw.disable_without_refund')}}">
-                                                <i class="ki-outline ki-trash fs-2"></i>
-                                            </a> --}}
                                             @if(@$member->member_subscription_info)
-                                            <a title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
-                                               data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
-                                               data-swal-amount="{{@$member->member_subscription_info->amount_paid}}"
-                                               href="{{route('sw.deleteMember',$member->id).'?refund=1&total_amount='.@$member->member_subscription_info->amount_paid}}"
-                                               class="confirm_delete btn btn-icon btn-bg-light btn-active-color-danger btn-sm" title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}">
-                                                <i class="ki-outline ki-trash fs-2"></i>
-                                            </a>
+                                            <div class="menu-item px-3">
+                                                <a title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
+                                                   data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
+                                                   data-swal-amount="{{@$member->member_subscription_info->amount_paid}}"
+                                                   href="{{route('sw.deleteMember',$member->id).'?refund=1&total_amount='.@$member->member_subscription_info->amount_paid}}"
+                                                   class="menu-link px-3 confirm_delete"
+                                                   title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}">
+                                                    <i class="ki-outline ki-trash text-danger"></i>
+                                                    <span>{{ trans('admin.delete')}}</span>
+                                                </a>
+                                            </div>
                                             @endif
-                                            <!--end::Delete-->
                                         @endif
                                     @endif
                                 </div>

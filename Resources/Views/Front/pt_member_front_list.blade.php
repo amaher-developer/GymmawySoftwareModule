@@ -34,23 +34,18 @@
 
         /* Actions column styling */
         .actions-column {
-            min-width: 200px !important;
+            min-width: 140px !important;
             white-space: nowrap;
         }
 
-        .actions-column .d-flex {
-            gap: 0.25rem;
-            flex-wrap: wrap;
+        .actions-column .menu-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .actions-column .btn {
-            margin: 0;
-            padding: 0.375rem;
-            width: 32px;
-            height: 32px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        .actions-column .menu-link i {
+            font-size: 1rem;
         }
 
         @media (max-width: 1200px) {
@@ -303,79 +298,93 @@
                                 <br/>
                                 <i class="fa fa-clock-o text-muted"></i> {{ $member->created_at->format('h:i a') }}</td>
                             <td class="text-end actions-column">
-                                <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
-                                    <!--begin::WhatsApp-->
-                                    <a href="https://web.whatsapp.com/send?phone={{ ((substr( $member->member->phone, 0, 1 ) === "+") || (substr( $member->member->phone, 0, 2 ) === "00")) ? $member->member->phone : '+'.env('APP_COUNTRY_CODE').$member->member->phone}}"
-                                       target="_blank" class="btn btn-icon btn-bg-light btn-active-color-success btn-sm" title="{{ trans('sw.whatsapp')}}">
-                                        <i class="ki-outline ki-message-text-2 fs-2"></i>
-                                    </a>
-                                    <!--end::WhatsApp-->
-                                    
-                                    @if(in_array('createPTMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user)
-                                        <!--begin::Pay-->
-                                        <a data-bs-target="#modalPay" data-bs-toggle="modal" href="#"
-                                           id="{{@$member->id}}" style="cursor: pointer;"
-                                           class="btn btn-icon btn-bg-light btn-active-color-warning btn-sm"
-                                           title="{{ trans('sw.pay')}}">
-                                            <i class="ki-outline ki-dollar fs-2"></i>
+                                <a href="#" class="btn btn-sm btn-light btn-flex btn-center btn-active-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                                    {{ trans('admin.actions') }}
+                                    <i class="ki-outline ki-down fs-5 ms-1"></i>
+                                </a>
+                                <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold fs-7 w-250px py-4" data-kt-menu="true">
+                                    <div class="menu-item px-3">
+                                        <a href="https://web.whatsapp.com/send?phone={{ ((substr( $member->member->phone, 0, 1 ) === '+') || (substr( $member->member->phone, 0, 2 ) === '00')) ? $member->member->phone : '+'.env('APP_COUNTRY_CODE').$member->member->phone}}"
+                                           target="_blank" class="menu-link px-3" title="{{ trans('sw.whatsapp')}}">
+                                            <i class="ki-outline ki-message-text-2 text-success"></i>
+                                            <span>{{ trans('sw.whatsapp')}}</span>
                                         </a>
-                                        <!--end::Pay-->
+                                    </div>
+
+                                    @if(in_array('createPTMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user)
+                                    <div class="menu-item px-3">
+                                        <a data-bs-target="#modalPay" data-bs-toggle="modal" href="#"
+                                           id="{{@$member->id}}"
+                                           class="menu-link px-3 btn-indigo"
+                                           title="{{ trans('sw.pay')}}">
+                                            <i class="ki-outline ki-dollar text-warning"></i>
+                                            <span>{{ trans('sw.pay')}}</span>
+                                        </a>
+                                    </div>
                                     @endif
-                                    
-                                    <!--begin::QR Code-->
-                                    <a style="cursor: pointer;" data-bs-target="#modalQR{{@$member->id}}" data-bs-toggle="modal"
-                                       class="btn btn-icon btn-bg-light btn-active-color-info btn-sm"
-                                       title="{{ trans('sw.qrcode')}}">
-                                        <i class="ki-outline ki-scan-barcode fs-2"></i>
-                                    </a>
-                                    <!--end::QR Code-->
 
-                                    <!--begin::Calendar-->
-                                    <a onclick="member_calendar({{@$member->id}})" href="javascript:void(0)"
-                                       id="{{$member->id}}" style="cursor: pointer;"
-                                       class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
-                                       title="{{ trans('sw.pt_training_calender')}}">
-                                        <i class="ki-outline ki-calendar fs-2"></i>
-                                    </a>
-                                    <!--end::Calendar-->
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)"
+                                           class="menu-link px-3"
+                                           data-bs-target="#modalQR{{@$member->id}}" data-bs-toggle="modal"
+                                           title="{{ trans('sw.qrcode')}}">
+                                            <i class="ki-outline ki-scan-barcode text-info"></i>
+                                            <span>{{ trans('sw.qrcode')}}</span>
+                                        </a>
+                                    </div>
 
-                                    <!--begin::Invoice-->
-                                    <a href="{{route('sw.showOrderPTSubscription',@$member->id)}}" style="cursor: pointer;"
-                                       class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
-                                       title="{{ trans('sw.invoice')}}">
-                                        <i class="ki-outline ki-document fs-2"></i>
-                                    </a>
-                                    <!--end::Invoice-->
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)"
+                                           onclick="member_calendar({{@$member->id}})"
+                                           id="{{$member->id}}"
+                                           class="menu-link px-3"
+                                           title="{{ trans('sw.pt_training_calender')}}">
+                                            <i class="ki-outline ki-calendar text-primary"></i>
+                                            <span>{{ trans('sw.pt_training_calender')}}</span>
+                                        </a>
+                                    </div>
+
+                                    <div class="menu-item px-3">
+                                        <a href="{{route('sw.showOrderPTSubscription',@$member->id)}}"
+                                           class="menu-link px-3"
+                                           title="{{ trans('sw.invoice')}}">
+                                            <i class="ki-outline ki-document text-primary"></i>
+                                            <span>{{ trans('sw.invoice')}}</span>
+                                        </a>
+                                    </div>
                                     
                                     @if(in_array('editPTMember', (array)$swUser->permissions) || $swUser->is_super_user)
-                                        <!--begin::Edit-->
+                                    <div class="menu-item px-3">
                                         <a href="{{route('sw.editPTMember',$member->id)}}"
-                                           class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
+                                           class="menu-link px-3"
                                            title="{{ trans('admin.edit')}}">
-                                            <i class="ki-outline ki-pencil fs-2"></i>
+                                            <i class="ki-outline ki-pencil text-primary"></i>
+                                            <span>{{ trans('admin.edit')}}</span>
                                         </a>
-                                        <!--end::Edit-->
+                                    </div>
                                     @endif
                                     
                                     @if(in_array('deletePTMember', (array)$swUser->permissions) || $swUser->is_super_user)
                                         @if(request('trashed'))
-                                            <!--begin::Enable-->
+                                        <div class="menu-item px-3">
                                             <a title="{{ trans('admin.enable')}}"
                                                href="{{route('sw.deletePTMember',$member->id)}}"
-                                               class="confirm_delete btn btn-icon btn-bg-light btn-active-color-success btn-sm">
-                                                <i class="ki-outline ki-check-circle fs-2"></i>
+                                               class="menu-link px-3 confirm_delete">
+                                                <i class="ki-outline ki-check-circle text-success"></i>
+                                                <span>{{ trans('admin.enable')}}</span>
                                             </a>
-                                            <!--end::Enable-->
+                                        </div>
                                         @else
-                                            <!--begin::Delete With Refund-->
+                                        <div class="menu-item px-3">
                                             <a title="{{ trans('sw.disable_with_refund', ['amount' => $member->amount_paid])}}"
                                                data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => $member->amount_paid])}}"
                                                data-swal-amount="{{@$member->amount_paid}}"
                                                href="{{route('sw.deletePTMember',$member->id).'?refund=1&total_amount='.@$member->amount_paid}}"
-                                               class="confirm_delete btn btn-icon btn-bg-light btn-active-color-danger btn-sm">
-                                                <i class="ki-outline ki-trash fs-2"></i>
+                                               class="menu-link px-3 confirm_delete">
+                                                <i class="ki-outline ki-trash text-danger"></i>
+                                                <span>{{ trans('admin.disable')}}</span>
                                             </a>
-                                            <!--end::Delete With Refund-->
+                                        </div>
                                         @endif
                                     @endif
                                 </div>
