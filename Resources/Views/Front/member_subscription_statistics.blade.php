@@ -440,52 +440,54 @@
                     <!--end::Header-->
                     <!--begin::Body-->
                     <div class="card-body pt-2">
-                        <!--begin::Table-->
-                        <table class="table align-middle table-row-dashed fs-6 gy-3">
-                            <!--begin::Table head-->
-                            <thead>
-                                <tr class="text-start text-gray-500 fw-bold fs-7 text-uppercase gs-0">
-                                    <th class="min-w-150px">{{ trans('sw.membership')}}</th>
-                                    <th class="text-end min-w-100px">{{ trans('sw.price')}}</th>
-                                    <th class="text-end min-w-100px">{{ trans('sw.period')}}</th>
-                                    <th class="text-end min-w-100px">{{ trans('sw.members')}}</th>
-                                    <th class="text-end min-w-100px">{{ trans('sw.revenue')}}</th>
-                                </tr>
-                            </thead>
-                            <!--end::Table head-->
-                            <!--begin::Table body-->
-                            <tbody class="fw-bold text-gray-600">
-                                @foreach($popular_subscriptions as $subscription)
-                                <tr>
-                                    <td>
-                                        <a href="javascript:;" class="text-gray-900 text-hover-primary">{{ $subscription->name }}</a>
-                                    </td>
-                                    <td class="text-end">
-                                        @if($subscription->price > 0)
-                                            {{number_format($subscription->price, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    <td class="text-end">{{ $subscription->period }} {{ trans('sw.days')}}</td>
-                                    <td class="text-end">
-                                        <span class="badge py-3 px-4 fs-7 badge-light-primary">{{ $subscription->member_subscriptions_count }}</span>
-                                    </td>
-                                    <td class="text-end">
-                                        <span class="text-gray-900 fw-bolder">
-                                            @if($subscription->revenue > 0)
-                                                {{number_format($subscription->revenue, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
+                        <!--begin::Responsive Table-->
+                        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                            <table class="table align-middle table-row-dashed fs-6 gy-3">
+                                <!--begin::Table head-->
+                                <thead>
+                                    <tr class="text-start text-gray-500 fw-bold fs-7 text-uppercase gs-0">
+                                        <th class="min-w-150px">{{ trans('sw.membership')}}</th>
+                                        <th class="text-end min-w-100px">{{ trans('sw.price')}}</th>
+                                        <th class="text-end min-w-100px">{{ trans('sw.period')}}</th>
+                                        <th class="text-end min-w-100px">{{ trans('sw.members')}}</th>
+                                        <th class="text-end min-w-100px">{{ trans('sw.revenue')}}</th>
+                                    </tr>
+                                </thead>
+                                <!--end::Table head-->
+                                <!--begin::Table body-->
+                                <tbody class="fw-bold text-gray-600">
+                                    @foreach($popular_subscriptions as $subscription)
+                                    <tr>
+                                        <td>
+                                            <a href="javascript:;" class="text-gray-900 text-hover-primary">{{ $subscription->name }}</a>
+                                        </td>
+                                        <td class="text-end">
+                                            @if($subscription->price > 0)
+                                                {{number_format($subscription->price, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
                                             @else
                                                 -
                                             @endif
-                                        </span>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                            <!--end::Table body-->
-                        </table>
-                        <!--end::Table-->
+                                        </td>
+                                        <td class="text-end">{{ $subscription->period }} {{ trans('sw.days')}}</td>
+                                        <td class="text-end">
+                                            <span class="badge py-3 px-4 fs-7 badge-light-primary">{{ $subscription->member_subscriptions_count }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="text-gray-900 fw-bolder">
+                                                @if($subscription->revenue > 0)
+                                                    {{number_format($subscription->revenue, 2)}} {{ $lang == 'ar' ? (env('APP_CURRENCY_AR') ?? '') : (env('APP_CURRENCY_EN') ?? '') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                                <!--end::Table body-->
+                            </table>
+                        </div>
+                        <!--end::Responsive Table-->
                     </div>
                     <!--end::Body-->
                 </div>
