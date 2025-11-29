@@ -470,7 +470,7 @@
                                     @if(@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Freeze) <i class="fa fa-info-circle"></i> @endif
                                     {!! @$member->member_subscription_info->statusName !!}
                                 </span>
-                                @if($has_coming)<span class="badge bg-secondary">{{ trans('sw.coming')}}</span>@endif
+                                @if($has_coming)<span class="badge bg-secondary ">{{ trans('sw.coming')}}</span>@endif
                             </td>
                             <td class="pe-0">
                                 <span class="fw-bold">{{ $member->phone }}</span>
