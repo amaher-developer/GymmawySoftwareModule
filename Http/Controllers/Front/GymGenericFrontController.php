@@ -151,6 +151,50 @@ class GymGenericFrontController extends GenericFrontController
         ]);
     }
 
+    /**
+     * Normalize balance responses coming back from the different SMS gateways.
+     */
+    protected function formatSmsPoints($balance): string
+    {
+        return sprintf('%d %s', $this->resolveSmsPoints($balance), trans('sw.message_num'));
+    }
+
+    protected function resolveSmsPoints($balance): int
+    {
+        if (is_numeric($balance)) {
+            return max(0, (int)$balance);
+        }
+
+        if (is_object($balance) || is_array($balance)) {
+            $candidates = [
+                'data.points',
+                'points',
+                'data.balance',
+                'balance',
+                'Balance',
+                'total_balance',
+                'data.total_balance',
+                'available',
+                'available_points',
+                'ReturnData.Balance',
+                'result.balance',
+            ];
+
+            foreach ($candidates as $path) {
+                $value = data_get($balance, $path);
+                if (is_numeric($value)) {
+                    return max(0, (int)$value);
+                }
+            }
+        }
+
+        if (is_string($balance) && is_numeric(trim($balance))) {
+            return max(0, (int)trim($balance));
+        }
+
+        return 0;
+    }
+
 
 }
 

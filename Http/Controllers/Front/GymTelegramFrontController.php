@@ -29,16 +29,19 @@ class GymTelegramFrontController extends GymGenericFrontController
     {
         $title = trans('sw.telegram_add');
         $mainSettings = Setting::branch()->first();
-        $smsPoints = 0;
-        if($mainSettings['sms_internal_gateway']){
-            $sms = new SMSGymmawy();
-            $sms = $sms->getBalance();
-            $smsPoints = (int)@$sms->data->points.' '.trans('sw.message_num');
-        }else{
-            $sms = new \Modules\Software\Classes\SMSFactory(@env('SMS_GATEWAY'));
-            $sms = $sms->getBalance();
-            $smsPoints = (int)@$sms->data->points.' '.trans('sw.message_num');
+        $smsPoints = $this->formatSmsPoints(0);
+
+        try {
+            if($mainSettings['sms_internal_gateway']){
+                $sms = (new SMSGymmawy())->getBalance();
+            }else{
+                $sms = (new SMSFactory(@env('SMS_GATEWAY')))->getBalance();
+            }
+            $smsPoints = $this->formatSmsPoints($sms);
+        } catch (\Throwable $e) {
+            \Log::warning('Unable to fetch SMS balance for telegram: '.$e->getMessage());
         }
+
         return view('software::Front.telegram_front_create', ['title'=>$title, 'smsPoints' => $smsPoints]);
     }
 

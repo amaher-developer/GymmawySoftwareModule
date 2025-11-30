@@ -39,20 +39,19 @@ class GymSettingFrontController extends GymGenericFrontController
         $mainSettings = Setting::branch()->first();
 
         $title = trans('sw.settings');
-        $smsPoints = '0 ' . trans('sw.message_num');
+        $smsPoints = $this->formatSmsPoints(0);
         try {
             if($mainSettings['sms_internal_gateway']){
                 $sms = new SMSGymmawy();
                 $sms = $sms->getBalance();
-                $smsPoints = (int)@$sms->data->points.' '.trans('sw.message_num');
             }else{
                 $sms = new \Modules\Software\Classes\SMSFactory(@env('SMS_GATEWAY'));
                 $sms = $sms->getBalance();
-                $smsPoints = (int)@$sms->data->points.' '.trans('sw.message_num');
             }
+            $smsPoints = $this->formatSmsPoints($sms);
         } catch (\Exception $e) {
             \Log::error('Error fetching SMS balance: ' . $e->getMessage());
-            $smsPoints = '0 ' . trans('sw.message_num');
+            $smsPoints = $this->formatSmsPoints(0);
         }
         $max_messages = TypeConstants::WA_ULTRA_MAX_MESSAGE;
 
