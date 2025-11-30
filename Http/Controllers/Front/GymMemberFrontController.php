@@ -622,38 +622,93 @@ class GymMemberFrontController extends GymGenericFrontController
                 return redirect(route('sw.createMember'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less')]);
             }
 
-            $member = $this->MemberRepository->create($member_inputs);
+            $member = null;
+            $member_subscription = null;
+            $moneyBox = null;
+            $sub = [];
 
-            $this->incrementLastBarcodeNumber();
+            try {
+                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes) {
+                    $member = $this->MemberRepository->create($member_inputs);
 
-            $sub['subscription_id'] = $subscription->id;
-            $sub['member_id'] = $member->id;
-            $sub['workouts'] = $subscription->workouts;
-            $sub['start_time_day'] = @$subscription->start_time_day;
-            $sub['end_time_day'] = @$subscription->end_time_day;
-            $sub['workouts_per_day'] = @$subscription->workouts_per_day;
-            $sub['number_times_freeze'] = $subscription->number_times_freeze;
-            $sub['freeze_limit'] = $subscription->freeze_limit;
-            $sub['max_extension_days'] = $subscription->max_extension_days;
-            $sub['max_freeze_extension_sum'] = $subscription->max_freeze_extension_sum;
-            $sub['joining_date'] = $member_inputs['joining_date'] ? Carbon::parse($member_inputs['joining_date']) : Carbon::now();
-            $sub['expire_date'] = $member_inputs['expire_date'] ? Carbon::parse($member_inputs['expire_date']) : Carbon::now()->addDays($subscription->period);
-            $sub['amount_remaining'] = (($subscription->price - $amount_paid - @$discount_value) + (($subscription->price - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100)));
-            $sub['amount_paid'] = (float)($amount_paid);
-            $sub['discount_value'] = (float)$discount_value;
-            $sub['payment_type'] = (int)($request->payment_type);
-            $sub['amount_before_discount'] = $subscription->price;
-            $sub['vat'] = $vat;
-            $sub['vat_percentage'] = @$this->mainSettings->vat_details['vat_percentage'];
-            $sub['activities'] = @$subscription->activities->toJson();
-            $sub['time_week'] = @json_encode($subscription->time_week);
-            $sub['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $sub['notes'] = @$notes;
+                    $this->incrementLastBarcodeNumber();
 
-            $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
+                    $sub = [
+                        'subscription_id' => $subscription->id,
+                        'member_id' => $member->id,
+                        'workouts' => $subscription->workouts,
+                        'start_time_day' => @$subscription->start_time_day,
+                        'end_time_day' => @$subscription->end_time_day,
+                        'workouts_per_day' => @$subscription->workouts_per_day,
+                        'number_times_freeze' => $subscription->number_times_freeze,
+                        'freeze_limit' => $subscription->freeze_limit,
+                        'max_extension_days' => $subscription->max_extension_days,
+                        'max_freeze_extension_sum' => $subscription->max_freeze_extension_sum,
+                        'joining_date' => $member_inputs['joining_date'] ? Carbon::parse($member_inputs['joining_date']) : Carbon::now(),
+                        'expire_date' => $member_inputs['expire_date'] ? Carbon::parse($member_inputs['expire_date']) : Carbon::now()->addDays($subscription->period),
+                        'amount_remaining' => (($subscription->price - $amount_paid - @$discount_value) + (($subscription->price - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100))),
+                        'amount_paid' => (float)($amount_paid),
+                        'discount_value' => (float)$discount_value,
+                        'payment_type' => (int)($request->payment_type),
+                        'amount_before_discount' => $subscription->price,
+                        'vat' => $vat,
+                        'vat_percentage' => @$this->mainSettings->vat_details['vat_percentage'],
+                        'activities' => @$subscription->activities->toJson(),
+                        'time_week' => @json_encode($subscription->time_week),
+                        'branch_setting_id' => @$this->user_sw->branch_setting_id,
+                        'notes' => @$notes,
+                    ];
 
-            $amount_box = GymMoneyBox::branch()->latest()->first();
-            $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
+                    $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
+
+                    $amount_box = GymMoneyBox::branch()->latest()->first();
+                    $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
+
+                    $moneyBoxNotes = trans('sw.member_moneybox_add_msg',
+                        [
+                            'subscription' => $subscription->name,
+                            'member' => $member->name,
+                            'amount_paid' => @(float)$amount_paid,
+                            'amount_remaining' => number_format($sub['amount_remaining'], 2),
+                        ]);
+                    if ($discount_value)
+                        $moneyBoxNotes = $moneyBoxNotes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
+
+                    if ($this->mainSettings->vat_details['vat_percentage']) {
+                        $moneyBoxNotes = $moneyBoxNotes . ' - ' . trans('sw.vat_added');
+                    }
+
+                    $moneyBox = GymMoneyBox::create([
+                        'user_id' => Auth::guard('sw')->user()->id
+                        , 'amount' => @(float)$amount_paid
+                        , 'vat' => @$vat
+                        , 'operation' => TypeConstants::Add
+                        , 'amount_before' => $amount_after
+                        , 'notes' => $moneyBoxNotes
+                        , 'type' => TypeConstants::CreateMember
+                        , 'member_id' => $member->id
+                        , 'payment_type' => intval($request->payment_type)
+                        , 'member_subscription_id' => @$member_subscription
+                        , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                    ]);
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to create member with subscription', [
+                    'subscription_id' => $request->subscription_id,
+                    'phone' => $request->phone,
+                    'error' => $e->getMessage()
+                ]);
+
+                return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+            }
+
+            if (!$member || !$member_subscription) {
+                Log::warning('Member subscription transaction did not persist', [
+                    'subscription_id' => $request->subscription_id,
+                    'phone' => $request->phone,
+                ]);
+                return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+            }
 
             $notes = trans('sw.member_moneybox_add_msg',
                 [
@@ -668,20 +723,6 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($this->mainSettings->vat_details['vat_percentage']) {
                 $notes = $notes . ' - ' . trans('sw.vat_added');
             }
-
-            $moneyBox = GymMoneyBox::create([
-                'user_id' => Auth::guard('sw')->user()->id
-                , 'amount' => @(float)$amount_paid
-                , 'vat' => @$vat
-                , 'operation' => TypeConstants::Add
-                , 'amount_before' => $amount_after
-                , 'notes' => $notes
-                , 'type' => TypeConstants::CreateMember
-                , 'member_id' => $member->id
-                , 'payment_type' => intval($request->payment_type)
-                , 'member_subscription_id' => @$member_subscription
-                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-            ]);
 
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
@@ -870,6 +911,11 @@ class GymMemberFrontController extends GymGenericFrontController
         $member = $this->MemberRepository->with(['member_subscription_info.subscription' => function ($q) {
             $q->withTrashed();
         }])->withTrashed()->find($id);
+
+        if (!$member) {
+            abort(404);
+        }
+
         $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
             $q->withTrashed();
         }])
@@ -890,7 +936,11 @@ class GymMemberFrontController extends GymGenericFrontController
         $users = GymUser::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
         $maxId = GymMember::withTrashed()->max('id');
-        $vat = ($member->member_subscription_info->subscription->price * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100));
+
+        $subscriptionPrice = (float) data_get($member, 'member_subscription_info.subscription.price', 0);
+        $vatPercentage = (float) data_get($this->mainSettings, 'vat_details.vat_percentage', 0);
+        $vat = round($subscriptionPrice * ($vatPercentage / 100), 2);
+
         $title = trans('sw.member_edit');   
         $payment_types = GymPaymentType::branch()->get();
         return view('software::Front.member_front_edit', ['member' => $member, 'member_subscriptions' => $member_subscriptions, 'subscriptions' => $subscriptions, 'discounts' => $discounts, 'channels' => $channels, 'users' => $users, 'maxId' => $maxId, 'title' => $title, 'vat' => @(float)$vat, 'payment_types' => $payment_types]);
