@@ -1147,6 +1147,11 @@
     var trans_old_membership = '{{trans('sw.old_membership')}}';
     var trans_renew_membership = '{{trans('sw.renew_membership')}}';
     var trans_unfreeze_membership = '{{trans('sw.unfreeze_membership')}}';
+    var trans_membership_expired = '{{trans('sw.membership_expired')}}';
+    var trans_membership_expired_with_date = '{{trans('sw.membership_expired_with_date', ['date' => trans('sw.expire_date')])}}';
+    var trans_scan_status_success = '{{trans('sw.scan_status_success')}}';
+    var trans_scan_status_error = '{{trans('sw.scan_status_error')}}';
+    var trans_scan_status_warning = '{{trans('sw.scan_status_warning')}}';
     var default_avatar_image = '{{asset('uploads/settings/default.jpg')}}';
 
     var lang = '{{$lang}}';

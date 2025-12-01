@@ -102,7 +102,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
         $title = trans('sw.subscribed_clients');
         $this->request_array = ['search', 'from', 'to', 'subscription' ,'sale_user_id'
-            , 'status', 'remaining_status', 'joining_date', 'expire_date', 'fp_status', 'remaining_store_status'];
+            , 'status', 'remaining_status', 'joining_date', 'expire_date', 'fp_status', 'remaining_store_status', 'fp_id'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
@@ -172,6 +172,8 @@ class GymMemberFrontController extends GymGenericFrontController
                 $q->whereNotNull('fp_id');
             else
                 $q->whereNull('fp_id');
+        })->when(($fp_id !== false && $fp_id !== null && $fp_id !== ''), function ($query) use ($fp_id) {
+            $query->where('fp_id', 'like', '%' . $fp_id . '%');
         })->when(($joining_date), function ($query) use ($joining_date) {
             $query->whereHas('member_subscription_info', function ($q) use ($joining_date) {
                 //$q->whereRaw('sw_gym_member_subscription.id IN (select MAX(a2.id) from sw_gym_member_subscription as a2 join sw_gym_members as u2 on u2.id = a2.member_id group by u2.id)');
@@ -629,9 +631,9 @@ class GymMemberFrontController extends GymGenericFrontController
 
             try {
                 DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes) {
-                    $member = $this->MemberRepository->create($member_inputs);
+            $member = $this->MemberRepository->create($member_inputs);
 
-                    $this->incrementLastBarcodeNumber();
+            $this->incrementLastBarcodeNumber();
 
                     $sub = [
                         'subscription_id' => $subscription->id,
@@ -659,37 +661,37 @@ class GymMemberFrontController extends GymGenericFrontController
                         'notes' => @$notes,
                     ];
 
-                    $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
+            $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
 
-                    $amount_box = GymMoneyBox::branch()->latest()->first();
-                    $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
 
                     $moneyBoxNotes = trans('sw.member_moneybox_add_msg',
-                        [
-                            'subscription' => $subscription->name,
-                            'member' => $member->name,
-                            'amount_paid' => @(float)$amount_paid,
-                            'amount_remaining' => number_format($sub['amount_remaining'], 2),
-                        ]);
-                    if ($discount_value)
+                [
+                    'subscription' => $subscription->name,
+                    'member' => $member->name,
+                    'amount_paid' => @(float)$amount_paid,
+                    'amount_remaining' => number_format($sub['amount_remaining'], 2),
+                ]);
+            if ($discount_value)
                         $moneyBoxNotes = $moneyBoxNotes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
 
-                    if ($this->mainSettings->vat_details['vat_percentage']) {
+            if ($this->mainSettings->vat_details['vat_percentage']) {
                         $moneyBoxNotes = $moneyBoxNotes . ' - ' . trans('sw.vat_added');
-                    }
+            }
 
-                    $moneyBox = GymMoneyBox::create([
-                        'user_id' => Auth::guard('sw')->user()->id
-                        , 'amount' => @(float)$amount_paid
-                        , 'vat' => @$vat
-                        , 'operation' => TypeConstants::Add
-                        , 'amount_before' => $amount_after
+            $moneyBox = GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id
+                , 'amount' => @(float)$amount_paid
+                , 'vat' => @$vat
+                , 'operation' => TypeConstants::Add
+                , 'amount_before' => $amount_after
                         , 'notes' => $moneyBoxNotes
-                        , 'type' => TypeConstants::CreateMember
-                        , 'member_id' => $member->id
-                        , 'payment_type' => intval($request->payment_type)
-                        , 'member_subscription_id' => @$member_subscription
-                        , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                , 'type' => TypeConstants::CreateMember
+                , 'member_id' => $member->id
+                , 'payment_type' => intval($request->payment_type)
+                , 'member_subscription_id' => @$member_subscription
+                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
                     ]);
                 });
             } catch (\Throwable $e) {
@@ -1893,6 +1895,18 @@ class GymMemberFrontController extends GymGenericFrontController
         $renew_status = true;
         if ($member) {
             if ($member->member_subscription_info) {
+                $currentDate = Carbon::now()->toDateString();
+                $expireDate = Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
+
+                if ($expireDate < $currentDate) {
+                    $msg = trans('sw.membership_expired_with_date', ['date' => $expireDate]);
+                    return Response::json([
+                        'msg' => $msg,
+                        'member' => $member,
+                        'status' => false,
+                        'renew_status' => true
+                    ], 200);
+                }
 
                 if(!$enquiry && @env('MEMBER_ATTENDEES_EXPIRE') == true && ($member->member_subscription_info->status == TypeConstants::Expired)){
                     $member->member_subscription_info->increment('visits');
@@ -1944,7 +1958,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 if((Carbon::parse($member->member_subscription_info->joining_date)->toDateString() > Carbon::now()->toDateString()) && ($checkForMemberVisits)){
                     $msg = trans('sw.membership_not_coming');
                     $status = true;
-                }elseif ((Carbon::parse($member->member_subscription_info->expire_date)->toDateString() >= Carbon::now()->toDateString()) && ($checkForMemberVisits)) {
+                }elseif (($expireDate >= $currentDate) && ($checkForMemberVisits)) {
                     if (!$enquiry) {
                         $member->member_subscription_info->increment('visits');
                         $member->member_subscription_info->status = TypeConstants::Active;
@@ -1957,7 +1971,7 @@ class GymMemberFrontController extends GymGenericFrontController
                     $status = true;
                     $renew_status = false;
                 } else {
-                    $msg = trans('sw.membership_expired');
+                    $msg = trans('sw.membership_expired_with_date', ['date' => $expireDate]);
                 }
                 $attend = GymMemberAttendee::where('member_id' , $member->id)->orderBy('id', 'desc')->first();
 

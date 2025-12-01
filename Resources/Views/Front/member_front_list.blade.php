@@ -288,6 +288,26 @@
                             </select>
                         </div>
                     </div>
+                    <div class="row g-6 mt-0">
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.remaining_store_status')}}</label>
+                            @php
+                                $selectedStoreStatus = request()->has('remaining_store_status') ? (string)request('remaining_store_status') : '';
+                            @endphp
+                            <select name="remaining_store_status" class="form-select form-select-solid">
+                                <option value="">{{ trans('sw.choose_remaining_store_status')}}...</option>
+                                <option value="1" @selected($selectedStoreStatus === '1')>{{ trans('sw.store_balance_positive')}}</option>
+                                <option value="2" @selected($selectedStoreStatus === '2')>{{ trans('sw.store_balance_negative')}}</option>
+                                <option value="0" @selected($selectedStoreStatus === '0')>{{ trans('sw.store_balance_zero')}}</option>
+                            </select>
+                        </div>
+                        @if(@env('APP_ZK_GATE'))
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.fp_id')}}</label>
+                            <input type="text" class="form-control" name="fp_id" value="{{ request('fp_id') }}" placeholder="{{ trans('sw.enter_fp_id')}}">
+                        </div>
+                        @endif
+                    </div>
                     <div class="d-flex justify-content-end mt-5">
                         <button type="reset" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</button>
                         <button type="submit" class="btn btn-primary fw-semibold px-6">
@@ -313,6 +333,12 @@
                 @endif
                 @if(request('subscription'))
                     <input type="hidden" name="subscription" value="{{ request('subscription') }}">
+                @endif
+                @if(request()->has('remaining_store_status'))
+                    <input type="hidden" name="remaining_store_status" value="{{ request('remaining_store_status') }}">
+                @endif
+                @if(@env('APP_ZK_GATE') && request('fp_id'))
+                    <input type="hidden" name="fp_id" value="{{ request('fp_id') }}">
                 @endif
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
@@ -556,6 +582,10 @@
                                 <div class="d-flex flex-column">
                                     <span class="fw-bold" id="span_amount_remaining_{{@$member->member_subscription_info->id}}">{{ @number_format($member->member_subscription_info->amount_remaining, 2) }}</span>
                                     <span class="text-muted fs-7">{{ trans('sw.total_amount_remaining')}}: <span id="span_total_amount_remaining_{{@$member->member_subscription_info->id}}">{{@number_format($member->member_remain_amount_subscriptions->sum('amount_remaining'), 2)}}</span></span>
+                                    <span class="text-muted fs-7 d-flex align-items-center gap-1 mt-1">
+                                        <i class="ki-outline ki-wallet fs-6"></i>
+                                        <span>{{ trans('sw.store_balance')}}: {{ number_format($member->store_balance ?? 0, 2) }}</span>
+                                    </span>
                                 </div>
                             </td>
                             @if(@$mainSettings->active_loyalty)

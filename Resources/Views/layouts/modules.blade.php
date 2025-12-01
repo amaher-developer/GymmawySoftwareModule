@@ -6,6 +6,40 @@
         padding: 3px;
         border-radius: 3px !important;
     }
+
+    .store-balance-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 999px !important;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        min-width: 120px;
+        justify-content: center;
+    }
+    .store-balance-pill i {
+        font-size: 1.1rem;
+    }
+    .store-balance-pill .value-text {
+        font-size: 0.95rem;
+    }
+    .store-balance-pill.positive {
+        background: rgba(15, 157, 88, 0.1);
+        color: #0f9d58;
+        border-color: rgba(15, 157, 88, 0.3);
+    }
+    .store-balance-pill.negative {
+        background: rgba(217, 48, 37, 0.1);
+        color: #d93025;
+        border-color: rgba(217, 48, 37, 0.3);
+    }
+    .store-balance-pill.neutral {
+        background: rgba(71, 85, 105, 0.1);
+        color: #475569;
+        border-color: rgba(71, 85, 105, 0.3);
+    }
 </style>
 <!-- start model Barcode -->
 <div class="modal" id="modelBarcode">
@@ -305,9 +339,12 @@
                         <div class="col-md-6">
                             <div class="d-flex flex-column">
                                 <span class="fw-bold">{{trans('sw.store_credit')}}:</span>
-                                <span id="client_balance" class="text-muted"></span>
+                                <span id="client_balance" class="store-balance-pill neutral">
+                                    <i class="ki-outline ki-wallet"></i>
+                                    <span class="value-text">0</span>
+                                </span>
                             </div>
-            </div>
+                        </div>
 
                         @if($mainSettings->active_reservation)
                         <div class="col-12" id="client_reservation_h5">
