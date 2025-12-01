@@ -327,7 +327,6 @@
         .error_att_time_msg {
             float: left;
             direction: ltr;
-            width: 100%;
         }
     </style>
 -->
