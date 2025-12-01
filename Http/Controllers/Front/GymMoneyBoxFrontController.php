@@ -540,7 +540,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                 if($i == 0){
                     $moneyBox->amount = $amount;
                 }else{
-                    $moneyBox->amount_before = self::amountAfter(round($gymMoneyBox[$i-1]->amount, 2), round($gymMoneyBox[$i-1]->amount_before, 2), round($gymMoneyBox[$i-1]->operation, 2));
+                    $moneyBox->amount_before = self::amountAfter($amount, round($gymMoneyBox[$i-1]->amount_before, 2), round($gymMoneyBox[$i-1]->operation, 2));
                 }
                 $moneyBox->save();
             }
