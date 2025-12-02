@@ -636,7 +636,7 @@
                                             <span>{{ trans('sw.whatsapp')}}</span>
                                         </a>
                                     </div>
-                                    @if((@$member->member_subscriptions_count < \Modules\Software\Classes\TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM) && (in_array('memberSubscriptionRenewStore', (array)$swUser->permissions) || $swUser->is_super_user))
+                                    @if(in_array('memberSubscriptionRenewStore', (array)$swUser->permissions) || $swUser->is_super_user)
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)"
                                            class="menu-link px-3"
