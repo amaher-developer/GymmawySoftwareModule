@@ -1926,8 +1926,8 @@ class GymMemberFrontController extends GymGenericFrontController
                     if (!$nowTime->between($startTime, $endTime, true)) {
                         return Response::json(['msg' => trans('sw.failed_time'
                             ,[
-                                'date_from' => '<span style="font-size: 14px;"> ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($startTime->format('H:i')).' '
-                                , 'date_to' => ' ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($endTime->format('H:i')).'</span>'
+                                'date_from' => '<span style="font-size: 14px;"> ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($startTime->format('h:i A')).' '
+                                , 'date_to' => ' ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($endTime->format('h:i A')).'</span>'
                             ]), 'member' => $member, 'status' => $status, 'renew_status' => false], 200);
                     }
                 }

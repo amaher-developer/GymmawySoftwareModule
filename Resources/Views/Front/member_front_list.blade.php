@@ -37,10 +37,12 @@
         .actions-column {
             min-width: 140px !important;
             white-space: nowrap;
+            position: relative;
         }
 
         .actions-column .actions-menu {
             min-width: 240px;
+            z-index: 1050;
         }
 
         .actions-column .menu-link {
