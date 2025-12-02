@@ -263,12 +263,30 @@
                         <!--end::Enable Workouts Per Day Checkbox-->
                         
                         <!--begin::Start Time Day-->
+                        @php
+                            $startTimeValue = old('start_time_day', $subscription->start_time_day);
+                            if ($startTimeValue) {
+                                try {
+                                    $startTimeValue = \Carbon\Carbon::parse($startTimeValue)->format('H:i');
+                                } catch (\Exception $e) {
+                                    $startTimeValue = '';
+                                }
+                            }
+                            $endTimeValue = old('end_time_day', $subscription->end_time_day);
+                            if ($endTimeValue) {
+                                try {
+                                    $endTimeValue = \Carbon\Carbon::parse($endTimeValue)->format('H:i');
+                                } catch (\Exception $e) {
+                                    $endTimeValue = '';
+                                }
+                            }
+                        @endphp
                         <div class="col-md-6">
                             <div class="fv-row">
                                 <label class="form-label">{{ trans('sw.start_time_day')}}</label>
                                 <input type="time" name="start_time_day" id="start_time_day" class="form-control" 
-                                       value="{{ old('start_time_day', $subscription->start_time_day) }}" 
-                                       {{ old('start_time_day', $subscription->start_time_day) ? '' : 'disabled' }} />
+                                       value="{{ $startTimeValue }}" 
+                                       {{ $startTimeValue ? '' : 'disabled' }} />
                             </div>
                         </div>
                         <!--end::Start Time Day-->
@@ -278,8 +296,8 @@
                             <div class="fv-row">
                                 <label class="form-label">{{ trans('sw.end_time_day')}}</label>
                                 <input type="time" name="end_time_day" id="end_time_day" class="form-control" 
-                                       value="{{ old('end_time_day', $subscription->end_time_day) }}" 
-                                       {{ old('end_time_day', $subscription->end_time_day) ? '' : 'disabled' }} />
+                                       value="{{ $endTimeValue }}" 
+                                       {{ $endTimeValue ? '' : 'disabled' }} />
                             </div>
                         </div>
                         <!--end::End Time Day-->

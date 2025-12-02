@@ -1918,13 +1918,18 @@ class GymMemberFrontController extends GymGenericFrontController
                     return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status, 'renew_status' => $status], 200);
                 }
 
-                if (($member->member_subscription_info->start_time_day) && ($member->member_subscription_info->end_time_day) &&
-                    ((Carbon::parse($member->member_subscription_info->start_time_day)->format('H:i:s') > Carbon::now()->format('H:i:s')) || (Carbon::parse($member->member_subscription_info->end_time_day)->subMinute()->format('H:i:s') < Carbon::now()->format('H:i:s')))) {
-                    return Response::json(['msg' => trans('sw.failed_time'
-                        ,[
-                            'date_from' => '<span style="font-size: 14px;"> ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($member->member_subscription_info->start_time_day).' '
-                            , 'date_to' => ' ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($member->member_subscription_info->end_time_day).'</span>'
-                        ]), 'member' => $member, 'status' => $status, 'renew_status' => false], 200);
+                if ($member->member_subscription_info->start_time_day && $member->member_subscription_info->end_time_day) {
+                    $startTime = Carbon::parse($member->member_subscription_info->start_time_day);
+                    $endTime = Carbon::parse($member->member_subscription_info->end_time_day);
+                    $nowTime = Carbon::now();
+
+                    if (!$nowTime->between($startTime, $endTime, true)) {
+                        return Response::json(['msg' => trans('sw.failed_time'
+                            ,[
+                                'date_from' => '<span style="font-size: 14px;"> ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($startTime->format('H:i')).' '
+                                , 'date_to' => ' ' . '<i class="fa fa-clock-o text-muted"></i> '.strtolower($endTime->format('H:i')).'</span>'
+                            ]), 'member' => $member, 'status' => $status, 'renew_status' => false], 200);
+                    }
                 }
 
                 if (($member->member_subscription_info->time_week) &&
