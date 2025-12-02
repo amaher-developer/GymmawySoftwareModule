@@ -535,12 +535,15 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $id = $id ?? request('id');
         $amount = $amount ?? request('amount');
         if($id){
-            $gymMoneyBox = GymMoneyBox::branch()->where('created_at', '>=', $id)->orderBy('id', 'asc')->get();
+            $gymMoneyBox = GymMoneyBox::branch()->where('id', '>=', $id)->orderBy('created_at', 'asc')->get();
             foreach($gymMoneyBox as $i => $moneyBox){
                 if($i == 0){
                     $moneyBox->amount = $amount;
+                    //$moneyBox->amount_before = $gymMoneyBox[$i]->amount_before;
                 }else{
                     $moneyBox->amount_before = self::amountAfter($amount, round($gymMoneyBox[$i-1]->amount_before, 2), round($gymMoneyBox[$i-1]->operation, 2));
+                    //var_dump('id: '.$moneyBox->id, 'amount_before: '.$gymMoneyBox[$i-1]->amount_before, 'amount: '.$amount, 'amount_before: '.$moneyBox->amount_before, 'operation: '.$moneyBox->operation);
+
                 }
                 $moneyBox->save();
             }
