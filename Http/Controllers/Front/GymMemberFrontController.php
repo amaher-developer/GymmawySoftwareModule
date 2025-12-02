@@ -1871,9 +1871,21 @@ class GymMemberFrontController extends GymGenericFrontController
             ->orderBy('id', 'desc')
             ->get();
 
-        $member = GymMember::with(['member_subscription_info' => function ($query) use ($member_subscriptions) {
-            if((is_array($member_subscriptions) && count($member_subscriptions) > 1) && (@$member_subscriptions[0]->status  == TypeConstants::Coming))
-                $query->where('id',  $member_subscriptions[1]->id);
+        $preferredSubscriptionId = null;
+        if($member_subscriptions instanceof \Illuminate\Support\Collection){
+            $preferredSubscription = $member_subscriptions->first(function ($subscription) {
+                return $subscription->status != TypeConstants::Coming;
+            });
+            if(!$preferredSubscription){
+                $preferredSubscription = $member_subscriptions->first();
+            }
+            $preferredSubscriptionId = optional($preferredSubscription)->id;
+        }
+
+        $member = GymMember::with(['member_subscription_info' => function ($query) use ($preferredSubscriptionId) {
+            if($preferredSubscriptionId){
+                $query->where('id',  $preferredSubscriptionId);
+            }
             $query->orderBy('id', 'desc');
         }, 'member_subscription_info.subscription', 'pt_members.pt_subscription', 'gym_reservations' => function ($q) {
             $q->where('date', Carbon::now()->toDateString())->orderBy('time_slot', 'asc');
