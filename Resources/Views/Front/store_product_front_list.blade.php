@@ -371,7 +371,8 @@
                     
                     <div id="modalVendorResult"></div>
                     
-                    <form id="form_vendor" action="" method="POST">
+                    <form id="form_vendor" action="javascript:void(0);" method="POST">
+                        @csrf
                         <input name="vendor_product_id" value="" type="hidden" id="vendor_product_id">
                         
                         <!-- Purchase Details Section -->
@@ -520,6 +521,83 @@
             input: '#store_products_search_input'
         };
         window.storeListScannerIndex = @json($storeListScannerIndex);
+
+        window.vendorModel = function(productId, productName) {
+            const form = document.getElementById('form_vendor');
+            if (form) {
+                form.reset();
+            }
+            $('#vendor_product_id').val(productId);
+            $('#vendor_product_name').text(productName || '');
+            $('#vendor_is_vat').prop('checked', true);
+            $('#modalVendorResult').html('');
+        };
+
+        function showVendorAlert(type, message) {
+            $('#modalVendorResult').html(
+                '<div class="alert alert-' + type + ' mb-4">' + message + '</div>'
+            );
+        }
+
+        $(document).on('click', '#form_vendor_btn', function (e) {
+            e.preventDefault();
+            const productId = $('#vendor_product_id').val();
+            const quantity = $('#vendor_quantity').val();
+            const amount = $('#vendor_amount').val();
+
+            if (!productId) {
+                showVendorAlert('danger', '{{ trans('sw.product')}} is required.');
+                return;
+            }
+
+            if (!quantity || parseFloat(quantity) <= 0) {
+                showVendorAlert('danger', '{{ trans('sw.enter_quantity')}}');
+                return;
+            }
+
+            const payload = {
+                product_id: productId,
+                quantity: quantity,
+                amount: amount,
+                payment_type: $('#vendor_payment_type').val(),
+                vendor_is_vat: $('#vendor_is_vat').is(':checked') ? 1 : 0,
+                vendor_name: $('#vendor_name').val(),
+                vendor_phone: $('#vendor_phone').val(),
+                vendor_address: $('#vendor_address').val(),
+                notes: $('#vendor_notes').val(),
+                _token: '{{ csrf_token() }}'
+            };
+
+            const $btn = $(this);
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>{{ trans('sw.loading')}}');
+
+            $.ajax({
+                url: '{{ route('sw.storePurchasesBill') }}',
+                type: 'POST',
+                data: payload,
+                success: function (response) {
+                    if (response === true || response === 1 || response === '1') {
+                        showVendorAlert('success', '{{ trans('admin.successfully_added')}}');
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 1200);
+                    } else {
+                        showVendorAlert('danger', response || '{{ trans('sw.error')}}');
+                    }
+                },
+                error: function (xhr) {
+                    let message = '{{ trans('sw.error')}}';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                    showVendorAlert('danger', message);
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        });
     </script>
 
 @endsection
