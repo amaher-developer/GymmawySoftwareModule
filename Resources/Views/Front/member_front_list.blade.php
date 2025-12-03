@@ -55,6 +55,19 @@
             font-size: 1rem;
         }
 
+        .members-table-responsive {
+            overflow-x: auto;
+            overflow-y: visible;
+            position: relative;
+        }
+
+        /* Allow dropdowns to escape the table container on iOS Safari */
+        @supports (-webkit-touch-callout: none) {
+            .members-table-responsive {
+                overflow: visible !important;
+            }
+        }
+
         @media (max-width: 1200px) {
             .actions-column {
                 min-width: 120px !important;
@@ -366,7 +379,7 @@
         <div id="fingerprint_error_msg" class="alert alert-warning" @if(@$mainSettings->active_zk && @env('APP_ZK_LOCAL_HOST') && ((@$mainSettings->zk_online_at == null) || (\Carbon\Carbon::parse($mainSettings->zk_online_at)->toDateString() < \Carbon\Carbon::now()->subDays(3)->toDateString() ))) style="display: block;" @endif><i class="ki-outline ki-warning fs-6 me-2"></i>  {!! trans('sw.zk_not_connect_msg') !!}</div>
         @if(count($members) > 0)
             <!--begin::Table-->
-            <div class="table-responsive">
+            <div class="table-responsive members-table-responsive">
                 <table class="table align-middle table-row-dashed fs-6 gy-5" id="kt_members_table">
                     <thead>
                         <tr class="text-gray-500 fw-bold fs-7 text-uppercase gs-0">
