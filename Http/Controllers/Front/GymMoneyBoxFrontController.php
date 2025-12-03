@@ -51,7 +51,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $orders = GymMoneyBox::branch()->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC');
+        $orders = GymMoneyBox::branch()->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC')->orderBy('id', 'DESC');
 
 
         //apply filters
