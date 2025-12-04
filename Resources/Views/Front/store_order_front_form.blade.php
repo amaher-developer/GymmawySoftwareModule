@@ -24,6 +24,9 @@
     <i class="ki-outline ki-file-text fs-2"></i>
     {{ trans('sw.last_invoice')}}</a> @endif @endsection
 @section('page_body')
+@php
+    $storeActiveQuantity = (bool) ($mainSettings->store_active_quantity ?? false);
+@endphp
 
     <!--begin::Store Order Form-->
     <form method="post" action="" class="form d-flex flex-column flex-lg-row" enctype="multipart/form-data">
@@ -330,7 +333,7 @@
             );
         });
 
-        @if(@env('STORE_ACTIVE_QUANTITY') == true)
+        @if($storeActiveQuantity)
         $("#products").select2().on('change', function (e) {
             var quantity = $('option:selected', this).attr('data-max-quantity');
             $('#quantity').attr({

@@ -47,7 +47,8 @@
 
 @section('page_body')
     @php
-        $productScannerList = $products->map(function ($product) {
+    $storeActiveQuantity = (bool) ($mainSettings->store_active_quantity ?? false);
+    $productScannerList = $products->map(function ($product) {
             $code = (string) $product->code;
             $normalized = ltrim($code, '0');
             $padded = str_pad($normalized !== '' ? $normalized : $code, 14, '0', STR_PAD_LEFT);
@@ -65,6 +66,7 @@
                 'name' => $product->name,
                 'price' => (float) $product->price,
                 'image' => $product->image,
+                'stock' => (int) $product->quantity,
                 'code' => $code,
                 'normalized_code' => $normalized !== '' ? $normalized : $code,
                 'padded_code' => $padded,
@@ -80,6 +82,7 @@
                     'name' => $product['name'],
                     'price' => $product['price'],
                     'image' => $product['image'],
+                    'stock' => $product['stock'],
                     'code' => $product['code'],
                     'normalized_code' => $product['normalized_code'],
                     'padded_code' => $product['padded_code'],
@@ -181,6 +184,7 @@
                                          data-product-name="{{ $product->name }}"
                                          data-product-price="{{ $product->price }}"
                                          data-product-image="{{ $product->image }}"
+                                         data-product-stock="{{ (int) $product->quantity }}"
                                          onclick="addToCart(this)">
                                         <!--begin::Body-->
                                         <div class="card-body text-center">
@@ -221,6 +225,7 @@
                                          data-product-name="{{ $product->name }}"
                                          data-product-price="{{ $product->price }}"
                                          data-product-image="{{ $product->image }}"
+                                         data-product-stock="{{ (int) $product->quantity }}"
                                          onclick="addToCart(this)">
                                         <!--begin::Body-->
                                         <div class="card-body text-center">
@@ -262,6 +267,7 @@
                                          data-product-name="{{ $product->name }}"
                                          data-product-price="{{ $product->price }}"
                                          data-product-image="{{ $product->image }}"
+                                         data-product-stock="{{ (int) $product->quantity }}"
                                          onclick="addToCart(this)">
                                         <!--begin::Body-->
                                         <div class="card-body text-center">
@@ -553,15 +559,49 @@
     const vatRate = {{ @$mainSettings->vat_details['vat_percentage'] ?? 0 }} / 100;
     const currencySymbol = '{{ $lang == "ar" ? (env("APP_CURRENCY_AR") ?? "") : (env("APP_CURRENCY_EN") ?? "") }}';
     const storePostpaidEnabled = {{ @$mainSettings->store_postpaid ? 'true' : 'false' }};
+    const stockCheckEnabled = {{ $storeActiveQuantity ? 'true' : 'false' }};
     let selectedMemberBalance = 0;
     let selectedMemberId = null;
+    const stockMessages = {
+        out: "{{ trans('sw.product_out_of_stock') ?? 'This product is out of stock.' }}",
+        exceed: "{{ trans('sw.product_quantity_exceeded') ?? 'Requested quantity exceeds available stock.' }}"
+    };
+
+    function parseStockValue(value) {
+        const stock = parseInt(value, 10);
+        return isNaN(stock) ? null : stock;
+    }
+
+    function showStockError(productName, type = 'out') {
+        const baseMessage = stockMessages[type] || stockMessages.out;
+        const message = productName ? `${productName}: ${baseMessage}` : baseMessage;
+        Swal.fire({
+            text: message,
+            icon: 'warning',
+            buttonsStyling: false,
+            confirmButtonText: "{{ trans('sw.ok') ?? 'OK' }}",
+            customClass: {
+                confirmButton: "btn btn-primary"
+            }
+        });
+    }
     function addProductData(productData) {
         if (!productData || !productData.id) {
             return;
         }
 
+        const availableStock = parseStockValue(productData.stock);
+        if (stockCheckEnabled && availableStock !== null && availableStock <= 0) {
+            showStockError(productData.name, 'out');
+            return;
+        }
+
         const existingItem = cart.find(item => item.id === productData.id);
         if (existingItem) {
+            if (stockCheckEnabled && availableStock !== null && existingItem.quantity >= availableStock) {
+                showStockError(productData.name, 'exceed');
+                return;
+            }
             existingItem.quantity++;
         } else {
             cart.push({
@@ -569,7 +609,8 @@
                 name: productData.name,
                 price: parseFloat(productData.price),
                 image: productData.image,
-                quantity: 1
+                quantity: 1,
+                stock: stockCheckEnabled ? availableStock : null
             });
         }
 
@@ -581,11 +622,21 @@
         const productName = $(element).data('product-name');
         const productPrice = parseFloat($(element).data('product-price'));
         const productImage = $(element).data('product-image');
+        const productStock = parseStockValue($(element).data('product-stock'));
+
+        if (stockCheckEnabled && productStock !== null && productStock <= 0) {
+            showStockError(productName, 'out');
+            return;
+        }
         
         // Check if product already in cart
         const existingItem = cart.find(item => item.id === productId);
         
         if (existingItem) {
+            if (stockCheckEnabled && productStock !== null && existingItem.quantity >= productStock) {
+                showStockError(productName, 'exceed');
+                return;
+            }
             existingItem.quantity++;
         } else {
             cart.push({
@@ -593,7 +644,8 @@
                 name: productName,
                 price: productPrice,
                 image: productImage,
-                quantity: 1
+                quantity: 1,
+                stock: stockCheckEnabled ? productStock : null
             });
         }
         
@@ -666,6 +718,13 @@
     function updateQuantity(productId, change) {
         const item = cart.find(item => item.id === productId);
         if (item) {
+            if (stockCheckEnabled && change > 0) {
+                const availableStock = parseStockValue(item.stock);
+                if (availableStock !== null && availableStock >= 0 && item.quantity >= availableStock) {
+                    showStockError(item.name, 'exceed');
+                    return;
+                }
+            }
             item.quantity += change;
             if (item.quantity <= 0) {
                 removeFromCart(productId);
@@ -1055,7 +1114,32 @@
         submitButton.prop('disabled', true);
     });
 </script>
+<script>
+    @if(session('sweet_flash_message'))
+        @php($flash = session('sweet_flash_message'))
+        Swal.fire({
+            title: '{{ $flash["title"] ?? trans("admin.done") }}',
+            text: '{{ $flash["message"] ?? "" }}',
+            icon: '{{ $flash["type"] ?? "success" }}',
+            confirmButtonText: '{{ trans("sw.ok") }}',
+            buttonsStyling: false,
+            customClass: {
+                confirmButton: "btn btn-primary"
+            }
+        });
+    @endif
+
+    @if($errors->any())
+        Swal.fire({
+            title: '{{ trans("sw.error") }}',
+            html: `{!! implode('<br>', $errors->all()) !!}`,
+            icon: 'error',
+            confirmButtonText: '{{ trans("sw.ok") }}',
+            buttonsStyling: false,
+            customClass: {
+                confirmButton: "btn btn-primary"
+            }
+        });
+    @endif
+</script>
 @endsection
-
-
-

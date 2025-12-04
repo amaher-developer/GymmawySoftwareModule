@@ -1920,7 +1920,7 @@ class GymMemberFrontController extends GymGenericFrontController
                     ], 200);
                 }
 
-                if(!$enquiry && @env('MEMBER_ATTENDEES_EXPIRE') == true && ($member->member_subscription_info->status == TypeConstants::Expired)){
+                if(!$enquiry && @$this->mainSettings->member_attendees_expire && ($member->member_subscription_info->status == TypeConstants::Expired)){
                     $member->member_subscription_info->increment('visits');
                     GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
                 }

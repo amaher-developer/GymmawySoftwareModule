@@ -264,7 +264,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     {
         $title = trans('sw.sell_products');
         $products = GymStoreProduct::branch()->isSystem();
-        if(@env('STORE_ACTIVE_QUANTITY'))
+        if(@$this->mainSettings->store_active_quantity)
             $products = $products->where('quantity', '>', 0);
 
         $products = $products->get();
@@ -277,7 +277,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     {
         $title = trans('sw.sell_products_pos');
         $products = GymStoreProduct::branch()->isSystem()->with(['store_category', 'category']);
-        if(@env('STORE_ACTIVE_QUANTITY'))
+        if(@$this->mainSettings->store_active_quantity)
             $products = $products->where('quantity', '>', 0);
 
         $products = $products->get();
@@ -339,13 +339,19 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                 $member = GymMember::branch()->where('id', (int)@$request->member_id)->first();
             }
             $order_inputs['member_id'] = @$member->id;
-
             if(@$request->store_member_use_balance){
-                if(!@$this->mainSettings->store_postpaid && @$member->store_balance < $finalOrderTotal){
-                    return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
+
+                if(!@$this->mainSettings->store_postpaid){
+                    if(@$member->store_balance < $finalOrderTotal){
+                        return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
+                    }
+                    // Deduct from member's balance for prepaid mode
+                    $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
+                } else {
+                    // For postpaid mode, allow deduction even if balance goes negative
+                    $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
+
                 }
-                // Deduct from member's balance
-                $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
                 // Set order amount_paid to 0 as it's paid from balance
                 $order_inputs['amount_paid'] = 0;
                 $order_inputs['amount_remaining'] = 0;
@@ -519,8 +525,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         $is_store_balance = 0;
         if(@$request->store_member_use_balance && @$member){
             $notes = $notes.' - '.trans('sw.use_from_balance');
-
-            GymMemberCredit::create(['branch_setting_id' => @$this->user_sw->branch_setting_id, 'user_id' => Auth::guard('sw')->user()->id,'member_id' => @$member->id, 'amount' => @$order_inputs['amount_paid'],'operation' => 2,'payment_type' => @$order_inputs['payment_type']]);
+            GymMemberCredit::create(['branch_setting_id' => @$this->user_sw->branch_setting_id, 'user_id' => Auth::guard('sw')->user()->id,'member_id' => @$member->id, 'amount' => @$order_inputs['total_amount'],'operation' => 2,'payment_type' => @$order_inputs['payment_type']]);
 
             if($member->member_balance() >= 0)
                 $is_store_balance = 1;
@@ -587,7 +592,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         $result = [];
         if(count($products['id']) > 0){
             foreach ($products['id'] as $key => $id){
-                if(@env('STORE_ACTIVE_QUANTITY')) {
+                if(@$this->mainSettings->store_active_quantity) {
                     $quantity = GymStoreProduct::select('quantity')->where('id', $id)->first();
                     if ($quantity->quantity < $products['quantity'][$key]) {
                         $result = [];

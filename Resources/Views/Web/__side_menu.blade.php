@@ -10,13 +10,19 @@
         </div>
     </div>
 </div>
-@if(@env('APP_MAX_CAPACITY_NUM') && isset($number_of_attendees))
+@php
+    $maxCapacity = (int) ($mainSettings->app_max_capacity_num ?? 0);
+@endphp
+@if($maxCapacity > 0 && isset($number_of_attendees))
+@php
+    $capacityPercent = min(100, max(0, ($number_of_attendees / $maxCapacity) * 100));
+@endphp
 <br/><br/>
 <div class=" front-skills">
     <h3 class="block">{{trans('sw.capacity_gym')}}</h3>
-    <span> {{(($number_of_attendees/(int)env('APP_MAX_CAPACITY_NUM')) * 100)}}%</span>
+    <span> {{ number_format($capacityPercent, 0) }}%</span>
     <div class="progress">
-        <div role="progressbar" class="progress-bar" style="width: {{(($number_of_attendees/(int)env('APP_MAX_CAPACITY_NUM')) * 100)}}%;"></div>
+        <div role="progressbar" class="progress-bar" style="width: {{ $capacityPercent }}%;"></div>
     </div>
 
 </div>
