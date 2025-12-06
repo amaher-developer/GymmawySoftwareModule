@@ -232,7 +232,7 @@
                     <!--begin::Date of Birth-->
                     <div class="row mb-5">
                         <label class="col-md-3 col-form-label">{{ trans('sw.date_of_barth')}} </label>
-                        <div class="col-md-9">
+                        <div class="col-md-7">
                             <div class="input-group date date-picker" data-date-format="yyyy-mm-dd">
                                 <input class="form-control" autocomplete="off" placeholder="{{ trans('sw.date_of_barth')}}"
                                        name="dob"

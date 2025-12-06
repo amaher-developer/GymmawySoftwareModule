@@ -173,9 +173,9 @@
                             
                             <!-- Date of Birth -->
                             <div class="col-md-6">
-                                <label class="form-label">{{ trans('sw.date_of_barth')}}</label>
-                                <div class="input-group date date-picker" data-date-format="yyyy-mm-dd">
-                                    <input class="form-control" autocomplete="off" placeholder="{{ trans('sw.date_of_barth')}}"
+                                <label class="form-label">{{ trans('sw.date_of_birth')}}</label>
+                                <div class="input-group date" data-date-format="yyyy-mm-dd">
+                                    <input class="form-control" autocomplete="off" placeholder="{{ trans('sw.date_of_birth')}}"
                                            name="dob"
                                            value="{{ old('dob', $member->dob) }}"
                                            type="text">
