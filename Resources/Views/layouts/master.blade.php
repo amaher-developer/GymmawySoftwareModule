@@ -443,8 +443,8 @@
                     <!--begin::Mobile logo-->
                     <div class="d-flex align-items-center flex-grow-1 flex-lg-grow-0">
                         <a href="{{route('home')}}" class="d-lg-none">
-                            <img alt="Logo" src="{{asset('resources/assets/new_front/')}}/media/logos/demo13-small.png"
-                                 class="h-25px"/>
+                            <img alt="Manassa" src="{{ asset('resources/assets/new_front/media/logos/manassa-logo-dark.svg') }}"
+                                 class="h-30px"/>
                         </a>
                     </div>
                     <!--end::Mobile logo-->

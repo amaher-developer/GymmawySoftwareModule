@@ -10,8 +10,10 @@ Route::prefix('/')
 
         Route::name('sw.backupDB')->get('db-backup', 'Front\GymDBFrontController@backupDb');
 
-        Route::name('sw.dashboard')
-            ->get('', 'Front\GymHomeFrontController@home');
+Route::redirect('', 'home');
+
+Route::name('sw.dashboard')
+    ->get('home', 'Front\GymHomeFrontController@home');
         Route::name('sw.dashboardMini')
             ->get('home-mini', 'Front\GymHomeFrontController@home_mini');
         Route::name('sw.dashboardPTMini')
