@@ -135,6 +135,15 @@
         section, footer {
             font-size: 12px;
         }
+        @if($lang == 'ar')
+        .bill-details tr {
+            text-align: right;
+        }
+        @else
+        .bill-details tr {
+            text-align: left;
+        }
+        @endif
     </style>
 </head>
 <body onload="window.print()">
