@@ -148,7 +148,7 @@
 <header>
     <div id="logo" class="media" data-src="{{$mainSettings->logo}}" src="{{$mainSettings->logo}}"><img src="{{$mainSettings->logo}}" style="width: 120px;height: 120px;object-fit: contain;"/></div>
 </header>
-<p>{{ trans('sw.order_number')}} : {{$order['id']}}</p>
+<p>{{ trans('sw.invoice_number')}} : {{$order['id']}}</p>
 <table class="bill-details">
     <tbody>
     <tr>
@@ -156,11 +156,16 @@
         <td>{{ trans('sw.time')}} : <span>{{ \Carbon\Carbon::parse($order['created_at'] ?? $order['updated_at'])->format('h:i a') }}</span></td>
     </tr>
     <tr>
-        <td>{{ trans('sw.name')}} #: <span>{{@$order->member->name}}</span></td>
-        <td>{{ trans('sw.seller_name')}} # : <span>{{@$mainSettings->vat_details['seller_name']}}</span></td>
+        <td>{{ trans('sw.member_name')}} #: <span>{{@$order->member->name}}</span></td>
+        <td>{{ trans('sw.company_name')}} # : <span>{{@$mainSettings->vat_details['seller_name']}}</span></td>
     </tr>
+    @if($mainSettings->vat_details['vat_number'])
     <tr>
-        <th class="center-align" colspan="2"><span class="receipt">{{ trans('sw.invoice')}}</span></th>
+        <td>{{ trans('sw.vat_number')}} #: <span>{{@$mainSettings->vat_details['vat_number']}}</span></td>
+    </tr>
+    @endif
+    <tr>
+        <th class="center-align" colspan="2"><span class="receipt">{{ trans('sw.tax_invoice')}}</span></th>
     </tr>
     </tbody>
 </table>

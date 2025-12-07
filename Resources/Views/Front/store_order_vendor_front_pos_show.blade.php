@@ -140,7 +140,7 @@
 <header>
     <div id="logo" class="media" data-src="{{$mainSettings->logo}}" src="{{$mainSettings->logo}}"><img src="{{$mainSettings->logo}}" style="width: 120px;height: 120px;object-fit: contain;"/></div>
 </header>
-<p>{{ trans('sw.order_number')}} : {{$order['id']}}</p>
+<p>{{ trans('sw.invoice_number')}} : {{$order['id']}}</p>
 <table class="bill-details">
     <tbody>
     <tr>
