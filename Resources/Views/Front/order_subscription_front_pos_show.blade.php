@@ -165,8 +165,8 @@
         <td>{{ trans('sw.time')}} : <span>{{ \Carbon\Carbon::parse($order['created_at'] ?? $order['updated_at'])->format('h:i a') }}</span></td>
     </tr>
     <tr>
-        <td>{{ trans('sw.member_name')}} #: <span>{{@$order->member->name}}</span></td>
-        <td>{{ trans('sw.company_name')}} # : <span>{{@$mainSettings->vat_details['seller_name']}}</span></td>
+        <td>{{ trans('sw.member_name')}} : <span>{{@$order->member->name}}</span></td>
+        <td>{{ trans('sw.company_name')}} : <span>{{@$mainSettings->vat_details['seller_name']}}</span></td>
     </tr>
     @if($mainSettings->vat_details['vat_number'])
     <tr>

@@ -157,8 +157,8 @@
         <td>{{ trans('sw.time')}} : <span>{{ \Carbon\Carbon::parse($order['created_at'] ?? $order['updated_at'])->format('h:i a') }}</span></td>
     </tr>
     <tr>
-        @if(@$order['vendor_name'])<td>{{ trans('sw.vendor_name')}} #: <span>{{@$order['vendor_name']}}</span></td>@endif
-        @if(@$order['vendor_phone'])<td>{{ trans('sw.vendor_phone')}} # : <span>{{@$order['vendor_phone']}}</span></td>@endif
+        @if(@$order['vendor_name'])<td>{{ trans('sw.vendor_name')}} : <span>{{@$order['vendor_name']}}</span></td>@endif
+        @if(@$order['vendor_phone'])<td>{{ trans('sw.vendor_phone')}} : <span>{{@$order['vendor_phone']}}</span></td>@endif
     </tr>
     <tr>
         <th class="center-align" colspan="2"><span class="receipt">{{ trans('sw.invoice')}}</span></th>
