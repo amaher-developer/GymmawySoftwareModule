@@ -157,7 +157,7 @@
 <header>
     <div id="logo" class="media" data-src="{{$mainSettings->logo}}" src="{{$mainSettings->logo}}"><img src="{{$mainSettings->logo}}" style="width: 120px;height: 120px;object-fit: contain;"/></div>
 </header>
-<p>{{ trans('sw.invoice_number')}} : {{$order['id']}}</p>
+<p>{{ trans('sw.invoice_number')}} #: {{$order['id']}}</p>
 <table class="bill-details">
     <tbody>
     <tr>
@@ -170,6 +170,7 @@
     </tr>
     @if($mainSettings->vat_details['vat_number'])
     <tr>
+        <td></td>
         <td>{{ trans('sw.vat_number')}} #: <span>{{@$mainSettings->vat_details['vat_number']}}</span></td>
     </tr>
     @endif
