@@ -348,7 +348,7 @@
                             @endphp
                             @if($vatPercentage)
                                 <div class="form-text text-muted">
-                                    {{ trans('sw.include_vat', ['vat' => number_format($vatPercentage, 2)]) }}
+                                    {{ trans('sw.excluding_vat') }}
                                 </div>
                             @endif
                         </div>
