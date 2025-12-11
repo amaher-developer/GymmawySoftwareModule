@@ -1945,6 +1945,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
 
                 if (($member->member_subscription_info->time_week) &&
+                    isset($member->member_subscription_info->time_week['work_days']) &&
                     (@!$member->member_subscription_info->time_week['work_days'][Carbon::now()->dayOfWeek]['status'])) {
                     $days = (array_keys($member->member_subscription_info->time_week['work_days']));
                     $days_str = '';
