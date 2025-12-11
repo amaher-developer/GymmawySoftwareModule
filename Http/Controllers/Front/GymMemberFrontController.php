@@ -2516,7 +2516,10 @@ class GymMemberFrontController extends GymGenericFrontController
             // add logo on image (top-right area)
             $logoPath = base_path(ltrim($setting->logo_thumb, '/'));
             if (File::exists($logoPath)) {
-                $img->place($logoPath, 'top-right', 40, 40);
+                // Read and resize logo before placing it
+                $logo = $this->imageManager->read($logoPath);
+                $logo->scale(width: 150); // Resize logo to 120px width, height auto
+                $img->place($logo, 'top-right', 120, 40);
             }
             // canvas dimensions
             $canvasWidth = method_exists($img, 'width') ? $img->width() : 1000;
@@ -2526,11 +2529,11 @@ class GymMemberFrontController extends GymGenericFrontController
             $barcodePath = $qrcodes_folder . $code . '.png';
             if (File::exists($barcodePath)) {
                 $barcodeX = 100; // 100px from left edge
-                $barcodeY = 200; // 200px from top edge
+                $barcodeY = 220; // 200px from top edge
                 $img->place($barcodePath, 'top-left', $barcodeX, $barcodeY);
             }
             // member code under barcode (left side)
-            $img->text(($code), 200, 320, function ($font) {
+            $img->text(($code), 200, 300, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
@@ -2542,17 +2545,17 @@ class GymMemberFrontController extends GymGenericFrontController
             $Arabic = new Arabic();
             $name = $Arabic->utf8Glyphs($member->name);
 
-            // add member name on image (right band)
-            $img->text($name, ($canvasWidth - 250), 120, function ($font) {
+            // add member name on image (right band, below logo)
+            $img->text($name, 200, 120, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
-                $font->color('#fff');
+                $font->color('#000');
                 $font->align('center');
                 $font->valign('top');
                 $font->angle(0);
             });
             // add gym phone on image
-            $img->text($setting->phone, ($canvasWidth - 350), 240, function ($font) {
+            $img->text($setting->phone, ($canvasWidth - 350), 220, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
