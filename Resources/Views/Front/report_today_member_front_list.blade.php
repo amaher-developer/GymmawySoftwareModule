@@ -183,7 +183,13 @@
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.membership')}}
                             </th>
                             <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-shield-tick fs-6 me-2"></i>{{ trans('sw.subscription_status')}}
+                            </th>
+                            <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-status fs-6 me-2"></i>{{ trans('sw.status')}}
+                            </th>
+                            <th class="min-w-150px text-nowrap">
+                                <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.remaining_amount')}}
                             </th>
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.date')}}
@@ -209,7 +215,46 @@
                                     <span class="fw-bold">{{ @$log->member->member_subscription_info->subscription->name }}</span>
                                 </td>
                                 <td>
+                                    @php
+                                        $subscription = @$log->member->member_subscription_info;
+                                        $status = $subscription->status ?? null;
+                                        $expireDate = $subscription->expire_date ?? null;
+                                        $startDate = $subscription->start_date ?? null;
+                                        $now = \Carbon\Carbon::now();
+
+                                        if ($status == \Modules\Software\Classes\TypeConstants::Active) {
+                                            $badgeClass = 'badge-light-success';
+                                            $statusText = trans('sw.active');
+                                        } elseif ($status == \Modules\Software\Classes\TypeConstants::Freeze) {
+                                            $badgeClass = 'badge-light-info';
+                                            $statusText = trans('sw.frozen');
+                                        } elseif ($status == \Modules\Software\Classes\TypeConstants::Expired) {
+                                            $badgeClass = 'badge-light-danger';
+                                            $statusText = trans('sw.expire');
+                                        } elseif ($startDate && \Carbon\Carbon::parse($startDate)->isFuture()) {
+                                            $badgeClass = 'badge-light-warning';
+                                            $statusText = trans('sw.upcoming');
+                                        } else {
+                                            $badgeClass = 'badge-light-secondary';
+                                            $statusText = trans('sw.no_subscription');
+                                        }
+                                    @endphp
+                                    <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
+                                </td>
+                                <td>
                                     <span class="badge badge-light-success">{{ trans('sw.attend') }}</span>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="ki-outline ki-dollar fs-7 text-success me-2"></i>
+                                            <span class="fw-bold text-success">{{ number_format(@$log->member->remaining_amount ?? 0, 2) }}</span>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <i class="ki-outline ki-shop fs-7 text-primary me-2"></i>
+                                            <span class="fw-bold text-primary">{{ number_format(@$log->member->store_remaining_amount ?? 0, 2) }}</span>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column">
