@@ -1911,6 +1911,11 @@ class GymMemberFrontController extends GymGenericFrontController
                 $expireDate = Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
 
                 if ($expireDate < $currentDate) {
+                    if(!$enquiry && @$this->mainSettings->member_attendees_expire){
+                        $member->member_subscription_info->increment('visits');
+                        GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+                    }
+
                     $msg = trans('sw.membership_expired_with_date', ['date' => $expireDate]);
                     return Response::json([
                         'msg' => $msg,
@@ -1918,12 +1923,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'status' => false,
                         'renew_status' => true
                     ], 200);
-                }
-
-                if(!$enquiry && @$this->mainSettings->member_attendees_expire && ($member->member_subscription_info->status == TypeConstants::Expired)){
-                    $member->member_subscription_info->increment('visits');
-                    GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
-                }
+                }                
 
                 if (($member->member_subscription_info->workouts_per_day > 0) && ($member->member_attendees_count >= $member->member_subscription_info->workouts_per_day)) {
                     $msg = trans('sw.workouts_per_day_msg', ['visits' => $member->member_attendees_count, 'classes' => $member->member_subscription_info->workouts_per_day]);
