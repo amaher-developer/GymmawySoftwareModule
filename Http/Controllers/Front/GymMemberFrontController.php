@@ -2039,7 +2039,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $membership_id = $membership->subscription_id;
         $subscription = GymSubscription::withTrashed()->where('id', $membership_id)->first();
         $subscriptions = GymSubscription::branch()->isSystem()->get();
-        if(($subscription && $subscription->deleted_at != null) || ($subscription && $subscription->is_system))
+        if(($subscription && $subscription->deleted_at != null) || ($subscription && $subscription->is_system != 1))
             $subscriptions->push($subscription);
         $member = $membership->member;
         $membership->joining_date = Carbon::parse($membership->joining_date)->toDateString();
@@ -3021,8 +3021,8 @@ dd('ssss');
     {
         $member_id = @$member_id;
         $amount = @$request->amount_add;
-        $payment_type = @intval($request->payment_type);
-        $type = @$request->type;
+        $payment_type = @($request->payment_type);
+        $type = @intval($request->type);
         $note_message = trans('sw.add_amount_to_balance', ['amount' => ':amount', 'member_name' => ':member_name']);
         $operation_type = TypeConstants::Add;
         $credit_amount = TypeConstants::AddCreditAmount;

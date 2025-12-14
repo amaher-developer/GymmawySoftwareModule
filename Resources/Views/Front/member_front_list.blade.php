@@ -971,7 +971,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type_add" 
+                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type" 
                                            value="0" onclick="show_credit_add()" required>
                                     <label class="form-check-label fw-bold text-success" for="credit_type_add">
                                         <i class="ki-outline ki-plus fs-4 me-2"></i>{{ trans('sw.store_add')}}
@@ -980,7 +980,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type_refund" 
+                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type" 
                                            value="1" onclick="show_credit_refund()" required>
                                     <label class="form-check-label fw-bold text-danger" for="credit_type_refund">
                                         <i class="ki-outline ki-minus fs-4 me-2"></i>{{ trans('sw.store_refund')}}
@@ -1022,7 +1022,6 @@
                             @endif
                         </select>
                     </div>
-
                     <!-- Notes -->
                     <div class="mb-4">
                         <label class="form-label fw-bold">{{ trans('sw.notes')}}</label>
@@ -1915,6 +1914,7 @@
              $('#credit_amount_refund_div').hide();
              $('#form_credit_add_btn').show();
              $('#form_credit_refund_btn').hide();
+             //$('#credit_type').val(1);
          }
 
          function show_credit_refund(){
@@ -1922,6 +1922,7 @@
              $('#credit_amount_refund_div').show();
              $('#form_credit_add_btn').hide();
              $('#form_credit_refund_btn').show();
+             //$('#credit_type').val(0);
          }
 
          function add_to_member_credit(){
