@@ -1078,7 +1078,7 @@
       rel="stylesheet"
       type="text/css"/>
 <script src="{{asset('resources/assets/new_front/global/plugins/sweet-alerts/sweetalert_2.js')}}"
-        type="text/javascript" defer></script>
+        type="text/javascript"></script>
 @include('generic::flash')
 @include('software::layouts.notifications')
 @include('software::layouts.backup')
