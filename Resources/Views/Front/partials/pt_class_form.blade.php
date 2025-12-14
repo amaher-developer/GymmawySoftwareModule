@@ -346,9 +346,14 @@
                             @php
                                 $vatPercentage = data_get($mainSettings ?? [], 'vat_details.vat_percentage', 0);
                             @endphp
-                            @if($vatPercentage)
+                            @if($vatPercentage > 0)
                                 <div class="form-text text-muted">
                                     {{ trans('sw.excluding_vat') }}
+                                </div>
+                                <div class="mt-1">
+                                    <small class="text-muted" style="font-size: 0.85rem;">
+                                        {{ trans('sw.after_vat') }}: <span id="price_with_vat_display" class="fw-semibold">0.00</span>
+                                    </small>
                                 </div>
                             @endif
                         </div>
@@ -831,6 +836,17 @@
                     }
                 }
 
+                function updatePriceWithVat(instance) {
+                    if (!instance.$priceInput || !instance.$priceWithVatDisplay || !instance.$priceWithVatDisplay.length) {
+                        return;
+                    }
+
+                    const price = parseFloat(instance.$priceInput.val()) || 0;
+                    const vatAmount = price * (instance.vatPercentage / 100);
+                    const priceWithVat = price + vatAmount;
+                    instance.$priceWithVatDisplay.text(formatCurrency(priceWithVat));
+                }
+
                 function attachEvents(instance) {
                     instance.$addTrainerBtn.on('click', function () {
                         buildTrainerRow(instance, {});
@@ -839,6 +855,13 @@
                     instance.$totalSessionsInput.on('input', function () {
                         syncTotalSessions(instance);
                     });
+
+                    if (instance.$priceInput && instance.$priceInput.length) {
+                        instance.$priceInput.on('input', function () {
+                            updatePriceWithVat(instance);
+                        });
+                        updatePriceWithVat(instance);
+                    }
 
                     instance.$scheduleRows.find('.schedule-status').on('change', function () {
                         const $row = $(this).closest('tr');
@@ -873,6 +896,10 @@
                     instance.$totalSessionsInput = instance.$root.find('#total_sessions_input');
                     instance.$legacyClassesInput = instance.$root.find('#legacy_classes_input');
                     instance.$colorInput = instance.$root.find('#class_color_input');
+                    instance.$priceInput = instance.$root.find('#price_input');
+                    instance.$priceWithVatDisplay = instance.$root.find('#price_with_vat_display');
+
+                    instance.vatPercentage = parseFloat(instance.vatPercentage || 0);
 
                     initialisePlugins(instance);
                     initialiseColourPicker(instance);
