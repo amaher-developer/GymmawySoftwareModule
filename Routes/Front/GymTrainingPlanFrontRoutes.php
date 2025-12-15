@@ -5,22 +5,33 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('training/plan')
     ->middleware(['auth:sw', 'sw_permission'])
     ->group(function () {
-        Route::name('sw.listTrainingPlan')
-            ->get('/', 'Front\GymTrainingPlanFrontController@index');
-        
-        Route::name('sw.createTrainingPlan')
-            ->get('create', 'Front\GymTrainingPlanFrontController@create');
-        
-        Route::name('sw.storeTrainingPlan')
-            ->post('create', 'Front\GymTrainingPlanFrontController@store');
-        
-        Route::name('sw.editTrainingPlan')
-            ->get('{plan}/edit', 'Front\GymTrainingPlanFrontController@edit');
-        
-        Route::name('sw.updateTrainingPlan')
-            ->post('{plan}/edit', 'Front\GymTrainingPlanFrontController@update');
-        
-        Route::name('sw.deleteTrainingPlan')
-            ->get('{plan}/delete', 'Front\GymTrainingPlanFrontController@destroy');
-    });
 
+        // List training plans - view permission
+        Route::group(['defaults' => ['permission' => 'listTrainingPlan']], function () {
+            Route::name('sw.listTrainingPlan')
+                ->get('/', 'Front\GymTrainingPlanFrontController@index');
+        });
+
+        // Create training plan - create permission
+        Route::group(['defaults' => ['permission' => 'createTrainingPlan']], function () {
+            Route::name('sw.createTrainingPlan')
+                ->get('create', 'Front\GymTrainingPlanFrontController@create');
+            Route::name('sw.storeTrainingPlan')
+                ->post('create', 'Front\GymTrainingPlanFrontController@store');
+        });
+
+        // Edit training plan - edit permission
+        Route::group(['defaults' => ['permission' => 'editTrainingPlan']], function () {
+            Route::name('sw.editTrainingPlan')
+                ->get('{plan}/edit', 'Front\GymTrainingPlanFrontController@edit');
+            Route::name('sw.updateTrainingPlan')
+                ->post('{plan}/edit', 'Front\GymTrainingPlanFrontController@update');
+        });
+
+        // Delete training plan - delete permission
+        Route::group(['defaults' => ['permission' => 'deleteTrainingPlan']], function () {
+            Route::name('sw.deleteTrainingPlan')
+                ->get('{plan}/delete', 'Front\GymTrainingPlanFrontController@destroy');
+        });
+
+    });

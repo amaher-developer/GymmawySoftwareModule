@@ -4,19 +4,27 @@
 Route::prefix('wa-ultra')
     ->middleware(['auth:sw', 'sw_permission'])
     ->group(function () {
-        Route::name('sw.createWAUltra')
-            ->get('create', 'Front\GymWAUltraFrontController@create');
-        Route::name('sw.storeWAUltra')
-            ->post('create', 'Front\GymWAUltraFrontController@store');
 
-        Route::name('sw.storeWAUltraToken')
-            ->post('create-token', 'Front\GymWAUltraFrontController@storeToken');
+        // Create WhatsApp Ultra message - create permission
+        Route::group(['defaults' => ['permission' => 'createWAUltra']], function () {
+            Route::name('sw.createWAUltra')
+                ->get('create', 'Front\GymWAUltraFrontController@create');
+            Route::name('sw.storeWAUltra')
+                ->post('create', 'Front\GymWAUltraFrontController@store');
+            Route::name('sw.phonesByAjaxWAUltra')
+                ->get('phones-by-ajax', 'Front\GymWAUltraFrontController@phonesByAjax');
+        });
 
-        Route::name('sw.phonesByAjaxWAUltra')
-            ->get('phones-by-ajax', 'Front\GymWAUltraFrontController@phonesByAjax');
+        // Store WhatsApp Ultra token - create permission
+        Route::group(['defaults' => ['permission' => 'storeWAUltraToken']], function () {
+            Route::name('sw.storeWAUltraToken')
+                ->post('create-token', 'Front\GymWAUltraFrontController@storeToken');
+        });
 
-        Route::name('sw.listWAUltraLog')
-            ->get('/logs', 'Front\GymWAUltraFrontController@index');
+        // List WhatsApp Ultra logs - view permission
+        Route::group(['defaults' => ['permission' => 'listWAUltraLog']], function () {
+            Route::name('sw.listWAUltraLog')
+                ->get('/logs', 'Front\GymWAUltraFrontController@index');
+        });
 
 });
-
