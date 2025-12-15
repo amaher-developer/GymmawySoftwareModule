@@ -260,8 +260,8 @@
                                 <td>
                                     @php
                                         $memberSubscription = @$log->member->member_subscription_info;
-                                        $remainingAmount = $memberSubscription->remaining_amount ?? 0;
-                                        $storeRemainingAmount = $memberSubscription->store_remaining_amount ?? 0;
+                                        $remainingAmount = $memberSubscription->amount_remaining ?? 0;
+                                        $storeRemainingAmount = $memberSubscription->store_amount_remaining ?? 0;
                                     @endphp
                                     <div class="d-flex flex-column">
                                         <div class="d-flex align-items-center mb-1">
