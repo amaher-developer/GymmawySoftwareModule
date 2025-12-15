@@ -189,6 +189,9 @@
                                 <i class="ki-outline ki-status fs-6 me-2"></i>{{ trans('sw.status')}}
                             </th>
                             <th class="min-w-150px text-nowrap">
+                                <i class="ki-outline ki-user-tick fs-6 me-2"></i>{{ trans('sw.user')}}
+                            </th>
+                            <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.remaining_amount')}}
                             </th>
                             <th class="min-w-150px text-nowrap">
@@ -245,14 +248,29 @@
                                     <span class="badge badge-light-success">{{ trans('sw.attend') }}</span>
                                 </td>
                                 <td>
+                                    @if(@$log->user)
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-gray-800">{{ @$log->user->name }}</span>
+                                            {{-- <span class="text-muted fs-7">{{ @$log->user->email }}</span> --}}
+                                        </div>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @php
+                                        $memberSubscription = @$log->member->member_subscription_info;
+                                        $remainingAmount = $memberSubscription->remaining_amount ?? 0;
+                                        $storeRemainingAmount = $memberSubscription->store_remaining_amount ?? 0;
+                                    @endphp
                                     <div class="d-flex flex-column">
                                         <div class="d-flex align-items-center mb-1">
                                             <i class="ki-outline ki-dollar fs-7 text-success me-2"></i>
-                                            <span class="fw-bold text-success">{{ number_format(@$log->member->remaining_amount ?? 0, 2) }}</span>
+                                            <span class="fw-bold text-success">{{ number_format($remainingAmount, 2) }}</span>
                                         </div>
                                         <div class="d-flex align-items-center">
                                             <i class="ki-outline ki-shop fs-7 text-primary me-2"></i>
-                                            <span class="fw-bold text-primary">{{ number_format(@$log->member->store_remaining_amount ?? 0, 2) }}</span>
+                                            <span class="fw-bold text-primary">{{ number_format($storeRemainingAmount, 2) }}</span>
                                         </div>
                                     </div>
                                 </td>
