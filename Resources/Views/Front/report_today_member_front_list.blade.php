@@ -259,9 +259,9 @@
                                 </td>
                                 <td>
                                     @php
-                                        $memberSubscription = @$log->member->member_subscription_info;
-                                        $remainingAmount = $memberSubscription->amount_remaining ?? 0;
-                                        $storeRemainingAmount = $memberSubscription->store_amount_remaining ?? 0;
+                                        $member = @$log->member;
+                                        $remainingAmount = $member->member_remain_amount_subscriptions->sum('amount_remaining'), 2) ?? 0;
+                                        $storeRemainingAmount = @$member->store_balance ?? 0;
                                     @endphp
                                     <div class="d-flex flex-column">
                                         <div class="d-flex align-items-center mb-1">
