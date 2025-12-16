@@ -260,7 +260,7 @@
                                 <td>
                                     @php
                                         $member = @$log->member;
-                                        $remainingAmount = $member->member_remain_amount_subscriptions->sum('amount_remaining'), 2) ?? 0;
+                                        $remainingAmount = @number_format($member->member_remain_amount_subscriptions->sum('amount_remaining'), 2) ?? 0;
                                         $storeRemainingAmount = @$member->store_balance ?? 0;
                                     @endphp
                                     <div class="d-flex flex-column">
