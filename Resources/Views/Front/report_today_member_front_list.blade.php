@@ -260,8 +260,8 @@
                                 <td>
                                     @php
                                         $member = @$log->member;
-                                        $remainingAmount = @number_format($member->member_remain_amount_subscriptions->sum('amount_remaining'), 2) ?? 0;
-                                        $storeRemainingAmount = @$member->store_balance ?? 0;
+                                        $remainingAmount = (float)(@$member->member_remain_amount_subscriptions->sum('amount_remaining') ?? 0);
+                                        $storeRemainingAmount = (float)(@$member->store_balance ?? 0);
                                     @endphp
                                     <div class="d-flex flex-column">
                                         <div class="d-flex align-items-center mb-1">
