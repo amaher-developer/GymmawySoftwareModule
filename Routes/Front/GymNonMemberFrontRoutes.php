@@ -5,20 +5,16 @@ Route::prefix('non-member')
     ->group(function () {
 
         // List non-members - view permission
-        Route::group(['defaults' => ['permission' => 'listNonMember']], function () {
-            Route::name('sw.listNonMember')
-                ->get('/', 'Front\GymNonMemberFrontController@index');
-            Route::name('sw.showAllNonMember')
-                ->get('/json/datatable', 'Front\GymNonMemberFrontController@showAll');
-        });
+        Route::name('sw.listNonMember')
+            ->get('/', 'Front\GymNonMemberFrontController@index');
+        Route::name('sw.showAllNonMember')
+            ->get('/json/datatable', 'Front\GymNonMemberFrontController@showAll');
 
         // Export non-members - view permission
-        Route::group(['defaults' => ['permission' => 'listNonMember']], function () {
-            Route::name('sw.exportNonMemberPDF')
-                ->get('/pdf', 'Front\GymNonMemberFrontController@exportPDF');
-            Route::name('sw.exportNonMemberExcel')
-                ->get('/excel', 'Front\GymNonMemberFrontController@exportExcel');
-        });
+        Route::name('sw.exportNonMemberPDF')
+            ->get('/pdf', 'Front\GymNonMemberFrontController@exportPDF');
+        Route::name('sw.exportNonMemberExcel')
+            ->get('/excel', 'Front\GymNonMemberFrontController@exportExcel');
 
         // Create non-member - create permission
         Route::group(['defaults' => ['permission' => 'createNonMember']], function () {
@@ -37,22 +33,16 @@ Route::prefix('non-member')
         });
 
         // Delete non-member - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteNonMember']], function () {
-            Route::name('sw.deleteNonMember')
-                ->get('{member}/delete', 'Front\GymNonMemberFrontController@destroy');
-        });
+        Route::name('sw.deleteNonMember')
+            ->get('{member}/delete', 'Front\GymNonMemberFrontController@destroy');
 
         // Non-member reports - view permission
-        Route::group(['defaults' => ['permission' => 'listNonMemberReport']], function () {
-            Route::name('sw.listNonMemberReport')
-                ->get('/reports', 'Front\GymNonMemberFrontController@reports');
-        });
+        Route::name('sw.listNonMemberReport')
+            ->get('/reports', 'Front\GymNonMemberFrontController@reports');
 
         // Non-member calendar views - view permission
-        Route::group(['defaults' => ['permission' => 'listNonMemberInTimeCalendar']], function () {
-            Route::name('sw.listNonMemberInTimeCalendar')
-                ->get('/in-time/{id}/{date}/calendar', 'Front\GymNonMemberFrontController@listNonMemberInTimeCalendar');
-        });
+        Route::name('sw.listNonMemberInTimeCalendar')
+            ->get('/in-time/{id}/{date}/calendar', 'Front\GymNonMemberFrontController@listNonMemberInTimeCalendar');
 
         // Create non-member attendance in calendar - create permission
         Route::group(['defaults' => ['permission' => 'createNonMemberAttendInTimeCalendar']], function () {
@@ -61,10 +51,8 @@ Route::prefix('non-member')
         });
 
         // Non-member reservations - manage reservations
-        Route::group(['defaults' => ['permission' => 'getNonMemberReservation']], function () {
-            Route::name('sw.getNonMemberReservation')
-                ->get('/get-nonmember-reservation', 'Front\GymNonMemberFrontController@getNonMemberReservation');
-        });
+        Route::name('sw.getNonMemberReservation')
+            ->get('/get-nonmember-reservation', 'Front\GymNonMemberFrontController@getNonMemberReservation');
 
         // Create non-member reservation - create permission
         Route::group(['defaults' => ['permission' => 'createReservationNonMemberAjax']], function () {
@@ -73,9 +61,7 @@ Route::prefix('non-member')
         });
 
         // Delete non-member reservation - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteReservationNonMemberAjax']], function () {
-            Route::name('sw.deleteReservationNonMemberAjax')
-                ->get('delete-reservation-non-member-ajax', 'Front\GymNonMemberFrontController@deleteReservationNonMemberAjax');
-        });
+        Route::name('sw.deleteReservationNonMemberAjax')
+            ->get('delete-reservation-non-member-ajax', 'Front\GymNonMemberFrontController@deleteReservationNonMemberAjax');
 
     });

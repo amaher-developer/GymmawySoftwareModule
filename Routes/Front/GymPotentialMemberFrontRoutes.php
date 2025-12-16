@@ -5,20 +5,16 @@ Route::prefix('potential-member')
     ->group(function () {
 
         // List potential members - view permission
-        Route::group(['defaults' => ['permission' => 'listPotentialMember']], function () {
-            Route::name('sw.listPotentialMember')
-                ->get('/', 'Front\GymPotentialMemberFrontController@index');
-            Route::name('showAllPotentialMember')
-                ->get('/json/datatable', 'Front\GymPotentialMemberFrontController@showAll');
-        });
+        Route::name('sw.listPotentialMember')
+            ->get('/', 'Front\GymPotentialMemberFrontController@index');
+        Route::name('showAllPotentialMember')
+            ->get('/json/datatable', 'Front\GymPotentialMemberFrontController@showAll');
 
         // Export potential members - view permission
-        Route::group(['defaults' => ['permission' => 'listPotentialMember']], function () {
-            Route::name('sw.exportPotentialMemberPDF')
-                ->get('/pdf', 'Front\GymPotentialMemberFrontController@exportPDF');
-            Route::name('sw.exportPotentialMemberExcel')
-                ->get('/excel', 'Front\GymPotentialMemberFrontController@exportExcel');
-        });
+        Route::name('sw.exportPotentialMemberPDF')
+            ->get('/pdf', 'Front\GymPotentialMemberFrontController@exportPDF');
+        Route::name('sw.exportPotentialMemberExcel')
+            ->get('/excel', 'Front\GymPotentialMemberFrontController@exportExcel');
 
         // Create potential member - create permission
         Route::group(['defaults' => ['permission' => 'createPotentialMember']], function () {
@@ -37,15 +33,11 @@ Route::prefix('potential-member')
         });
 
         // Delete potential member - delete permission
-        Route::group(['defaults' => ['permission' => 'deletePotentialMember']], function () {
-            Route::name('sw.deletePotentialMember')
-                ->get('{member}/delete', 'Front\GymPotentialMemberFrontController@destroy');
-        });
+        Route::name('sw.deletePotentialMember')
+            ->get('{member}/delete', 'Front\GymPotentialMemberFrontController@destroy');
 
         // Update potential member status - edit permission
-        Route::group(['defaults' => ['permission' => 'updatePotentialMember']], function () {
-            Route::name('sw.updatePotentialMember')
-                ->get('/json/updatePotentialMember', 'Front\GymPotentialMemberFrontController@updatePotentialMember');
-        });
+        Route::name('sw.updatePotentialMember')
+            ->get('/json/updatePotentialMember', 'Front\GymPotentialMemberFrontController@updatePotentialMember');
 
     });

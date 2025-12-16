@@ -5,12 +5,10 @@ Route::prefix('reservation')
     ->group(function () {
 
         // List reservations - view permission
-        Route::group(['defaults' => ['permission' => 'listReservation']], function () {
-            Route::name('sw.listReservation')
-                ->get('/', 'Front\GymReservationFrontController@index');
-            Route::name('sw.reservation.events')
-                ->get('events', 'Front\GymReservationFrontController@events');
-        });
+        Route::name('sw.listReservation')
+            ->get('/', 'Front\GymReservationFrontController@index');
+        Route::name('sw.reservation.events')
+            ->get('events', 'Front\GymReservationFrontController@events');
 
         // Create reservation - create permission
         Route::group(['defaults' => ['permission' => 'createReservation']], function () {
@@ -39,10 +37,8 @@ Route::prefix('reservation')
         });
 
         // Delete reservation - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteReservation']], function () {
-            Route::name('sw.deleteReservation')
-                ->get('{reservation}/delete', 'Front\GymReservationFrontController@destroy');
-        });
+        Route::name('sw.deleteReservation')
+            ->get('{reservation}/delete', 'Front\GymReservationFrontController@destroy');
 
         // Reservation status actions - manage permission
         Route::group(['defaults' => ['permission' => 'editReservation']], function () {
@@ -57,19 +53,15 @@ Route::prefix('reservation')
         });
 
         // Attend reservation - attendance permission
-        Route::group(['defaults' => ['permission' => 'attendReservation']], function () {
-            Route::name('sw.attendReservation')
-                ->get('{reservation}/attend', 'Front\GymReservationAttendanceFrontController@attendForm');
-            Route::name('sw.attendReservation')
-                ->post('{reservation}/attend', 'Front\GymReservationAttendanceFrontController@attend');
-        });
+        Route::name('sw.attendReservation')
+            ->get('{reservation}/attend', 'Front\GymReservationAttendanceFrontController@attendForm');
+        Route::name('sw.attendReservation')
+            ->post('{reservation}/attend', 'Front\GymReservationAttendanceFrontController@attend');
 
         // Load members and non-members - helper endpoints
-        Route::group(['defaults' => ['permission' => 'listReservation']], function () {
-            Route::name('sw.reservation.loadMembers')
-                ->get('load-members', 'Front\GymReservationFrontController@loadMembers');
-            Route::name('sw.reservation.loadNonMembers')
-                ->get('load-non-members', 'Front\GymReservationFrontController@loadNonMembers');
-        });
+        Route::name('sw.reservation.loadMembers')
+            ->get('load-members', 'Front\GymReservationFrontController@loadMembers');
+        Route::name('sw.reservation.loadNonMembers')
+            ->get('load-non-members', 'Front\GymReservationFrontController@loadNonMembers');
 
     });

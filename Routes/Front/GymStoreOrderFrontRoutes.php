@@ -5,32 +5,26 @@ Route::prefix('store/order')
     ->group(function () {
 
         // List store orders - view permission
-        Route::group(['defaults' => ['permission' => 'listStoreOrders']], function () {
-            Route::name('sw.listStoreOrders')
-                ->get('/', 'Front\GymStoreOrderFrontController@index');
-            Route::name('sw.showStoreOrder')
-                ->get('show/{id}', 'Front\GymStoreOrderFrontController@show');
-            Route::name('sw.showStoreOrderPOS')
-                ->get('show/pos/{id}', 'Front\GymStoreOrderFrontController@showPOS');
-        });
+        Route::name('sw.listStoreOrders')
+            ->get('/', 'Front\GymStoreOrderFrontController@index');
+        Route::name('sw.showStoreOrder')
+            ->get('show/{id}', 'Front\GymStoreOrderFrontController@show');
+        Route::name('sw.showStoreOrderPOS')
+            ->get('show/pos/{id}', 'Front\GymStoreOrderFrontController@showPOS');
 
         // Export store orders - view permission
-        Route::group(['defaults' => ['permission' => 'listStoreOrders']], function () {
-            Route::name('sw.exportStoreOrderPDF')
-                ->get('/store-order-pdf', 'Front\GymStoreOrderFrontController@exportStoreOrderPDF');
-            Route::name('sw.exportStoreOrderExcel')
-                ->get('/store-order-excel', 'Front\GymStoreOrderFrontController@exportStoreOrderExcel');
-        });
+        Route::name('sw.exportStoreOrderPDF')
+            ->get('/store-order-pdf', 'Front\GymStoreOrderFrontController@exportStoreOrderPDF');
+        Route::name('sw.exportStoreOrderExcel')
+            ->get('/store-order-excel', 'Front\GymStoreOrderFrontController@exportStoreOrderExcel');
 
         // List store purchase orders - view permission
-        Route::group(['defaults' => ['permission' => 'listStorePurchaseOrders']], function () {
-            Route::name('sw.listStorePurchaseOrders')
-                ->get('/purchases', 'Front\GymStoreOrderFrontController@indexPurchases');
-            Route::name('sw.showStorePurchaseOrder')
-                ->get('show/purchase/{id}', 'Front\GymStoreOrderFrontController@showPurchase');
-            Route::name('sw.showStorePurchaseOrderPOS')
-                ->get('show/purchase/pos/{id}', 'Front\GymStoreOrderFrontController@showPurchasePOS');
-        });
+        Route::name('sw.listStorePurchaseOrders')
+            ->get('/purchases', 'Front\GymStoreOrderFrontController@indexPurchases');
+        Route::name('sw.showStorePurchaseOrder')
+            ->get('show/purchase/{id}', 'Front\GymStoreOrderFrontController@showPurchase');
+        Route::name('sw.showStorePurchaseOrderPOS')
+            ->get('show/purchase/pos/{id}', 'Front\GymStoreOrderFrontController@showPurchasePOS');
 
         // Create store order - create permission
         Route::group(['defaults' => ['permission' => 'createStoreOrder']], function () {
@@ -57,17 +51,13 @@ Route::prefix('store/order')
         });
 
         // Delete store order - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteStoreOrder']], function () {
-            Route::name('sw.deleteStoreOrder')
-                ->get('{order}/delete', 'Front\GymStoreOrderFrontController@destroy');
-        });
+        Route::name('sw.deleteStoreOrder')
+            ->get('{order}/delete', 'Front\GymStoreOrderFrontController@destroy');
 
         // Get store member and loyalty info - helper endpoints
-        Route::group(['defaults' => ['permission' => 'getStoreMemberAjax']], function () {
-            Route::name('sw.getStoreMemberAjax')
-                ->get('get-store-member-ajax', 'Front\GymStoreOrderFrontController@getStoreMemberAjax');
-            Route::name('sw.getMemberLoyaltyInfo')
-                ->get('get-member-loyalty-info', 'Front\GymStoreOrderFrontController@getMemberLoyaltyInfo');
-        });
+        Route::name('sw.getStoreMemberAjax')
+            ->get('get-store-member-ajax', 'Front\GymStoreOrderFrontController@getStoreMemberAjax');
+        Route::name('sw.getMemberLoyaltyInfo')
+            ->get('get-member-loyalty-info', 'Front\GymStoreOrderFrontController@getMemberLoyaltyInfo');
 
     });

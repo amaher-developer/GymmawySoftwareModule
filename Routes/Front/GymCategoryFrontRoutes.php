@@ -5,18 +5,14 @@ Route::prefix('category')
     ->group(function () {
 
         // List categories - view permission
-        Route::group(['defaults' => ['permission' => 'listCategory']], function () {
-            Route::name('sw.listCategory')
-                ->get('/', 'Front\GymCategoryFrontController@index');
-        });
+        Route::name('sw.listCategory')
+            ->get('/', 'Front\GymCategoryFrontController@index');
 
         // Export categories - view permission
-        Route::group(['defaults' => ['permission' => 'listCategory']], function () {
-            Route::name('sw.exportCategoryPDF')
-                ->get('/pdf', 'Front\GymCategoryFrontController@exportPDF');
-            Route::name('sw.exportCategoryExcel')
-                ->get('/excel', 'Front\GymCategoryFrontController@exportExcel');
-        });
+        Route::name('sw.exportCategoryPDF')
+            ->get('/pdf', 'Front\GymCategoryFrontController@exportPDF');
+        Route::name('sw.exportCategoryExcel')
+            ->get('/excel', 'Front\GymCategoryFrontController@exportExcel');
 
         // Create category - create permission
         Route::group(['defaults' => ['permission' => 'createCategory']], function () {
@@ -35,8 +31,6 @@ Route::prefix('category')
         });
 
         // Delete category - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteCategory']], function () {
-            Route::name('sw.deleteCategory')
-                ->get('{category}/delete', 'Front\GymCategoryFrontController@destroy');
-        });
+        Route::name('sw.deleteCategory')
+            ->get('{category}/delete', 'Front\GymCategoryFrontController@destroy');
     });

@@ -5,18 +5,14 @@ Route::prefix('subscription-category')
     ->group(function () {
 
         // List subscription categories - view permission
-        Route::group(['defaults' => ['permission' => 'listSubscriptionCategory']], function () {
-            Route::name('sw.listSubscriptionCategory')
-                ->get('/', 'Front\GymSubscriptionCategoryFrontController@index');
-        });
+        Route::name('sw.listSubscriptionCategory')
+            ->get('/', 'Front\GymSubscriptionCategoryFrontController@index');
 
         // Export subscription categories - view permission
-        Route::group(['defaults' => ['permission' => 'listSubscriptionCategory']], function () {
-            Route::name('sw.exportSubscriptionCategoryPDF')
-                ->get('/pdf', 'Front\GymSubscriptionCategoryFrontController@exportPDF');
-            Route::name('sw.exportSubscriptionCategoryExcel')
-                ->get('/excel', 'Front\GymSubscriptionCategoryFrontController@exportExcel');
-        });
+        Route::name('sw.exportSubscriptionCategoryPDF')
+            ->get('/pdf', 'Front\GymSubscriptionCategoryFrontController@exportPDF');
+        Route::name('sw.exportSubscriptionCategoryExcel')
+            ->get('/excel', 'Front\GymSubscriptionCategoryFrontController@exportExcel');
 
         // Create subscription category - create permission
         Route::group(['defaults' => ['permission' => 'createSubscriptionCategory']], function () {
@@ -35,9 +31,7 @@ Route::prefix('subscription-category')
         });
 
         // Delete subscription category - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteSubscriptionCategory']], function () {
-            Route::name('sw.deleteSubscriptionCategory')
-                ->get('{category}/delete', 'Front\GymSubscriptionCategoryFrontController@destroy');
-        });
+        Route::name('sw.deleteSubscriptionCategory')
+            ->get('{category}/delete', 'Front\GymSubscriptionCategoryFrontController@destroy');
     });
 

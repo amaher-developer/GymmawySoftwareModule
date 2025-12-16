@@ -5,12 +5,10 @@ Route::prefix('store/product')
     ->group(function () {
 
         // List store products - view permission
-        Route::group(['defaults' => ['permission' => 'listStoreProducts']], function () {
-            Route::name('sw.listStoreProducts')
-                ->get('/', 'Front\GymStoreProductFrontController@index');
-            Route::name('sw.downloadStoreProductBarcode')
-                ->get('download-barcode/{product}', 'Front\GymStoreProductFrontController@downloadBarcode');
-        });
+        Route::name('sw.listStoreProducts')
+            ->get('/', 'Front\GymStoreProductFrontController@index');
+        Route::name('sw.downloadStoreProductBarcode')
+            ->get('download-barcode/{product}', 'Front\GymStoreProductFrontController@downloadBarcode');
 
         // Create store product - create permission
         Route::group(['defaults' => ['permission' => 'createStoreProduct']], function () {
@@ -31,9 +29,7 @@ Route::prefix('store/product')
         });
 
         // Delete store product - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteStoreProduct']], function () {
-            Route::name('sw.deleteStoreProduct')
-                ->get('{product}/delete', 'Front\GymStoreProductFrontController@destroy');
-        });
+        Route::name('sw.deleteStoreProduct')
+            ->get('{product}/delete', 'Front\GymStoreProductFrontController@destroy');
 
     });

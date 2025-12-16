@@ -17,10 +17,8 @@ Route::prefix('setting')
     });
 
     // List payment types - view permission
-    Route::group(['defaults' => ['permission' => 'listPaymentType']], function () {
-        Route::name('sw.listPaymentType')
-            ->get('/payment-type', 'Front\GymSettingFrontController@indexPaymentType');
-    });
+    Route::name('sw.listPaymentType')
+        ->get('/payment-type', 'Front\GymSettingFrontController@indexPaymentType');
 
     // Create payment type - create permission
     Route::group(['defaults' => ['permission' => 'createPaymentType']], function () {
@@ -39,16 +37,12 @@ Route::prefix('setting')
     });
 
     // Delete payment type - delete permission
-    Route::group(['defaults' => ['permission' => 'deletePaymentType']], function () {
-        Route::name('sw.deletePaymentType')
-            ->get('payment-type/{payment_type}/delete', 'Front\GymSettingFrontController@destroyPaymentType');
-    });
+    Route::name('sw.deletePaymentType')
+        ->get('payment-type/{payment_type}/delete', 'Front\GymSettingFrontController@destroyPaymentType');
 
     // List group discounts - view permission
-    Route::group(['defaults' => ['permission' => 'listGroupDiscount']], function () {
-        Route::name('sw.listGroupDiscount')
-            ->get('/group-discount', 'Front\GymSettingFrontController@indexGroupDiscount');
-    });
+    Route::name('sw.listGroupDiscount')
+        ->get('/group-discount', 'Front\GymSettingFrontController@indexGroupDiscount');
 
     // Create group discount - create permission
     Route::group(['defaults' => ['permission' => 'createGroupDiscount']], function () {
@@ -67,16 +61,12 @@ Route::prefix('setting')
     });
 
     // Delete group discount - delete permission
-    Route::group(['defaults' => ['permission' => 'deleteGroupDiscount']], function () {
-        Route::name('sw.deleteGroupDiscount')
-            ->get('group-discount/{group_discount}/delete', 'Front\GymSettingFrontController@destroyGroupDiscount');
-    });
+    Route::name('sw.deleteGroupDiscount')
+        ->get('group-discount/{group_discount}/delete', 'Front\GymSettingFrontController@destroyGroupDiscount');
 
     // List sale channels - view permission
-    Route::group(['defaults' => ['permission' => 'listSaleChannel']], function () {
-        Route::name('sw.listSaleChannel')
-            ->get('/sale-channel', 'Front\GymSettingFrontController@indexSaleChannel');
-    });
+    Route::name('sw.listSaleChannel')
+        ->get('/sale-channel', 'Front\GymSettingFrontController@indexSaleChannel');
 
     // Create sale channel - create permission
     Route::group(['defaults' => ['permission' => 'createSaleChannel']], function () {
@@ -95,16 +85,12 @@ Route::prefix('setting')
     });
 
     // Delete sale channel - delete permission
-    Route::group(['defaults' => ['permission' => 'deleteSaleChannel']], function () {
-        Route::name('sw.deleteSaleChannel')
-            ->get('sale-channel/{sale_channel}/delete', 'Front\GymSettingFrontController@destroySaleChannel');
-    });
+    Route::name('sw.deleteSaleChannel')
+        ->get('sale-channel/{sale_channel}/delete', 'Front\GymSettingFrontController@destroySaleChannel');
 
     // List store groups - view permission
-    Route::group(['defaults' => ['permission' => 'listStoreGroup']], function () {
-        Route::name('sw.listStoreGroup')
-            ->get('/store-group', 'Front\GymSettingFrontController@indexStoreGroup');
-    });
+    Route::name('sw.listStoreGroup')
+        ->get('/store-group', 'Front\GymSettingFrontController@indexStoreGroup');
 
     // Create store group - create permission
     Route::group(['defaults' => ['permission' => 'createStoreGroup']], function () {
@@ -123,16 +109,12 @@ Route::prefix('setting')
     });
 
     // Delete store group - delete permission
-    Route::group(['defaults' => ['permission' => 'deleteStoreGroup']], function () {
-        Route::name('sw.deleteStoreGroup')
-            ->get('store-group/{store_group}/delete', 'Front\GymSettingFrontController@destroyStoreGroup');
-    });
+    Route::name('sw.deleteStoreGroup')
+        ->get('store-group/{store_group}/delete', 'Front\GymSettingFrontController@destroyStoreGroup');
 
     // List money box types - view permission
-    Route::group(['defaults' => ['permission' => 'listMoneyBoxType']], function () {
-        Route::name('sw.listMoneyBoxType')
-            ->get('/money-box-type', 'Front\GymSettingFrontController@indexMoneyBoxType');
-    });
+    Route::name('sw.listMoneyBoxType')
+        ->get('/money-box-type', 'Front\GymSettingFrontController@indexMoneyBoxType');
 
     // Create money box type - create permission
     Route::group(['defaults' => ['permission' => 'createMoneyBoxType']], function () {
@@ -151,9 +133,7 @@ Route::prefix('setting')
     });
 
     // Delete money box type - delete permission
-    Route::group(['defaults' => ['permission' => 'deleteMoneyBoxType']], function () {
-        Route::name('sw.deleteMoneyBoxType')
-            ->get('money-box-type/{money_box_type}/delete', 'Front\GymSettingFrontController@destroyMoneyBoxType');
-    });
+    Route::name('sw.deleteMoneyBoxType')
+        ->get('money-box-type/{money_box_type}/delete', 'Front\GymSettingFrontController@destroyMoneyBoxType');
 
     });

@@ -16,15 +16,11 @@ Route::prefix('wa-ultra')
         });
 
         // Store WhatsApp Ultra token - create permission
-        Route::group(['defaults' => ['permission' => 'storeWAUltraToken']], function () {
-            Route::name('sw.storeWAUltraToken')
-                ->post('create-token', 'Front\GymWAUltraFrontController@storeToken');
-        });
+        Route::name('sw.storeWAUltraToken')
+            ->post('create-token', 'Front\GymWAUltraFrontController@storeToken');
 
         // List WhatsApp Ultra logs - view permission
-        Route::group(['defaults' => ['permission' => 'listWAUltraLog']], function () {
-            Route::name('sw.listWAUltraLog')
-                ->get('/logs', 'Front\GymWAUltraFrontController@index');
-        });
+        Route::name('sw.listWAUltraLog')
+            ->get('/logs', 'Front\GymWAUltraFrontController@index');
 
 });

@@ -6,10 +6,8 @@ Route::prefix('training/medicine')
     ->group(function () {
 
         // List training medicines - view permission
-        Route::group(['defaults' => ['permission' => 'listTrainingMedicine']], function () {
-            Route::name('sw.listTrainingMedicine')
-                ->get('/', 'Front\GymTrainingMedicineFrontController@index');
-        });
+        Route::name('sw.listTrainingMedicine')
+            ->get('/', 'Front\GymTrainingMedicineFrontController@index');
 
         // Create training medicine - create permission
         Route::group(['defaults' => ['permission' => 'createTrainingMedicine']], function () {
@@ -28,9 +26,7 @@ Route::prefix('training/medicine')
         });
 
         // Delete training medicine - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteTrainingMedicine']], function () {
-            Route::name('sw.deleteTrainingMedicine')
-                ->get('{medicine}/delete', 'Front\GymTrainingMedicineFrontController@destroy');
-        });
+        Route::name('sw.deleteTrainingMedicine')
+            ->get('{medicine}/delete', 'Front\GymTrainingMedicineFrontController@destroy');
 
     });

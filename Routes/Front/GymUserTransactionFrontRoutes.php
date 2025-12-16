@@ -5,10 +5,8 @@ Route::prefix('user/finance/employee-transaction')
     ->group(function () {
 
         // List user transactions - view permission
-        Route::group(['defaults' => ['permission' => 'listUserTransaction']], function () {
-            Route::name('sw.listUserTransaction')
-                ->get('/', 'Front\GymUserTransactionFrontController@index');
-        });
+        Route::name('sw.listUserTransaction')
+            ->get('/', 'Front\GymUserTransactionFrontController@index');
 
         // Create user transaction - create permission
         Route::group(['defaults' => ['permission' => 'createUserTransaction']], function () {
@@ -27,9 +25,7 @@ Route::prefix('user/finance/employee-transaction')
         });
 
         // Delete user transaction - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteUserTransaction']], function () {
-            Route::name('sw.deleteUserTransaction')
-                ->get('{id}/delete', 'Front\GymUserTransactionFrontController@destroy');
-        });
+        Route::name('sw.deleteUserTransaction')
+            ->get('{id}/delete', 'Front\GymUserTransactionFrontController@destroy');
 
     });

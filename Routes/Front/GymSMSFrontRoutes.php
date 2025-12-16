@@ -16,9 +16,7 @@ Route::prefix('sms')
         });
 
         // List SMS logs - view permission
-        Route::group(['defaults' => ['permission' => 'listSMSLog']], function () {
-            Route::name('sw.listSMSLog')
-                ->get('/logs', 'Front\GymSMSFrontController@index');
-        });
+        Route::name('sw.listSMSLog')
+            ->get('/logs', 'Front\GymSMSFrontController@index');
 
 });

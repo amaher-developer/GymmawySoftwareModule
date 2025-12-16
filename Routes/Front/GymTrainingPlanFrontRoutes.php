@@ -7,10 +7,8 @@ Route::prefix('training/plan')
     ->group(function () {
 
         // List training plans - view permission
-        Route::group(['defaults' => ['permission' => 'listTrainingPlan']], function () {
-            Route::name('sw.listTrainingPlan')
-                ->get('/', 'Front\GymTrainingPlanFrontController@index');
-        });
+        Route::name('sw.listTrainingPlan')
+            ->get('/', 'Front\GymTrainingPlanFrontController@index');
 
         // Create training plan - create permission
         Route::group(['defaults' => ['permission' => 'createTrainingPlan']], function () {
@@ -29,9 +27,7 @@ Route::prefix('training/plan')
         });
 
         // Delete training plan - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteTrainingPlan']], function () {
-            Route::name('sw.deleteTrainingPlan')
-                ->get('{plan}/delete', 'Front\GymTrainingPlanFrontController@destroy');
-        });
+        Route::name('sw.deleteTrainingPlan')
+            ->get('{plan}/delete', 'Front\GymTrainingPlanFrontController@destroy');
 
     });

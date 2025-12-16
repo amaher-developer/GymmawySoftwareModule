@@ -5,18 +5,14 @@ Route::prefix('member')
     ->group(function () {
 
         // List members - view permission
-        Route::group(['defaults' => ['permission' => 'listMember']], function () {
-            Route::name('sw.listMember')
-                ->get('/', 'Front\GymMemberFrontController@index');
-        });
+        Route::name('sw.listMember')
+            ->get('/', 'Front\GymMemberFrontController@index');
 
         // Export members - view permission
-        Route::group(['defaults' => ['permission' => 'listMember']], function () {
-            Route::name('sw.exportMemberPDF')
-                ->get('/pdf', 'Front\GymMemberFrontController@exportPDF');
-            Route::name('sw.exportMemberExcel')
-                ->get('/excel', 'Front\GymMemberFrontController@exportExcel');
-        });
+        Route::name('sw.exportMemberPDF')
+            ->get('/pdf', 'Front\GymMemberFrontController@exportPDF');
+        Route::name('sw.exportMemberExcel')
+            ->get('/excel', 'Front\GymMemberFrontController@exportExcel');
 
         // Create member - create permission
         Route::group(['defaults' => ['permission' => 'createMember']], function () {
@@ -35,26 +31,20 @@ Route::prefix('member')
         });
 
         // Delete member - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteMember']], function () {
-            Route::name('sw.deleteMember')
-                ->get('{member}/delete', 'Front\GymMemberFrontController@destroy');
-            Route::name('sw.deleteMemberSubscription')
-                ->get('subscription/{subscription}/delete', 'Front\GymMemberFrontController@destroySubscription');
-        });
+        Route::name('sw.deleteMember')
+            ->get('{member}/delete', 'Front\GymMemberFrontController@destroy');
+        Route::name('sw.deleteMemberSubscription')
+            ->get('subscription/{subscription}/delete', 'Front\GymMemberFrontController@destroySubscription');
 
         // View member profile - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'showMemberProfile']], function () {
-            Route::name('sw.showMemberProfile')
-                ->get('{member}/profile', 'Front\GymMemberFrontController@showProfile');
-        });
+        Route::name('sw.showMemberProfile')
+            ->get('{member}/profile', 'Front\GymMemberFrontController@showProfile');
 
         // Credit member balance - edit permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'creditMemberBalance']], function () {
-            Route::name('sw.creditMemberBalance')
-                ->get('/balance', 'Front\GymMemberFrontController@creditMemberBalance');
-            Route::name('sw.creditMemberBalanceAdd')
-                ->post('/{member}/add-balance', 'Front\GymMemberFrontController@creditMemberBalanceAdd');
-        });
+        Route::name('sw.creditMemberBalance')
+            ->get('/balance', 'Front\GymMemberFrontController@creditMemberBalance');
+        Route::name('sw.creditMemberBalanceAdd')
+            ->post('/{member}/add-balance', 'Front\GymMemberFrontController@creditMemberBalanceAdd');
 
         // Pay amount remaining - edit permission
         //Route::group(['defaults' => ['permission' => 'createMemberPayAmountRemainingForm']], function () {
@@ -85,55 +75,39 @@ Route::prefix('member')
         //});
 
         // Member attendees - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'memberAttendees']], function () {
-            Route::name('sw.memberAttendees')
-                ->get('/member-attendees', 'Front\GymMemberFrontController@memberAttendees');
-        });
+        Route::name('sw.memberAttendees')
+            ->get('/member-attendees', 'Front\GymMemberFrontController@memberAttendees');
 
         // Member subscription operations - edit permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'memberSubscriptionRenew']], function () {
-            Route::name('sw.memberSubscriptionRenew')
-                ->get('{id}/member-subscription-renew', 'Front\GymMemberFrontController@memberSubscriptionRenew');
-            Route::name('sw.memberSubscriptionEdit')
-                ->post('{id}/member-subscription-edit', 'Front\GymMemberFrontController@memberSubscriptionEdit');
-            Route::name('sw.memberSubscriptionRenewStore')
-                ->any('{id}/member-subscription-renew-store', 'Front\GymMemberFrontController@memberSubscriptionRenewStore');
-        });
+        Route::name('sw.memberSubscriptionRenew')
+            ->get('{id}/member-subscription-renew', 'Front\GymMemberFrontController@memberSubscriptionRenew');
+        Route::name('sw.memberSubscriptionEdit')
+            ->post('{id}/member-subscription-edit', 'Front\GymMemberFrontController@memberSubscriptionEdit');
+        Route::name('sw.memberSubscriptionRenewStore')
+            ->any('{id}/member-subscription-renew-store', 'Front\GymMemberFrontController@memberSubscriptionRenewStore');
 
         // Member invitation attendees - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'memberInvitationAttendees']], function () {
-            Route::name('sw.memberInvitationAttendees')
-                ->get('/member-invitation-attendees', 'Front\GymMemberFrontController@memberInvitationAttendees');
-        });
+        Route::name('sw.memberInvitationAttendees')
+            ->get('/member-invitation-attendees', 'Front\GymMemberFrontController@memberInvitationAttendees');
 
         // Member PT attendees - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'memberPTAttendees']], function () {
-            Route::name('sw.memberPTAttendees')
-                ->get('/member-pt-attendees', 'Front\GymPTMemberFrontController@memberPTAttendees');
-        });
+        Route::name('sw.memberPTAttendees')
+            ->get('/member-pt-attendees', 'Front\GymPTMemberFrontController@memberPTAttendees');
 
         // Member activity membership attendees - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'memberActivityMembershipAttendees']], function () {
-            Route::name('sw.memberActivityMembershipAttendees')
-                ->get('/member-activity-membership-attendees', 'Front\GymMemberFrontController@memberActivityMembershipAttendees');
-        });
+        Route::name('sw.memberActivityMembershipAttendees')
+            ->get('/member-activity-membership-attendees', 'Front\GymMemberFrontController@memberActivityMembershipAttendees');
 
         // Update subscriptions status - edit permission
-        Route::group(['defaults' => ['permission' => 'editMember']], function () {
-            Route::name('sw.updateSubscriptionsStatus')
-                ->get('/update-subscriptions-status', 'Front\GymMemberFrontController@updateSubscriptionsStatus');
-        });
+        Route::name('sw.updateSubscriptionsStatus')
+            ->get('/update-subscriptions-status', 'Front\GymMemberFrontController@updateSubscriptionsStatus');
 
         // Fingerprint refresh - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'fingerprintRefresh']], function () {
-            Route::name('sw.fingerprintRefresh')
-                ->get('/fingerprint-refresh', 'Front\GymMemberFrontController@fingerprintRefresh');
-        });
+        Route::name('sw.fingerprintRefresh')
+            ->get('/fingerprint-refresh', 'Front\GymMemberFrontController@fingerprintRefresh');
 
         // Members refresh - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'membersRefresh']], function () {
-            Route::name('sw.membersRefresh')
-                ->get('/members-refresh', 'Front\GymMemberFrontController@membersRefresh');
-        });
+        Route::name('sw.membersRefresh')
+            ->get('/members-refresh', 'Front\GymMemberFrontController@membersRefresh');
 
     });

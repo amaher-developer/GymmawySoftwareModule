@@ -5,20 +5,16 @@ Route::prefix('user')
     ->group(function () {
 
         // List users - view permission
-        Route::group(['defaults' => ['permission' => 'listUser']], function () {
-            Route::name('sw.listUser')
-                ->get('/', 'Front\GymUserFrontController@index');
-            Route::name('sw.listUserJson')
-                ->get('/json', 'Front\GymUserFrontController@indexJson');
-        });
+        Route::name('sw.listUser')
+            ->get('/', 'Front\GymUserFrontController@index');
+        Route::name('sw.listUserJson')
+            ->get('/json', 'Front\GymUserFrontController@indexJson');
 
         // Export users - view permission
-        Route::group(['defaults' => ['permission' => 'listUser']], function () {
-            Route::name('sw.exportUserPDF')
-                ->get('/pdf', 'Front\GymUserFrontController@exportPDF');
-            Route::name('sw.exportUserExcel')
-                ->get('/excel', 'Front\GymUserFrontController@exportExcel');
-        });
+        Route::name('sw.exportUserPDF')
+            ->get('/pdf', 'Front\GymUserFrontController@exportPDF');
+        Route::name('sw.exportUserExcel')
+            ->get('/excel', 'Front\GymUserFrontController@exportExcel');
 
         // Create user - create permission
         Route::group(['defaults' => ['permission' => 'createUser']], function () {
@@ -45,16 +41,12 @@ Route::prefix('user')
         });
 
         // Delete user - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteUser']], function () {
-            Route::name('sw.deleteUser')
-                ->get('{user}/delete', 'Front\GymUserFrontController@destroy');
-        });
+        Route::name('sw.deleteUser')
+            ->get('{user}/delete', 'Front\GymUserFrontController@destroy');
 
         // User attendees - view permission (already in default_permissions in middleware)
-        Route::group(['defaults' => ['permission' => 'userAttendees']], function () {
-            Route::name('sw.userAttendees')
-                ->get('/attendees', 'Front\GymUserFrontController@userAttendees');
-            Route::name('sw.userAttendeesStore')
-                ->get('/attendees-store', 'Front\GymUserFrontController@userAttendeesStore');
-        });
+        Route::name('sw.userAttendees')
+            ->get('/attendees', 'Front\GymUserFrontController@userAttendees');
+        Route::name('sw.userAttendeesStore')
+            ->get('/attendees-store', 'Front\GymUserFrontController@userAttendeesStore');
     });

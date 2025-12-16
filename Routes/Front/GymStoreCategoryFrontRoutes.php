@@ -6,18 +6,14 @@ Route::prefix('store/category')
     ->group(function () {
 
         // List store categories - view permission
-        Route::group(['defaults' => ['permission' => 'listStoreCategory']], function () {
-            Route::name('sw.listStoreCategory')
-                ->get('/', 'Front\GymStoreCategoryFrontController@index');
-        });
+        Route::name('sw.listStoreCategory')
+            ->get('/', 'Front\GymStoreCategoryFrontController@index');
 
         // Export store categories - view permission
-        Route::group(['defaults' => ['permission' => 'listStoreCategory']], function () {
-            Route::name('sw.exportStoreCategoryPDF')
-                ->get('/pdf', 'Front\GymStoreCategoryFrontController@exportPDF');
-            Route::name('sw.exportStoreCategoryExcel')
-                ->get('/excel', 'Front\GymStoreCategoryFrontController@exportExcel');
-        });
+        Route::name('sw.exportStoreCategoryPDF')
+            ->get('/pdf', 'Front\GymStoreCategoryFrontController@exportPDF');
+        Route::name('sw.exportStoreCategoryExcel')
+            ->get('/excel', 'Front\GymStoreCategoryFrontController@exportExcel');
 
         // Create store category - create permission
         Route::group(['defaults' => ['permission' => 'createStoreCategory']], function () {
@@ -36,9 +32,7 @@ Route::prefix('store/category')
         });
 
         // Delete store category - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteStoreCategory']], function () {
-            Route::name('sw.deleteStoreCategory')
-                ->get('{category}/delete', 'Front\GymStoreCategoryFrontController@destroy');
-        });
+        Route::name('sw.deleteStoreCategory')
+            ->get('{category}/delete', 'Front\GymStoreCategoryFrontController@destroy');
 
     });

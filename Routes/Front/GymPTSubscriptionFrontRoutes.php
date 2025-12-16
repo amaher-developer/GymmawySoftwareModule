@@ -5,10 +5,8 @@ Route::prefix('pt/subscription')
     ->group(function () {
 
         // List PT subscriptions - view permission
-        Route::group(['defaults' => ['permission' => 'listPTSubscription']], function () {
-            Route::name('sw.listPTSubscription')
-                ->get('/', 'Front\GymPTSubscriptionFrontController@index');
-        });
+        Route::name('sw.listPTSubscription')
+            ->get('/', 'Front\GymPTSubscriptionFrontController@index');
 
         // Create PT subscription - create permission
         Route::group(['defaults' => ['permission' => 'createPTSubscription']], function () {
@@ -27,9 +25,7 @@ Route::prefix('pt/subscription')
         });
 
         // Delete PT subscription - delete permission
-        Route::group(['defaults' => ['permission' => 'deletePTSubscription']], function () {
-            Route::name('sw.deletePTSubscription')
-                ->get('{subscription}/delete', 'Front\GymPTSubscriptionFrontController@destroy');
-        });
+        Route::name('sw.deletePTSubscription')
+            ->get('{subscription}/delete', 'Front\GymPTSubscriptionFrontController@destroy');
 
     });

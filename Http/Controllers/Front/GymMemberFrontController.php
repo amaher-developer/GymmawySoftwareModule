@@ -952,7 +952,17 @@ class GymMemberFrontController extends GymGenericFrontController
     {
         $member = $this->MemberRepository->with('member_subscription_info.subscription')->withTrashed()->find($id);
         $member_inputs = $this->prepare_inputs($request->only(['image', 'code', 'name', 'gender', 'phone', 'address', 'dob', 'national_id', 'fp_id', 'invitations', 'sale_channel_id', 'sale_user_id', 'additional_info']));
-        if (!$member_inputs['image']) unset($member_inputs['image']);
+
+        // Check if user intentionally removed the image
+        // If no file uploaded, no camera photo, and member currently has an image, then user removed it
+        if (!$request->hasFile('image') && empty($request->input('image')) && !empty($member->image)) {
+            // Check if this is an intentional removal (Dropify sends empty string when removed)
+            // If the request was submitted without any image data, set to null
+            $member_inputs['image'] = null;
+        } elseif (empty($member_inputs['image'])) {
+            // No new image provided, keep existing image
+            unset($member_inputs['image']);
+        }
 //        if(@$request->expire_date &&
 //            (@Carbon::parse($request->expire_date)->toDateString() != @Carbon::parse($member->member_subscription_info->expire_date)->toDateString())
 //            && @$member->member_subscription_info->subscription->is_expire_changeable){

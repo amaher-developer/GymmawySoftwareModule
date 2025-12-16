@@ -5,10 +5,8 @@ Route::prefix('pt/class')
     ->group(function () {
 
         // List PT classes - view permission
-        Route::group(['defaults' => ['permission' => 'listPTClass']], function () {
-            Route::name('sw.listPTClass')
-                ->get('/', 'Front\GymPTClassFrontController@index');
-        });
+        Route::name('sw.listPTClass')
+            ->get('/', 'Front\GymPTClassFrontController@index');
 
         // Create PT class - create permission
         Route::group(['defaults' => ['permission' => 'createPTClass']], function () {
@@ -27,9 +25,7 @@ Route::prefix('pt/class')
         });
 
         // Delete PT class - delete permission
-        Route::group(['defaults' => ['permission' => 'deletePTClass']], function () {
-            Route::name('sw.deletePTClass')
-                ->get('{class}/delete', 'Front\GymPTClassFrontController@destroy');
-        });
+        Route::name('sw.deletePTClass')
+            ->get('{class}/delete', 'Front\GymPTClassFrontController@destroy');
 
     });

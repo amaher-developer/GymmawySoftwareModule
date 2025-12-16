@@ -16,9 +16,7 @@ Route::prefix('wa')
         });
 
         // List WhatsApp logs - view permission
-        Route::group(['defaults' => ['permission' => 'listWALog']], function () {
-            Route::name('sw.listWALog')
-                ->get('/logs', 'Front\GymWAFrontController@index');
-        });
+        Route::name('sw.listWALog')
+            ->get('/logs', 'Front\GymWAFrontController@index');
 
 });

@@ -5,10 +5,8 @@ Route::prefix('pt/trainer')
     ->group(function () {
 
         // List PT trainers - view permission
-        Route::group(['defaults' => ['permission' => 'listPTTrainer']], function () {
-            Route::name('sw.listPTTrainer')
-                ->get('/', 'Front\GymPTTrainerFrontController@index');
-        });
+        Route::name('sw.listPTTrainer')
+            ->get('/', 'Front\GymPTTrainerFrontController@index');
 
         // Create PT trainer - create permission
         Route::group(['defaults' => ['permission' => 'createPTTrainer']], function () {
@@ -27,16 +25,12 @@ Route::prefix('pt/trainer')
         });
 
         // Delete PT trainer - delete permission
-        Route::group(['defaults' => ['permission' => 'deletePTTrainer']], function () {
-            Route::name('sw.deletePTTrainer')
-                ->get('{trainer}/delete', 'Front\GymPTTrainerFrontController@destroy');
-        });
+        Route::name('sw.deletePTTrainer')
+            ->get('{trainer}/delete', 'Front\GymPTTrainerFrontController@destroy');
 
         // PT trainer pending commissions - view permission
-        Route::group(['defaults' => ['permission' => 'pendingPTTrainerCommissions']], function () {
-            Route::name('sw.pendingPTTrainerCommissions')
-                ->get('{trainer}/pending-commissions', 'Front\GymPTTrainerFrontController@pendingCommissions');
-        });
+        Route::name('sw.pendingPTTrainerCommissions')
+            ->get('{trainer}/pending-commissions', 'Front\GymPTTrainerFrontController@pendingCommissions');
 
         // Create PT trainer subscription - create permission
         Route::group(['defaults' => ['permission' => 'createPTTrainerSubscription']], function () {
@@ -47,10 +41,8 @@ Route::prefix('pt/trainer')
         });
 
         // Show PT trainer subscription - view permission
-        Route::group(['defaults' => ['permission' => 'showPTTrainerSubscription']], function () {
-            Route::name('sw.showPTTrainerSubscription')
-                ->get('subscription/{subscription}/show', 'Front\GymPTTrainerFrontController@showSubscription');
-        });
+        Route::name('sw.showPTTrainerSubscription')
+            ->get('subscription/{subscription}/show', 'Front\GymPTTrainerFrontController@showSubscription');
 
         // Edit PT trainer subscription - edit permission
         Route::group(['defaults' => ['permission' => 'editPTTrainerSubscription']], function () {
@@ -61,16 +53,12 @@ Route::prefix('pt/trainer')
         });
 
         // Delete PT trainer subscription - delete permission
-        Route::group(['defaults' => ['permission' => 'deletePTTrainerSubscription']], function () {
-            Route::name('sw.deletePTTrainerSubscription')
-                ->get('subscription/{subscription}/delete', 'Front\GymPTTrainerFrontController@destroySubscription');
-        });
+        Route::name('sw.deletePTTrainerSubscription')
+            ->get('subscription/{subscription}/delete', 'Front\GymPTTrainerFrontController@destroySubscription');
 
         // PT trainer reports - view permission
-        Route::group(['defaults' => ['permission' => 'listPTTrainerReport']], function () {
-            Route::name('sw.listPTTrainerReport')
-                ->get('/reports', 'Front\GymPTTrainerFrontController@reports');
-        });
+        Route::name('sw.listPTTrainerReport')
+            ->get('/reports', 'Front\GymPTTrainerFrontController@reports');
 
         // Create trainer pay percentage amount - create permission
         Route::group(['defaults' => ['permission' => 'createTrainerPayPercentageAmountForm']], function () {

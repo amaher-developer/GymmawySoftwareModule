@@ -5,20 +5,16 @@ Route::prefix('subscription')
     ->group(function () {
 
         // List subscriptions - view permission
-        Route::group(['defaults' => ['permission' => 'listSubscription']], function () {
-            Route::name('sw.listSubscription')
-                ->get('/', 'Front\GymSubscriptionFrontController@index');
-            Route::name('showAllUserSubscription')
-                ->get('/json/datatable', 'Front\GymSubscriptionFrontController@showAll');
-        });
+        Route::name('sw.listSubscription')
+            ->get('/', 'Front\GymSubscriptionFrontController@index');
+        Route::name('showAllUserSubscription')
+            ->get('/json/datatable', 'Front\GymSubscriptionFrontController@showAll');
 
         // Export subscriptions - view permission
-        Route::group(['defaults' => ['permission' => 'listSubscription']], function () {
-            Route::name('sw.exportSubscriptionPDF')
-                ->get('/pdf', 'Front\GymSubscriptionFrontController@exportPDF');
-            Route::name('sw.exportSubscriptionExcel')
-                ->get('/excel', 'Front\GymSubscriptionFrontController@exportExcel');
-        });
+        Route::name('sw.exportSubscriptionPDF')
+            ->get('/pdf', 'Front\GymSubscriptionFrontController@exportPDF');
+        Route::name('sw.exportSubscriptionExcel')
+            ->get('/excel', 'Front\GymSubscriptionFrontController@exportExcel');
 
         // Create subscription - create permission
         Route::group(['defaults' => ['permission' => 'createSubscription']], function () {
@@ -37,9 +33,7 @@ Route::prefix('subscription')
         });
 
         // Delete subscription - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteSubscription']], function () {
-            Route::name('sw.deleteSubscription')
-                ->get('{subscription}/delete', 'Front\GymSubscriptionFrontController@destroy');
-        });
+        Route::name('sw.deleteSubscription')
+            ->get('{subscription}/delete', 'Front\GymSubscriptionFrontController@destroy');
 
     });

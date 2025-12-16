@@ -5,27 +5,21 @@ Route::prefix('store/vendor/order')
     ->group(function () {
 
         // List store vendor orders - view permission
-        Route::group(['defaults' => ['permission' => 'listStoreOrderVendor']], function () {
-            Route::name('sw.listStoreOrderVendor')
-                ->get('/', 'Front\GymStoreOrderVendorFrontController@index');
-            Route::name('sw.showStoreOrderVendor')
-                ->get('show/{id}', 'Front\GymStoreOrderVendorFrontController@show');
-            Route::name('sw.showStoreOrderVendorPOS')
-                ->get('show/pos/{id}', 'Front\GymStoreOrderVendorFrontController@showPOS');
-        });
+        Route::name('sw.listStoreOrderVendor')
+            ->get('/', 'Front\GymStoreOrderVendorFrontController@index');
+        Route::name('sw.showStoreOrderVendor')
+            ->get('show/{id}', 'Front\GymStoreOrderVendorFrontController@show');
+        Route::name('sw.showStoreOrderVendorPOS')
+            ->get('show/pos/{id}', 'Front\GymStoreOrderVendorFrontController@showPOS');
 
         // Export store vendor orders - view permission
-        Route::group(['defaults' => ['permission' => 'listStoreOrderVendor']], function () {
-            Route::name('sw.exportStoreOrderVendorPDF')
-                ->get('/store-order-vendor-pdf', 'Front\GymStoreOrderVendorFrontController@exportStoreOrderVendorPDF');
-            Route::name('sw.exportStoreOrderVendorExcel')
-                ->get('/store-order-vendor-excel', 'Front\GymStoreOrderVendorFrontController@exportStoreOrderVendorExcel');
-        });
+        Route::name('sw.exportStoreOrderVendorPDF')
+            ->get('/store-order-vendor-pdf', 'Front\GymStoreOrderVendorFrontController@exportStoreOrderVendorPDF');
+        Route::name('sw.exportStoreOrderVendorExcel')
+            ->get('/store-order-vendor-excel', 'Front\GymStoreOrderVendorFrontController@exportStoreOrderVendorExcel');
 
         // Delete store vendor order - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteStoreOrderVendor']], function () {
-            Route::name('sw.deleteStoreOrderVendor')
-                ->get('{order}/delete', 'Front\GymStoreOrderVendorFrontController@destroy');
-        });
+        Route::name('sw.deleteStoreOrderVendor')
+            ->get('{order}/delete', 'Front\GymStoreOrderVendorFrontController@destroy');
 
     });

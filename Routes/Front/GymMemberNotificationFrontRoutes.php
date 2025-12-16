@@ -17,10 +17,8 @@ Route::prefix('m-notification')
             ->get('phones-by-ajax', 'Front\GymMemberNotificationFrontController@phonesByAjax');
             
         // List notification logs - view permission
-        Route::group(['defaults' => ['permission' => 'listNotificationLog']], function () {
-            Route::name('sw.listNotificationLog')
-                ->get('/logs', 'Front\GymMemberNotificationFrontController@index');
-        });
+        Route::name('sw.listNotificationLog')
+            ->get('/logs', 'Front\GymMemberNotificationFrontController@index');
 
     });
 
@@ -38,10 +36,8 @@ Route::prefix('my-notification')
         });
 
         // List my notification logs - view permission
-        Route::group(['defaults' => ['permission' => 'listMyNotificationLog']], function () {
-            Route::name('sw.listMyNotificationLog')
-                ->get('/logs', 'Front\GymMemberMyNotificationFrontController@index');
-        });
+        Route::name('sw.listMyNotificationLog')
+            ->get('/logs', 'Front\GymMemberMyNotificationFrontController@index');
 
     });
 

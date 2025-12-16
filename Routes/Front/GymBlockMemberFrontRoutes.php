@@ -5,20 +5,16 @@ Route::prefix('block-member')
     ->group(function () {
 
         // List block members - view permission
-        Route::group(['defaults' => ['permission' => 'listBlockMember']], function () {
-            Route::name('sw.listBlockMember')
-                ->get('/', 'Front\GymBlockMemberFrontController@index');
-            Route::name('showAllBlockMember')
-                ->get('/json/datatable', 'Front\GymBlockMemberFrontController@showAll');
-        });
+        Route::name('sw.listBlockMember')
+            ->get('/', 'Front\GymBlockMemberFrontController@index');
+        Route::name('showAllBlockMember')
+            ->get('/json/datatable', 'Front\GymBlockMemberFrontController@showAll');
 
         // Export block members - view permission
-        Route::group(['defaults' => ['permission' => 'listBlockMember']], function () {
-            Route::name('sw.exportBlockMemberPDF')
-                ->get('/pdf', 'Front\GymBlockMemberFrontController@exportPDF');
-            Route::name('sw.exportBlockMemberExcel')
-                ->get('/excel', 'Front\GymBlockMemberFrontController@exportExcel');
-        });
+        Route::name('sw.exportBlockMemberPDF')
+            ->get('/pdf', 'Front\GymBlockMemberFrontController@exportPDF');
+        Route::name('sw.exportBlockMemberExcel')
+            ->get('/excel', 'Front\GymBlockMemberFrontController@exportExcel');
 
         // Create block member - create permission
         Route::group(['defaults' => ['permission' => 'createBlockMember']], function () {
@@ -37,9 +33,7 @@ Route::prefix('block-member')
         });
 
         // Delete block member - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteBlockMember']], function () {
-            Route::name('sw.deleteBlockMember')
-                ->get('{member}/delete', 'Front\GymBlockMemberFrontController@destroy');
-        });
+        Route::name('sw.deleteBlockMember')
+            ->get('{member}/delete', 'Front\GymBlockMemberFrontController@destroy');
 
     });

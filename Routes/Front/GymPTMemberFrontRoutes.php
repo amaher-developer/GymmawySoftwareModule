@@ -5,10 +5,8 @@ Route::prefix('pt/member')
     ->group(function () {
 
         // List PT members - view permission
-        Route::group(['defaults' => ['permission' => 'listPTMember']], function () {
-            Route::name('sw.listPTMember')
-                ->get('/', 'Front\GymPTMemberFrontController@index');
-        });
+        Route::name('sw.listPTMember')
+            ->get('/', 'Front\GymPTMemberFrontController@index');
 
         // Create PT member - create permission
         Route::group(['defaults' => ['permission' => 'createPTMember']], function () {
@@ -27,26 +25,20 @@ Route::prefix('pt/member')
         });
 
         // Delete PT member - delete permission
-        Route::group(['defaults' => ['permission' => 'deletePTMember']], function () {
-            Route::name('sw.deletePTMember')
-                ->get('{member}/delete', 'Front\GymPTMemberFrontController@destroy');
-        });
+        Route::name('sw.deletePTMember')
+            ->get('{member}/delete', 'Front\GymPTMemberFrontController@destroy');
 
         // PT member calendar - view permission
-        Route::group(['defaults' => ['permission' => 'listPTMemberCalendar']], function () {
-            Route::name('sw.listPTMemberCalendar')
-                ->get('{member}/calendar', 'Front\GymPTMemberFrontController@listPTMemberCalendar');
-            Route::name('sw.listPTMemberInClassCalendar')
-                ->get('/in-class/{pt_class_id}/{pt_trainer_id}/calendar', 'Front\GymPTMemberFrontController@listPTMemberInClassCalendar');
-        });
+        Route::name('sw.listPTMemberCalendar')
+            ->get('{member}/calendar', 'Front\GymPTMemberFrontController@listPTMemberCalendar');
+        Route::name('sw.listPTMemberInClassCalendar')
+            ->get('/in-class/{pt_class_id}/{pt_trainer_id}/calendar', 'Front\GymPTMemberFrontController@listPTMemberInClassCalendar');
 
         // PT member helper endpoints - view permission
-        Route::group(['defaults' => ['permission' => 'getPTTrainerAjax']], function () {
-            Route::name('sw.getPTTrainerAjax')
-                ->get('get-pt-trainers-ajax', 'Front\GymPTMemberFrontController@getPTTrainerAjax');
-            Route::name('sw.getPTMemberAjax')
-                ->get('get-pt-member-ajax', 'Front\GymPTMemberFrontController@getPTMemberAjax');
-        });
+        Route::name('sw.getPTTrainerAjax')
+            ->get('get-pt-trainers-ajax', 'Front\GymPTMemberFrontController@getPTTrainerAjax');
+        Route::name('sw.getPTMemberAjax')
+            ->get('get-pt-member-ajax', 'Front\GymPTMemberFrontController@getPTMemberAjax');
 
         // Pay amount remaining - create permission
         Route::group(['defaults' => ['permission' => 'createPTMemberPayAmountRemainingForm']], function () {
@@ -55,9 +47,7 @@ Route::prefix('pt/member')
         });
 
         // Refresh PT members - helper endpoint
-        Route::group(['defaults' => ['permission' => 'membersPTRefresh']], function () {
-            Route::name('sw.membersPTRefresh')
-                ->get('/members-pt-refresh', 'Front\GymPTMemberFrontController@membersPTRefresh');
-        });
+        Route::name('sw.membersPTRefresh')
+            ->get('/members-pt-refresh', 'Front\GymPTMemberFrontController@membersPTRefresh');
 
     });

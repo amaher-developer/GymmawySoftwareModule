@@ -5,18 +5,14 @@ Route::prefix('activity')
     ->group(function () {
 
         // List activities - view permission
-        Route::group(['defaults' => ['permission' => 'listActivity']], function () {
-            Route::name('sw.listActivity')
-                ->get('/', 'Front\GymActivityFrontController@index');
-        });
+        Route::name('sw.listActivity')
+            ->get('/', 'Front\GymActivityFrontController@index');
 
         // Export activities - view permission
-        Route::group(['defaults' => ['permission' => 'listActivity']], function () {
-            Route::name('sw.exportActivityPDF')
-                ->get('/pdf', 'Front\GymActivityFrontController@exportPDF');
-            Route::name('sw.exportActivityExcel')
-                ->get('/excel', 'Front\GymActivityFrontController@exportExcel');
-        });
+        Route::name('sw.exportActivityPDF')
+            ->get('/pdf', 'Front\GymActivityFrontController@exportPDF');
+        Route::name('sw.exportActivityExcel')
+            ->get('/excel', 'Front\GymActivityFrontController@exportExcel');
 
         // Create activity - create permission
         Route::group(['defaults' => ['permission' => 'createActivity']], function () {
@@ -35,8 +31,6 @@ Route::prefix('activity')
         });
 
         // Delete activity - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteActivity']], function () {
-            Route::name('sw.deleteActivity')
-                ->get('{activity}/delete', 'Front\GymActivityFrontController@destroy');
-        });
+        Route::name('sw.deleteActivity')
+            ->get('{activity}/delete', 'Front\GymActivityFrontController@destroy');
     });

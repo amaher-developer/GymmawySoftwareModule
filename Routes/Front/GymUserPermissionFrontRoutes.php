@@ -6,10 +6,8 @@ Route::prefix('user/permission')
     ->group(function () {
 
         // List user permissions - view permission
-        Route::group(['defaults' => ['permission' => 'listUserPermission']], function () {
-            Route::name('sw.listUserPermission')
-                ->get('/', 'Front\GymUserPermissionFrontController@index');
-        });
+        Route::name('sw.listUserPermission')
+            ->get('/', 'Front\GymUserPermissionFrontController@index');
 
         // Create user permission - create permission
         Route::group(['defaults' => ['permission' => 'createUserPermission']], function () {
@@ -28,9 +26,7 @@ Route::prefix('user/permission')
         });
 
         // Delete user permission - delete permission
-        Route::group(['defaults' => ['permission' => 'deleteUserPermission']], function () {
-            Route::name('sw.deleteUserPermission')
-                ->get('{permission}/delete', 'Front\GymUserPermissionFrontController@destroy');
-        });
+        Route::name('sw.deleteUserPermission')
+            ->get('{permission}/delete', 'Front\GymUserPermissionFrontController@destroy');
 
     });
