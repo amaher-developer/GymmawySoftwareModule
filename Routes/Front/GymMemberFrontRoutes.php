@@ -57,21 +57,21 @@ Route::prefix('member')
         });
 
         // Pay amount remaining - edit permission
-        Route::group(['defaults' => ['permission' => 'editMember']], function () {
+        //Route::group(['defaults' => ['permission' => 'createMemberPayAmountRemainingForm']], function () {
             Route::name('sw.createMemberPayAmountRemainingForm')
                 ->get('/pay-amount-remaining', 'Front\GymMemberFrontController@payAmountRemaining');
-        });
+        //});
 
         // Freeze/unfreeze member - edit permission
-        Route::group(['defaults' => ['permission' => 'editMember']], function () {
+        //Route::group(['defaults' => ['permission' => 'editMember']], function () {
             Route::name('sw.freezeMember')
                 ->get('/freeze-member', 'Front\GymMemberFrontController@freezeMember');
             Route::name('sw.unfreezeMember')
                 ->get('/unfreeze-member', 'Front\GymMemberFrontController@unfreezeMember');
-        });
+        //});
 
         // Generate and download barcodes - view permission
-        Route::group(['defaults' => ['permission' => 'listMember']], function () {
+       // Route::group(['defaults' => ['permission' => 'listMember']], function () {
             Route::name('sw.generateBarcode')
                 ->get('/barcode-generate', 'Front\GymMemberFrontController@generateBarcode');
             Route::name('sw.downloadCode')
@@ -82,7 +82,7 @@ Route::prefix('member')
                 ->get('/download-qr-code', 'Front\GymMemberFrontController@downloadQRCode');
             Route::name('sw.downloadCard')
                 ->get('/download-card', 'Front\GymMemberFrontController@downloadCard');
-        });
+        //});
 
         // Member attendees - view permission (already in default_permissions in middleware)
         Route::group(['defaults' => ['permission' => 'memberAttendees']], function () {
