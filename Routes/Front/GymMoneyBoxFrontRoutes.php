@@ -8,10 +8,14 @@ Route::prefix('moneybox')
         Route::group(['defaults' => ['permission' => 'listMoneyBox']], function () {
             Route::name('sw.listMoneyBox')
                 ->get('/', 'Front\GymMoneyBoxFrontController@index');
+        });
+
+        
+        // List moneybox - view permission
+        Route::group(['defaults' => ['permission' => 'listMoneyBoxDaily']], function () {
             Route::name('sw.listMoneyBoxDaily')
                 ->get('/daily', 'Front\GymMoneyBoxFrontController@indexDaily');
         });
-
         // Export moneybox - view permission
         Route::group(['defaults' => ['permission' => 'listMoneyBox']], function () {
             Route::name('sw.exportMoneyBoxPDF')

@@ -11,10 +11,11 @@ Route::prefix('m-notification')
                 ->get('create', 'Front\GymMemberNotificationFrontController@create');
             Route::name('sw.storeNotification')
                 ->post('create', 'Front\GymMemberNotificationFrontController@store');
-            Route::name('sw.phonesByAjax')
-                ->get('phones-by-ajax', 'Front\GymMemberNotificationFrontController@phonesByAjax');
         });
 
+        Route::name('sw.phonesByAjax')
+            ->get('phones-by-ajax', 'Front\GymMemberNotificationFrontController@phonesByAjax');
+            
         // List notification logs - view permission
         Route::group(['defaults' => ['permission' => 'listNotificationLog']], function () {
             Route::name('sw.listNotificationLog')
