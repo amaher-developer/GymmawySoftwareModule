@@ -78,10 +78,18 @@ Route::prefix('user/log')
         // User attendees report - view permission
         Route::name('sw.reportUserAttendeesList')
             ->get('user-attendees', 'Front\GymUserLogFrontController@reportUserAttendeesList');
+        Route::name('sw.exportUserAttendeesPDF')
+            ->get('/user-attendees-pdf', 'Front\GymUserLogFrontController@exportUserAttendeesPDF');
+        Route::name('sw.exportUserAttendeesExcel')
+            ->get('/user-attendees-excel', 'Front\GymUserLogFrontController@exportUserAttendeesExcel');
 
         // Store report - view permission
         Route::name('sw.reportStoreList')
             ->get('store', 'Front\GymUserLogFrontController@reportStoreList');
+        Route::name('sw.exportStorePDF')
+            ->get('/store-pdf', 'Front\GymUserLogFrontController@exportStorePDF');
+        Route::name('sw.exportStoreExcel')
+            ->get('/store-excel', 'Front\GymUserLogFrontController@exportStoreExcel');
 
         // ZATCA invoices report - view permission
         Route::name('sw.reportZatcaInvoices')
@@ -98,6 +106,10 @@ Route::prefix('user/log')
         // Online payment transaction report - view permission
         Route::name('sw.reportOnlinePaymentTransactionList')
             ->get('online-payment-transaction', 'Front\GymUserLogFrontController@reportOnlinePaymentTransactionList');
+        Route::name('sw.exportOnlinePaymentPDF')
+            ->get('/online-payment-pdf', 'Front\GymUserLogFrontController@exportOnlinePaymentPDF');
+        Route::name('sw.exportOnlinePaymentExcel')
+            ->get('/online-payment-excel', 'Front\GymUserLogFrontController@exportOnlinePaymentExcel');
 
         // User notifications report - view permission
         Route::name('sw.reportUserNotificationsList')

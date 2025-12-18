@@ -93,28 +93,34 @@
                     {{ trans('sw.filter')}}
                 </button>
                 <!--end::Filter-->
-                
+
                 <!--begin::Export-->
-                <div class="m-0">
-                    <button class="btn btn-sm btn-flex btn-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
-                        <i class="ki-outline ki-exit-down fs-6"></i>
-                        {{ trans('sw.download')}}
-                    </button>
-                    <div class="menu menu-sub menu-sub-dropdown w-200px" data-kt-menu="true">
-                        <div class="menu-item px-3">
-                            <a href="{{route('sw.exportFreezeMemberExcel', $search_query)}}" class="menu-link px-3">
-                                <i class="ki-outline ki-file-down fs-6 me-2"></i>
-                                {{ trans('sw.excel_export')}}
-                            </a>
-                        </div>
-                        <div class="menu-item px-3">
-                            <a href="{{route('sw.exportFreezeMemberPDF', $search_query)}}" class="menu-link px-3">
-                                <i class="ki-outline ki-file-down fs-6 me-2"></i>
-                                {{ trans('sw.pdf_export')}}
-                            </a>
+                @if((count(array_intersect(@(array)$swUser->permissions, ['exportFreezeMemberPDF', 'exportFreezeMemberExcel'])) > 0) || $swUser->is_super_user)
+                    <div class="m-0">
+                        <button class="btn btn-sm btn-flex btn-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                            <i class="ki-outline ki-exit-down fs-6"></i>
+                            {{ trans('sw.download')}}
+                        </button>
+                        <div class="menu menu-sub menu-sub-dropdown w-200px" data-kt-menu="true">
+                            @if(in_array('exportFreezeMemberExcel', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <div class="menu-item px-3">
+                                    <a href="{{route('sw.exportFreezeMemberExcel', $search_query)}}" class="menu-link px-3">
+                                        <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                                        {{ trans('sw.excel_export')}}
+                                    </a>
+                                </div>
+                            @endif
+                            @if(in_array('exportFreezeMemberPDF', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <div class="menu-item px-3">
+                                    <a href="{{route('sw.exportFreezeMemberPDF', $search_query)}}" class="menu-link px-3">
+                                        <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                                        {{ trans('sw.pdf_export')}}
+                                    </a>
+                                </div>
+                            @endif
                         </div>
                     </div>
-                </div>
+                @endif
                 <!--end::Export-->
             </div>
         </div>

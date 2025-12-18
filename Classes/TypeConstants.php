@@ -335,6 +335,13 @@ class TypeConstants {
     const EditEmployeeTransaction = 177;
     const DeleteEmployeeTransaction = 178;
 
+    const ExportUserAttendeesExcel = 179;
+    const ExportUserAttendeesPDF = 180;
+    const ExportStoreExcel = 181;
+    const ExportStorePDF = 182;
+    const ExportOnlinePaymentExcel = 183;
+    const ExportOnlinePaymentPDF = 184;
+
 
     const Add = 0;
     const Sub = 1;
