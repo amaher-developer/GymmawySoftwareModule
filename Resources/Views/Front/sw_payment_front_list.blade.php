@@ -539,8 +539,10 @@
                 <div class="row margin-bottom-40">
                     @foreach($packages as $index => $package)
                     <div class="col-md-4 col-sm-6">
-                        <div class="pricing hover-effect @if(($index + 1) == $my_package) pricing-active @endif">
-                            <div class="pricing-head @if(($index + 1) == $my_package) pricing-head-active @endif">
+                        <div class="pricing hover-effect ">
+                            <div class="pricing-head ">
+                        <!-- <div class="pricing hover-effect @if(($index + 1) == $my_package) pricing-active @endif">
+                            <div class="pricing-head @if(($index + 1) == $my_package) pricing-head-active @endif"> -->
                                 <h3>{{$package['name_'.$lang]}}</h3>
                                 <h4>
                                     {{$package['price']}}
@@ -581,8 +583,7 @@
                                     @foreach($features as $feature)
                                         @php
                                             // Feature is enabled if package tier is >= feature tier
-                                            //$featureEnabled = $packageTier >= $feature['tier'];
-                                            $featureEnabled = 0;
+                                            $featureEnabled = $packageTier >= $feature['tier'];
                                         @endphp
                                         <li class="{{ $featureEnabled ? '' : 'feature-disabled' }}">
                                             <i class="fa {{ $feature['icon'] }}"></i>
