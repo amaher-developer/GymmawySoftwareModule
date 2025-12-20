@@ -581,7 +581,8 @@
                                     @foreach($features as $feature)
                                         @php
                                             // Feature is enabled if package tier is >= feature tier
-                                            $featureEnabled = $packageTier >= $feature['tier'];
+                                            //$featureEnabled = $packageTier >= $feature['tier'];
+                                            $featureEnabled = 0;
                                         @endphp
                                         <li class="{{ $featureEnabled ? '' : 'feature-disabled' }}">
                                             <i class="fa {{ $feature['icon'] }}"></i>
