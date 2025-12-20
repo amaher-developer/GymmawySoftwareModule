@@ -557,7 +557,7 @@
                                 <ul>
                                     @php
                                         // Package tier for this card (1-based index)
-                                        $packageTier = $index + 1;
+                                        $packageTier = $my_package;
 
                                         // Define features for each package based on actual system capabilities
                                         $features = [
