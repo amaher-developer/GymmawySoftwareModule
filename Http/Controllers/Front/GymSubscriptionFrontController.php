@@ -225,6 +225,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         }
 
 
+        $subscription_inputs['workouts'] = @(int)$request->workouts;
         $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $subscription =  $this->GymSubscriptionRepository->create($subscription_inputs);
@@ -289,6 +290,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         if(!$week_day){
             $subscription_inputs['time_week'] = null;
         }
+        $subscription_inputs['workouts'] = @(int)$request->workouts;
         $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
 
