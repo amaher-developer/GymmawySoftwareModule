@@ -10,11 +10,13 @@ Route::prefix('setting')
             ->get('', 'Front\GymSettingFrontController@edit');
         Route::name('sw.editSetting')
             ->post('', 'Front\GymSettingFrontController@update');
-        Route::name('sw.editSettingUploadImage')
-            ->post('/ajax_upload/upload', 'Front\GymSettingFrontController@updateImage');
-        Route::name('sw.editSettingDeleteUploadImage')
-            ->post('/ajax_upload/delete', 'Front\GymSettingFrontController@updateImageDelete');
-    });
+        });
+        
+    Route::name('sw.editSettingUploadImage')
+        ->post('/ajax_upload/upload', 'Front\GymSettingFrontController@updateImage');
+    Route::name('sw.editSettingDeleteUploadImage')
+        ->post('/ajax_upload/delete', 'Front\GymSettingFrontController@updateImageDelete');
+    
 
     // List payment types - view permission
     Route::name('sw.listPaymentType')
