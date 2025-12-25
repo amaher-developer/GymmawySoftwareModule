@@ -3,9 +3,8 @@
 namespace Modules\Software\Http\Controllers\Front;
 
 use Modules\Generic\Classes\Constants;
-use App\Modules\Notification\Http\Controllers\Admin\OneSignalController;
-use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
-use App\Modules\Notification\Models\PushNotification;
+use Modules\Generic\Http\Controllers\Api\OneSignalController;
+use Modules\Generic\Http\Controllers\Api\FirebaseApiController;
 use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymMember;
