@@ -26,6 +26,16 @@ class GymSMSRequest extends FormRequest
         return [
             'phones' => 'required',
             'message'=> 'required',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:5120',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'image.image' => trans('validation.image'),
+            'image.mimes' => trans('validation.mimes', ['values' => 'JPEG, JPG, PNG, GIF, WEBP']),
+            'image.max' => trans('validation.max.file', ['max' => '5MB']),
         ];
     }
 }
