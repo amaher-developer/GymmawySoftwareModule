@@ -2,7 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
-use App\Modules\Access\Models\User;
+use Modules\Access\Models\User;
 use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
