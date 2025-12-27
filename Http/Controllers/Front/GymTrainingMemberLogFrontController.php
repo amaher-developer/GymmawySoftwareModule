@@ -50,6 +50,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
             $search = $request->q;
             $query->where(function($q) use ($search) {
                 $q->where('sw_gym_members.name', 'like', "%{$search}%")
+                  ->orWhere('sw_gym_members.code', 'like', "%{$search}%")
                   ->orWhere('sw_gym_members.phone', 'like', "%{$search}%")
                   ->orWhere('sw_gym_members.email', 'like', "%{$search}%");
             });
