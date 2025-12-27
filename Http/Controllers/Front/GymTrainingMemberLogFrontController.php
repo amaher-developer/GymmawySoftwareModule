@@ -41,26 +41,59 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     public function index(Request $request)
     {
         $title = trans('sw.training_member_logs');
-        
+
         // Get all members for selection
-        $query = GymMember::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
+        $query = GymMember::where('sw_gym_members.branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
 
         // Search filter
         if ($request->has('q') && $request->q) {
             $search = $request->q;
             $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                $q->where('sw_gym_members.name', 'like', "%{$search}%")
+                  ->orWhere('sw_gym_members.phone', 'like', "%{$search}%")
+                  ->orWhere('sw_gym_members.email', 'like', "%{$search}%");
             });
         }
 
         // Gender filter (if column exists)
         if ($request->has('gender') && $request->gender && \Schema::hasColumn('sw_gym_members', 'gender')) {
-            $query->where('gender', $request->gender);
+            $query->where('sw_gym_members.gender', $request->gender);
         }
 
-        $members = $query->orderBy('name', 'asc')->paginate(20)->appends($request->except('page'));
+        // Date filters for joining_date and expire_date from member subscriptions
+        $hasDateFilter = $request->has('join_date_from') || $request->has('join_date_to') ||
+                        $request->has('expire_date_from') || $request->has('expire_date_to');
+
+        if ($hasDateFilter) {
+            // Join with member subscriptions table
+            $query->leftJoin('sw_gym_member_subscription', 'sw_gym_members.id', '=', 'sw_gym_member_subscription.member_id');
+
+            // Filter by joining date range
+            if ($request->has('join_date_from') && $request->join_date_from) {
+                $query->where('sw_gym_member_subscription.joining_date', '>=', $request->join_date_from);
+            }
+
+            if ($request->has('join_date_to') && $request->join_date_to) {
+                $query->where('sw_gym_member_subscription.joining_date', '<=', $request->join_date_to);
+            }
+
+            // Filter by expire date range
+            if ($request->has('expire_date_from') && $request->expire_date_from) {
+                $query->where('sw_gym_member_subscription.expire_date', '>=', $request->expire_date_from);
+            }
+
+            if ($request->has('expire_date_to') && $request->expire_date_to) {
+                $query->where('sw_gym_member_subscription.expire_date', '<=', $request->expire_date_to);
+            }
+
+            // Select only member columns to avoid conflicts
+            $query->select('sw_gym_members.*');
+
+            // Group by member id to avoid duplicates
+            $query->groupBy('sw_gym_members.id');
+        }
+
+        $members = $query->orderBy('sw_gym_members.id', 'desc')->paginate(20)->appends($request->except('page'));
         $total = GymMember::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->count();
 
         return view('software::Front.training_member_log_list', compact('title', 'members', 'total'));
