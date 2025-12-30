@@ -49,4 +49,6 @@ Route::prefix('user')
             ->get('/attendees', 'Front\GymUserFrontController@userAttendees');
         Route::name('sw.userAttendeesStore')
             ->get('/attendees-store', 'Front\GymUserFrontController@userAttendeesStore');
+        Route::name('sw.attendanceGeofenceCheck')
+            ->post('/attendance-geofence-check', 'Front\GymUserFrontController@attendanceGeofenceCheck');
     });

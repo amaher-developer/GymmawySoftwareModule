@@ -147,7 +147,7 @@ class SwPermission
             , 'exportTodayPTMemberExcel', 'exportTodayPTMemberPDF', 'exportTodayMemberExcel', 'exportTodayMemberPDF'
             , 'exportTodayNonMemberExcel', 'exportTodayNonMemberPDF', 'exportExpireMemberExcel', 'exportExpireMemberPDF'
             , 'exportSubscriptionMemberExcel', 'exportSubscriptionMemberPDF', 'exportPTSubscriptionMemberExcel', 'exportPTSubscriptionMemberPDF'
-            , 'reportUserNotificationsList'
+            , 'reportUserNotificationsList', 'attendanceGeofenceCheck'
             // Reservation Permissions
            // , 'listReservation', 'createReservation', 'editReservation', 'deleteReservation'
             //, 'changeReservationStatus', 'confirmReservation', 'cancelReservation', 'attendReservation', 'markMissedReservation'
