@@ -148,8 +148,7 @@
                                 <label class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow" data-kt-image-input-action="change" data-bs-toggle="tooltip" title="Change image">
                                     <i class="ki-outline ki-pencil fs-7"></i>
                                     <!--begin::Inputs-->
-                                    <input type="file" name="image" accept=".png, .jpg, .jpeg" />
-                                    <input type="hidden" name="avatar_remove" />
+                                    <input type="file" name="image" accept=".png, .jpg, .jpeg" id="notification_image" />
                                     <!--end::Inputs-->
                                 </label>
                                 <!--end::Label-->
@@ -295,7 +294,17 @@
             });
 
             // Initialize KTImageInput
-             KTImageInput.init();
+            KTImageInput.init();
+
+            // Debug: Check if file is selected before form submit
+            $('form').on('submit', function() {
+                var fileInput = $('#notification_image')[0];
+                if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                    console.log('Image file selected:', fileInput.files[0].name);
+                } else {
+                    console.log('No image file selected');
+                }
+            });
         });
     </script>
 @endsection
