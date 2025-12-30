@@ -39,10 +39,12 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
 
                 // Validate row data
                 $row['phone'] = (string)$row['phone'];
-                $row['joining_date'] = ExcelDate::excelToDateTimeObject($row['joining_date'])
-                ->format('Y-m-d');
-                $row['expire_date'] = ExcelDate::excelToDateTimeObject($row['expire_date'])
-                ->format('Y-m-d');
+                $row['joining_date'] = $this->parseExcelDate($row['joining_date'] ?? null);
+                $row['expire_date'] = $this->parseExcelDate($row['expire_date'] ?? null);
+                if (isset($row['dob'])) {
+                    $row['dob'] = $this->parseExcelDate($row['dob']);
+                }
+                $row['image'] = $row['image'].'.jpg';
                 $validator = $this->validateRow($row, $rowNumber);
 
                 if ($validator->fails()) {
@@ -118,8 +120,8 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
             'phone' => 'required|string|max:20',
             'gender' => 'nullable|in:male,female',
             'dob' => 'nullable|date_format:Y-m-d',
-            'fp_id' => 'nullable|string|max:50',
-            'fp_uid' => 'nullable|string|max:50',
+            'fp_id' => 'nullable|numeric',
+            'fp_uid' => 'nullable|numeric',
             'subscription_code' => 'required',
             'joining_date' => 'required|date_format:Y-m-d',
             'expire_date' => 'required|date_format:Y-m-d|after:joining_date',
@@ -177,6 +179,7 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
         // Create new member
         $memberData = [
             'code' => $memberCode,
+            'image' => $row['image'] ?? null,
             'name' => $row['name'],
             'phone' => $row['phone'],
             'email' => $row['email'] ?? null,
@@ -250,6 +253,37 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
         ];
 
         return GymMemberSubscription::create($subscriptionData);
+    }
+
+    /**
+     * Parse Excel date value (handles both numeric and string formats)
+     */
+    protected function parseExcelDate($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        // If it's already a valid date string, return it
+        if (is_string($value)) {
+            try {
+                $date = Carbon::parse($value);
+                return $date->format('Y-m-d');
+            } catch (\Exception $e) {
+                // If parsing as string fails, try as Excel serial number
+            }
+        }
+
+        // If it's a numeric value (Excel serial date)
+        if (is_numeric($value)) {
+            try {
+                return ExcelDate::excelToDateTimeObject($value)->format('Y-m-d');
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     /**

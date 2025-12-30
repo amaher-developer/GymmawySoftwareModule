@@ -77,4 +77,12 @@ Route::prefix('moneybox')
                 ->get('edit-payment-type-order-moneybox', 'Front\GymMoneyBoxFrontController@editPaymentTypeOrder');
         });
 
+        // Delete moneybox entry - super admin only
+        Route::name('sw.deleteMoneyBox')
+            ->post('delete', 'Front\GymMoneyBoxFrontController@deleteMoneyBox');
+
+        // Restore moneybox entry - super admin only
+        Route::name('sw.restoreMoneyBox')
+            ->post('restore', 'Front\GymMoneyBoxFrontController@restoreMoneyBox');
+
     });

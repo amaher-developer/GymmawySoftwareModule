@@ -154,6 +154,24 @@
                         {{ trans('sw.members_refresh')}}
                     </button>
                     <!--end::Refresh-->
+
+                    <!--begin::Trashed-->
+                    <!--
+                    @if($swUser->is_super_user)
+                        @if(request('trashed'))
+                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->except('trashed'), [])) }}" class="btn btn-sm btn-flex btn-light-danger">
+                                <i class="ki-outline ki-eye fs-6"></i>
+                                {{ trans('sw.show_active')}}
+                            </a>
+                        @else
+                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->query(), ['trashed' => 1])) }}" class="btn btn-sm btn-flex btn-light-warning">
+                                <i class="ki-outline ki-trash fs-6"></i>
+                                {{ trans('sw.show_trashed')}}
+                            </a>
+                        @endif
+                    @endif
+                    -->
+                    <!--end::Trashed-->
                 </div>
             </div>
         </div>
@@ -339,6 +357,22 @@
                                                     <i class="ki-outline ki-pencil fs-2"></i>
                                                 </a>
                                             @endif
+                                            <!--
+                                            @if($swUser->is_super_user && !request('trashed'))
+                                                <a href="#" data-id="{{@$order->id}}"
+                                                   class="btn btn-icon btn-bg-light btn-active-color-danger btn-sm delete-moneybox-btn"
+                                                   title="{{ trans('sw.delete')}}">
+                                                    <i class="ki-outline ki-trash fs-2"></i>
+                                                </a>
+                                            @endif
+                                            @if($swUser->is_super_user && request('trashed'))
+                                                <a href="#" data-id="{{@$order->id}}"
+                                                   class="btn btn-icon btn-bg-light btn-active-color-success btn-sm restore-moneybox-btn"
+                                                   title="{{ trans('sw.restore')}}">
+                                                    <i class="ki-outline ki-arrows-circle fs-2"></i>
+                                                </a>
+                                            @endif
+                                            -->
                                         </div>
                                     </td>
                                 </tr>
@@ -669,6 +703,157 @@
                 }
             });
         }
+
+        // Delete moneybox entry with rebuild
+        $(document).on('click', '.delete-moneybox-btn', function (event) {
+            event.preventDefault();
+            var that = $(this);
+            var id = that.data('id');
+            var tableRow = that.closest('tr'); // Store row reference
+
+            // Validate that we have the required ID
+            if (!id) {
+                swal("{{ trans('admin.operation_failed')}}", "{{ trans('admin.missing_data')}}", "error");
+                console.error('Missing moneybox ID');
+                return;
+            }
+
+            // Show confirmation dialog
+            swal({
+                title: "{{ trans('admin.are_you_sure')}}",
+                text: "{{ trans('sw.delete_moneybox_warning')}}",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "{{ trans('admin.yes_delete')}}",
+                cancelButtonText: "{{ trans('admin.cancel')}}",
+                showLoaderOnConfirm: true,
+                preConfirm: function () {
+                    return new Promise(function (resolve, reject) {
+                        // Perform the delete operation with CSRF token
+                        $.ajax({
+                            url: '{{route('sw.deleteMoneyBox')}}',
+                            cache: false,
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                id: id,
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function (response) {
+                                if (response.success) {
+                                    resolve(response);
+                                } else {
+                                    reject(response.message || "{{ trans('admin.something_went_wrong')}}");
+                                }
+                            },
+                            error: function (request, error) {
+                                reject("{{ trans('admin.something_went_wrong')}}");
+                                console.error("Request: " + JSON.stringify(request));
+                                console.error("Error: " + JSON.stringify(error));
+                            }
+                        });
+                    });
+                },
+                allowOutsideClick: false
+            }).then(function (result) {
+                if (result.value) {
+                    // Close SweetAlert immediately
+                    swal.close();
+
+                    // Remove the table row immediately after closing the dialog
+                    setTimeout(function() {
+                        tableRow.fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    }, 100);
+
+                    // Reload the page to show updated calculations
+                    setTimeout(function() {
+                        location.reload();
+                    }, 800);
+                }
+            }).catch(function (error) {
+                if (error) {
+                    swal("{{ trans('admin.operation_failed')}}", error, "error");
+                }
+            });
+        });
+
+        // Restore moneybox entry with rebuild
+        $(document).on('click', '.restore-moneybox-btn', function (event) {
+            event.preventDefault();
+            var that = $(this);
+            var id = that.data('id');
+
+            // Validate that we have the required ID
+            if (!id) {
+                swal("{{ trans('admin.operation_failed')}}", "{{ trans('admin.missing_data')}}", "error");
+                console.error('Missing moneybox ID');
+                return;
+            }
+
+            // Show confirmation dialog
+            swal({
+                title: "{{ trans('admin.are_you_sure')}}",
+                text: "{{ trans('sw.restore_moneybox_warning')}}",
+                type: "info",
+                showCancelButton: true,
+                confirmButtonColor: "#0fa751",
+                confirmButtonText: "{{ trans('admin.yes_restore')}}",
+                cancelButtonText: "{{ trans('admin.cancel')}}",
+                showLoaderOnConfirm: true,
+                preConfirm: function () {
+                    return new Promise(function (resolve, reject) {
+                        // Perform the restore operation with CSRF token
+                        $.ajax({
+                            url: '{{route('sw.restoreMoneyBox')}}',
+                            cache: false,
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                id: id,
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function (response) {
+                                if (response.success) {
+                                    resolve(response);
+                                } else {
+                                    reject(response.message || "{{ trans('admin.something_went_wrong')}}");
+                                }
+                            },
+                            error: function (request, error) {
+                                reject("{{ trans('admin.something_went_wrong')}}");
+                                console.error("Request: " + JSON.stringify(request));
+                                console.error("Error: " + JSON.stringify(error));
+                            }
+                        });
+                    });
+                },
+                allowOutsideClick: false
+            }).then(function (result) {
+                if (result.value) {
+                    // Close SweetAlert immediately
+                    swal.close();
+
+                    // Remove the table row immediately after closing the dialog
+                    setTimeout(function() {
+                        that.closest('tr').fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    }, 100);
+
+                    // Reload the page to show updated calculations
+                    setTimeout(function() {
+                        location.reload();
+                    }, 800);
+                }
+            }).catch(function (error) {
+                if (error) {
+                    swal("{{ trans('admin.operation_failed')}}", error, "error");
+                }
+            });
+        });
 
     </script>
 

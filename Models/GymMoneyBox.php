@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GymMoneyBox extends GenericModel
 {
+    use SoftDeletes;
 
     protected $dates = [];
 

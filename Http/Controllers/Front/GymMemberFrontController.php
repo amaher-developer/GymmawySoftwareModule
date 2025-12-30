@@ -1763,21 +1763,64 @@ class GymMemberFrontController extends GymGenericFrontController
         $end_date = request('end_date');
         $reason = request('reason');
         $admin_note = request('admin_note');
-        
+
         $this->updateSubscriptionsStatus([$id]);
         $memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('status', TypeConstants::Active)->where('member_id', $id)->orderBy('id', 'desc')->first();
         if ($memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active)) {
+
+            // Calculate requested freeze days
+            $freeze_start_date = $start_date ? Carbon::parse($start_date) : Carbon::now();
+            $freeze_end_date = $end_date ? Carbon::parse($end_date) : Carbon::now()->addDays($memberInfo->freeze_limit);
+            $freeze_days = $freeze_start_date->diffInDays($freeze_end_date);
+
+            // Validation 1: Check if requested days exceed freeze_limit (max per freeze)
+            if ($freeze_days > $memberInfo->freeze_limit) {
+                session()->flash('sweet_flash_message', [
+                    'title' => trans('admin.operation_failed'),
+                    'message' => trans('sw.freeze_days_exceeded', [
+                        'requested_days' => $freeze_days,
+                        'freeze_limit' => $memberInfo->freeze_limit
+                    ]),
+                    'type' => 'error'
+                ]);
+                return redirect()->back();
+            }
+
+            // Validation 2: Check total freeze balance (if max_freeze_extension_sum is set)
+            if ($memberInfo->max_freeze_extension_sum > 0) {
+                // Calculate total used freeze days from history
+                $usedFreezeDays = GymMemberSubscriptionFreeze::where('member_subscription_id', $memberInfo->id)
+                    ->whereIn('status', ['completed', 'active', 'approved'])
+                    ->get()
+                    ->sum(function($freeze) {
+                        $start = Carbon::parse($freeze->start_date);
+                        $end = Carbon::parse($freeze->end_date);
+                        return $start->diffInDays($end);
+                    });
+
+                $remainingDays = $memberInfo->max_freeze_extension_sum - $usedFreezeDays;
+
+                if ($freeze_days > $remainingDays) {
+                    session()->flash('sweet_flash_message', [
+                        'title' => trans('admin.operation_failed'),
+                        'message' => trans('sw.freeze_total_exceeded', [
+                            'used_days' => $usedFreezeDays,
+                            'remaining_days' => $remainingDays,
+                            'requested_days' => $freeze_days,
+                            'max_days' => $memberInfo->max_freeze_extension_sum
+                        ]),
+                        'type' => 'error'
+                    ]);
+                    return redirect()->back();
+                }
+            }
+
             // zk delete user from machine
             if ((@env('APP_ZK_FINGERPRINT') == false) && (@env('APP_ZK_GATE') == true) && @$memberInfo->member->fp_id && (!in_array($memberInfo->status, [TypeConstants::Freeze]))) {
                 $memberInfo->member->fp_check = TypeConstants::ZK_EXPIRE_MEMBER;
                 $memberInfo->member->fp_check_count = 0;
                 $memberInfo->member->save();
             }
-
-            // Use provided dates or calculate default
-            $freeze_start_date = $start_date ? Carbon::parse($start_date) : Carbon::now();
-            $freeze_end_date = $end_date ? Carbon::parse($end_date) : Carbon::now()->addDays($memberInfo->freeze_limit);
-            $freeze_days = $freeze_start_date->diffInDays($freeze_end_date);
 
             $memberInfo->status = TypeConstants::Freeze;
             $memberInfo->number_times_freeze = ($memberInfo->number_times_freeze - 1);
@@ -1813,9 +1856,16 @@ class GymMemberFrontController extends GymGenericFrontController
         ]);
             return redirect()->back();
         }
+
+        // If we reach here, member doesn't meet freeze requirements
+        $errorMessage = trans('admin.operation_failed');
+        if ($memberInfo && $memberInfo->number_times_freeze <= 0) {
+            $errorMessage = trans('sw.no_freeze_attempts_remaining');
+        }
+
         session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
-            'message' => trans('admin.operation_failed'),
+            'title' => trans('admin.operation_failed'),
+            'message' => $errorMessage,
             'type' => 'error'
         ]);
         return redirect()->back();
@@ -1836,7 +1886,8 @@ class GymMemberFrontController extends GymGenericFrontController
             // cal. the days reminder and sub from expire_date
             $end_freeze_date = Carbon::parse($membership->end_freeze_date);
             if($end_freeze_date > Carbon::now()){
-                $daysDifference = $end_freeze_date->diffInDays(Carbon::now());
+                // Calculate unused freeze days (days remaining from now until end_freeze_date)
+                $daysDifference = Carbon::now()->diffInDays($end_freeze_date);
                 $membership->expire_date = Carbon::parse($membership->expire_date)->subDays($daysDifference);
             }
             $membership->end_freeze_date = Carbon::now();

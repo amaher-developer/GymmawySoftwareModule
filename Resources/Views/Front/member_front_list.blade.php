@@ -747,6 +747,21 @@
 
                                     @if(in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user)
                                         @if((@($member->member_subscription_info->number_times_freeze) > 0) && (@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Active))
+                                        @php
+                                            // Calculate used freeze days from history
+                                            $usedFreezeDays = 0;
+                                            if (@$member->member_subscription_info->max_freeze_extension_sum > 0) {
+                                                $usedFreezeDays = \Modules\Software\Models\GymMemberSubscriptionFreeze::where('member_subscription_id', $member->member_subscription_info->id)
+                                                    ->whereIn('status', ['completed', 'active', 'approved'])
+                                                    ->get()
+                                                    ->sum(function($freeze) {
+                                                        return \Carbon\Carbon::parse($freeze->start_date)->diffInDays(\Carbon\Carbon::parse($freeze->end_date));
+                                                    });
+                                            }
+                                            $remainingTotalDays = (@$member->member_subscription_info->max_freeze_extension_sum > 0)
+                                                ? ($member->member_subscription_info->max_freeze_extension_sum - $usedFreezeDays)
+                                                : $member->member_subscription_info->freeze_limit;
+                                        @endphp
                                         <div class="menu-item px-3">
                                             <a href="javascript:void(0)"
                                                class="menu-link px-3 open_freeze_modal"
@@ -754,6 +769,9 @@
                                                data-member_name="{{$member->name}}"
                                                data-subscription_name="{{@$member->member_subscription_info->subscription->name}}"
                                                data-freeze_limit="{{@$member->member_subscription_info->freeze_limit}}"
+                                               data-max_total="{{@$member->member_subscription_info->max_freeze_extension_sum}}"
+                                               data-used_days="{{$usedFreezeDays}}"
+                                               data-remaining_days="{{$remainingTotalDays}}"
                                                data-times_left="{{@$member->member_subscription_info->number_times_freeze}}"
                                                title="{{ trans('sw.freeze_account')}}">
                                                 <i class="ki-outline ki-cross-circle text-info"></i>
@@ -1645,19 +1663,32 @@
             const memberName = $(this).data('member_name');
             const subscriptionName = $(this).data('subscription_name');
             const freezeLimit = parseInt($(this).data('freeze_limit')) || 0;
+            const maxTotal = parseInt($(this).data('max_total')) || 0;
+            const usedDays = parseInt($(this).data('used_days')) || 0;
+            const remainingDays = parseInt($(this).data('remaining_days')) || 0;
             const timesLeft = parseInt($(this).data('times_left')) || 0;
 
             $('#freeze_member_name_form').text(memberName || '-');
             $('#freeze_subscription_name_form').text(subscriptionName || '-');
             $('#freeze_member_id').val(memberId);
-            $('#freeze_limit_badge').text('{{ trans('sw.freeze_limit')}}: ' + freezeLimit);
+
+            // Show remaining total days if max_freeze_extension_sum is set, otherwise show freeze_limit
+            if (maxTotal > 0) {
+                // Shorter message format
+                $('#freeze_limit_badge').text('{{ trans('sw.max_per_freeze')}}: ' + freezeLimit + ' | {{ trans('sw.balance')}}: ' + remainingDays + '/' + maxTotal);
+            } else {
+                $('#freeze_limit_badge').text('{{ trans('sw.freeze_limit')}}: ' + freezeLimit);
+            }
             $('#freeze_times_left_badge').text('{{ trans('sw.number_times_freeze')}}: ' + timesLeft);
 
             const today = new Date();
             const pad = n => (n<10 ? '0'+n : ''+n);
             const toYmd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
             const start = toYmd(today);
-            const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (freezeLimit > 0 ? freezeLimit : 1));
+
+            // Use the SMALLER of: freezeLimit or remainingDays (to respect both limits)
+            const maxDaysAllowed = (maxTotal > 0) ? Math.min(freezeLimit, remainingDays) : freezeLimit;
+            const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (maxDaysAllowed > 0 ? maxDaysAllowed : 1));
             const end = toYmd(endDate);
             $('#freeze_start_date_input').val(start).attr('min', start);
             $('#freeze_end_date_input').val(end).attr('min', start);
@@ -1698,7 +1729,15 @@
             const end = $('#freeze_end_date_input').val();
             const reason = $('#freeze_reason').val();
             const adminNote = $('#freeze_admin_note').val();
-            const freezeLimit = ($('#freeze_limit_badge').text().match(/(\d+)/) || [0,0])[1] | 0;
+
+            // Extract freeze_limit and remaining_days from badge
+            const badgeText = $('#freeze_limit_badge').text();
+            const freezeLimit = (badgeText.match(/(\d+)/) || [0,0])[1] | 0;
+            // Extract remaining days (format: "Balance: 57/60" or "الرصيد: 57/60")
+            const remainingMatch = badgeText.match(/(\d+)\/(\d+)/);
+            const remainingDays = remainingMatch ? parseInt(remainingMatch[1]) : freezeLimit;
+            const maxTotal = remainingMatch ? parseInt(remainingMatch[2]) : 0;
+
             const timesLeft = ($('#freeze_times_left_badge').text().match(/(\d+)/) || [0,0])[1] | 0;
 
             const days = Math.max(0, Math.ceil((new Date(end) - new Date(start)) / (1000*60*60*24)));
@@ -1712,9 +1751,25 @@
                 $alert.html('<div class="alert alert-danger">{{ trans('sw.number_times_freeze_reminder')}}: 0</div>').show();
                 return false;
             }
-            if(freezeLimit > 0 && days > freezeLimit){
-                $alert.html('<div class="alert alert-warning">{{ trans('sw.freeze_limit')}}: '+freezeLimit+'</div>').show();
-                return false;
+
+            // Smart validation: Check remaining balance first if it's MORE restrictive than freeze_limit
+            if(maxTotal > 0){
+                // When max_freeze_extension_sum is set, check remaining balance first
+                if(days > remainingDays){
+                    $alert.html('<div class="alert alert-danger">{{ trans('sw.insufficient_balance')}}! {{ trans('sw.remaining_days')}}: '+remainingDays+'/'+maxTotal+' {{ trans('sw.days')}}</div>').show();
+                    return false;
+                }
+                // Also check freeze_limit, but only if request exceeds it AND it's more restrictive than remaining
+                if(freezeLimit > 0 && days > freezeLimit && freezeLimit < remainingDays){
+                    $alert.html('<div class="alert alert-warning">{{ trans('sw.max_per_freeze')}}: '+freezeLimit+' {{ trans('sw.days')}}</div>').show();
+                    return false;
+                }
+            } else {
+                // When max_freeze_extension_sum is NOT set, only check freeze_limit
+                if(freezeLimit > 0 && days > freezeLimit){
+                    $alert.html('<div class="alert alert-warning">{{ trans('sw.max_per_freeze')}}: '+freezeLimit+' {{ trans('sw.days')}}</div>').show();
+                    return false;
+                }
             }
 
             var route = "{{route('sw.freezeMember', ['id' => 'member_id'])}}";

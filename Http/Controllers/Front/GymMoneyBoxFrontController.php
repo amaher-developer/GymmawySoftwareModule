@@ -21,6 +21,7 @@ use Mpdf\Mpdf;
 use Carbon\Carbon;
 use Illuminate\Container\Container as Application;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Excel;
 
 
@@ -53,6 +54,10 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $orders = GymMoneyBox::branch()->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC')->orderBy('id', 'DESC');
 
+        // Show only trashed records if requested
+        if(request('trashed')) {
+            $orders = $orders->onlyTrashed();
+        }
 
         //apply filters
         $orders->when(($from), function ($query) use ($from) {
@@ -591,6 +596,212 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         return trans('admin.operation_failed');
     }
 
+
+    public function deleteMoneyBox(){
+        try {
+            $id = request('id');
+
+            // Validate required parameter
+            if (empty($id)) {
+                Log::error('DeleteMoneyBox: ID is empty');
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - No ID provided'
+                ]);
+            }
+
+            // Convert to integer
+            $id = (int)$id;
+            Log::info('DeleteMoneyBox: Attempting to delete ID: ' . $id);
+
+            // Get authenticated user and branch_setting_id
+            $user = Auth::guard('sw')->user();
+            if (!$user) {
+                Log::error('DeleteMoneyBox: No authenticated user');
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - Not authenticated'
+                ]);
+            }
+
+            // Check if user is super admin
+            if (!$user->is_super_user) {
+                Log::error('DeleteMoneyBox: User is not super admin. User ID: ' . $user->id);
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - Not authorized'
+                ]);
+            }
+
+            // Find the moneybox record using branch scope
+            $moneyBox = GymMoneyBox::branch()
+                ->where('id', $id)
+                ->first();
+
+            if(!$moneyBox){
+                Log::error('DeleteMoneyBox: Record not found. ID: ' . $id . ', Branch ID: ' . $user->branch_setting_id);
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - Record not found'
+                ]);
+            }
+
+            // Get the amount_before of the deleted record to use for rebuilding
+            $amount_before = $moneyBox->amount_before;
+
+            // Delete the record
+            $moneyBox->delete();
+            Log::info('DeleteMoneyBox: Record deleted successfully. ID: ' . $id);
+
+            // Log the deletion
+            $notes = trans('sw.delete_moneybox_entry', ['id' => $id]);
+            $this->userLog($notes, TypeConstants::DeleteMoneyBox);
+
+            // Rebuild all subsequent records starting from the next ID
+            $this->rebuildMoneyboxFromId($id, $amount_before);
+            Log::info('DeleteMoneyBox: Rebuild completed for ID: ' . $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => trans('admin.successfully_deleted')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('DeleteMoneyBox Exception: ' . $e->getMessage());
+            Log::error('DeleteMoneyBox Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => trans('admin.operation_failed') . ' - ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function restoreMoneyBox(){
+        try {
+            $id = request('id');
+
+            // Validate required parameter
+            if (empty($id)) {
+                Log::error('RestoreMoneyBox: ID is empty');
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - No ID provided'
+                ]);
+            }
+
+            // Convert to integer
+            $id = (int)$id;
+            Log::info('RestoreMoneyBox: Attempting to restore ID: ' . $id);
+
+            // Get authenticated user
+            $user = Auth::guard('sw')->user();
+            if (!$user) {
+                Log::error('RestoreMoneyBox: No authenticated user');
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - Not authenticated'
+                ]);
+            }
+
+            // Check if user is super admin
+            if (!$user->is_super_user) {
+                Log::error('RestoreMoneyBox: User is not super admin. User ID: ' . $user->id);
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - Not authorized'
+                ]);
+            }
+
+            // Find the trashed moneybox record using branch scope
+            $moneyBox = GymMoneyBox::branch()
+                ->onlyTrashed()
+                ->where('id', $id)
+                ->first();
+
+            if(!$moneyBox){
+                Log::error('RestoreMoneyBox: Trashed record not found. ID: ' . $id);
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('admin.operation_failed') . ' - Record not found'
+                ]);
+            }
+
+            // Get the previous record to determine the correct amount_before
+            $previousRecord = GymMoneyBox::branch()
+                ->where('id', '<', $id)
+                ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            // Calculate the correct amount_before for the restored record
+            if ($previousRecord) {
+                $moneyBox->amount_before = self::amountAfter(
+                    $previousRecord->amount,
+                    $previousRecord->amount_before,
+                    $previousRecord->operation
+                );
+            } else {
+                // This is the first record, amount_before should be 0
+                $moneyBox->amount_before = 0;
+            }
+
+            // Restore the record
+            $moneyBox->restore();
+            Log::info('RestoreMoneyBox: Record restored successfully. ID: ' . $id);
+
+            // Log the restoration
+            $notes = trans('sw.restore_moneybox_entry', ['id' => $id]);
+            $this->userLog($notes, TypeConstants::RestoreMoneyBox);
+
+            // Rebuild all subsequent records starting from this ID
+            $amountAfterRestored = self::amountAfter(
+                $moneyBox->amount,
+                $moneyBox->amount_before,
+                $moneyBox->operation
+            );
+            $this->rebuildMoneyboxFromId($id, $amountAfterRestored);
+            Log::info('RestoreMoneyBox: Rebuild completed for ID: ' . $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => trans('admin.successfully_restored')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('RestoreMoneyBox Exception: ' . $e->getMessage());
+            Log::error('RestoreMoneyBox Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => trans('admin.operation_failed') . ' - ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Rebuild moneybox calculations starting from a specific ID
+     * This recalculates amount_before for all records after deletion
+     */
+    private function rebuildMoneyboxFromId($startId, $previousAmountAfter){
+        // Get all records after the deleted one, ordered by created_at and id
+        $gymMoneyBoxRecords = GymMoneyBox::branch()
+            ->where('id', '>', $startId)
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $currentAmountBefore = $previousAmountAfter;
+
+        foreach($gymMoneyBoxRecords as $moneyBox){
+            // Update the amount_before with the previous record's amount_after
+            $moneyBox->amount_before = $currentAmountBefore;
+            $moneyBox->save();
+
+            // Calculate the amount_after for this record to use as amount_before for the next
+            $currentAmountBefore = self::amountAfter(
+                round($moneyBox->amount, 2),
+                round($moneyBox->amount_before, 2),
+                $moneyBox->operation
+            );
+        }
+    }
 
     public function indexDaily()
     {
