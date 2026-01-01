@@ -367,6 +367,12 @@ class TypeConstants {
     const CASH_PAYMENT = 0;
     const ONLINE_PAYMENT = 1;
     const BANK_TRANSFER_PAYMENT = 2;
+    const PAYMOB_PAYMENT = 3;
+
+    // Paymob Payment Method Types
+    const PAYMOB_CARD = 1;
+    const PAYMOB_WALLET = 2;
+    const PAYMOB_INSTALLMENT = 3;
 
     const CASH_RECEIPT = 0;
     const PROMISSORY_RECEIPT = 1;
@@ -398,6 +404,13 @@ class TypeConstants {
     const PAYPAL_TRANSACTION_FEES = 2;
     const SUCCESS = 1;
     const FAILURE = 2;
+
+    // Payment Transaction Statuses
+    const PAYMENT_PENDING = 0;
+    const PAYMENT_COMPLETED = 1;
+    const PAYMENT_FAILED = 2;
+    const PAYMENT_CANCELED = 3;
+    const PAYMENT_REFUNDED = 4;
 
     const YES = 1;
     const NO = 2;

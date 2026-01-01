@@ -135,6 +135,7 @@ class GymHomeFrontController extends GymGenericFrontController
 
         $title = trans('sw.dashboard');
         $lang = $this->lang ?? 'ar';
+
         return view('software::Front.dashboard', compact(['title', 'subscriptions', 'activities', 'money_box_now', 'last_created_member', 'last_created_non_member', 'last_enter_member', 'last_expired_members', 'last_new_members', 'birthday_members', 'last_expiring_members', 'last_attendance_members', 'lang']));
     }
     public function home_mini(){

@@ -342,7 +342,6 @@
                     <!--begin:Menu sub-->
             <div class="menu-sub menu-sub-accordion">
                 <!--begin:Menu item-->
-                @if (@$mainSettings->active_subscription)
                 <div class="menu-item">
                             <!--begin:Menu link-->
                             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/statistics') && !Request::is(($lang ?? 'ar') . '/statistics/*')) active @endif"
@@ -354,7 +353,6 @@
                             </a>
                             <!--end:Menu link-->
                 </div>
-                @endif
                 <!--end:Menu item-->
 
                 <!--begin:Menu item-->

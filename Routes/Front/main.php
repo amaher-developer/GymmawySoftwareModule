@@ -10,7 +10,7 @@ Route::prefix('/')
 
         Route::name('sw.backupDB')->get('db-backup', 'Front\GymDBFrontController@backupDb');
 
-Route::redirect('', 'home');
+//Route::redirect('', 'home');
 
 Route::name('sw.dashboard')
     ->get('home', 'Front\GymHomeFrontController@home');

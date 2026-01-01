@@ -24,8 +24,26 @@ class GymSwPaymentFrontController extends GymGenericFrontController
     public function show()
     {
         $mainSettings = $this->mainSettings;
-        $packages = json_decode(file_get_contents('https://gymmawy.com/api/client-software-payments/'.$mainSettings->token), true);
-        $orders = json_decode(file_get_contents('https://gymmawy.com/api/client-software-invoices/'.$mainSettings->token), true);
+        $packages = ['packages' => [], 'my_package' => null, 'paypal_check' => false];
+        $orders = [];
+
+        // Only attempt to fetch from external API if token exists
+        if (!empty($mainSettings->token)) {
+            try {
+                $packagesResponse = @file_get_contents('https://gymmawy.com/api/client-software-payments/'.$mainSettings->token);
+                if ($packagesResponse !== false) {
+                    $packages = json_decode($packagesResponse, true) ?: $packages;
+                }
+
+                $ordersResponse = @file_get_contents('https://gymmawy.com/api/client-software-invoices/'.$mainSettings->token);
+                if ($ordersResponse !== false) {
+                    $orders = json_decode($ordersResponse, true) ?: [];
+                }
+            } catch (\Exception $e) {
+                // Log error but continue with empty data
+                \Log::warning('Failed to fetch payment data from external API: ' . $e->getMessage());
+            }
+        }
 
         if(@$packages['paypal_check']){
             $paypal = new PayPalFrontController();
@@ -43,8 +61,22 @@ class GymSwPaymentFrontController extends GymGenericFrontController
     public function showPaymentOrder($id)
     {
         $mainSettings = $this->mainSettings;
-        $orders = json_decode(file_get_contents('https://gymmawy.com/api/client-software-invoices/'.$mainSettings->token), true);
+        $orders = [];
         $order = [];
+
+        // Only attempt to fetch from external API if token exists
+        if (!empty($mainSettings->token)) {
+            try {
+                $ordersResponse = @file_get_contents('https://gymmawy.com/api/client-software-invoices/'.$mainSettings->token);
+                if ($ordersResponse !== false) {
+                    $orders = json_decode($ordersResponse, true) ?: [];
+                }
+            } catch (\Exception $e) {
+                // Log error but continue with empty data
+                \Log::warning('Failed to fetch invoice data from external API: ' . $e->getMessage());
+            }
+        }
+
         if(@$orders){
             foreach ($orders as $i => $get_order){
                 if($get_order['id'] == $id){

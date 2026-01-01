@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Session;
 use Modules\Generic\Models\Setting;
 use App\Helpers\CurrentSwUser;
@@ -124,9 +125,13 @@ class SwPermission
             }
         }
         
-        $route = \Request::route()->getName();
+        $route = Request::route()->getName();
         $route = str_replace('sw.', '', $route);
-        $default_permissions = ['dashboard', 'dashboardMini', 'dashboardPTMini', 'showStoreOrder', 'showOrderSubscriptionNonMember', 'showOrderSubscriptionPOSNonMember', 'showStoreOrderVendor', 'showOrder', 'memberAttendees', 'membersRefresh', 'showMemberProfile', 'creditMemberBalance'
+        $default_permissions = [
+            // SaaS Subscription Management (available to all authenticated users)
+            'subscription.plans', 'subscription.initiate-payment', 'subscription.payment.success', 'subscription.payment.cancel',
+            // Standard permissions
+            'dashboard', 'dashboardMini', 'dashboardPTMini', 'showStoreOrder', 'showOrderSubscriptionNonMember', 'showOrderSubscriptionPOSNonMember', 'showStoreOrderVendor', 'showOrder', 'memberAttendees', 'membersRefresh', 'showMemberProfile', 'creditMemberBalance'
             , 'pendingPTTrainerCommissions', 'memberPTAttendees', 'getPTMemberAjax', 'getStoreMemberAjax', 'getPTTrainerAjax'
             , 'memberActivityMembershipAttendees'
             , 'memberInvitationAttendees', 'editUserProfile', 'listUserJson'
@@ -188,7 +193,12 @@ class SwPermission
                 return $next($request);
             }
         }
-        
+
+        // Prevent redirect loop: if already on dashboard, allow access
+        if ($route === 'dashboard') {
+            return $next($request);
+        }
+
         return redirect()->route('sw.dashboard');
     }
 

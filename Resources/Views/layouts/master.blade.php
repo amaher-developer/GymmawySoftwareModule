@@ -15,7 +15,7 @@
     </noscript>
 
     <!-- Favicon -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{asset('resources/assets/new_front/img/logo/favicon.ico')}}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{asset('resources/assets/new_front/media/logos/favicon.png')}}">
 
     <meta charset="utf-8"/>
     <title>{{$mainSettings->name}}</title>
@@ -25,8 +25,8 @@
     <meta content="" name="author"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <link rel="shortcut icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
-    <link rel="apple-touch-icon" href="{{asset('resources/assets/new_front/images/favicon.ico')}}" type="image/x-icon"/>
+    <link rel="shortcut icon" href="{{asset('resources/assets/new_front/media/logos/favicon.png')}}" type="image/x-icon"/>
+    <link rel="apple-touch-icon" href="{{asset('resources/assets/new_front/media/logos/favicon.png')}}" type="image/x-icon"/>
 
     <!--begin::Fonts(mandatory for all pages)-->
     <style>
@@ -391,8 +391,8 @@
             <div class="aside-logo flex-column-auto" id="kt_aside_logo">
                 <!--begin::Logo-->
                 <a href="{{route('home')}}">
-                    <img alt="Logo" src="{{$mainSettings->logo_white}}"
-                         class="h-25px logo"/>
+                    <img alt="Logo" src="{{ asset('resources/assets/new_front/media/logos/manassa-logo.svg') }}"
+                         class="h-25px logo" style="height: 50px!important;"/>
                 </a>
                 <!--end::Logo-->
                 <!--begin::Aside toggler-->
