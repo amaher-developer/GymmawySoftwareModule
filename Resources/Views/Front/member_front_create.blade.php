@@ -113,7 +113,7 @@
                                 <div class="input-group">
                                     <input class="form-control" placeholder="{{ trans('sw.fingerprint_id_data')}}"
                                            name="fp_id" min="0"
-                                           value="{{ old('fp_id', $member->fp_id) }}"
+                                           value="{{ (int)$member->fp_id ? old('fp_id', $member->fp_id) : (int)$maxId }}"
                                            type="text">
                                     <span class="input-group-text">
                                         <i class="material-icons">fingerprint</i>
