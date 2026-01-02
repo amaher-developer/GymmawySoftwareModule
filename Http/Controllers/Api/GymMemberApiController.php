@@ -104,13 +104,6 @@ class GymMemberApiController extends GenericApiController
         // 2: delete this member because membership ended - delete fp data and after delete convert to 0 to get new fp data from machine
         // 3: add this member on machine because renew membership - set data from server data to machine data.
 
-        if(@env('APP_ZK_GATE') == false)
-            $del_members = GymMember::where('branch_setting_id',$branch_id)->whereNotNull('fp_id')->where('fp_check_count', '<', 5)->where('fp_check', TypeConstants::ZK_EXPIRE_MEMBER)->withTrashed()->orderBy('id', 'asc')->pluck('code');
-        else if(@env('APP_ZK_IVS_GATE') == true)
-            $del_members = GymMember::where('branch_setting_id',$branch_id)->whereNotNull('fp_id')->where('fp_check_count', '<', 5)->where('fp_check', TypeConstants::ZK_EXPIRE_MEMBER)->withTrashed()->orderBy('id', 'asc')->pluck('fp_uid');
-        else
-            $del_members = GymMember::where('branch_setting_id',$branch_id)->whereNotNull('fp_id')->where('fp_check_count', '<', 5)->where('fp_check', TypeConstants::ZK_EXPIRE_MEMBER)->withTrashed()->orderBy('id', 'asc')->pluck('fp_id');
-
         $set_members = GymMember::select('id','fp_id', 'fp_uid', 'code')->with(['member_zk_fingerprint' => function($q){
             $q->select('member_id', 'uid', 'cardno','details');
         }, 'member_subscription_info' => function($q){
@@ -122,7 +115,16 @@ class GymMemberApiController extends GenericApiController
             ->orderBy('updated_at', 'desc')
             ->limit(50)
             ->get();
+
+        $set_members_ids = $set_members->pluck('id');
         $set_members = ZKMemberResource::collection($set_members);
+
+        if(@env('APP_ZK_GATE') == false)
+            $del_members = GymMember::where('branch_setting_id',$branch_id)->whereNotIn('fp_id', $set_members_ids)->whereNotNull('fp_id')->where('fp_check_count', '<', 5)->where('fp_check', TypeConstants::ZK_EXPIRE_MEMBER)->withTrashed()->orderBy('id', 'asc')->pluck('code');
+        else if(@env('APP_ZK_IVS_GATE') == true)
+            $del_members = GymMember::where('branch_setting_id',$branch_id)->whereNotIn('fp_id', $set_members_ids)->whereNotNull('fp_id')->where('fp_check_count', '<', 5)->where('fp_check', TypeConstants::ZK_EXPIRE_MEMBER)->withTrashed()->orderBy('id', 'asc')->pluck('fp_uid');
+        else
+            $del_members = GymMember::where('branch_setting_id',$branch_id)->whereNotIn('fp_id', $set_members_ids)->whereNotNull('fp_id')->where('fp_check_count', '<', 5)->where('fp_check', TypeConstants::ZK_EXPIRE_MEMBER)->withTrashed()->orderBy('id', 'asc')->pluck('fp_id');
 
         $set_new_members = GymMember::select('id','name', 'phone','fp_id', 'fp_uid', 'code')->with('member_subscription_info')->where('branch_setting_id',$branch_id)
             ->whereNull('fp_id')->limit(1)->orderBy('id', 'desc')->get();
