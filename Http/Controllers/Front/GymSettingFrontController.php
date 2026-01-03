@@ -36,12 +36,12 @@ class GymSettingFrontController extends GymGenericFrontController
     public function edit()
     {
 
-        $mainSettings = Setting::branch()->first();
+        $mainSetting = Setting::branch()->first();
 
         $title = trans('sw.settings');
         $smsPoints = $this->formatSmsPoints(0);
         try {
-            if($mainSettings['sms_internal_gateway']){
+            if($mainSetting['sms_internal_gateway']){
                 $sms = new SMSGymmawy();
                 $sms = $sms->getBalance();
             }else{
@@ -59,8 +59,8 @@ class GymSettingFrontController extends GymGenericFrontController
             'title'=>$title,
             'smsPoints' => $smsPoints,
             'max_messages' => $max_messages,
-            'mainSettings' => $mainSettings,
-            'billingSettings' => $mainSettings->billing ?? [],
+            'mainSetting' => $mainSetting,
+            'billingSettings' => $mainSetting->billing ?? [],
             'imagePath' => asset(Setting::$uploads_path.'gyms/'),
         ]);
     }

@@ -34,7 +34,6 @@ class GymUserFrontController extends GymGenericFrontController
         parent::__construct();
 
         $this->GymUserRepository = new GymUserRepository(new Application);
-        $this->GymUserRepository = $this->GymUserRepository->branch();
         $this->imageManager = new ImageManager(new Driver());
     }
 
@@ -47,9 +46,9 @@ class GymUserFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if (request('trashed')) {
-            $users = $this->GymUserRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id)->onlyTrashed()->orderBy('id', 'DESC');
         } else {
-            $users = $this->GymUserRepository->orderBy('id', 'DESC');
+            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id)->orderBy('id', 'DESC');
         }
 
         if(!@$this->user_sw->is_super_user){

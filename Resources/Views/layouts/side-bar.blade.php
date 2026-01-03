@@ -2,7 +2,7 @@
     $identifier = request()->segment(3);
     //$sidebarMetricsEnabled = config('app.debug');
     //$sidebarRenderStartedAt = $sidebarMetricsEnabled ? microtime(true) : null;
-
+/*
     $showSettingsMenu = $isSuperUser
         || isset($permissionsMap['listUser'])
         || isset($permissionsMap['listPTTrainer'])
@@ -15,6 +15,8 @@
         || ((isset($permissionsMap['listActivity']) || isset($permissionsMap['listReservation'])) && (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation))
         || (isset($permissionsMap['listReservation']) && @$mainSettings->active_activity_reservation)
         || ((isset($permissionsMap['listLoyaltyPointRule']) || isset($permissionsMap['listLoyaltyCampaign'])) && @$mainSettings->active_loyalty);
+*/
+
 @endphp
 <style>
     .sub-menu span {
@@ -247,6 +249,7 @@
             </div>
 
             @php
+            /*
                 $localeKey = $lang ?? app()->getLocale() ?? 'en';
                 $serviceMenus = collect(config('manassa.software_menus', []))
                     ->map(function ($section, $key) use ($localeKey) {
@@ -264,66 +267,9 @@
                             })->toArray(),
                         ];
                     });
+            */
             @endphp
 
-            @if($serviceMenus->isNotEmpty())
-                <div class="menu-content px-3 py-3">
-                    <span class="menu-section text-muted text-uppercase fs-8">{{ __('Software Systems') }}</span>
-                </div>
-                @foreach($serviceMenus as $section)
-                    @php
-                        $flagEnabled = $section['feature_flag'] ? (bool) data_get($mainSettings, $section['feature_flag']) : true;
-                        $visibleLinks = collect($section['links'])->filter(function ($link) use ($permissionsMap, $isSuperUser) {
-                            if (! $link['route'] || ! Route::has($link['route'])) {
-                                return false;
-                            }
-
-                            if ($isSuperUser || empty($link['permissions'])) {
-                                return true;
-                            }
-
-                            foreach ($link['permissions'] as $permission) {
-                                if (isset($permissionsMap[$permission])) {
-                                    return true;
-                                }
-                            }
-
-                            return false;
-                        })->values();
-
-                        $accordionActive = $visibleLinks->contains(function ($link) {
-                            return request()->routeIs($link['route']) || request()->routeIs($link['route'].'.*');
-                        });
-                    @endphp
-
-                    @if($swUser && $flagEnabled && $visibleLinks->isNotEmpty())
-                        <div data-kt-menu-trigger="click"
-                             class="menu-item menu-accordion {{ $accordionActive ? 'show' : '' }}">
-                            <span class="menu-link {{ $accordionActive ? 'show' : '' }}">
-                                <span class="menu-icon">
-                                    <i class="{{ $section['icon'] }} fs-2"></i>
-                                </span>
-                                <span class="menu-title">{{ $section['label'] }}</span>
-                                <span class="menu-arrow"></span>
-                            </span>
-
-                            <div class="menu-sub menu-sub-accordion">
-                                @foreach($visibleLinks as $link)
-                                    <div class="menu-item">
-                                        <a class="menu-link {{ request()->routeIs($link['route']) || request()->routeIs($link['route'].'.*') ? 'active' : '' }}"
-                                           href="{{ route($link['route']) }}">
-                                            <span class="menu-bullet">
-                                                <span class="bullet bullet-dot"></span>
-                                            </span>
-                                            <span class="menu-title">{{ $link['label'] }}</span>
-                                        </a>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-                @endforeach
-            @endif
 
             @if ($swUser && (isset($permissionsMap['statistics']) || $isSuperUser))
                 <!--begin:Menu item-->
@@ -1375,7 +1321,7 @@
     <!--end:Menu item-->
 @endif
 
-@if ($swUser && $showSettingsMenu)
+@if ($swUser)
     <!--begin:Menu item-->
     <div data-kt-menu-trigger="click"
         class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
@@ -1463,7 +1409,7 @@
                     </a>
                 </div>
             @endif
- {{-- Activities (moved under Settings) --}}
+
             @if ((@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && ($swUser && (isset($permissionsMap['listActivity']) || $isSuperUser)    ))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/activity*')) active @endif"

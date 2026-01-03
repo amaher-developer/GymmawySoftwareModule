@@ -39,8 +39,6 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         parent::__construct();
         $this->imageManager = new ImageManager(new Driver());
         $this->GymSubscriptionRepository = new GymSubscriptionRepository(new Application);
-        $this->GymSubscriptionRepository = $this->GymSubscriptionRepository->branch();
-
 
     }
 
@@ -53,11 +51,11 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $subscriptions = $this->GymSubscriptionRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $subscriptions = $this->GymSubscriptionRepository->branch($this->user_sw->branch_setting_id)->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $subscriptions = $this->GymSubscriptionRepository->orderBy('id', 'DESC');
+            $subscriptions = $this->GymSubscriptionRepository->branch($this->user_sw->branch_setting_id)->orderBy('id', 'DESC');
         }
 
         //apply filters

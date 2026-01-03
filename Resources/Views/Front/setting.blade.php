@@ -107,7 +107,7 @@
 															<!--begin::Input-->
                             <input type="text" class="form-control form-control-solid" dir="rtl"
                                    placeholder="{{ trans('sw.enter_title_ar') ?? 'Enter Arabic title' }}"
-                                   value="{{$mainSettings->name_ar}}" name="name_ar" required
+                                   value="{{$mainSetting->name_ar}}" name="name_ar" required
                                    data-bv-trigger="keyup change"
                                    data-bv-notempty-message="{{ trans('generic::global.required')}}"/>
 															<!--end::Input-->
@@ -122,7 +122,7 @@
 															<!--begin::Input-->
                             <input type="text" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_title_en') ?? 'Enter English title' }}"
-                                   value="{{$mainSettings->name_en}}" name="name_en" required
+                                   value="{{$mainSetting->name_en}}" name="name_en" required
                                    data-bv-trigger="keyup change"
                                    data-bv-notempty-message="{{ trans('generic::global.required')}}"/>
 															<!--end::Input-->
@@ -143,14 +143,14 @@
                                 <span class="required"></span>
 															</label>
 															<!--end::Label-->
-                            @if($mainSettings->logo_ar!='')
+                            @if($mainSetting->logo_ar!='')
                                 <div class="text-center mb-3">
-                                    <img width="200" src="{{$mainSettings->logo_ar}}" class="img-thumbnail"/>
+                                    <img width="200" src="{{$mainSetting->logo_ar}}" class="img-thumbnail"/>
 														</div>
                             @endif
 															<!--begin::Input-->
                             <input type="file" class="form-control form-control-solid"
-                                   name="logo_ar" @if($mainSettings->logo_ar=='')required
+                                   name="logo_ar" @if($mainSetting->logo_ar=='')required
                                    data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                    @endif/>
 															<!--end::Input-->
@@ -162,14 +162,14 @@
                                 <span class="required"></span>
 															</label>
 															<!--end::Label-->
-                            @if($mainSettings->logo_en!='')
+                            @if($mainSetting->logo_en!='')
                                 <div class="text-center mb-3">
-                                    <img width="200" src="{{$mainSettings->logo_en}}" class="img-thumbnail"/>
+                                    <img width="200" src="{{$mainSetting->logo_en}}" class="img-thumbnail"/>
 														</div>
                             @endif
 															<!--begin::Input-->
                             <input type="file" class="form-control form-control-solid"
-                                   name="logo_en" @if($mainSettings->logo_en=='')required
+                                   name="logo_en" @if($mainSetting->logo_en=='')required
                                    data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                    @endif/>
 															<!--end::Input-->
@@ -194,7 +194,7 @@
                             <textarea required data-bv-trigger="keyup change" dir="rtl"
                                       data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                       id="about_ar_editor"
-                                      name="about_ar" placeholder="{{ trans('sw.enter_about_ar') ?? 'Enter Arabic about content' }}">{{$mainSettings->about_ar}}</textarea>
+                                      name="about_ar" placeholder="{{ trans('sw.enter_about_ar') ?? 'Enter Arabic about content' }}">{{$mainSetting->about_ar}}</textarea>
 															<!--end::Input-->
 														</div>
                         <div class="col-md-6 fv-row">
@@ -208,7 +208,7 @@
                             <textarea required data-bv-trigger="keyup change"
                                       data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                       id="about_en_editor"
-                                      name="about_en" placeholder="{{ trans('sw.enter_about_en') ?? 'Enter English about content' }}">{{$mainSettings->about_en}}</textarea>
+                                      name="about_en" placeholder="{{ trans('sw.enter_about_en') ?? 'Enter English about content' }}">{{$mainSetting->about_en}}</textarea>
 															<!--end::Input-->
 														</div>
 													</div>
@@ -230,7 +230,7 @@
 															<!--begin::Input-->
                             <textarea required data-bv-trigger="keyup change" dir="rtl"
                                       id="terms_ar_editor"
-                                      name="terms_ar" placeholder="{{ trans('sw.enter_terms_ar') ?? 'Enter Arabic terms and conditions' }}">{{$mainSettings->terms_ar}}</textarea>
+                                      name="terms_ar" placeholder="{{ trans('sw.enter_terms_ar') ?? 'Enter Arabic terms and conditions' }}">{{$mainSetting->terms_ar}}</textarea>
 															<!--end::Input-->
 														</div>
                         <div class="col-md-6 fv-row">
@@ -244,7 +244,7 @@
                             <textarea required data-bv-trigger="keyup change"
                                       data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                       id="terms_en_editor"
-                                      name="terms_en" placeholder="{{ trans('sw.enter_terms_en') ?? 'Enter English terms and conditions' }}">{{$mainSettings->terms_en}}</textarea>
+                                      name="terms_en" placeholder="{{ trans('sw.enter_terms_en') ?? 'Enter English terms and conditions' }}">{{$mainSetting->terms_en}}</textarea>
 															<!--end::Input-->
 														</div>
 													</div>
@@ -274,7 +274,7 @@
 															<!--begin::Input-->
                             <input type="url" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_facebook_url') ?? 'Enter Facebook URL' }}"
-                                   value="{{$mainSettings->facebook}}" name="facebook"
+                                   value="{{$mainSetting->facebook}}" name="facebook"
                                    data-bv-uri-message="{{ trans('generic::global.valid_url')}}"/>
 															<!--end::Input-->
 														</div>
@@ -287,7 +287,7 @@
 															<!--begin::Input-->
                             <input type="url" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_twitter_url') ?? 'Enter Twitter URL' }}"
-                                   value="{{$mainSettings->twitter}}" name="twitter" />
+                                   value="{{$mainSetting->twitter}}" name="twitter" />
 															<!--end::Input-->
 														</div>
 													</div>
@@ -304,7 +304,7 @@
 															<!--begin::Input-->
                             <input type="url" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_instagram_url') ?? 'Enter Instagram URL' }}"
-                                   value="{{$mainSettings->instagram}}" name="instagram"
+                                   value="{{$mainSetting->instagram}}" name="instagram"
                                    data-bv-uri-message="{{ trans('generic::global.valid_url')}}"/>
 															<!--end::Input-->
 														</div>
@@ -317,7 +317,7 @@
 															<!--begin::Input-->
                             <input type="url" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_tiktok_url') ?? 'Enter TikTok URL' }}"
-                                   value="{{$mainSettings->tiktok}}" name="tiktok"
+                                   value="{{$mainSetting->tiktok}}" name="tiktok"
                                    data-bv-uri-message="{{ trans('generic::global.valid_url')}}"/>
 															<!--end::Input-->
 														</div>
@@ -335,7 +335,7 @@
 															<!--begin::Input-->
                             <input type="url" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_snapchat_url') ?? 'Enter Snapchat URL' }}"
-                                   value="{{$mainSettings->snapchat}}" name="snapchat"
+                                   value="{{$mainSetting->snapchat}}" name="snapchat"
                                    data-bv-uri-message="{{ trans('generic::global.valid_url')}}"/>
 															<!--end::Input-->
 														</div>
@@ -367,7 +367,7 @@
 															<!--begin::Input-->
                             <textarea required data-bv-trigger=" " dir="rtl"
                                       class="form-control form-control-solid"
-                                      name="address_ar" placeholder="{{ trans('sw.enter_address_ar') ?? 'Enter Arabic address' }}">{{$mainSettings->address_ar}}</textarea>
+                                      name="address_ar" placeholder="{{ trans('sw.enter_address_ar') ?? 'Enter Arabic address' }}">{{$mainSetting->address_ar}}</textarea>
 															<!--end::Input-->
 														</div>
                         <div class="col-md-6 fv-row">
@@ -381,7 +381,7 @@
                             <textarea required data-bv-trigger="keyup change"
                                       data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                       class="form-control form-control-solid"
-                                      name="address_en" placeholder="{{ trans('sw.enter_address_en') ?? 'Enter English address' }}">{{$mainSettings->address_en}}</textarea>
+                                      name="address_en" placeholder="{{ trans('sw.enter_address_en') ?? 'Enter English address' }}">{{$mainSetting->address_en}}</textarea>
                                     <!--end::Input-->
                                 </div>
                                 </div>
@@ -400,8 +400,8 @@
                             </label>
                                     <!--end::Label-->
                             <!--begin::Map Inputs-->
-                            <input name="latitude" id="latitude" value="{{$mainSettings->latitude}}" type="hidden"/>
-                            <input name="longitude" id="longitude" value="{{$mainSettings->longitude}}" type="hidden"/>
+                            <input name="latitude" id="latitude" value="{{$mainSetting->latitude}}" type="hidden"/>
+                            <input name="longitude" id="longitude" value="{{$mainSetting->longitude}}" type="hidden"/>
                             <!--end::Map Inputs-->
                             <!--begin::Map Container-->
                             <div class="map_container" style="width: 100%;height: 400px; border-radius: 8px; overflow: hidden;">
@@ -427,7 +427,7 @@
                                     <!--begin::Input-->
                             <input type="tel" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_phone') ?? 'Enter phone number' }}"
-                                   value="{{$mainSettings->phone}}" name="phone" />
+                                   value="{{$mainSetting->phone}}" name="phone" />
                                     <!--end::Input-->
                                 </div>
                         <div class="col-md-6 fv-row">
@@ -440,7 +440,7 @@
                                     <!--begin::Input-->
                             <input type="email" class="form-control form-control-solid" dir="ltr"
                                    placeholder="{{ trans('sw.enter_email') ?? 'Enter email address' }}"
-                                   value="{{$mainSettings->support_email}}" name="support_email"
+                                   value="{{$mainSetting->support_email}}" name="support_email"
                                    required data-bv-trigger="keyup change"
                                               data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                    data-bv-emailaddress-message="{{ trans('generic::global.valid_email')}}"/>
@@ -453,7 +453,7 @@
 				<!--begin:::Tab pane-->
                 <div class="tab-pane fade" id="vat" role="tabpanel">
 @php
-    $billingSettings = $billingSettings ?? ($mainSettings->billing ?? []);
+    $billingSettings = $billingSettings ?? ($mainSetting->billing ?? []);
     $billingSections = data_get($billingSettings, 'sections', []);
     $billingBindings = data_get($billingSettings, 'bindings', []);
     $autoInvoice = config('sw_billing.auto_invoice');
@@ -479,7 +479,7 @@
                                     <!--begin::Input-->
                             <input type="text" class="form-control form-control-solid"
                                    placeholder="{{ trans('sw.enter_seller_name') ?? 'Enter seller name' }}"
-                                   value="{{@$mainSettings->vat_details['seller_name']}}" name="vat_details[seller_name]"/>
+                                   value="{{@$mainSetting->vat_details['seller_name']}}" name="vat_details[seller_name]"/>
                                     <!--end::Input-->
                                 </div>
                         <div class="col-md-6 fv-row">
@@ -491,7 +491,7 @@
                                     <!--begin::Input-->
                             <input type="text" class="form-control form-control-solid"
                                    placeholder="{{ trans('sw.enter_vat_number') ?? 'Enter VAT number' }}"
-                                   value="{{@$mainSettings->vat_details['vat_number']}}" name="vat_details[vat_number]"/>
+                                   value="{{@$mainSetting->vat_details['vat_number']}}" name="vat_details[vat_number]"/>
                                     <!--end::Input-->
                                 </div>
                             </div>
@@ -508,7 +508,7 @@
                                     <!--begin::Input-->
                             <input type="number" class="form-control form-control-solid" min="0" max="100"
                                    placeholder="{{ trans('sw.enter_vat_percentage') ?? 'Enter VAT percentage' }}"
-                                   value="{{@$mainSettings->vat_details['vat_percentage']}}" name="vat_details[vat_percentage]"/>
+                                   value="{{@$mainSetting->vat_details['vat_percentage']}}" name="vat_details[vat_percentage]"/>
                                     <!--end::Input-->
                                 </div>
                         <div class="col-md-6 fv-row">
@@ -520,7 +520,7 @@
                             <!--begin::Switch-->
                             <div class="form-check form-switch form-check-custom form-check-solid mt-3">
                                 <input class="form-check-input" type="checkbox" name="vat_details[saudi]" value="1"
-                                       @if(@$mainSettings->vat_details['saudi'] == true) checked @endif />
+                                       @if(@$mainSetting->vat_details['saudi'] == true) checked @endif />
                                 <label class="form-check-label" for="vat_details[saudi]"></label>
                                 </div>
                             <!--end::Switch-->
@@ -639,8 +639,8 @@
                             <select class="form-control form-control-solid js-tags-multi-ar" name="meta_keywords_ar[]"
                                             multiple required
                                             data-bv-notempty-message="{{ trans('generic::global.required')}}">
-                                        @if(count($mainSettings->meta_keywords_ar )>0)
-                                            @foreach($mainSettings->meta_keywords_ar as $keyword)
+                                        @if(count($mainSetting->meta_keywords_ar )>0)
+                                            @foreach($mainSetting->meta_keywords_ar as $keyword)
                                                 <option selected="selected">{{$keyword}}</option>
                                             @endforeach
                                         @endif
@@ -664,7 +664,7 @@
                                               data-bv-trigger="keyup change"
                                               data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                               name="meta_description_ar"
-                                      id="meta_description_ar" placeholder="{{ trans('sw.enter_meta_description_ar') ?? 'Enter Arabic meta description' }}">{{old('meta_description_ar') ?old('meta_description_ar'):($mainSettings->meta_description_ar ? $mainSettings->meta_description_ar: '')}}</textarea>
+                                      id="meta_description_ar" placeholder="{{ trans('sw.enter_meta_description_ar') ?? 'Enter Arabic meta description' }}">{{old('meta_description_ar') ?old('meta_description_ar'):($mainSetting->meta_description_ar ? $mainSetting->meta_description_ar: '')}}</textarea>
                             <!--end::Input-->
                                 </div>
                                 </div>
@@ -687,8 +687,8 @@
                             <select class="form-control form-control-solid js-tags-multi" name="meta_keywords_en[]"
                                     multiple required
                                     data-bv-notempty-message="{{ trans('generic::global.required')}}">
-                                        @if(count($mainSettings->meta_keywords_en )>0)
-                                            @foreach($mainSettings->meta_keywords_en as $keyword)
+                                        @if(count($mainSetting->meta_keywords_en )>0)
+                                            @foreach($mainSetting->meta_keywords_en as $keyword)
                                                 <option selected="selected">{{$keyword}}</option>
                                             @endforeach
                                         @endif
@@ -712,7 +712,7 @@
                                               data-bv-trigger="keyup change"
                                               data-bv-notempty-message="{{ trans('generic::global.required')}}"
                                               name="meta_description_en"
-                                      id="meta_description_en" placeholder="{{ trans('sw.enter_meta_description_en') ?? 'Enter English meta description' }}">{{old('meta_description_en') ?old('meta_description_en'):($mainSettings->meta_description_en ? $mainSettings->meta_description_en: '')}}</textarea>
+                                      id="meta_description_en" placeholder="{{ trans('sw.enter_meta_description_en') ?? 'Enter English meta description' }}">{{old('meta_description_en') ?old('meta_description_en'):($mainSetting->meta_description_en ? $mainSetting->meta_description_en: '')}}</textarea>
                             <!--end::Input-->
                                 </div>
                             </div>
@@ -830,8 +830,8 @@
                 }
             }
 
-            @if($mainSettings->latitude&& $mainSettings->longitude )
-            google.maps.event.addDomListener(window, 'load', initialize('{{$mainSettings->latitude}}', '{{$mainSettings->longitude}}'));
+            @if($mainSetting->latitude&& $mainSetting->longitude )
+            google.maps.event.addDomListener(window, 'load', initialize('{{$mainSetting->latitude}}', '{{$mainSetting->longitude}}'));
             @else
             google.maps.event.addDomListener(window, 'load', initialize(30.047607020301598, 31.23380307133947));
             @endif

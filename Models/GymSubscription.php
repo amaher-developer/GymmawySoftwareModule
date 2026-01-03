@@ -27,9 +27,9 @@ class GymSubscription extends GenericModel
     public static $uploads_path='uploads/subscriptions/';
     public static $thumbnails_uploads_path='uploads/subscriptions/thumbnails/';
 
-    public function scopeBranch($query)
+    public function scopeBranch($query, $branchId = null)
     {
-        return $query->where('branch_setting_id', parent::getCurrentBranchId());
+        return $query->where('branch_setting_id', $branchId);
     }
     public function getNameAttribute()
     {
