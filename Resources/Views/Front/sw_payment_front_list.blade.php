@@ -593,11 +593,22 @@
                                 </ul>
                             </div>
                             <div class="pricing-footer">
-                                @if(@$package['paypal_url'])
-                                    <a href="{{$package['paypal_url']}}" class="btn yellow-crusta">
-                                        <i class="fa fa-shopping-cart"></i> {{ trans('sw.subscribe')}}
+                                @if(@$package['paymob_url'])
+                                    <!-- Paymob Payment Button -->
+                                    <a href="{{$package['paymob_url']}}" class="btn yellow-crusta mb-2" target="_blank">
+                                        <i class="fa fa-credit-card"></i> {{ trans('sw.pay_with_paymob')}}
                                     </a>
-                                @else
+                                @endif
+
+                                @if(@$package['paypal_url'])
+                                    <!-- PayPal Payment Button -->
+                                    <a href="{{$package['paypal_url']}}" class="btn yellow-crusta mb-2">
+                                        <i class="fa fa-paypal"></i> {{ trans('sw.pay_with_paypal')}}
+                                    </a>
+                                @endif
+
+                                @if(!@$package['paymob_url'] && !@$package['paypal_url'])
+                                    <!-- Default Payment Button -->
                                     <a href="https://gymmawy.com/api/client-software-create-payment/?ref={{sha1(time())}}&p={{$index+1}}&ct={{$getSettings->token}}" class="btn yellow-crusta">
                                         <i class="fa fa-shopping-cart"></i> {{ trans('sw.subscribe')}}
                                     </a>

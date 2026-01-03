@@ -15,7 +15,7 @@ class GymSwPaymentApiController extends GenericApiController
         $setting = Setting::first();
         $token = request('ct');
         $type = request('t');
-        $package_duration = request('pd');
+        $package_duration = @(int)request('pd');
         if(($setting->token == $token) && ($package_duration) && ($type != 'false')){
             if(Carbon::parse($setting->sw_end_date)->toDateString() > Carbon::now()->toDateString()) {
                 $setting_inputs['sw_end_date'] = Carbon::parse($setting->sw_end_date)->addDays($package_duration)->toDateString();

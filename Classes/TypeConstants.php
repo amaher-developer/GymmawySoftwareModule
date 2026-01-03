@@ -404,6 +404,7 @@ class TypeConstants {
     const NOTIFICATION_GENERAL_MESSAGE = 2;
 
     const PAYPAL_TRANSACTION_FEES = 2;
+    const PAYMOB_TRANSACTION_FEES = 3;
     const SUCCESS = 1;
     const FAILURE = 2;
 
