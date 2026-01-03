@@ -652,6 +652,9 @@
                             <th class="min-w-50px text-nowrap">
                                 <i class="fa fa-hashtag"></i> #
                             </th>
+                            <th class="min-w-150px text-nowrap">
+                                <i class="fa fa-cube"></i> {{ trans('sw.package')}}
+                            </th>
                             <th class="min-w-100px text-nowrap">
                                 <i class="fa fa-money"></i> {{ trans('sw.price')}}
                             </th>
@@ -668,50 +671,73 @@
                     </thead>
                     <tbody class="fw-semibold text-gray-600">
                         @foreach($orders as $key=> $order)
-                            @if(@$order['response']['success'] == 'true')
-                                <tr>
-                                    <td class="pe-0">
-                                        <span class="fw-bold text-primary">#{{ $order['id'] }}</span>
-                                    </td>
-                                    <td class="pe-0">
-                                        <div class="price-display">
+                            <tr>
+                                <td class="pe-0">
+                                    <span class="fw-bold text-primary">#{{ $order['id'] }}</span>
+                                </td>
+                                <td class="pe-0">
+                                    <span class="fw-semibold">{{ @$order['title'] ?? '-' }}</span>
+                                </td>
+                                <td class="pe-0">
+                                    <div class="price-display">
+                                        @if(isset($order['response']['amount_cents']))
                                             {{ number_format($order['response']['amount_cents']/100) }} {{@$order['response']['currency']}}
-                                        </div>
-                                    </td>
-                                    <td class="pe-0">
-                                        @if(@$order['response']['success'] == 'true')
-                                            <span class="badge badge-success">
-                                                <i class="fa fa-check"></i> {{ trans('sw.successful')}}
-                                            </span>
+                                        @elseif(isset($order['price']))
+                                            {{ number_format($order['price']) }} {{ trans('sw.egp') }}
                                         @else
-                                            <span class="badge badge-danger">
-                                                <i class="fa fa-times"></i> {{ trans('sw.declined')}}
-                                            </span>
+                                            -
                                         @endif
-                                    </td>
-                                    <td class="pe-0">
-                                        <div class="date-time-display">
-                                            <div class="date-row">
-                                                <i class="fa fa-calendar"></i>
-                                                <span>{{\Carbon\Carbon::parse(@$order['created_at'])->format('Y-m-d') }}</span>
-                                            </div>
-                                            <div class="time-row">
-                                                <i class="fa fa-clock-o"></i>
-                                                <span>{{\Carbon\Carbon::parse(@$order['created_at'])->format('h:i a') }}</span>
-                                            </div>
+                                    </div>
+                                </td>
+                                <td class="pe-0">
+                                    @if(@$order['response']['success'] == 'true' || @$order['status'] == 'paid')
+                                        <span class="badge badge-success">
+                                            <i class="fa fa-check"></i> {{ trans('sw.successful')}}
+                                        </span>
+                                    @else
+                                        <span class="badge badge-danger">
+                                            <i class="fa fa-times"></i> {{ trans('sw.declined')}}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="pe-0">
+                                    <div class="date-time-display">
+                                        <div class="date-row">
+                                            <i class="fa fa-calendar"></i>
+                                            <span>
+                                                @if(isset($order['response']['created_at']))
+                                                    {{\Carbon\Carbon::parse(@$order['response']['created_at'])->format('Y-m-d') }}
+                                                @elseif(isset($order['created_at']))
+                                                    {{\Carbon\Carbon::parse(@$order['created_at'])->format('Y-m-d') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </span>
                                         </div>
-                                    </td>
-                                    <td class="text-end actions-column">
-                                        <div class="d-flex justify-content-end align-items-center gap-1">
-                                            <a href="{{route('sw.showPaymentOrder',$order['id'])}}"
-                                               class="btn btn-icon btn-bg-light"
-                                               title="{{ trans('admin.view')}}">
-                                                <i class="fa fa-eye"></i>
-                                            </a>
+                                        <div class="time-row">
+                                            <i class="fa fa-clock-o"></i>
+                                            <span>
+                                                @if(isset($order['response']['created_at']))
+                                                    {{\Carbon\Carbon::parse(@$order['response']['created_at'])->format('h:i a') }}
+                                                @elseif(isset($order['created_at']))
+                                                    {{\Carbon\Carbon::parse(@$order['created_at'])->format('h:i a') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </span>
                                         </div>
-                                    </td>
-                                </tr>
-                            @endif
+                                    </div>
+                                </td>
+                                <td class="text-end actions-column">
+                                    <div class="d-flex justify-content-end align-items-center gap-1">
+                                        <a href="{{route('sw.showPaymentOrder',$order['id'])}}"
+                                           class="btn btn-icon btn-bg-light"
+                                           title="{{ trans('admin.view')}}">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
                         @endforeach
                     </tbody>
                 </table>
