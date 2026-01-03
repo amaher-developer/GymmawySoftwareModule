@@ -23,7 +23,7 @@ class GymSwPaymentApiController extends GenericApiController
                 $setting_inputs['sw_end_date'] = Carbon::now()->addDays($package_duration)->toDateString();
             }
             $setting->update($setting_inputs);
-            Cache::store('file')->clear();
+            Cache::flush();
         }
 
         sweet_alert()->success(trans('admin.done'), trans('admin.successfully_paid'));
