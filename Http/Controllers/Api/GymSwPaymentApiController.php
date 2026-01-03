@@ -25,8 +25,11 @@ class GymSwPaymentApiController extends GenericApiController
             $setting->update($setting_inputs);
             Cache::flush();
         }
-
-        sweet_alert()->success(trans('admin.done'), trans('admin.successfully_paid'));
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_paid'),
+            'type' => 'success'
+        ]);
         return redirect(route('sw.listSwPayment'));
     }
 }
