@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Passport\HasApiTokens;
 use Zizaco\Entrust\Traits\EntrustUserTrait;
 
@@ -35,11 +36,39 @@ class GymUser extends Authenticatable
         'remember_token',
     ];
 
-    public function scopeBranch($query)
+    /**
+     * Apply global scope to ALL queries for tenant isolation
+     * This prevents IDOR (Insecure Direct Object Reference) attacks
+     */
+    // public static function booted()
+    // {
+    //     static::addGlobalScope('branch', function ($query) {
+    //         $branchId = GenericModel::getCurrentBranchId();
+    //         $query->where('branch_setting_id', $branchId);
+    //     });
+    // }
+
+    /**
+     * Manual branch and tenant scope
+     * Filters by branch_setting_id and optionally tenant_id
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param int $branchId - Default: 1
+     * @param int $tenantId - Default: 1
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeBranch($query, $branchId = 1, $tenantId = 1)
     {
-        return $query->where('branch_setting_id', GenericModel::getCurrentBranchId());
+        $query->where('branch_setting_id', $branchId);
+
+        // Only filter by tenant_id if the column exists in the table
+        if (Schema::hasColumn($this->getTable(), 'tenant_id')) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query;
     }
-    
+
     // Commented out to avoid double hashing - passwords should be hashed before being saved
     // public function setPasswordAttribute($value)
     // {

@@ -35,14 +35,13 @@ class GymLoginFrontController extends GymGenericFrontController
         $request->validate(['email' => 'required', 'password' => 'required']);
         
         $getUser = GymUser::where('email', $request->email)->first();
-        
         // Debug logging
-        \Log::info('Login attempt', [
-            'email' => $request->email,
-            'user_found' => $getUser ? 'yes' : 'no',
-            'password_hash' => $getUser ? substr($getUser->password, 0, 10) . '...' : 'N/A',
-            'password_verify' => $getUser ? (password_verify($request->password, $getUser->password) ? 'PASS' : 'FAIL') : 'N/A'
-        ]);
+        // \Log::info('Login attempt', [
+        //     'email' => $request->email,
+        //     'user_found' => $getUser ? 'yes' : 'no',
+        //     'password_hash' => $getUser ? substr($getUser->password, 0, 10) . '...' : 'N/A',
+        //     'password_verify' => $getUser ? (password_verify($request->password, $getUser->password) ? 'PASS' : 'FAIL') : 'N/A'
+        // ]);
         
         if($getUser && password_verify($request->password, $getUser->password)){
             // Manually log in the user with "remember me" enabled

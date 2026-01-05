@@ -6,6 +6,7 @@ use App\Modules\Access\Models\User;
 use Modules\Generic\Models\GenericModel;
 use DateTime;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class GymMoneyBoxType extends GenericModel
 {

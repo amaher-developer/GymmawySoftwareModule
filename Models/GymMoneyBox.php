@@ -6,6 +6,7 @@ use App\Modules\Access\Models\User;
 use Modules\Generic\Models\GenericModel;
 use DateTime;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class GymMoneyBox extends GenericModel
 {
@@ -14,13 +15,55 @@ class GymMoneyBox extends GenericModel
 
     protected $table = 'sw_gym_money_boxes';
     protected $guarded = ['id'];
-    protected $appends  = ['operation_name', 'payment_type_name'];
+    protected $appends  = ['operation_name', 'payment_type_name', 'display_id'];
     public static $uploads_path='uploads/gymorders/';
     public static $thumbnails_uploads_path='uploads/gymorders/thumbnails/';
 
-    public function scopeBranch($query)
+    /**
+     * Apply global scope to ALL queries for tenant isolation
+     * This prevents IDOR (Insecure Direct Object Reference) attacks
+     */
+    public static function booted()
     {
-        return $query->where('branch_setting_id', parent::getCurrentBranchId());
+        static::addGlobalScope('branch', function ($query) {
+            $branchId = parent::getCurrentBranchId();
+            $query->where('branch_setting_id', $branchId);
+        });
+
+        // Automatically set sequence_number for new records
+        static::creating(function ($moneyBox) {
+            if (empty($moneyBox->sequence_number)) {
+                $branchId = $moneyBox->branch_setting_id ?? parent::getCurrentBranchId();
+
+                // Get the next sequence number for this branch
+                $lastSequence = static::withoutGlobalScope('branch')
+                    ->where('branch_setting_id', $branchId)
+                    ->max('sequence_number') ?? 0;
+
+                $moneyBox->sequence_number = $lastSequence + 1;
+            }
+        });
+    }
+
+    /**
+     * Manual branch and tenant scope
+     * Filters by branch_setting_id and optionally tenant_id
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param int $branchId - Default: 1
+     * @param int $tenantId - Default: 1
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeBranch($query, $branchId = 1, $tenantId = 1)
+    {
+        $query->where('branch_setting_id', $branchId);
+
+        // Only filter by tenant_id if the column exists in the table
+        if (Schema::hasColumn($this->getTable(), 'tenant_id')) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query;
     }
 
     public function user()
@@ -92,6 +135,20 @@ class GymMoneyBox extends GenericModel
         }else if($payment_type == 2){
             return trans('sw.payment_bank_transfer');
         }
+    }
+
+    /**
+     * Get display-friendly ID for reports
+     * Format: BRANCH-0001, BRANCH-0002, etc.
+     * This provides consistent sequential IDs within each tenant
+     */
+    public function getDisplayIdAttribute()
+    {
+        if ($this->sequence_number) {
+            return sprintf('%d-%04d', $this->branch_setting_id, $this->sequence_number);
+        }
+        // Fallback to regular ID if sequence_number not set
+        return $this->id;
     }
 
     public function toArray()

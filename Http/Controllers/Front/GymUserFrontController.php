@@ -46,9 +46,9 @@ class GymUserFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if (request('trashed')) {
-            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id)->onlyTrashed()->orderBy('id', 'DESC');
+            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
         } else {
-            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id)->orderBy('id', 'DESC');
+            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
         if(!@$this->user_sw->is_super_user){

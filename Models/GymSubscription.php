@@ -6,6 +6,7 @@ use Modules\Generic\Models\GenericModel;
 use App\Modules\Gym\Models\GymBrand;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use PhpParser\Builder\Class_;
+use Illuminate\Support\Facades\Schema;
 
 class GymSubscription extends GenericModel
 {
@@ -27,9 +28,37 @@ class GymSubscription extends GenericModel
     public static $uploads_path='uploads/subscriptions/';
     public static $thumbnails_uploads_path='uploads/subscriptions/thumbnails/';
 
-    public function scopeBranch($query, $branchId = null)
+    /**
+     * Apply global scope to ALL queries for tenant isolation
+     * This prevents IDOR (Insecure Direct Object Reference) attacks
+     */
+    public static function booted()
     {
-        return $query->where('branch_setting_id', $branchId);
+        static::addGlobalScope('branch', function ($query) {
+            $branchId = parent::getCurrentBranchId();
+            $query->where('branch_setting_id', $branchId);
+        });
+    }
+
+    /**
+     * Manual branch and tenant scope
+     * Filters by branch_setting_id and optionally tenant_id
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param int $branchId - Default: 1
+     * @param int $tenantId - Default: 1
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeBranch($query, $branchId = 1, $tenantId = 1)
+    {
+        $query->where('branch_setting_id', $branchId);
+
+        // Only filter by tenant_id if the column exists in the table
+        if (Schema::hasColumn($this->getTable(), 'tenant_id')) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query;
     }
     public function getNameAttribute()
     {
