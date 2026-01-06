@@ -1423,7 +1423,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->restore();
         } else {
             $member->delete();
-            if (\request('refund')) {
+            if (\request('refund') && @$member->member_subscription_inf) {
                 $amount_box = GymMoneyBox::branch()->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
@@ -2098,16 +2098,20 @@ class GymMemberFrontController extends GymGenericFrontController
     public function memberSubscriptionRenew(Request $request)
     {
         $membership = GymMemberSubscription::branch()->with('member')->where('id', $request->id)->orderBy('id', 'desc')->withTrashed()->first();
-        $membership_id = $membership->subscription_id;
-        $subscription = GymSubscription::withTrashed()->where('id', $membership_id)->first();
         $subscriptions = GymSubscription::branch()->isSystem()->get();
-        if(($subscription && $subscription->deleted_at != null) || ($subscription && $subscription->is_system != 1))
-            $subscriptions->push($subscription);
-        $member = $membership->member;
-        $membership->joining_date = Carbon::parse($membership->joining_date)->toDateString();
-        $membership->expire_date = Carbon::parse($membership->expire_date)->toDateString();
-        $membership->from_expire_days = Carbon::parse($membership->expire_date)->diffInDays(Carbon::now()->subDay()->toDateString());
-        return Response::json(['membership' => $subscriptions, 'member' => $member, 'member_membership' => $membership], 200);
+        $member = GymMember::branch()->where('id', $request->member_id)->first();
+
+        if($membership){
+            $membership_id = $membership->subscription_id;
+            $subscription = GymSubscription::withTrashed()->where('id', $membership_id)->first();
+            if(($subscription && $subscription->deleted_at != null) || ($subscription && $subscription->is_system != 1))
+                $subscriptions->push($subscription);
+            $member = $membership->member;
+            $membership->joining_date = Carbon::parse($membership->joining_date)->toDateString();
+            $membership->expire_date = Carbon::parse($membership->expire_date)->toDateString();
+            $membership->from_expire_days = Carbon::parse($membership->expire_date)->diffInDays(Carbon::now()->subDay()->toDateString());
+        }
+        return Response::json(['membership' => $subscriptions, 'member' => @$member, 'member_membership' => @$membership], 200);
     }
 
     public function memberSubscriptionRenewStore(Request $request)
@@ -2137,9 +2141,8 @@ class GymMemberFrontController extends GymGenericFrontController
         } else if (($amount_paid < 0) && ($amount_remaining < 0)) {
             return Response::json(['msg' => trans('sw.error_amount_paid'), 'code' => 'amount_paid'], 200);
         }
-
-        $member = $this->MemberRepository->with(['member_subscription_info'])->withTrashed()->find($membership->member_id);
-
+        $member_id = @$membership ? @$membership->member_id : @$request->member_id;
+        $member = $this->MemberRepository->with(['member_subscription_info'])->withTrashed()->find($member_id);
         $expire_date = @$request->custom_expire_date ? Carbon::parse(@$request->custom_expire_date)->toDateString() : Carbon::now()->addDays((int)$subscription->period)->toDateString();
 
         $other_subscriptions = GymMemberSubscription::branch()->

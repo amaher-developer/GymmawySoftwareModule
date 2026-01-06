@@ -498,6 +498,7 @@
                                 </div>
                             </td>
                             <td class="pe-0">
+                                @if(@$member->member_subscription_info)
                                 <span
                                     @if(@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Freeze)
                                         @php
@@ -512,6 +513,9 @@
                                     {!! @$member->member_subscription_info->statusName !!}
                                 </span>
                                 @if($has_coming)<span class="badge bg-secondary ">{{ trans('sw.coming')}}</span>@endif
+                                @else
+                                -
+                                @endif
                             </td>
                             <td class="pe-0">
                                 <span class="fw-bold">{{ $member->phone }}</span>
@@ -521,7 +525,7 @@
                             </td>
                             <td class="pe-0">
                                 <div>
-                                    <span class="fw-bold">{{ @$member->member_subscription_info->subscription->name }}</span>
+                                    <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->subscription->name : '-' }}</span>
                                     @if(@$member->member_subscription_info->notes)
                                         <br/>
                                         <span class="badge badge-light-info" style="cursor: pointer;" data-target="#subscription_notes_{{$member->member_subscription_info->id}}" data-toggle="modal">
@@ -546,10 +550,10 @@
                                 </div>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info->workouts }}</span>
+                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->workouts : '-' }}</span>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info->visits }}</span>
+                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->visits : '-' }}</span>
                             </td>
                             <td class="pe-0">
                                 <div class="d-flex flex-wrap gap-1">
@@ -568,17 +572,17 @@
                                 </div>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @\Carbon\Carbon::parse($member->member_subscription_info->joining_date)->toDateString() }}</span>
+                                <span class="fw-bold">{{ @$member->member_subscription_info ? @\Carbon\Carbon::parse($member->member_subscription_info->joining_date)->toDateString() : '-' }}</span>
                             </td>
                             <td class="pe-0">
                                 <div class="d-flex flex-column">
                                     <div class="text-muted fw-bold d-flex align-items-center">
                                         <i class="ki-outline ki-calendar fs-6 text-muted me-2"></i>
-                                        <span>{{ @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString() }}</span>
+                                        <span>{{ @$member->member_subscription_info ? @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString() : '-' }}</span>
                                     </div>
                                     <div class="text-muted fs-7 d-flex align-items-center">
                                         <i class="ki-outline ki-time fs-6 text-muted me-2"></i>
-                                        <span>{{ trans('sw.reminder_days')}}: {{ (\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->toDateString() > \Carbon\Carbon::now()->toDateString()) ? (int) @\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->diffInDays(\Carbon\Carbon::now()->toDateString()) : 0 }}</span>
+                                        <span>{{ trans('sw.reminder_days')}}: {{ @$member->member_subscription_info ? (\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->toDateString() > \Carbon\Carbon::now()->toDateString()) ? (int) @\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->diffInDays(\Carbon\Carbon::now()->toDateString()) : 0 : '-' }}</span>
                                     </div>
                                     @if(@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Freeze)
                                         <div class="text-muted fs-7 d-flex align-items-center">
@@ -655,7 +659,7 @@
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)"
                                            class="menu-link px-3"
-                                           onclick="list_renew_membership('{{@$member->member_subscription_info->id}}')"
+                                           onclick="list_renew_membership('{{@$member->member_subscription_info->id}}', '{{@$member->id}}')"
                                            expire_msg="{{ trans('sw.expire_date_msg', ['date' => @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString()])}}"
                                            expire_color="@if(@$member->member_subscription_info->status == 0) green @else red @endif"
                                            id="list_member_{{@$member->member_subscription_info->id}}"
@@ -666,7 +670,7 @@
                                         </a>
                                     </div>
                                     @endif
-                                    @if(in_array('createMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user)
+                                    @if(@$member->member_subscription_info && (in_array('createMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user))
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)"
                                            data-target="#modalPays_{{$member->id}}" data-toggle="modal"
@@ -745,7 +749,7 @@
                                         @endif
                                     @endif
 
-                                    @if(in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user)
+                                    @if(@@$member->member_subscription_info && (in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user))
                                         @if((@($member->member_subscription_info->number_times_freeze) > 0) && (@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Active))
                                         @php
                                             // Calculate used freeze days from history
@@ -799,20 +803,18 @@
                                                 <span>{{ trans('admin.enable')}}</span>
                                             </a>
                                         </div>
-                                        @else
-                                            @if(@$member->member_subscription_info)
+                                        @else 
                                             <div class="menu-item px-3">
-                                                <a title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
-                                                   data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
+                                                <a title="{{ trans('sw.disable_with_refund', ['amount' => (float)@$member->member_subscription_info->amount_paid])}}"
+                                                   data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => (float)@$member->member_subscription_info->amount_paid])}}"
                                                    data-swal-amount="{{@$member->member_subscription_info->amount_paid}}"
-                                                   href="{{route('sw.deleteMember',$member->id).'?refund=1&total_amount='.@$member->member_subscription_info->amount_paid}}"
+                                                   href="{{route('sw.deleteMember',$member->id).'?refund=1&total_amount='.(float)@$member->member_subscription_info->amount_paid}}"
                                                    class="menu-link px-3 confirm_delete"
-                                                   title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}">
+                                                   title="{{ trans('sw.disable_with_refund', ['amount' => (float)@$member->member_subscription_info->amount_paid])}}">
                                                     <i class="ki-outline ki-trash text-danger"></i>
                                                     <span>{{ trans('admin.delete')}}</span>
                                                 </a>
                                             </div>
-                                            @endif
                                         @endif
                                     @endif
                                 </div>
@@ -1522,11 +1524,13 @@
     <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     <script>
-         function list_renew_membership(id) {
+         function list_renew_membership(id, member_id = null) {
              let attr_id = id;
              $('#renew_member_id').val(attr_id);
+             let attr_id2 = member_id || 0;
+             $('#renew_member_person_id').val(attr_id2);
             // $('#btn_renew_membership').before('<input value="' + attr_id + '"  id="renew_member_id"   hidden>');
-            getRenewMembershipsSelection(attr_id);
+            getRenewMembershipsSelection(attr_id, attr_id2);
 
              let expire_date = $('#list_member_'+id);
              let expire_date_msg = expire_date.attr('expire_msg');

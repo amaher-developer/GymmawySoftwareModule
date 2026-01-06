@@ -263,7 +263,7 @@
                                     @if($member->member && (in_array('memberSubscriptionRenewStore', (array)$swUser->permissions) || $swUser->is_super_user))
                                         <!--begin::Renew-->
                                         <a class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm me-1"
-                                           onclick="list_renew_membership('{{@$member->member->member_subscription_info->id}}')"
+                                           onclick="list_renew_membership('{{@$member->member->member_subscription_info->id}}', '{{@$member->member->id}}')"
                                            expire_msg="{{ trans('sw.expire_date_msg', ['date' => @$member->member->member_subscription_info->formatted_expire_date ?? ''])}}"
                                            expire_color="{{@$member->member->member_subscription_info->expire_color ?? 'red'}}"
                                            title="{{ trans('sw.renew_membership')}}"
@@ -355,11 +355,13 @@
     <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     <script>
-        function list_renew_membership(id) {
+        function list_renew_membership(id, member_id = null) {
             let attr_id = id;
             $('#renew_member_id').val(attr_id);
+            let attr_id2 = member_id || 0;
+            $('#renew_member_person_id').val(attr_id2);
             // $('#btn_renew_membership').before('<input value="' + attr_id + '"  id="renew_member_id"   hidden>');
-            getRenewMembershipsSelection(attr_id);
+            getRenewMembershipsSelection(attr_id, attr_id2);
 
             let expire_date = $('#list_member_'+id);
             let expire_date_msg = expire_date.attr('expire_msg');
