@@ -113,7 +113,7 @@
                                 <div class="input-group">
                                     <input class="form-control" placeholder="{{ trans('sw.fingerprint_id_data')}}"
                                            name="fp_id" min="0"
-                                           value="{{ old('fp_id', $member->fp_id) }}"
+                                           value="{{ (int)$member->fp_id ? old('fp_id', $member->fp_id) : (int)$maxId }}"
                                            type="text">
                                     <span class="input-group-text">
                                         <i class="material-icons">fingerprint</i>
@@ -173,9 +173,9 @@
                             
                             <!-- Date of Birth -->
                             <div class="col-md-6">
-                                <label class="form-label">{{ trans('sw.date_of_barth')}}</label>
-                                <div class="input-group date date-picker" data-date-format="yyyy-mm-dd">
-                                    <input class="form-control" autocomplete="off" placeholder="{{ trans('sw.date_of_barth')}}"
+                                <label class="form-label">{{ trans('sw.date_of_birth')}}</label>
+                                <div class="input-group date" data-date-format="yyyy-mm-dd">
+                                    <input class="form-control" autocomplete="off" placeholder="{{ trans('sw.date_of_birth')}}"
                                            name="dob"
                                            value="{{ old('dob', $member->dob) }}"
                                            type="text">
@@ -592,18 +592,17 @@
             
             selectedMembershipPrice = 0;
             $.each($("#membership option:selected"), function () {
-                selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')));
+                selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')) || 0);
             });
 
             let vat = 0;
             let selectedMembershipPriceWithVat = 0;
             let valueAmountPaid = parseFloat($('#create_amount_paid').val()) || 0;
 
-            let valueDiscount = 0;
-            valueDiscount = $('#discount_value').val();
+            let valueDiscount = parseFloat($('#discount_value').val()) || 0;
 
             @if(@$mainSettings->vat_details['vat_percentage'])
-                vat = (parseFloat(selectedMembershipPrice)- parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+                vat = (parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
             @endif
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount) + vat;
 
@@ -618,7 +617,7 @@
         $('#membership').change(function () {
             selectedMembershipPrice = 0;
             $.each($("#membership option:selected"), function () {
-                selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')));
+                selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')) || 0);
                 selectedMembershipExpireDate = $(this).attr('expire_date');
             });
             let selectedMembershipPriceWithVat = 0;
@@ -658,7 +657,7 @@
         function getPriceMemberShip() {
             selectedMembershipPrice = 0;
             $.each($("#membership option:selected"), function () {
-                selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')));
+                selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')) || 0);
                 selectedMembershipExpireDate = $(this).attr('expire_date');
             });
             let vat = 0;
@@ -692,21 +691,21 @@
         });
         function discount_value(discount_amount = null) {
             // $('#discount_value').change(function () {
-            let price = (parseFloat($('#membership option:selected').attr('price')));
+            let price = parseFloat($('#membership option:selected').attr('price')) || 0;
             let vat = 0;
             let priceWithVat = 0;
             let discount_value = 0;
             if(discount_amount === null)
-                discount_value = $('#discount_value').val();
+                discount_value = parseFloat($('#discount_value').val()) || 0;
             else
-                discount_value = discount_amount
+                discount_value = parseFloat(discount_amount) || 0;
 
             @if(@$mainSettings->vat_details['vat_percentage'])
                 vat = (parseFloat(price) - parseFloat(discount_value)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
             @endif
                 priceWithVat = parseFloat(price - discount_value + vat);
             // let create_amount_remaining = $('#create_amount_remaining').val();
-            discount_value = parseFloat(discount_value);
+            discount_value = parseFloat(discount_value) || 0;
             if ((discount_value > 0) && (price > 0)) {
                 $('#myTotal').css('text-decoration', 'line-through');
                 $('#myTotalAfterDiscount').show().text("{{ trans('sw.after_discount')}} = " + parseFloat(price - discount_value).toFixed(2));
@@ -726,9 +725,9 @@
         }
         $('#group_discount_id').on('change', function (event){
             let discount_id = $(this).find(":selected").val();
-            let type = parseInt($(this).find(":selected").attr('type'));
-            let amount = $(this).find(":selected").attr('amount');
-            let price = (parseFloat($('#membership option:selected').attr('price')));
+            let type = parseInt($(this).find(":selected").attr('type')) || 0;
+            let amount = parseFloat($(this).find(":selected").attr('amount')) || 0;
+            let price = parseFloat($('#membership option:selected').attr('price')) || 0;
             let result = 0;
             if((type === 0) || (discount_id === 0)){
                 $('#discount_value').val(amount);

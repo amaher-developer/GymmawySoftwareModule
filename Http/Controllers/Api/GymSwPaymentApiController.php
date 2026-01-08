@@ -15,7 +15,7 @@ class GymSwPaymentApiController extends GenericApiController
         $setting = Setting::first();
         $token = request('ct');
         $type = request('t');
-        $package_duration = request('pd');
+        $package_duration = @(int)request('pd');
         if(($setting->token == $token) && ($package_duration) && ($type != 'false')){
             if(Carbon::parse($setting->sw_end_date)->toDateString() > Carbon::now()->toDateString()) {
                 $setting_inputs['sw_end_date'] = Carbon::parse($setting->sw_end_date)->addDays($package_duration)->toDateString();
@@ -23,10 +23,13 @@ class GymSwPaymentApiController extends GenericApiController
                 $setting_inputs['sw_end_date'] = Carbon::now()->addDays($package_duration)->toDateString();
             }
             $setting->update($setting_inputs);
-            Cache::store('file')->clear();
+            Cache::flush();
         }
-
-        sweet_alert()->success(trans('admin.done'), trans('admin.successfully_paid'));
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_paid'),
+            'type' => 'success'
+        ]);
         return redirect(route('sw.listSwPayment'));
     }
 }

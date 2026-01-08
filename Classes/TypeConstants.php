@@ -104,6 +104,8 @@ class TypeConstants {
     const CreateMoneyBoxAdd = 20;
     const CreateMoneyBoxWithdraw = 21;
     const CreateMoneyBoxWithdrawEarnings = 22;
+    const DeleteMoneyBox = 185;
+    const RestoreMoneyBox = 186;
 
 
     const ExportActivityPDF = 23;
@@ -335,6 +337,12 @@ class TypeConstants {
     const EditEmployeeTransaction = 177;
     const DeleteEmployeeTransaction = 178;
 
+    const ExportUserAttendeesExcel = 179;
+    const ExportUserAttendeesPDF = 180;
+    const ExportStoreExcel = 181;
+    const ExportStorePDF = 182;
+    const ExportOnlinePaymentExcel = 183;
+    const ExportOnlinePaymentPDF = 184;
 
     const Add = 0;
     const Sub = 1;
@@ -402,6 +410,7 @@ class TypeConstants {
     const NOTIFICATION_GENERAL_MESSAGE = 2;
 
     const PAYPAL_TRANSACTION_FEES = 2;
+    const PAYMOB_TRANSACTION_FEES = 3;
     const SUCCESS = 1;
     const FAILURE = 2;
 

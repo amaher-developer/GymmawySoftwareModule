@@ -466,6 +466,13 @@ class GymUserFrontController extends GymGenericFrontController
         $status = false;
         $user = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $code)->first();
         if($user){
+            // Validate that the logged-in user matches the entered code
+            $loggedInUser = Auth::guard('sw')->user();
+            if ($loggedInUser && $loggedInUser->id != $user->id) {
+                $msg = trans('sw.code_does_not_match');
+                return Response::json(['check_time' => null, 'check_date' => null,'user' => null,'msg' => $msg, 'status' => false, 'type' => 0], 403);
+            }
+
             $status = true;
             $last_attendee_today = GymUserAttendee::whereDate('created_at', Carbon::now()->toDateString())->orderBy('id', 'desc')->first();
             GymUserAttendee::insert(['branch_setting_id' => $user->branch_id, 'user_id' => $user->id, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()]);
@@ -493,7 +500,105 @@ class GymUserFrontController extends GymGenericFrontController
         return Response::json(['check_time' => null, 'check_date' => null,'user' => null,'msg' => $msg, 'status' => $status, 'type' => 0], 200);
     }
 
+    public function attendanceGeofenceCheck(Request $request)
+    {
+        $latitude = floatval($request->latitude);
+        $longitude = floatval($request->longitude);
 
+        // Validate coordinates
+        if (!$latitude || !$longitude || $latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
+            return Response::json([
+                'status' => false,
+                'message' => trans('sw.invalid_gps_coordinates')
+            ], 422);
+        }
+        // Get gym coordinates from settings
+        $gymLat = floatval($this->mainSettings->latitude ?? 0);
+        $gymLon = floatval($this->mainSettings->longitude ?? 0);
+
+        if (!$gymLat || !$gymLon) {
+            return Response::json([
+                'status' => false,
+                'message' => trans('sw.gym_location_not_configured')
+            ], 500);
+        }
+
+        // Calculate distance using Haversine formula
+        $distance = $this->calculateDistance($latitude, $longitude, $gymLat, $gymLon);
+
+        // Check if within allowed radius (100 meters + 20m GPS accuracy margin)
+        $allowedRadius = 120;
+        if ($distance > $allowedRadius) {
+            return Response::json([
+                'status' => false,
+                'message' => trans('sw.outside_allowed_area', ['distance' => round($distance)])
+            ], 403);
+        }
+
+        // Get current user
+        $user = Auth::guard('sw')->user();
+        if (!$user) {
+            return Response::json([
+                'status' => false,
+                'message' => trans('sw.user_not_authenticated')
+            ], 401);
+        }
+
+        // Record attendance
+        $lastAttendeeToday = GymUserAttendee::where('user_id', $user->id)
+            ->whereDate('created_at', Carbon::now()->toDateString())
+            ->orderBy('id', 'desc')
+            ->first();
+
+        GymUserAttendee::insert([
+            'branch_setting_id' => $user->branch_setting_id,
+            'user_id' => $user->id,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now()
+        ]);
+
+        $checkDate = Carbon::now()->format('Y-m-d');
+        $checkTime = Carbon::now()->format('h:i a');
+
+        if ($lastAttendeeToday) {
+            $msg = trans('sw.user_logout_at', ['name' => $user->name, 'datetime' => $checkDate . ' ' . $checkTime]);
+            $checkInDate = $lastAttendeeToday->created_at->format('Y-m-d');
+            $checkInTime = $lastAttendeeToday->created_at->format('h:i a');
+        } else {
+            $msg = trans('sw.user_login_at', ['name' => $user->name, 'datetime' => $checkDate . ' ' . $checkTime]);
+            $checkInDate = $checkDate;
+            $checkInTime = $checkTime;
+        }
+
+        // Get today's statistics
+        $checkInCount = GymUserAttendee::whereDate('created_at', Carbon::now()->toDateString())->count();
+
+        return Response::json([
+            'status' => true,
+            'message' => $msg,
+            'check_in' => '<i class="fa fa-calendar text-muted"></i> ' . $checkInDate . ' <i class="fa fa-clock-o text-muted"></i> ' . $checkInTime,
+            'check_out' => '',
+            'distance' => round($distance, 2)
+        ], 200);
+    }
+
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371000; // meters
+
+        $lat1Rad = deg2rad($lat1);
+        $lat2Rad = deg2rad($lat2);
+        $deltaLat = deg2rad($lat2 - $lat1);
+        $deltaLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($deltaLat / 2) * sin($deltaLat / 2) +
+             cos($lat1Rad) * cos($lat2Rad) *
+             sin($deltaLon / 2) * sin($deltaLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return round($earthRadius * $c, 2);
+    }
 
 }
 

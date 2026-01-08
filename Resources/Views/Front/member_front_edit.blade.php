@@ -232,7 +232,7 @@
                     <!--begin::Date of Birth-->
                     <div class="row mb-5">
                         <label class="col-md-3 col-form-label">{{ trans('sw.date_of_barth')}} </label>
-                        <div class="col-md-9">
+                        <div class="col-md-7">
                             <div class="input-group date date-picker" data-date-format="yyyy-mm-dd">
                                 <input class="form-control" autocomplete="off" placeholder="{{ trans('sw.date_of_barth')}}"
                                        name="dob"
@@ -405,8 +405,8 @@
                                                            title="{{ trans('sw.disable_with_refund', ['amount' => $member_subscription->amount_paid])}}">
                                                             <i class="ki-outline ki-trash fs-2"></i>
                                                         </a>
+                                                        @endif
                                                     @endif
-                                                @endif
                                                 <!--end::Delete Actions-->
                                             </div>
                                         </td>
@@ -927,6 +927,7 @@
                                         swal("{{ trans('admin.completed')}}", "{{ trans('admin.completed_successfully')}}", "success");
 
                                         tr.remove();
+                                        location.reload();
                                     },
                                     error: function (request, error) {
                                         swal("{{ trans('operation_failed')}}", "{{ trans('admin.something_wrong')}}", "error");

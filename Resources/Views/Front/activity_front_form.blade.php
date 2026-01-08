@@ -162,13 +162,13 @@
                         <!--begin::Input-->
                         <div id="spinner_price" class="w-200px">
                             <div class="input-group">
-                                <input type="number" 
-                                       name="price" 
-                                       id="price" 
-                                       value="{{ old('price', $activity->price) }}" 
-                                       step="0.01" 
-                                       placeholder="{{ trans('sw.enter_price')}}" 
-                                       class="spinner-input form-control" 
+                                <input type="number"
+                                       name="price"
+                                       id="price"
+                                       value="{{ old('price', $activity->price) }}"
+                                       step="0.01"
+                                       placeholder="{{ trans('sw.enter_price')}}"
+                                       class="spinner-input form-control"
                                        required>
                                 <div class="spinner-buttons input-group-btn btn-group-vertical">
                                     <button type="button" class="btn spinner-up btn-xs btn-primary">
@@ -179,6 +179,16 @@
                                     </button>
                                 </div>
                             </div>
+                            @php
+                                $vatPercentage = data_get($mainSettings ?? [], 'vat_details.vat_percentage', 0);
+                            @endphp
+                            @if($vatPercentage > 0)
+                                <div class="mt-2">
+                                    <small class="text-muted" style="font-size: 0.85rem;">
+                                        {{ trans('sw.after_vat') }}: <span id="activity_price_with_vat" class="fw-semibold">0.00</span>
+                                    </small>
+                                </div>
+                            @endif
                         </div>
                         <!--end::Input-->
                     </div>
@@ -480,27 +490,48 @@
     {{-- Form Initialization --}}
   <script>
         $(document).ready(function() {
+            // VAT calculation
+            const vatPercentage = {{ $vatPercentage ?? 0 }};
+            const $priceInput = $('#price');
+            const $priceWithVatDisplay = $('#activity_price_with_vat');
+
+            function updatePriceWithVat() {
+                if ($priceInput.length && $priceWithVatDisplay.length && vatPercentage > 0) {
+                    const price = parseFloat($priceInput.val()) || 0;
+                    const vatAmount = price * (vatPercentage / 100);
+                    const priceWithVat = price + vatAmount;
+                    $priceWithVatDisplay.text(priceWithVat.toFixed(2));
+                }
+            }
+
             // Initialize spinners
             $('#spinner_price').spinner({
-                value: {{ old('price', $activity->price) ?: 0 }}, 
-                step: 1, 
-                min: 0, 
+                value: {{ old('price', $activity->price) ?: 0 }},
+                step: 1,
+                min: 0,
                 max: 10000
             });
-            
+
             $('#spinner_reservation_limit').spinner({
-                value: {{ old('reservation_limit', $activity->reservation_limit) ?: 0 }}, 
-                step: 1, 
-                min: 0, 
+                value: {{ old('reservation_limit', $activity->reservation_limit) ?: 0 }},
+                step: 1,
+                min: 0,
                 max: 1000
             });
-            
+
             $('#spinner_reservation_period').spinner({
-                value: {{ old('reservation_duration', $activity->reservation_duration) ?: 0 }}, 
-                step: 1, 
-                min: 0, 
+                value: {{ old('reservation_duration', $activity->reservation_duration) ?: 0 }},
+                step: 1,
+                min: 0,
                 max: 1000
             });
+
+            // Bind VAT calculation to price input and spinner change
+            if ($priceInput.length) {
+                $priceInput.on('input change', updatePriceWithVat);
+                $('#spinner_price').on('changed.fu.spinner', updatePriceWithVat);
+                updatePriceWithVat();
+            }
 
             // Image preview handler
         $("#gym_image").change(function () {

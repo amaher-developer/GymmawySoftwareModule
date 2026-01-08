@@ -152,7 +152,7 @@ class SwPermission
             , 'exportTodayPTMemberExcel', 'exportTodayPTMemberPDF', 'exportTodayMemberExcel', 'exportTodayMemberPDF'
             , 'exportTodayNonMemberExcel', 'exportTodayNonMemberPDF', 'exportExpireMemberExcel', 'exportExpireMemberPDF'
             , 'exportSubscriptionMemberExcel', 'exportSubscriptionMemberPDF', 'exportPTSubscriptionMemberExcel', 'exportPTSubscriptionMemberPDF'
-            , 'reportUserNotificationsList'
+            , 'reportUserNotificationsList', 'attendanceGeofenceCheck'
             // Reservation Permissions
            // , 'listReservation', 'createReservation', 'editReservation', 'deleteReservation'
             //, 'changeReservationStatus', 'confirmReservation', 'cancelReservation', 'attendReservation', 'markMissedReservation'
@@ -183,13 +183,28 @@ class SwPermission
                     return $next($request);
                 }
             } else {
-                if (in_array($route, $permissions) || $user->is_super_user) {
+                // $permission = $request->route()->defaults['permission'] ?? $route;
+                // $permission = str_replace('sw.', '', $permission);
+
+                $route  = $request->route();
+                $action = $route->getAction();
+                $permission = $action['defaults']['permission'] ?? str_replace('sw.', '', $route->getName());
+
+                if (in_array($permission, $permissions) || $user->is_super_user) {
                     return $next($request);
                 }
+                // if (in_array($route, $permissions) || $user->is_super_user) {
+                //     return $next($request);
+                // }
             }
         } else {
             // If sw_end_date is not set, just check permissions
-            if (in_array($route, $permissions) || $user->is_super_user) {
+            
+            $route  = $request->route();
+            $action = $route->getAction();
+            $permission = $action['defaults']['permission'] ?? str_replace('sw.', '', $route->getName());
+
+            if (in_array($permission, $permissions) || $user->is_super_user) {
                 return $next($request);
             }
         }

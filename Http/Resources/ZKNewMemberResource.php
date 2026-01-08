@@ -22,6 +22,7 @@ class ZKNewMemberResource extends JsonResource
                 'code' => (int)$this->code,
                 'phone' => $this->phone,
                 'fp_uid' =>  @$this->code,
+                'image' =>  @$this->image,
                 'uid' => @env('APP_ZK_GATE') == true ? @$id = md5((int)$this->code) : (int)$this->code,
                 'cardno' => @$this->member_zk_fingerprint->cardno,
                 'details' => @$this->member_zk_fingerprint->details,

@@ -151,10 +151,20 @@
                         <div class="col-md-6">
                             <div class="fv-row">
                                 <label class="required form-label">{{ trans('sw.price')}}</label>
-                                <input type="number" name="price" class="form-control" 
-                                       placeholder="{{ trans('sw.enter_price')}}" 
-                                       value="{{ old('price', $subscription->price) }}" 
-                                       step="0.01" min="0" required />
+                                <input type="number" name="price" class="form-control"
+                                       placeholder="{{ trans('sw.enter_price')}}"
+                                       value="{{ old('price', $subscription->price) }}"
+                                       step="0.01" min="0" id="subscription_price_input" required />
+                                @php
+                                    $vatPercentage = data_get($mainSettings ?? [], 'vat_details.vat_percentage', 0);
+                                @endphp
+                                @if($vatPercentage > 0)
+                                    <div class="mt-2">
+                                        <small class="text-muted" style="font-size: 0.85rem;">
+                                            {{ trans('sw.after_vat') }}: <span id="subscription_price_with_vat" class="fw-semibold">0.00</span>
+                                        </small>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                         <!--end::Price-->
@@ -725,6 +735,25 @@
     
     <script>
         $(document).ready(function() {
+            // VAT calculation
+            const vatPercentage = {{ $vatPercentage ?? 0 }};
+            const $priceInput = $('#subscription_price_input');
+            const $priceWithVatDisplay = $('#subscription_price_with_vat');
+
+            function updatePriceWithVat() {
+                if ($priceInput.length && $priceWithVatDisplay.length && vatPercentage > 0) {
+                    const price = parseFloat($priceInput.val()) || 0;
+                    const vatAmount = price * (vatPercentage / 100);
+                    const priceWithVat = price + vatAmount;
+                    $priceWithVatDisplay.text(priceWithVat.toFixed(2));
+                }
+            }
+
+            if ($priceInput.length) {
+                $priceInput.on('input', updatePriceWithVat);
+                updatePriceWithVat();
+            }
+
             // Image Preview
             $("#gym_image").change(function () {
                 let input = this;
@@ -736,7 +765,7 @@
                     reader.readAsDataURL(input.files[0]);
                 }
             });
-            
+
             // Enable/Disable Workouts Per Day
             $('#check_workouts_per_day').change(function() {
                 $('#workouts_per_day').prop('disabled', !this.checked);
@@ -744,7 +773,7 @@
                     $('#workouts_per_day').val('');
                 }
             });
-            
+
             // Enable/Disable Time Day Fields
             $('#time_day').change(function() {
                 $('#start_time_day, #end_time_day').prop('disabled', !this.checked);
@@ -752,7 +781,7 @@
                     $('#start_time_day, #end_time_day').val('');
                 }
             });
-            
+
             // Enable/Disable Week Days
             $('#check_time_week').change(function() {
                 $('.week-day-check').prop('disabled', !this.checked);
@@ -760,7 +789,7 @@
                     $('.week-day-check').prop('checked', false);
                 }
             });
-            
+
             // Activity Checkbox Handler
             $('.activity-check').change(function() {
                 const input = $(this).closest('.activity-item').find('.training-times');
@@ -774,7 +803,7 @@
                     input.val('');
                 }
             });
-            
+
             // Training Times Input remains numeric only
 
             // Toggle freeze help box

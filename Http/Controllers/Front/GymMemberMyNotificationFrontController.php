@@ -3,9 +3,8 @@
 namespace Modules\Software\Http\Controllers\Front;
 
 use Modules\Generic\Classes\Constants;
-use App\Modules\Notification\Http\Controllers\Admin\OneSignalController;
-use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
-use App\Modules\Notification\Models\PushNotification;
+use Modules\Generic\Http\Controllers\Api\OneSignalController;
+use Modules\Generic\Http\Controllers\Api\FirebaseApiController;
 use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymMember;
@@ -15,6 +14,7 @@ use Modules\Software\Models\GymPushToken;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 
 class GymMemberMyNotificationFrontController extends GymGenericFrontController
@@ -58,7 +58,31 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
         $data['title'] = $user_inputs['title'];
         $data['body'] = $msg;
 
-        $data['image'] =  $this->mainSettings->logo ? $this->mainSettings->logo : 'https://gymmawy.com/resources/assets/new_front/img/logo/default.png';
+        // Debug: Log file upload information
+        // Log::info('File upload check', [
+        //     'hasFile' => $request->hasFile('image'),
+        //     'file' => $request->file('image'),
+        //     'allFiles' => $request->allFiles()
+        // ]);
+
+        // Handle image upload - use uploaded image if exists, otherwise use main settings logo
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $image = $request->file('image');
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+
+            // Create directory if it doesn't exist
+            $uploadPath = base_path('uploads/notifications');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+
+            // Move uploaded file to public/uploads/notifications/
+            $image->move($uploadPath, $imageName);
+            $data['image'] = asset('uploads/notifications/' . $imageName);
+        } else {
+            $data['image'] = $this->mainSettings->logo ? $this->mainSettings->logo : 'https://gymmawy.com/resources/assets/new_front/img/logo/default.png';
+        }
+
         $data['sound'] = 'default';
         $data['badge'] = '1';
         $data['e'] = 1;

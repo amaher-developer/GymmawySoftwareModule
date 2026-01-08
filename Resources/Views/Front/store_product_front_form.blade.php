@@ -110,10 +110,20 @@
                         <label class="required form-label">{{ trans('sw.price')}}</label>
                         <!--end::Label-->
                         <!--begin::Input-->
-                        <input type="number" name="price" class="form-control mb-2" 
-                               placeholder="{{ trans('sw.enter_price')}}" 
-                               value="{{ old('price', $product->price) }}" 
+                        <input type="number" name="price" class="form-control mb-2"
+                               placeholder="{{ trans('sw.enter_price')}}"
+                               value="{{ old('price', $product->price) }}"
                                id="price" step="0.01" required />
+                        @php
+                            $vatPercentage = data_get($mainSettings ?? [], 'vat_details.vat_percentage', 0);
+                        @endphp
+                        @if($vatPercentage > 0)
+                            <div class="mt-2">
+                                <small class="text-muted" style="font-size: 0.85rem;">
+                                    {{ trans('sw.after_vat') }}: <span id="product_price_with_vat" class="fw-semibold">0.00</span>
+                                </small>
+                            </div>
+                        @endif
                         <!--end::Input-->
                     </div>
                     <!--end::Input group-->
@@ -428,6 +438,25 @@
     </script>
     <script>
         $(document).ready(function() {
+            // VAT calculation
+            const vatPercentage = {{ $vatPercentage ?? 0 }};
+            const $priceInput = $('#price');
+            const $priceWithVatDisplay = $('#product_price_with_vat');
+
+            function updatePriceWithVat() {
+                if ($priceInput.length && $priceWithVatDisplay.length && vatPercentage > 0) {
+                    const price = parseFloat($priceInput.val()) || 0;
+                    const vatAmount = price * (vatPercentage / 100);
+                    const priceWithVat = price + vatAmount;
+                    $priceWithVatDisplay.text(priceWithVat.toFixed(2));
+                }
+            }
+
+            if ($priceInput.length) {
+                $priceInput.on('input', updatePriceWithVat);
+                updatePriceWithVat();
+            }
+
             // Initialize Select2 for category dropdown
             $('#store_category_id').select2({
                 placeholder: "{{ trans('sw.select_store_category')}}",

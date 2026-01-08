@@ -11,8 +11,4 @@ Route::prefix('sw-payment')
     // Route::name('sw.showPaymentOrder')
     //     ->get('/order/{id}', 'Front\GymSwPaymentFrontController@showPaymentOrder');
 
-
-
-
-
     });

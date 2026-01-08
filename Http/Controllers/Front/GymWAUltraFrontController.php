@@ -2,7 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
-use App\Modules\Access\Models\User;
+use Modules\Access\Models\User;
 use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
@@ -48,7 +48,7 @@ class GymWAUltraFrontController extends GymGenericFrontController
         $message = strip_tags($user_inputs['message']);
         $image = $this->prepare_inputs('image');
         $phones = explode(',', $user_inputs['phones']);
-        if (is_array($$phones) && count($$phones) > 0) {
+        if (is_array($phones) && count($phones) > 0) {
             foreach ($phones as $phone) {
                 if(($this->consume_message_count < TypeConstants::WA_MAX_MESSAGE)){
                     $wa = new WAUltramsg();

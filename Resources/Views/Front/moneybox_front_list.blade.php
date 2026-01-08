@@ -154,6 +154,23 @@
                         {{ trans('sw.members_refresh')}}
                     </button>
                     <!--end::Refresh-->
+
+                    <!--begin::Trashed-->
+                    
+                    @if($swUser->is_super_user)
+                        @if(request('trashed'))
+                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->except('trashed'), [])) }}" class="btn btn-sm btn-flex btn-light-danger">
+                                <i class="ki-outline ki-eye fs-6"></i>
+                                {{ trans('sw.show_active')}}
+                            </a>
+                        @else
+                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->query(), ['trashed' => 1])) }}" class="btn btn-sm btn-flex btn-light-warning">
+                                <i class="ki-outline ki-trash fs-6"></i>
+                                {{ trans('sw.show_trashed')}}
+                            </a>
+                        @endif
+                    @endif
+                    <!--end::Trashed-->
                 </div>
             </div>
         </div>
@@ -339,6 +356,22 @@
                                                     <i class="ki-outline ki-pencil fs-2"></i>
                                                 </a>
                                             @endif
+                                            
+                                            @if($swUser->is_super_user && !request('trashed'))
+                                                <a href="#" data-id="{{@$order->id}}"
+                                                   class="btn btn-icon btn-bg-light btn-active-color-danger btn-sm delete-moneybox-btn"
+                                                   title="{{ trans('sw.delete')}}">
+                                                    <i class="ki-outline ki-trash fs-2"></i>
+                                                </a>
+                                            @endif
+                                            @if($swUser->is_super_user && request('trashed'))
+                                                <a href="#" data-id="{{@$order->id}}"
+                                                   class="btn btn-icon btn-bg-light btn-active-color-success btn-sm restore-moneybox-btn"
+                                                   title="{{ trans('sw.restore')}}">
+                                                    <i class="ki-outline ki-arrows-circle fs-2"></i>
+                                                </a>
+                                            @endif
+                                            
                                         </div>
                                     </td>
                                 </tr>
@@ -669,6 +702,148 @@
                 }
             });
         }
+
+        // Delete moneybox entry with rebuild
+        $(document).on('click', '.delete-moneybox-btn', function (event) {
+            event.preventDefault();
+
+            var id = $(this).data('id');
+
+            if (!id) {
+                Swal.fire(
+                    "{{ trans('admin.operation_failed')}}",
+                    "{{ trans('admin.missing_data')}}",
+                    'error'
+                );
+                return;
+            }
+
+            Swal.fire({
+                title: "{{ trans('admin.are_you_sure')}}",
+                text: "{{ trans('sw.delete_moneybox_warning')}}",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "{{ trans('admin.yes_delete')}}",
+                cancelButtonText: "{{ trans('admin.cancel')}}",
+                showLoaderOnConfirm: true,
+                allowOutsideClick: () => !Swal.isLoading(),
+                preConfirm: () => {
+                    return new Promise((resolve, reject) => {
+                        $.ajax({
+                            url: '{{ route('sw.deleteMoneyBox') }}',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                id: id,
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function (response) {
+                                if (response.success) {
+                                    resolve(response);
+                                } else {
+                                    reject(response.message || "{{ trans('admin.something_went_wrong')}}");
+                                }
+                            },
+                            error: function () {
+                                reject("{{ trans('admin.something_went_wrong')}}");
+                            }
+                        });
+                    }).catch(error => {
+                        Swal.showValidationMessage(error);
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "{{ trans('admin.success')}}",
+                        text: "{{ trans('sw.moneybox_deleted_successfully')}}",
+                        icon: "success",
+                        timer: 1000,
+                        showConfirmButton: false
+                    });
+
+                    setTimeout(() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('trashed'); 
+                        window.location.href = url.toString();
+                    }, 1000);
+                }
+            });
+
+        });
+
+
+
+        // Restore moneybox entry with rebuild
+        $(document).on('click', '.restore-moneybox-btn', function (event) {
+            event.preventDefault();
+
+            var id = $(this).data('id');
+
+            if (!id) {
+                Swal.fire(
+                    "{{ trans('admin.operation_failed')}}",
+                    "{{ trans('admin.missing_data')}}",
+                    'error'
+                );
+                return;
+            }
+
+            Swal.fire({
+                title: "{{ trans('admin.are_you_sure')}}",
+                text: "{{ trans('sw.restore_moneybox_warning')}}",
+                icon: "info",
+                showCancelButton: true,
+                confirmButtonColor: "#0fa751",
+                confirmButtonText: "{{ trans('admin.yes_restore')}}",
+                cancelButtonText: "{{ trans('admin.cancel')}}",
+                showLoaderOnConfirm: true,
+                allowOutsideClick: () => !Swal.isLoading(),
+                preConfirm: () => {
+                    return new Promise((resolve, reject) => {
+                        $.ajax({
+                            url: '{{ route('sw.restoreMoneyBox') }}',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                id: id,
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function (response) {
+                                if (response.success) {
+                                    resolve(response);
+                                } else {
+                                    reject(response.message || "{{ trans('admin.something_went_wrong')}}");
+                                }
+                            },
+                            error: function () {
+                                reject("{{ trans('admin.something_went_wrong')}}");
+                            }
+                        });
+                    }).catch(error => {
+                        Swal.showValidationMessage(error);
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "{{ trans('admin.success')}}",
+                        text: "{{ trans('sw.moneybox_restored_successfully')}}",
+                        icon: "success",
+                        timer: 1000,
+                        showConfirmButton: false
+                    });
+
+                    setTimeout(() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('trashed', '1');
+                        window.location.href = url.toString();
+                    }, 1000);
+                }
+            });
+        });
+
 
     </script>
 

@@ -36,13 +36,42 @@
             </div>
         </div>
         <div class="card-toolbar">
-            <div class="d-flex align-items-center gap-2 gap-lg-3">
+            <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
                 <!--begin::Filter-->
                 <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_renew_members_filter_collapse">
                     <i class="ki-outline ki-filter fs-6"></i>
                     {{ trans('sw.filter')}}
                 </button>
                 <!--end::Filter-->
+
+                <!--begin::Export-->
+                @if((count(array_intersect(@(array)$swUser->permissions, ['exportRenewMemberPDF', 'exportRenewMemberExcel'])) > 0) || $swUser->is_super_user)
+                    <div class="m-0">
+                        <button class="btn btn-sm btn-flex btn-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                            <i class="ki-outline ki-exit-down fs-6"></i>
+                            {{ trans('sw.download') }}
+                        </button>
+                        <div class="menu menu-sub menu-sub-dropdown w-200px" data-kt-menu="true">
+                            @if(in_array('exportRenewMemberExcel', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <div class="menu-item px-3">
+                                    <a href="{{route('sw.exportRenewMemberExcel', request()->query())}}" class="menu-link px-3">
+                                        <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                                        {{ trans('sw.excel_export') }}
+                                    </a>
+                                </div>
+                            @endif
+                            @if(in_array('exportRenewMemberPDF', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <div class="menu-item px-3">
+                                    <a href="{{route('sw.exportRenewMemberPDF', request()->query())}}" class="menu-link px-3">
+                                        <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                                        {{ trans('sw.pdf_export') }}
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+                <!--end::Export-->
             </div>
         </div>
     </div>

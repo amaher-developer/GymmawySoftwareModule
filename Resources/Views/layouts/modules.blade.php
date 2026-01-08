@@ -186,6 +186,7 @@
             <div style="clear: both;float: none"></div>
             <div class="modal-footer">
                 <input value=""  id="renew_member_id"   type="hidden">
+                <input value=""  id="renew_member_person_id"   type="hidden">
                 <button id="btn_renew_membership" class="btn ripple btn-primary"
                         type="button">{{trans('sw.renew_membership')}}</button>
                 <button class="btn ripple btn-secondary" data-dismiss="modal"

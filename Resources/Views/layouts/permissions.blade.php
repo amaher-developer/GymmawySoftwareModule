@@ -287,13 +287,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportUserExcel"
                                                                             @if(@in_array('exportUserExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_user_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportUserPDF"
                                                                             @if(@in_array('exportUserPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_user_report')}}</span></label>
                                             </div>
 
 
@@ -400,13 +400,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportSubscriptionExcel"
                                                                             @if(@in_array('exportSubscriptionExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_subscription_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportSubscriptionPDF"
                                                                             @if(@in_array('exportSubscriptionPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_subscription_report')}}</span></label>
                                             </div>
 
 
@@ -449,13 +449,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportActivityExcel"
                                                                             @if(@in_array('exportActivityExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_activity_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportActivityPDF"
                                                                             @if(@in_array('exportActivityPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_activity_report')}}</span></label>
                                             </div>
 
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
@@ -525,13 +525,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportNonMemberExcel"
                                                                             @if(@in_array('exportNonMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_non_member_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportNonMemberPDF"
                                                                             @if(@in_array('exportNonMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_non_member_report')}}</span></label>
                                             </div>
 
 
@@ -653,13 +653,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportMemberExcel"
                                                                             @if(@in_array('exportMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_member_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportMemberPDF"
                                                                             @if(@in_array('exportMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_member_report')}}</span></label>
                                             </div>
 
                                         </div>
@@ -708,13 +708,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportMoneyBoxExcel"
                                                                             @if(@in_array('exportMoneyBoxExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_moneybox_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportMoneyBoxPDF"
                                                                             @if(@in_array('exportMoneyBoxPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_moneybox_report')}}</span></label>
                                             </div>
 
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
@@ -736,13 +736,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportMoneyBoxTaxExcel"
                                                                             @if(@in_array('exportMoneyBoxTaxExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}} {{ trans('sw.moneybox_tax')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_moneybox_tax_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportMoneyBoxTaxPDF"
                                                                             @if(@in_array('exportMoneyBoxTaxPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}} {{ trans('sw.moneybox_tax')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_moneybox_tax_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -1036,13 +1036,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportTrainingMemberExcel"
                                                                             @if(@in_array('exportTrainingMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}} {{ trans('sw.training_plans')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_training_member_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportTrainingMemberPDF"
                                                                             @if(@in_array('exportTrainingMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}} {{ trans('sw.training_plans')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_training_member_report')}}</span></label>
                                             </div>
 
 
@@ -1323,13 +1323,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportPotentialMemberExcel"
                                                                             @if(@in_array('exportPotentialMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_potential_member_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportPotentialMemberPDF"
                                                                             @if(@in_array('exportPotentialMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_potential_member_report')}}</span></label>
                                             </div>
 
 
@@ -1513,7 +1513,7 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportLoyaltyTransaction"
                                                                             @if(@in_array('exportLoyaltyTransaction', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download') }}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_loyalty_transaction_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -1561,13 +1561,13 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportBannerExcel"
                                                                             @if(@in_array('exportBannerExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_banner_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
                                                                             value="exportBannerPDF"
                                                                             @if(@in_array('exportBannerPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_download')}}</span></label>
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_banner_report')}}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -1662,9 +1662,33 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportRenewMemberExcel"
+                                                                            @if(@in_array('exportRenewMemberExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_renew_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportRenewMemberPDF"
+                                                                            @if(@in_array('exportRenewMemberPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_renew_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="reportExpireMemberList"
                                                                             @if(@in_array('reportExpireMemberList', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.memberships_expire_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportExpireMemberExcel"
+                                                                            @if(@in_array('exportExpireMemberExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_expire_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportExpireMemberPDF"
+                                                                            @if(@in_array('exportExpireMemberPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_expire_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -1680,9 +1704,33 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportSubscriptionMemberExcel"
+                                                                            @if(@in_array('exportSubscriptionMemberExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_subscription_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportSubscriptionMemberPDF"
+                                                                            @if(@in_array('exportSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_subscription_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="reportPTSubscriptionMemberList"
                                                                             @if(@in_array('reportPTSubscriptionMemberList', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.report_pt_subscriptions') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportPTSubscriptionMemberExcel"
+                                                                            @if(@in_array('exportPTSubscriptionMemberExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_pt_subscription_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportPTSubscriptionMemberPDF"
+                                                                            @if(@in_array('exportPTSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_pt_subscription_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -1692,15 +1740,51 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportTodayMemberExcel"
+                                                                            @if(@in_array('exportTodayMemberExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_today_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportTodayMemberPDF"
+                                                                            @if(@in_array('exportTodayMemberPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_today_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="reportTodayPTMemberList"
                                                                             @if(@in_array('reportTodayPTMemberList', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.client_pt_attendees_today') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportTodayPTMemberExcel"
+                                                                            @if(@in_array('exportTodayPTMemberExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_today_pt_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportTodayPTMemberPDF"
+                                                                            @if(@in_array('exportTodayPTMemberPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_today_pt_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="reportTodayNonMemberList"
                                                                             @if(@in_array('reportTodayNonMemberList', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.non_client_attendees_today') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportTodayNonMemberExcel"
+                                                                            @if(@in_array('exportTodayNonMemberExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_today_non_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportTodayNonMemberPDF"
+                                                                            @if(@in_array('exportTodayNonMemberPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_today_non_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
@@ -1713,6 +1797,18 @@ if(!isset($permission_group->permissions)){
                                                                             value="reportStoreList"
                                                                             @if(@in_array('reportStoreList', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.store_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportStoreExcel"
+                                                                            @if(@in_array('exportStoreExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_store_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportStorePDF"
+                                                                            @if(@in_array('exportStorePDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_store_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"

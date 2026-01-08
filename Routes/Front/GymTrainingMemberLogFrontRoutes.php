@@ -5,51 +5,48 @@ Route::prefix('training/member-log')
     ->middleware(['auth:sw', 'sw_permission'])
     ->group(function () {
 
-        // Main member logs list page
+        // List training member logs - view permission
         Route::name('sw.listTrainingMemberLog')
             ->get('/', 'Front\GymTrainingMemberLogFrontController@index');
-        
-        // Show member training management page
+
+        // Show training member log - view permission
         Route::name('sw.showTrainingMemberLog')
             ->get('{member}', 'Front\GymTrainingMemberLogFrontController@show');
+        Route::name('sw.downloadPlanPDF')
+            ->get('{member}/plan/{logId}/pdf', 'Front\GymTrainingMemberLogFrontController@downloadPlanPDF');
 
-        // Add assessment
+        // Add training assessment - create permission
         Route::name('sw.addTrainingAssessment')
             ->post('{member}/assessment', 'Front\GymTrainingMemberLogFrontController@addAssessment');
 
-        // Add plan
+        // Add member training plan - create permission
         Route::name('sw.addMemberTrainingPlan')
             ->post('{member}/plan', 'Front\GymTrainingMemberLogFrontController@addPlan');
 
-        // Add medicine
+        // Add member training medicine - create permission
         Route::name('sw.addMemberTrainingMedicine')
             ->post('{member}/medicine', 'Front\GymTrainingMemberLogFrontController@addMedicine');
 
-        // Upload file
+        // Add member training file - create permission
         Route::name('sw.addMemberTrainingFile')
             ->post('{member}/file', 'Front\GymTrainingMemberLogFrontController@addFile');
 
-        // Add track (measurement)
+        // Add member training track - create permission
         Route::name('sw.addMemberTrainingTrack')
             ->post('{member}/track', 'Front\GymTrainingMemberLogFrontController@addTrack');
 
-        // Add note
+        // Add member training note - create permission
         Route::name('sw.addMemberTrainingNote')
             ->post('{member}/note', 'Front\GymTrainingMemberLogFrontController@addNote');
 
-        // Generate AI recommendation
+        // Generate AI recommendations - create permission
         Route::name('sw.generateMemberAiPlan')
             ->post('{member}/ai', 'Front\GymTrainingMemberLogFrontController@generateAi');
-            
-        // AI Plan Generation
         Route::name('sw.generateAiPlan')
             ->post('{member}/ai-plan/generate', 'Front\GymTrainingMemberLogFrontController@generateAiPlan');
         Route::name('sw.saveAiPlanTemplate')
             ->post('ai-plan/save-template', 'Front\GymTrainingMemberLogFrontController@saveAiPlanTemplate');
         Route::name('sw.assignAiPlanToMember')
             ->post('{member}/ai-plan/assign', 'Front\GymTrainingMemberLogFrontController@assignAiPlanToMember');
-            
-        // Download plan PDF
-        Route::name('sw.downloadPlanPDF')
-            ->get('{member}/plan/{logId}/pdf', 'Front\GymTrainingMemberLogFrontController@downloadPlanPDF');
+
     });

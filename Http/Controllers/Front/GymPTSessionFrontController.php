@@ -214,7 +214,7 @@ class GymPTSessionFrontController extends GymGenericFrontController
             $classTrainer = GymPTClassTrainer::with('trainer')
                 ->find($decoded['class_trainer_id']);
 
-            if (!$classTrainer || $classTrainer->class_id !== $class->id) {
+            if (!$classTrainer || ((int)$classTrainer->class_id !== (int)$class->id)) {
                 abort(404);
             }
         }

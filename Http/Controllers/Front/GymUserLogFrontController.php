@@ -1243,6 +1243,119 @@ class GymUserLogFrontController extends GymGenericFrontController
         return view('software::Front.report_user_attendees_front_list', compact('logs', 'search_query','title', 'total'));
     }
 
+    function exportUserAttendeesExcel()
+    {
+        $this->limit = null;
+        $search_query = request()->query();
+        $this->request_array = ['search', 'date'];
+        $request_array = $this->request_array;
+        foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
+        $logs = GymUser::branch()->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
+            ->with(['user_attendees' => function ($q) use ($date){
+            if(@$date)
+                $q->whereDate('created_at', Carbon::parse($date)->toDateString());
+            else
+                $q->whereDate('created_at', Carbon::now()->toDateString());
+            $q->orderBy('id', 'ASC');
+        }]);
+        $logs->orderBy('id', 'DESC');
+        $records = $logs->limit(300)->get();
+
+        $this->fileName = 'user-attendees-' . Carbon::now()->toDateTimeString();
+
+        $notes = trans('sw.export_excel_members');
+        $this->userLog($notes, TypeConstants::ExportUserAttendeesExcel);
+
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'title', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+    }
+
+    function exportUserAttendeesPDF()
+    {
+        $this->limit = null;
+        $search_query = request()->query();
+        $this->request_array = ['search', 'date'];
+        $request_array = $this->request_array;
+        foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
+        $logs = GymUser::branch()->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
+            ->with(['user_attendees' => function ($q) use ($date){
+            if(@$date)
+                $q->whereDate('created_at', Carbon::parse($date)->toDateString());
+            else
+                $q->whereDate('created_at', Carbon::now()->toDateString());
+            $q->orderBy('id', 'ASC');
+        }]);
+        $logs->orderBy('id', 'DESC');
+        $records = $logs->limit(300)->get();
+
+        $keys = ['name', 'phone', 'title', 'created_at'];
+        if ($this->lang == 'ar') $keys = array_reverse($keys);
+
+        $this->fileName = 'user-attendees-' . Carbon::now()->toDateTimeString();
+        foreach ($records as $key => $record) {
+            $records[$key]['name'] = $record['name'];
+            $records[$key]['phone'] = $record['phone'];
+            $records[$key]['title'] = $record['title'];
+            $records[$key]['created_at'] = $record['created_at'];
+        }
+
+        $title = trans('sw.user_attendees_report');
+        $customPaper = array(0, 0, 720, 1440);
+
+        // Try mPDF for better Arabic support
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L',
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records,
+                    'title' => $title,
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+
+                $mpdf->WriteHTML($html);
+
+                $notes = trans('sw.export_pdf_members');
+                $this->userLog($notes, TypeConstants::ExportUserAttendeesPDF);
+
+                return response($mpdf->Output($this->fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $this->fileName . '.pdf"'
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+
+        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys])
+        ->setPaper($customPaper, 'landscape')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+            'isPhpEnabled' => true,
+            'isJavascriptEnabled' => false
+        ]);
+
+        $notes = trans('sw.export_pdf_members');
+        $this->userLog($notes, TypeConstants::ExportUserAttendeesPDF);
+
+        return $pdf->download($this->fileName . '.pdf');
+    }
+
     public function reportZatcaInvoices()
     {
         if (!config('sw_billing.zatca_enabled')) {
@@ -1427,6 +1540,188 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'title', 'total'));
 
+    }
+
+    function exportStoreExcel()
+    {
+        $this->limit = null;
+        $from = request('from');
+        $to = request('to');
+        $search = request('search');
+
+        $ordersQuery = GymStoreOrder::branch()
+            ->with([
+                'member' => function ($q) {
+                    $q->withTrashed();
+                },
+                'order_product.product' => function ($q) {
+                    $q->withTrashed();
+                },
+                'pay_type',
+                'loyaltyRedemption',
+                'zatcaInvoice',
+            ])
+            ->orderByDesc('created_at');
+
+        if ($from) {
+            $fromDate = Carbon::parse($from)->format('Y-m-d');
+            $ordersQuery->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($to) {
+            $toDate = Carbon::parse($to)->format('Y-m-d');
+            $ordersQuery->whereDate('created_at', '<=', $toDate);
+        }
+
+        if ($search) {
+            $ordersQuery->where(function ($query) use ($search) {
+                $searchValue = trim($search);
+                if (str_starts_with($searchValue, '#')) {
+                    $query->where('id', (int) ltrim($searchValue, '#'));
+                    return;
+                }
+                if (is_numeric($searchValue)) {
+                    $numericValue = (int) $searchValue;
+                    $query->where('id', $numericValue);
+                } else {
+                    $query->whereHas('member', function ($memberQuery) use ($searchValue) {
+                        $memberQuery->where('name', 'like', '%' . $searchValue . '%')
+                            ->orWhere('phone', 'like', '%' . $searchValue . '%');
+                    });
+                }
+            });
+        }
+
+        $records = $ordersQuery->limit(300)->get();
+
+        $this->fileName = 'store-report-' . Carbon::now()->toDateTimeString();
+
+        $notes = trans('sw.export_excel_members');
+        $this->userLog($notes, TypeConstants::ExportStoreExcel);
+
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['id', 'member.name', 'member.phone', 'amount_paid', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+    }
+
+    function exportStorePDF()
+    {
+        $this->limit = null;
+        $from = request('from');
+        $to = request('to');
+        $search = request('search');
+
+        $ordersQuery = GymStoreOrder::branch()
+            ->with([
+                'member' => function ($q) {
+                    $q->withTrashed();
+                },
+                'order_product.product' => function ($q) {
+                    $q->withTrashed();
+                },
+                'pay_type',
+                'loyaltyRedemption',
+                'zatcaInvoice',
+            ])
+            ->orderByDesc('created_at');
+
+        if ($from) {
+            $fromDate = Carbon::parse($from)->format('Y-m-d');
+            $ordersQuery->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($to) {
+            $toDate = Carbon::parse($to)->format('Y-m-d');
+            $ordersQuery->whereDate('created_at', '<=', $toDate);
+        }
+
+        if ($search) {
+            $ordersQuery->where(function ($query) use ($search) {
+                $searchValue = trim($search);
+                if (str_starts_with($searchValue, '#')) {
+                    $query->where('id', (int) ltrim($searchValue, '#'));
+                    return;
+                }
+                if (is_numeric($searchValue)) {
+                    $numericValue = (int) $searchValue;
+                    $query->where('id', $numericValue);
+                } else {
+                    $query->whereHas('member', function ($memberQuery) use ($searchValue) {
+                        $memberQuery->where('name', 'like', '%' . $searchValue . '%')
+                            ->orWhere('phone', 'like', '%' . $searchValue . '%');
+                    });
+                }
+            });
+        }
+
+        $records = $ordersQuery->limit(300)->get();
+
+        $keys = ['id', 'member.name', 'member.phone', 'amount_paid', 'created_at'];
+        if ($this->lang == 'ar') $keys = array_reverse($keys);
+
+        $this->fileName = 'store-report-' . Carbon::now()->toDateTimeString();
+        foreach ($records as $key => $record) {
+            $records[$key]['id'] = $record['id'];
+            $records[$key]['member.name'] = $record->member->name ?? trans('sw.not_specified');
+            $records[$key]['member.phone'] = $record->member->phone ?? trans('sw.not_specified');
+            $records[$key]['amount_paid'] = $record['amount_paid'];
+            $records[$key]['created_at'] = $record['created_at'];
+        }
+
+        $title = trans('sw.store_report');
+        $customPaper = array(0, 0, 720, 1440);
+
+        // Try mPDF for better Arabic support
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L',
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records,
+                    'title' => $title,
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+
+                $mpdf->WriteHTML($html);
+
+                $notes = trans('sw.export_pdf_members');
+                $this->userLog($notes, TypeConstants::ExportStorePDF);
+
+                return response($mpdf->Output($this->fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $this->fileName . '.pdf"'
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+
+        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys])
+        ->setPaper($customPaper, 'landscape')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+            'isPhpEnabled' => true,
+            'isJavascriptEnabled' => false
+        ]);
+
+        $notes = trans('sw.export_pdf_members');
+        $this->userLog($notes, TypeConstants::ExportStorePDF);
+
+        return $pdf->download($this->fileName . '.pdf');
     }
 
     public function reportMoneyboxTax(){
@@ -1942,6 +2237,135 @@ class GymUserLogFrontController extends GymGenericFrontController
 
       return view('software::Front.report_online_payment_transactions_front_list', compact( 'orders', 'title', 'total', 'search_query'));
 
+    }
+
+    function exportOnlinePaymentExcel()
+    {
+        $this->limit = null;
+        $this->request_array = ['search', 'from', 'to', 'transaction'];
+        $request_array = $this->request_array;
+        foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
+
+        $orders = GymOnlinePaymentInvoice::branch()->with(['member', 'subscription' => function($q){
+            $q->withTrashed();
+        }])->orderBy('id', 'DESC');
+
+        //apply filters
+        $orders->when(($from), function ($query) use ($from) {
+            $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
+        })->when(($to), function ($query) use ($to) {
+            $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($search), function ($query) use ($search) {
+            $query->where('id', '=', (int)$search);
+            $query->orWhere('name', '=', (int)$search);
+            $query->orWhere('phone', '=', (int)$search);
+            $query->orWhere('address', '=', (int)$search);
+        });
+
+        $records = $orders->limit(300)->get();
+
+        $this->fileName = 'online-payment-transactions-' . Carbon::now()->toDateTimeString();
+
+        $notes = trans('sw.export_excel_members');
+        $this->userLog($notes, TypeConstants::ExportOnlinePaymentExcel);
+
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+    }
+
+    function exportOnlinePaymentPDF()
+    {
+        $this->limit = null;
+        $this->request_array = ['search', 'from', 'to', 'transaction'];
+        $request_array = $this->request_array;
+        foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
+
+        $orders = GymOnlinePaymentInvoice::branch()->with(['member', 'subscription' => function($q){
+            $q->withTrashed();
+        }])->orderBy('id', 'DESC');
+
+        //apply filters
+        $orders->when(($from), function ($query) use ($from) {
+            $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
+        })->when(($to), function ($query) use ($to) {
+            $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($search), function ($query) use ($search) {
+            $query->where('id', '=', (int)$search);
+            $query->orWhere('name', '=', (int)$search);
+            $query->orWhere('phone', '=', (int)$search);
+            $query->orWhere('address', '=', (int)$search);
+        });
+
+        $records = $orders->limit(300)->get();
+
+        $keys = ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'];
+        if ($this->lang == 'ar') $keys = array_reverse($keys);
+
+        $this->fileName = 'online-payment-transactions-' . Carbon::now()->toDateTimeString();
+        foreach ($records as $key => $record) {
+            $records[$key]['name'] = $record['name'];
+            $records[$key]['phone'] = $record['phone'];
+            $records[$key]['subscription.name'] = $record->subscription->name ?? trans('sw.not_specified');
+            $records[$key]['amount'] = $record['amount'];
+            $records[$key]['status'] = $record['status'] == 1 ? trans('sw.successful') : trans('sw.declined');
+            $records[$key]['created_at'] = $record['created_at'];
+        }
+
+        $title = trans('sw.online_transaction_report');
+        $customPaper = array(0, 0, 720, 1440);
+
+        // Try mPDF for better Arabic support
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L',
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records,
+                    'title' => $title,
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+
+                $mpdf->WriteHTML($html);
+
+                $notes = trans('sw.export_pdf_members');
+                $this->userLog($notes, TypeConstants::ExportOnlinePaymentPDF);
+
+                return response($mpdf->Output($this->fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $this->fileName . '.pdf"'
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+
+        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys])
+        ->setPaper($customPaper, 'landscape')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+            'isPhpEnabled' => true,
+            'isJavascriptEnabled' => false
+        ]);
+
+        $notes = trans('sw.export_pdf_members');
+        $this->userLog($notes, TypeConstants::ExportOnlinePaymentPDF);
+
+        return $pdf->download($this->fileName . '.pdf');
     }
 
     public function reportUserNotificationsList()

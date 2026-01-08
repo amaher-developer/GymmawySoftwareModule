@@ -125,10 +125,10 @@
                                 <span class="text-gray-800 fw-bold">{{ $rule->name }}</span>
                             </td>
                             <td>
-                                <span class="badge badge-light-info">{{ $rule->money_to_point_rate }} {{ trans('sw.egp') }}</span>
+                                <span class="badge badge-light-info">{{ $rule->money_to_point_rate }} {{ trans('sw.currency') }}</span>
                             </td>
                             <td>
-                                <span class="badge badge-light-success">{{ $rule->point_to_money_rate }} {{ trans('sw.egp') }}</span>
+                                <span class="badge badge-light-success">{{ $rule->point_to_money_rate }} {{ trans('sw.currency') }}</span>
                             </td>
                             <td>
                                 @if($rule->expires_after_days)

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 class GymMoneyBox extends GenericModel
 {
+    use SoftDeletes;
 
     protected $dates = [];
 

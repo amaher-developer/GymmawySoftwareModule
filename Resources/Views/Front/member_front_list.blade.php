@@ -498,6 +498,7 @@
                                 </div>
                             </td>
                             <td class="pe-0">
+                                @if(@$member->member_subscription_info)
                                 <span
                                     @if(@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Freeze)
                                         @php
@@ -512,6 +513,9 @@
                                     {!! @$member->member_subscription_info->statusName !!}
                                 </span>
                                 @if($has_coming)<span class="badge bg-secondary ">{{ trans('sw.coming')}}</span>@endif
+                                @else
+                                -
+                                @endif
                             </td>
                             <td class="pe-0">
                                 <span class="fw-bold">{{ $member->phone }}</span>
@@ -521,7 +525,7 @@
                             </td>
                             <td class="pe-0">
                                 <div>
-                                    <span class="fw-bold">{{ @$member->member_subscription_info->subscription->name }}</span>
+                                    <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->subscription->name : '-' }}</span>
                                     @if(@$member->member_subscription_info->notes)
                                         <br/>
                                         <span class="badge badge-light-info" style="cursor: pointer;" data-target="#subscription_notes_{{$member->member_subscription_info->id}}" data-toggle="modal">
@@ -546,10 +550,10 @@
                                 </div>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info->workouts }}</span>
+                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->workouts : '-' }}</span>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info->visits }}</span>
+                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->visits : '-' }}</span>
                             </td>
                             <td class="pe-0">
                                 <div class="d-flex flex-wrap gap-1">
@@ -568,17 +572,17 @@
                                 </div>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @\Carbon\Carbon::parse($member->member_subscription_info->joining_date)->toDateString() }}</span>
+                                <span class="fw-bold">{{ @$member->member_subscription_info ? @\Carbon\Carbon::parse($member->member_subscription_info->joining_date)->toDateString() : '-' }}</span>
                             </td>
                             <td class="pe-0">
                                 <div class="d-flex flex-column">
                                     <div class="text-muted fw-bold d-flex align-items-center">
                                         <i class="ki-outline ki-calendar fs-6 text-muted me-2"></i>
-                                        <span>{{ @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString() }}</span>
+                                        <span>{{ @$member->member_subscription_info ? @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString() : '-' }}</span>
                                     </div>
                                     <div class="text-muted fs-7 d-flex align-items-center">
                                         <i class="ki-outline ki-time fs-6 text-muted me-2"></i>
-                                        <span>{{ trans('sw.reminder_days')}}: {{ (\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->toDateString() > \Carbon\Carbon::now()->toDateString()) ? (int) @\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->diffInDays(\Carbon\Carbon::now()->toDateString()) : 0 }}</span>
+                                        <span>{{ trans('sw.reminder_days')}}: {{ @$member->member_subscription_info ? (\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->toDateString() > \Carbon\Carbon::now()->toDateString()) ? (int) @\Carbon\Carbon::parse(@$member->member_subscription_info->expire_date)->diffInDays(\Carbon\Carbon::now()->toDateString()) : 0 : '-' }}</span>
                                     </div>
                                     @if(@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Freeze)
                                         <div class="text-muted fs-7 d-flex align-items-center">
@@ -655,7 +659,7 @@
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)"
                                            class="menu-link px-3"
-                                           onclick="list_renew_membership('{{@$member->member_subscription_info->id}}')"
+                                           onclick="list_renew_membership('{{@$member->member_subscription_info->id}}', '{{@$member->id}}')"
                                            expire_msg="{{ trans('sw.expire_date_msg', ['date' => @\Carbon\Carbon::parse($member->member_subscription_info->expire_date)->toDateString()])}}"
                                            expire_color="@if(@$member->member_subscription_info->status == 0) green @else red @endif"
                                            id="list_member_{{@$member->member_subscription_info->id}}"
@@ -666,7 +670,7 @@
                                         </a>
                                     </div>
                                     @endif
-                                    @if(in_array('createMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user)
+                                    @if(@$member->member_subscription_info && (in_array('createMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user))
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)"
                                            data-target="#modalPays_{{$member->id}}" data-toggle="modal"
@@ -745,8 +749,23 @@
                                         @endif
                                     @endif
 
-                                    @if(in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user)
+                                    @if(@@$member->member_subscription_info && (in_array('freezeMember', (array)$swUser->permissions) || $swUser->is_super_user))
                                         @if((@($member->member_subscription_info->number_times_freeze) > 0) && (@$member->member_subscription_info->status == \Modules\Software\Classes\TypeConstants::Active))
+                                        @php
+                                            // Calculate used freeze days from history
+                                            $usedFreezeDays = 0;
+                                            if (@$member->member_subscription_info->max_freeze_extension_sum > 0) {
+                                                $usedFreezeDays = \Modules\Software\Models\GymMemberSubscriptionFreeze::where('member_subscription_id', $member->member_subscription_info->id)
+                                                    ->whereIn('status', ['completed', 'active', 'approved'])
+                                                    ->get()
+                                                    ->sum(function($freeze) {
+                                                        return \Carbon\Carbon::parse($freeze->start_date)->diffInDays(\Carbon\Carbon::parse($freeze->end_date));
+                                                    });
+                                            }
+                                            $remainingTotalDays = (@$member->member_subscription_info->max_freeze_extension_sum > 0)
+                                                ? ($member->member_subscription_info->max_freeze_extension_sum - $usedFreezeDays)
+                                                : $member->member_subscription_info->freeze_limit;
+                                        @endphp
                                         <div class="menu-item px-3">
                                             <a href="javascript:void(0)"
                                                class="menu-link px-3 open_freeze_modal"
@@ -754,6 +773,9 @@
                                                data-member_name="{{$member->name}}"
                                                data-subscription_name="{{@$member->member_subscription_info->subscription->name}}"
                                                data-freeze_limit="{{@$member->member_subscription_info->freeze_limit}}"
+                                               data-max_total="{{@$member->member_subscription_info->max_freeze_extension_sum}}"
+                                               data-used_days="{{$usedFreezeDays}}"
+                                               data-remaining_days="{{$remainingTotalDays}}"
                                                data-times_left="{{@$member->member_subscription_info->number_times_freeze}}"
                                                title="{{ trans('sw.freeze_account')}}">
                                                 <i class="ki-outline ki-cross-circle text-info"></i>
@@ -781,20 +803,18 @@
                                                 <span>{{ trans('admin.enable')}}</span>
                                             </a>
                                         </div>
-                                        @else
-                                            @if(@$member->member_subscription_info)
+                                        @else 
                                             <div class="menu-item px-3">
-                                                <a title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
-                                                   data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}"
+                                                <a title="{{ trans('sw.disable_with_refund', ['amount' => (float)@$member->member_subscription_info->amount_paid])}}"
+                                                   data-swal-text="{{ trans('sw.disable_with_refund', ['amount' => (float)@$member->member_subscription_info->amount_paid])}}"
                                                    data-swal-amount="{{@$member->member_subscription_info->amount_paid}}"
-                                                   href="{{route('sw.deleteMember',$member->id).'?refund=1&total_amount='.@$member->member_subscription_info->amount_paid}}"
+                                                   href="{{route('sw.deleteMember',$member->id).'?refund=1&total_amount='.(float)@$member->member_subscription_info->amount_paid}}"
                                                    class="menu-link px-3 confirm_delete"
-                                                   title="{{ trans('sw.disable_with_refund', ['amount' => $member->member_subscription_info->amount_paid])}}">
+                                                   title="{{ trans('sw.disable_with_refund', ['amount' => (float)@$member->member_subscription_info->amount_paid])}}">
                                                     <i class="ki-outline ki-trash text-danger"></i>
                                                     <span>{{ trans('admin.delete')}}</span>
                                                 </a>
                                             </div>
-                                            @endif
                                         @endif
                                     @endif
                                 </div>
@@ -971,7 +991,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type_add" 
+                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type" 
                                            value="0" onclick="show_credit_add()" required>
                                     <label class="form-check-label fw-bold text-success" for="credit_type_add">
                                         <i class="ki-outline ki-plus fs-4 me-2"></i>{{ trans('sw.store_add')}}
@@ -980,7 +1000,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type_refund" 
+                                    <input class="form-check-input" type="radio" name="credit_type" id="credit_type" 
                                            value="1" onclick="show_credit_refund()" required>
                                     <label class="form-check-label fw-bold text-danger" for="credit_type_refund">
                                         <i class="ki-outline ki-minus fs-4 me-2"></i>{{ trans('sw.store_refund')}}
@@ -1022,7 +1042,6 @@
                             @endif
                         </select>
                     </div>
-
                     <!-- Notes -->
                     <div class="mb-4">
                         <label class="form-label fw-bold">{{ trans('sw.notes')}}</label>
@@ -1505,11 +1524,13 @@
     <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
             type="text/javascript"></script>
     <script>
-         function list_renew_membership(id) {
+         function list_renew_membership(id, member_id = null) {
              let attr_id = id;
              $('#renew_member_id').val(attr_id);
+             let attr_id2 = member_id || 0;
+             $('#renew_member_person_id').val(attr_id2);
             // $('#btn_renew_membership').before('<input value="' + attr_id + '"  id="renew_member_id"   hidden>');
-            getRenewMembershipsSelection(attr_id);
+            getRenewMembershipsSelection(attr_id, attr_id2);
 
              let expire_date = $('#list_member_'+id);
              let expire_date_msg = expire_date.attr('expire_msg');
@@ -1646,19 +1667,32 @@
             const memberName = $(this).data('member_name');
             const subscriptionName = $(this).data('subscription_name');
             const freezeLimit = parseInt($(this).data('freeze_limit')) || 0;
+            const maxTotal = parseInt($(this).data('max_total')) || 0;
+            const usedDays = parseInt($(this).data('used_days')) || 0;
+            const remainingDays = parseInt($(this).data('remaining_days')) || 0;
             const timesLeft = parseInt($(this).data('times_left')) || 0;
 
             $('#freeze_member_name_form').text(memberName || '-');
             $('#freeze_subscription_name_form').text(subscriptionName || '-');
             $('#freeze_member_id').val(memberId);
-            $('#freeze_limit_badge').text('{{ trans('sw.freeze_limit')}}: ' + freezeLimit);
+
+            // Show remaining total days if max_freeze_extension_sum is set, otherwise show freeze_limit
+            if (maxTotal > 0) {
+                // Shorter message format
+                $('#freeze_limit_badge').text('{{ trans('sw.max_per_freeze')}}: ' + freezeLimit + ' | {{ trans('sw.balance')}}: ' + remainingDays + '/' + maxTotal);
+            } else {
+                $('#freeze_limit_badge').text('{{ trans('sw.freeze_limit')}}: ' + freezeLimit);
+            }
             $('#freeze_times_left_badge').text('{{ trans('sw.number_times_freeze')}}: ' + timesLeft);
 
             const today = new Date();
             const pad = n => (n<10 ? '0'+n : ''+n);
             const toYmd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
             const start = toYmd(today);
-            const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (freezeLimit > 0 ? freezeLimit : 1));
+
+            // Use the SMALLER of: freezeLimit or remainingDays (to respect both limits)
+            const maxDaysAllowed = (maxTotal > 0) ? Math.min(freezeLimit, remainingDays) : freezeLimit;
+            const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (maxDaysAllowed > 0 ? maxDaysAllowed : 1));
             const end = toYmd(endDate);
             $('#freeze_start_date_input').val(start).attr('min', start);
             $('#freeze_end_date_input').val(end).attr('min', start);
@@ -1699,7 +1733,15 @@
             const end = $('#freeze_end_date_input').val();
             const reason = $('#freeze_reason').val();
             const adminNote = $('#freeze_admin_note').val();
-            const freezeLimit = ($('#freeze_limit_badge').text().match(/(\d+)/) || [0,0])[1] | 0;
+
+            // Extract freeze_limit and remaining_days from badge
+            const badgeText = $('#freeze_limit_badge').text();
+            const freezeLimit = (badgeText.match(/(\d+)/) || [0,0])[1] | 0;
+            // Extract remaining days (format: "Balance: 57/60" or "الرصيد: 57/60")
+            const remainingMatch = badgeText.match(/(\d+)\/(\d+)/);
+            const remainingDays = remainingMatch ? parseInt(remainingMatch[1]) : freezeLimit;
+            const maxTotal = remainingMatch ? parseInt(remainingMatch[2]) : 0;
+
             const timesLeft = ($('#freeze_times_left_badge').text().match(/(\d+)/) || [0,0])[1] | 0;
 
             const days = Math.max(0, Math.ceil((new Date(end) - new Date(start)) / (1000*60*60*24)));
@@ -1713,9 +1755,25 @@
                 $alert.html('<div class="alert alert-danger">{{ trans('sw.number_times_freeze_reminder')}}: 0</div>').show();
                 return false;
             }
-            if(freezeLimit > 0 && days > freezeLimit){
-                $alert.html('<div class="alert alert-warning">{{ trans('sw.freeze_limit')}}: '+freezeLimit+'</div>').show();
-                return false;
+
+            // Smart validation: Check remaining balance first if it's MORE restrictive than freeze_limit
+            if(maxTotal > 0){
+                // When max_freeze_extension_sum is set, check remaining balance first
+                if(days > remainingDays){
+                    $alert.html('<div class="alert alert-danger">{{ trans('sw.insufficient_balance')}}! {{ trans('sw.remaining_days')}}: '+remainingDays+'/'+maxTotal+' {{ trans('sw.days')}}</div>').show();
+                    return false;
+                }
+                // Also check freeze_limit, but only if request exceeds it AND it's more restrictive than remaining
+                if(freezeLimit > 0 && days > freezeLimit && freezeLimit < remainingDays){
+                    $alert.html('<div class="alert alert-warning">{{ trans('sw.max_per_freeze')}}: '+freezeLimit+' {{ trans('sw.days')}}</div>').show();
+                    return false;
+                }
+            } else {
+                // When max_freeze_extension_sum is NOT set, only check freeze_limit
+                if(freezeLimit > 0 && days > freezeLimit){
+                    $alert.html('<div class="alert alert-warning">{{ trans('sw.max_per_freeze')}}: '+freezeLimit+' {{ trans('sw.days')}}</div>').show();
+                    return false;
+                }
             }
 
             var route = "{{route('sw.freezeMember', ['id' => 'member_id'])}}";
@@ -1915,6 +1973,7 @@
              $('#credit_amount_refund_div').hide();
              $('#form_credit_add_btn').show();
              $('#form_credit_refund_btn').hide();
+             //$('#credit_type').val(1);
          }
 
          function show_credit_refund(){
@@ -1922,6 +1981,7 @@
              $('#credit_amount_refund_div').show();
              $('#form_credit_add_btn').hide();
              $('#form_credit_refund_btn').show();
+             //$('#credit_type').val(0);
          }
 
          function add_to_member_credit(){

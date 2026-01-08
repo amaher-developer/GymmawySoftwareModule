@@ -105,13 +105,42 @@
             </div>
         </div>
         <div class="card-toolbar">
-            <div class="d-flex align-items-center gap-2 gap-lg-3">
+            <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
                 <!--begin::Filter-->
                 <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_today_members_filter_collapse">
                     <i class="ki-outline ki-filter fs-6"></i>
                     {{ trans('sw.filter')}}
                 </button>
                 <!--end::Filter-->
+
+                <!--begin::Export-->
+                @if((count(array_intersect(@(array)$swUser->permissions, ['exportTodayMemberPDF', 'exportTodayMemberExcel'])) > 0) || $swUser->is_super_user)
+                    <div class="m-0">
+                        <button class="btn btn-sm btn-flex btn-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                            <i class="ki-outline ki-exit-down fs-6"></i>
+                            {{ trans('sw.download') }}
+                        </button>
+                        <div class="menu menu-sub menu-sub-dropdown w-200px" data-kt-menu="true">
+                            @if(in_array('exportTodayMemberExcel', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <div class="menu-item px-3">
+                                    <a href="{{route('sw.exportTodayMemberExcel', request()->query())}}" class="menu-link px-3">
+                                        <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                                        {{ trans('sw.excel_export') }}
+                                    </a>
+                                </div>
+                            @endif
+                            @if(in_array('exportTodayMemberPDF', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <div class="menu-item px-3">
+                                    <a href="{{route('sw.exportTodayMemberPDF', request()->query())}}" class="menu-link px-3">
+                                        <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                                        {{ trans('sw.pdf_export') }}
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+                <!--end::Export-->
             </div>
         </div>
     </div>
@@ -183,7 +212,16 @@
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.membership')}}
                             </th>
                             <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-shield-tick fs-6 me-2"></i>{{ trans('sw.subscription_status')}}
+                            </th>
+                            <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-status fs-6 me-2"></i>{{ trans('sw.status')}}
+                            </th>
+                            <th class="min-w-150px text-nowrap">
+                                <i class="ki-outline ki-user-tick fs-6 me-2"></i>{{ trans('sw.user')}}
+                            </th>
+                            <th class="min-w-150px text-nowrap">
+                                <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.remaining_amount')}}
                             </th>
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.date')}}
@@ -209,7 +247,61 @@
                                     <span class="fw-bold">{{ @$log->member->member_subscription_info->subscription->name }}</span>
                                 </td>
                                 <td>
+                                    @php
+                                        $subscription = @$log->member->member_subscription_info;
+                                        $status = $subscription->status ?? null;
+                                        $expireDate = $subscription->expire_date ?? null;
+                                        $startDate = $subscription->start_date ?? null;
+                                        $now = \Carbon\Carbon::now();
+
+                                        if ($status == \Modules\Software\Classes\TypeConstants::Active) {
+                                            $badgeClass = 'badge-light-success';
+                                            $statusText = trans('sw.active');
+                                        } elseif ($status == \Modules\Software\Classes\TypeConstants::Freeze) {
+                                            $badgeClass = 'badge-light-info';
+                                            $statusText = trans('sw.frozen');
+                                        } elseif ($status == \Modules\Software\Classes\TypeConstants::Expired) {
+                                            $badgeClass = 'badge-light-danger';
+                                            $statusText = trans('sw.expire');
+                                        } elseif ($startDate && \Carbon\Carbon::parse($startDate)->isFuture()) {
+                                            $badgeClass = 'badge-light-warning';
+                                            $statusText = trans('sw.upcoming');
+                                        } else {
+                                            $badgeClass = 'badge-light-secondary';
+                                            $statusText = trans('sw.no_subscription');
+                                        }
+                                    @endphp
+                                    <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
+                                </td>
+                                <td>
                                     <span class="badge badge-light-success">{{ trans('sw.attend') }}</span>
+                                </td>
+                                <td>
+                                    @if(@$log->user)
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-gray-800">{{ @$log->user->name }}</span>
+                                            {{-- <span class="text-muted fs-7">{{ @$log->user->email }}</span> --}}
+                                        </div>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @php
+                                        $member = @$log->member;
+                                        $remainingAmount = (float)(@$member->member_remain_amount_subscriptions->sum('amount_remaining') ?? 0);
+                                        $storeRemainingAmount = (float)(@$member->store_balance ?? 0);
+                                    @endphp
+                                    <div class="d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="ki-outline ki-dollar fs-7 text-success me-2"></i>
+                                            <span class="fw-bold text-success">{{ number_format($remainingAmount, 2) }}</span>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <i class="ki-outline ki-shop fs-7 text-primary me-2"></i>
+                                            <span class="fw-bold text-primary">{{ number_format($storeRemainingAmount, 2) }}</span>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column">

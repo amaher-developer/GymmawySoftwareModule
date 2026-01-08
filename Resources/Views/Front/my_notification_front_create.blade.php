@@ -148,8 +148,7 @@
                                 <label class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow" data-kt-image-input-action="change" data-bs-toggle="tooltip" title="Change image">
                                     <i class="ki-outline ki-pencil fs-7"></i>
                                     <!--begin::Inputs-->
-                                    <input type="file" name="image" accept=".png, .jpg, .jpeg" />
-                                    <input type="hidden" name="avatar_remove" />
+                                    <input type="file" name="image" accept=".png, .jpg, .jpeg" id="notification_image" />
                                     <!--end::Inputs-->
                                 </label>
                                 <!--end::Label-->
@@ -210,12 +209,26 @@
                 <!--begin::Card body-->
                 <div class="card-body pt-0">
                     @if(count($members) > 0)
-                        <select class="form-select" name="member_codes[]" data-control="select2" data-placeholder="{{ trans('sw.select_clients')}}" data-allow-clear="true" multiple="multiple">
-                            <option></option>
-                            @foreach($members as $member)
-                                <option value="{{@$member->member->code}}">{{@$member->member->name}} ({{@$member->member->code}})</option>
-                            @endforeach
-                        </select>
+                        <!--begin::Send to all checkbox-->
+                        <div class="form-check form-check-custom form-check-solid mb-5">
+                            <input class="form-check-input" type="checkbox" value="1" name="member_code_all" id="member_code_all"/>
+                            <label class="form-check-label fw-bold text-gray-700 fs-6" for="member_code_all">
+                                {{ trans('sw.send_to_all_clients')}}
+                            </label>
+                        </div>
+                        <!--end::Send to all checkbox-->
+
+                        <!--begin::Members select-->
+                        <div id="member_select_wrapper">
+                            <label class="form-label">{{ trans('sw.or_select_specific_clients')}}</label>
+                            <select class="form-select" id="member_codes" name="member_codes[]" data-control="select2" data-placeholder="{{ trans('sw.select_clients')}}" data-allow-clear="true" multiple="multiple">
+                                <option></option>
+                                @foreach($members as $member)
+                                    <option value="{{@$member->member->code}}">{{@$member->member->name}} ({{@$member->member->code}})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <!--end::Members select-->
                     @else
                         <!--begin::Empty state-->
                         <div class="text-center p-7">
@@ -258,8 +271,40 @@
                 }
             });
 
+            // Handle send to all clients checkbox
+            $('#member_code_all').on('change', function() {
+                if ($(this).is(':checked')) {
+                    // Disable member selection when "Send to all" is checked
+                    $('#member_codes').val(null).trigger('change').prop('disabled', true);
+                    $('#member_select_wrapper').css('opacity', '0.5').css('pointer-events', 'none');
+                } else {
+                    // Enable member selection and clear it when "Send to all" is unchecked
+                    $('#member_codes').prop('disabled', false);
+                    $('#member_codes').val([]).trigger('change');
+                    $('#member_select_wrapper').css('opacity', '1').css('pointer-events', 'auto');
+                }
+            });
+
+            // Handle member selection - uncheck "Send to all" if members are selected
+            $('#member_codes').on('select2:select', function() {
+                if ($(this).val() && $(this).val().length > 0) {
+                    $('#member_code_all').prop('checked', false);
+                    $('#member_select_wrapper').css('opacity', '1').css('pointer-events', 'auto');
+                }
+            });
+
             // Initialize KTImageInput
-             KTImageInput.init();
+            KTImageInput.init();
+
+            // Debug: Check if file is selected before form submit
+            $('form').on('submit', function() {
+                var fileInput = $('#notification_image')[0];
+                if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                    console.log('Image file selected:', fileInput.files[0].name);
+                } else {
+                    console.log('No image file selected');
+                }
+            });
         });
     </script>
 @endsection

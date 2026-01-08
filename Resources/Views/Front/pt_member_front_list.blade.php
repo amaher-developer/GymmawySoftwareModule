@@ -119,7 +119,7 @@
                                 <input type="text" class="form-control" id="to_date" name="to" value="@php echo @strip_tags($_GET['to']) @endphp" placeholder="{{ trans('sw.to')}}" autocomplete="off">
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.pt_subscription')}}</label>
                             <select name="pt_subscription" class="form-select form-select-solid">
                                 <option value="">{{ trans('admin.choose')}}...</option>
@@ -128,13 +128,29 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.pt_trainer')}}</label>
                             <select name="pt_trainer" class="form-select form-select-solid">
                                 <option value="">{{ trans('admin.choose')}}...</option>
                                 @foreach($pt_trainers as $trainer)
                                     <option value="{{$trainer->id}}" @if(request('pt_trainer') == $trainer->id) selected="" @endif>{{$trainer->name}}</option>
                                 @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.remaining_sessions_status')}}</label>
+                            <select name="remaining_status" class="form-select form-select-solid">
+                                <option value="">{{ trans('admin.choose')}}...</option>
+                                <option value="has_remaining" @if(request('remaining_status') == 'has_remaining') selected="" @endif>{{ trans('sw.has_remaining_sessions')}}</option>
+                                <option value="no_remaining" @if(request('remaining_status') == 'no_remaining') selected="" @endif>{{ trans('sw.no_remaining_sessions')}}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.remaining_amount_status')}}</label>
+                            <select name="remaining_status_amount" class="form-select form-select-solid">
+                                <option value="">{{ trans('admin.choose')}}...</option>
+                                <option value="has_remaining_amount" @if(request('remaining_status_amount') == 'has_remaining_amount') selected="" @endif>{{ trans('sw.has_remaining_amount')}}</option>
+                                <option value="no_remaining_amount" @if(request('remaining_status_amount') == 'no_remaining_amount') selected="" @endif>{{ trans('sw.no_remaining_amount')}}</option>
                             </select>
                         </div>
                     </div>

@@ -19,7 +19,18 @@
     </ul>
     <!--end::Breadcrumb-->
 @endsection
-
+@section('styles')
+    <style>
+    
+     
+        .right{
+            float: left;
+        }
+        .left{
+            float: left;
+        }
+    </style>
+@endsection
 @section('page_body')
 
 <!--begin::Member Training Management-->
@@ -90,6 +101,18 @@
                                 <option value="female" @if(request('gender') == 'female') selected @endif>{{ trans('sw.female')}}</option>
                             </select>
                         </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.joining_date_range')}}</label>
+                            <input type="text" name="join_date_range" class="form-control form-control-solid" id="join_date_range" placeholder="{{ trans('sw.select_date_range')}}" value="{{ request('join_date_range') }}" readonly>
+                            <input type="hidden" name="join_date_from" id="join_date_from" value="{{ request('join_date_from') }}">
+                            <input type="hidden" name="join_date_to" id="join_date_to" value="{{ request('join_date_to') }}">
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.expire_date_range')}}</label>
+                            <input type="text" name="expire_date_range" class="form-control form-control-solid" id="expire_date_range" placeholder="{{ trans('sw.select_date_range')}}" value="{{ request('expire_date_range') }}" readonly>
+                            <input type="hidden" name="expire_date_from" id="expire_date_from" value="{{ request('expire_date_from') }}">
+                            <input type="hidden" name="expire_date_to" id="expire_date_to" value="{{ request('expire_date_to') }}">
+                        </div>
                     </div>
                     <div class="d-flex justify-content-end mt-5">
                         <button type="reset" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</button>
@@ -110,6 +133,18 @@
                 <input type="text" name="q" class="form-control form-control-solid ps-12" value="{{ request('q') }}" placeholder="{{ trans('sw.search_members')}}...">
                 @if(request('gender'))
                     <input type="hidden" name="gender" value="{{ request('gender') }}">
+                @endif
+                @if(request('join_date_from'))
+                    <input type="hidden" name="join_date_from" value="{{ request('join_date_from') }}">
+                @endif
+                @if(request('join_date_to'))
+                    <input type="hidden" name="join_date_to" value="{{ request('join_date_to') }}">
+                @endif
+                @if(request('expire_date_from'))
+                    <input type="hidden" name="expire_date_from" value="{{ request('expire_date_from') }}">
+                @endif
+                @if(request('expire_date_to'))
+                    <input type="hidden" name="expire_date_to" value="{{ request('expire_date_to') }}">
                 @endif
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
@@ -297,4 +332,145 @@
 <!--end::Member Training Management-->
 @endsection
 
+@section('scripts')
+<script>
+$(document).ready(function() {
+    // Initialize joining date range picker
+    @if(request('join_date_from') && request('join_date_to'))
+        var joinStartDate = moment("{{ request('join_date_from') }}");
+        var joinEndDate = moment("{{ request('join_date_to') }}");
+    @else
+        var joinStartDate = moment().subtract(29, 'days');
+        var joinEndDate = moment();
+    @endif
+
+    $('#join_date_range').daterangepicker({
+        startDate: joinStartDate,
+        endDate: joinEndDate,
+        locale: {
+            format: 'YYYY-MM-DD',
+            separator: ' - ',
+            applyLabel: "{{ trans('sw.apply') }}",
+            cancelLabel: "{{ trans('sw.cancel') }}",
+            fromLabel: "{{ trans('sw.from') }}",
+            toLabel: "{{ trans('sw.to') }}",
+            customRangeLabel: "{{ trans('sw.custom') }}",
+            weekLabel: "{{ trans('sw.week') }}",
+            daysOfWeek: [
+                "{{ trans('sw.sunday') }}",
+                "{{ trans('sw.monday') }}",
+                "{{ trans('sw.tuesday') }}",
+                "{{ trans('sw.wednesday') }}",
+                "{{ trans('sw.thursday') }}",
+                "{{ trans('sw.friday') }}",
+                "{{ trans('sw.saturday') }}"
+            ],
+            monthNames: [
+                "{{ trans('sw.january') }}",
+                "{{ trans('sw.february') }}",
+                "{{ trans('sw.march') }}",
+                "{{ trans('sw.april') }}",
+                "{{ trans('sw.may') }}",
+                "{{ trans('sw.june') }}",
+                "{{ trans('sw.july') }}",
+                "{{ trans('sw.august') }}",
+                "{{ trans('sw.september') }}",
+                "{{ trans('sw.october') }}",
+                "{{ trans('sw.november') }}",
+                "{{ trans('sw.december') }}"
+            ]
+        },
+        autoUpdateInput: {{ request('join_date_from') ? 'true' : 'false' }},
+        ranges: {
+            "{{ trans('sw.today') }}": [moment(), moment()],
+            "{{ trans('sw.yesterday') }}": [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+            "{{ trans('sw.last_7_days') }}": [moment().subtract(6, 'days'), moment()],
+            "{{ trans('sw.last_30_days') }}": [moment().subtract(29, 'days'), moment()],
+            "{{ trans('sw.this_month') }}": [moment().startOf('month'), moment().endOf('month')],
+            "{{ trans('sw.last_month') }}": [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+        }
+    });
+
+    $('#join_date_range').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+        $('#join_date_from').val(picker.startDate.format('YYYY-MM-DD'));
+        $('#join_date_to').val(picker.endDate.format('YYYY-MM-DD'));
+    });
+
+    $('#join_date_range').on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+        $('#join_date_from').val('');
+        $('#join_date_to').val('');
+    });
+
+    // Initialize expire date range picker
+    @if(request('expire_date_from') && request('expire_date_to'))
+        var expireStartDate = moment("{{ request('expire_date_from') }}");
+        var expireEndDate = moment("{{ request('expire_date_to') }}");
+    @else
+        var expireStartDate = moment().subtract(29, 'days');
+        var expireEndDate = moment();
+    @endif
+
+    $('#expire_date_range').daterangepicker({
+        startDate: expireStartDate,
+        endDate: expireEndDate,
+        locale: {
+            format: 'YYYY-MM-DD',
+            separator: ' - ',
+            applyLabel: "{{ trans('sw.apply') }}",
+            cancelLabel: "{{ trans('sw.cancel') }}",
+            fromLabel: "{{ trans('sw.from') }}",
+            toLabel: "{{ trans('sw.to') }}",
+            customRangeLabel: "{{ trans('sw.custom') }}",
+            weekLabel: "{{ trans('sw.week') }}",
+            daysOfWeek: [
+                "{{ trans('sw.sunday') }}",
+                "{{ trans('sw.monday') }}",
+                "{{ trans('sw.tuesday') }}",
+                "{{ trans('sw.wednesday') }}",
+                "{{ trans('sw.thursday') }}",
+                "{{ trans('sw.friday') }}",
+                "{{ trans('sw.saturday') }}"
+            ],
+            monthNames: [
+                "{{ trans('sw.january') }}",
+                "{{ trans('sw.february') }}",
+                "{{ trans('sw.march') }}",
+                "{{ trans('sw.april') }}",
+                "{{ trans('sw.may') }}",
+                "{{ trans('sw.june') }}",
+                "{{ trans('sw.july') }}",
+                "{{ trans('sw.august') }}",
+                "{{ trans('sw.september') }}",
+                "{{ trans('sw.october') }}",
+                "{{ trans('sw.november') }}",
+                "{{ trans('sw.december') }}"
+            ]
+        },
+        autoUpdateInput: {{ request('expire_date_from') ? 'true' : 'false' }},
+        ranges: {
+            "{{ trans('sw.today') }}": [moment(), moment()],
+            "{{ trans('sw.yesterday') }}": [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+            "{{ trans('sw.last_7_days') }}": [moment().subtract(6, 'days'), moment()],
+            "{{ trans('sw.last_30_days') }}": [moment().subtract(29, 'days'), moment()],
+            "{{ trans('sw.this_month') }}": [moment().startOf('month'), moment().endOf('month')],
+            "{{ trans('sw.last_month') }}": [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+        }
+    });
+
+    $('#expire_date_range').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+        $('#expire_date_from').val(picker.startDate.format('YYYY-MM-DD'));
+        $('#expire_date_to').val(picker.endDate.format('YYYY-MM-DD'));
+    });
+
+    $('#expire_date_range').on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+        $('#expire_date_from').val('');
+        $('#expire_date_to').val('');
+    });
+});
+</script>
+@endsection
 

@@ -435,8 +435,8 @@ class GymGenericApiController extends GenericController
             $memberInfo->status = TypeConstants::Freeze;
             $memberInfo->number_times_freeze = ($memberInfo->number_times_freeze - 1);
             $memberInfo->start_freeze_date = Carbon::now();
-            $memberInfo->end_freeze_date = Carbon::now()->addDays($memberInfo->freeze_limit);
-            $memberInfo->expire_date = Carbon::parse($memberInfo->expire_date)->addDays($memberInfo->freeze_limit);
+            $memberInfo->end_freeze_date = Carbon::now()->addDays((int)$memberInfo->freeze_limit);
+            $memberInfo->expire_date = Carbon::parse($memberInfo->expire_date)->addDays((int)$memberInfo->freeze_limit);
 
             $memberInfo->save();
 

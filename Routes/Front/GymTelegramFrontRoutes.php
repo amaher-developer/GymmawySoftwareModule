@@ -4,20 +4,26 @@
 Route::prefix('telegram')
     ->middleware(['auth:sw', 'sw_permission'])
     ->group(function () {
-        Route::name('sw.createTelegram')
-            ->get('create', 'Front\GymTelegramFrontController@create');
-        Route::name('sw.storeTelegram')
-            ->post('create', 'Front\GymTelegramFrontController@store');
-        Route::name('sw.phonesByAjax')
-            ->get('phones-by-ajax', 'Front\GymTelegramFrontController@phonesByAjax');
 
+        // Create Telegram message - create permission
+        Route::group(['defaults' => ['permission' => 'createTelegram']], function () {
+            Route::name('sw.createTelegram')
+                ->get('create', 'Front\GymTelegramFrontController@create');
+            Route::name('sw.storeTelegram')
+                ->post('create', 'Front\GymTelegramFrontController@store');
+            Route::name('sw.phonesByAjax')
+                ->get('phones-by-ajax', 'Front\GymTelegramFrontController@phonesByAjax');
+        });
+
+        // List Telegram logs - view permission
         Route::name('sw.listTelegramLog')
             ->get('/logs', 'Front\GymTelegramFrontController@index');
 
-
-
+        // Telegram updated activity - view permission
         Route::name('sw.telegramUpdatedActivity')
             ->get('/updated-activity', 'Front\GymTelegramFrontController@updatedActivity');
+
+        // Send Telegram message - create permission
         Route::name('sw.telegramSendMessage')
             ->get('/', 'Front\GymTelegramFrontController@sendMessage');
         Route::name('sw.telegramStoreMessage')
@@ -26,4 +32,3 @@ Route::prefix('telegram')
             ->post('/store-photo', 'Front\GymTelegramFrontController@storePhoto');
 
 });
-

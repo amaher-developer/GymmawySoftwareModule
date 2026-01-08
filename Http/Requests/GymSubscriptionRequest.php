@@ -28,7 +28,7 @@ class GymSubscriptionRequest extends FormRequest
             'name_en' => 'required',
             'price' => 'required',
             'period' => 'required',
-            'workouts' => 'required',
+            //'workouts' => 'required',
             'freeze_limit' => 'required',
             'number_times_freeze' => 'required',
             'sound_active' => 'mimes:application/octet-stream,audio/mpeg,mpga,mp3,wav',
