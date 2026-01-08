@@ -61,7 +61,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
     public function index()
     {
         $title = trans('sw.pt_members');
-        $this->request_array = ['search', 'from', 'to', 'pt_subscription', 'pt_trainer'];
+        $this->request_array = ['search', 'from', 'to', 'pt_subscription', 'pt_trainer', 'remaining_status', 'remaining_status_amount'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
@@ -103,6 +103,28 @@ class GymPTMemberFrontController extends GymGenericFrontController
                 $q->orWhere('phone', 'like', "%" . $search . "%");
             });
 //            $query->orWhere('member.name','like', "%".$search."%");
+        })->when(($remaining_status !== false && $remaining_status !== ''), function ($query) use ($remaining_status) {
+            if ($remaining_status == 'has_remaining') {
+                // Has remaining sessions
+                $query->whereRaw('COALESCE(remaining_sessions, GREATEST((COALESCE(total_sessions, classes) - COALESCE(sessions_used, visits, 0)), 0)) > 0');
+            } elseif ($remaining_status == 'no_remaining') {
+                // No remaining sessions
+                $query->whereRaw('COALESCE(remaining_sessions, GREATEST((COALESCE(total_sessions, classes) - COALESCE(sessions_used, visits, 0)), 0)) <= 0')
+                      ->where(function($q) {
+                          $q->whereNotNull('total_sessions')->orWhereNotNull('classes');
+                      });
+            }
+        })->when(($remaining_status_amount !== false && $remaining_status_amount !== ''), function ($query) use ($remaining_status_amount) {
+            if ($remaining_status_amount == 'has_remaining_amount') {
+                // Has remaining amount to pay
+                $query->where('amount_remaining', '>', 0);
+            } elseif ($remaining_status_amount == 'no_remaining_amount') {
+                // No remaining amount (fully paid)
+                $query->where(function($q) {
+                    $q->where('amount_remaining', '<=', 0)
+                      ->orWhereNull('amount_remaining');
+                });
+            }
         });
         $search_query = request()->query();
 
