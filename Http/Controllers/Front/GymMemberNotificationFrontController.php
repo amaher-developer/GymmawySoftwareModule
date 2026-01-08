@@ -34,7 +34,7 @@ class GymMemberNotificationFrontController extends GymGenericFrontController
         $members = new MemberNotification();
         $members = $members->getMembersList();
         $members = @$members->subscriptions;
-//        $members = GymMember::all();
+//        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->all();
 
         return view('software::Front.notification_front_create', ['title'=>$title, 'members' => $members]);
     }
@@ -76,7 +76,7 @@ class GymMemberNotificationFrontController extends GymGenericFrontController
     {
         $title = trans('sw.notification_logs');
 
-        $logs = GymMemberNotificationLog::branch()->with(['user']);
+        $logs = GymMemberNotificationLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
         $logs->orderBy('id', 'DESC');
@@ -90,9 +90,9 @@ class GymMemberNotificationFrontController extends GymGenericFrontController
         $phones = [];
         $type = request('type');
         if($type == 2){
-            $phones = GymNonMember::branch()->pluck('phone')->toArray();
+            $phones = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
         }else if($type == 3){
-            $phones = GymMember::branch()->pluck('phone')->toArray();
+            $phones = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
         }
         return implode(', ', $phones);
     }

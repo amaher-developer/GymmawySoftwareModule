@@ -27,16 +27,14 @@ class GymPTSessionFrontController extends GymGenericFrontController
         $title = trans('sw.pt_sessions');
 
         // Optimize: Add select to limit columns and ensure pt_subscription is eager loaded
-        $classes = GymPTClass::branch()
-            ->select('id', 'name_ar', 'name_en', 'pt_subscription_id')
+        $classes = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name_ar', 'name_en', 'pt_subscription_id')
             ->with(['pt_subscription' => function($q) {
                 $q->select('id', 'name_ar', 'name_en');
             }])
             ->orderBy('name_' . $this->lang, 'asc')
             ->get();
 
-        $trainers = GymPTTrainer::branch()
-            ->orderBy('name', 'asc')
+        $trainers = GymPTTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('name', 'asc')
             ->get();
 
         $fromInput = $request->filled('from')
@@ -88,8 +86,7 @@ class GymPTSessionFrontController extends GymGenericFrontController
             ->get();
 
         // Optimize: Add select to limit columns and ensure pt_subscription is eager loaded
-        $classesNeedingFallback = GymPTClass::branch()
-            ->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'schedule')
+        $classesNeedingFallback = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'schedule')
             ->with(['pt_subscription' => function($q) {
                 $q->select('id', 'name_ar', 'name_en');
             }])
@@ -202,8 +199,7 @@ class GymPTSessionFrontController extends GymGenericFrontController
         }
 
         // Optimize: Add select to limit columns and ensure pt_subscription is eager loaded
-        $class = GymPTClass::branch()
-            ->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'max_members')
+        $class = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'max_members')
             ->with(['pt_subscription' => function($q) {
                 $q->select('id', 'name_ar', 'name_en');
             }])

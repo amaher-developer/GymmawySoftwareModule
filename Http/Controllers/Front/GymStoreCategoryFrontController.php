@@ -30,7 +30,7 @@ class GymStoreCategoryFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->CategoryRepository =new GymStoreCategoryRepository(new Application);
-        $this->CategoryRepository = $this->CategoryRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
         $this->imageManager = new ImageManager(new Driver());
     }
 

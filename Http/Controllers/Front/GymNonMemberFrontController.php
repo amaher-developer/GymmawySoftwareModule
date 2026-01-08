@@ -47,7 +47,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->NonMemberRepository=new GymNonMemberRepository(new Application);
-        $this->NonMemberRepository=$this->NonMemberRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -60,11 +60,11 @@ class GymNonMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $members = GymNonMember::branch()->onlyTrashed()->orderBy('id', 'DESC');
+            $members = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $members = GymNonMember::branch()->orderBy('id', 'DESC');
+            $members = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
         $members = $members->with(['non_member_times']);
             //apply filters
@@ -114,13 +114,12 @@ class GymNonMemberFrontController extends GymGenericFrontController
         }
         
         // Optimize: Use select to limit columns (duration_minutes doesn't exist in activities table)
-        $activities = GymActivity::branch()->isSystem()->select('id', 'name_ar', 'name_en')->get();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->select('id', 'name_ar', 'name_en')->get();
         
         // Load upcoming reservations for non-members
         $upcomingReservations = [];
         if (!empty($memberIds)) {
-            $upcomingReservations = \Modules\Software\Models\GymReservation::branch()
-                ->select('id', 'non_member_id', 'activity_id', 'reservation_date', 'start_time', 'end_time', 'status')
+            $upcomingReservations = \Modules\Software\Models\GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'non_member_id', 'activity_id', 'reservation_date', 'start_time', 'end_time', 'status')
                 ->where('client_type', 'non_member')
                 ->whereIn('non_member_id', $memberIds)
                 ->whereDate('reservation_date', '>=', \Carbon\Carbon::today()->format('Y-m-d'))
@@ -160,7 +159,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
             });
         }
         
-        $payment_types = GymPaymentType::branch()->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         return view('software::Front.nonmember_front_list', compact('members', 'activities','title', 'total', 'search_query', 'upcomingReservations', 'active_activity_reservation', 'formatted_from_date', 'formatted_to_date', 'formatted_search', 'payment_types'));
     }
 
@@ -340,12 +339,12 @@ class GymNonMemberFrontController extends GymGenericFrontController
     {
         $title = trans('sw.non_member_add');
 
-        $channels = GymSaleChannel::branch()->get();
-        $discounts = GymGroupDiscount::branch()->where('is_non_member', true)->get();
-        $activities = GymActivity::branch()->isSystem()->get();
+        $channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_non_member', true)->get();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
         $selectedActivities = []; // Empty array for new non-member
         $billingSettings = SwBillingService::getSettings();
-        $payment_types = GymPaymentType::branch()->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         return view('software::Front.nonmember_front_form', [
             'activities' => $activities,
             'channels' => $channels,
@@ -365,7 +364,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $non_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $non_member_inputs['discount_value'] = (float) ($non_member_inputs['discount_value'] ?? 0);
         $non_member_inputs['discount_type'] = $non_member_inputs['discount_type'] ?? null;
-        $activities = GymActivity::branch()->whereIn('id', $request->activities);
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereIn('id', $request->activities);
         $non_member_inputs['amount_before_discount'] = $activities->pluck('price')->sum();
         if(@$this->mainSettings->vat_details['vat_percentage']) {
             $vat = ($non_member_inputs['amount_before_discount'] -  $non_member_inputs['discount_value']) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
@@ -388,7 +387,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $non_member = $this->NonMemberRepository->create($non_member_inputs);
 
 
-        $amount_box = GymMoneyBox::branch()->latest()->first();
+        $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
 
         $amount_after = $amount_box ? GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation) : 0;
         $amount_after = round($amount_after, 2);
@@ -414,6 +413,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
             , 'type' => TypeConstants::CreateNonMember
             , 'payment_type' => @$non_member_inputs['payment_type']
             , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            , 'tenant_id' => @$this->user_sw->tenant_id
             , 'non_member_subscription_id' => @$non_member->id
         ]);
 
@@ -458,10 +458,10 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $selectedActivities = @array_filter(array_map(function ($activity){
             return  $activity['name_'.$this->lang];
         }, $member->activities));
-        $activities = GymActivity::branch()->isSystem()->get();
-        $payment_types = GymPaymentType::branch()->get();
-        $channels = GymSaleChannel::branch()->get();
-        $discounts = GymGroupDiscount::branch()->where('is_non_member', true)->get();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_non_member', true)->get();
         $title = trans('sw.non_member_edit');
         $billingSettings = SwBillingService::getSettings();
         return view('software::Front.nonmember_front_form', ['member' => $member,
@@ -480,7 +480,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $non_member_inputs = $this->prepare_inputs($request->except(['_token', 'diff_amount_paid_input']));
         $non_member_inputs['discount_value'] = (float) ($non_member_inputs['discount_value'] ?? 0);
         $non_member_inputs['discount_type'] = $non_member_inputs['discount_type'] ?? null;
-        $activities = GymActivity::branch()->whereIn('id', $request->activities);
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereIn('id', $request->activities);
         $vat = 0;
 
         $non_member_inputs['amount_before_discount'] = $activities->pluck('price')->sum();
@@ -496,7 +496,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
 
 
         if(@abs($request->diff_amount_paid_input) > 0) {
-            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
             $amount_after = round($amount_after, 2);
 
@@ -529,6 +529,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
                 , 'notes' => $notes
                 , 'type' => TypeConstants::EditNonMember
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                , 'tenant_id' => @$this->user_sw->tenant_id
                 , 'non_member_subscription_id' => @$member->id
             ]);
 
@@ -585,7 +586,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
 
         $member->delete();
 
-        $amount_box = GymMoneyBox::branch()->latest()->first();
+        $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
         $amount_after = (int)GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
         $vat = ($member->vat);
@@ -611,6 +612,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
             , 'notes' => $notes
             , 'type' => TypeConstants::DeleteNonMember
             , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            , 'tenant_id' => @$this->user_sw->tenant_id
             , 'non_member_subscription_id' => @$member->id
         ]);
         $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
@@ -734,18 +736,18 @@ class GymNonMemberFrontController extends GymGenericFrontController
         }
 
         if($member_type == 2) {
-            $non_member = GymMember::select('id', 'name', 'phone')->with('member_subscription_info')->where('id', $non_member_id)->first();
-            $activities = GymMemberSubscription::select('id', 'member_id', 'activities')->where('member_id', $non_member->id)->where('status', TypeConstants::Active)->first();
+            $non_member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name', 'phone')->with('member_subscription_info')->where('id', $non_member_id)->first();
+            $activities = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'member_id', 'activities')->where('member_id', $non_member->id)->where('status', TypeConstants::Active)->first();
             if($activities){
                 $reservation_arr_check =  array_map(function ($name) use ($activity_id){ static $i = 0;  if(@$name['activity']['id'] == $activity_id){ return (@$name['training_times'] > @$name['visits'] ? 0 : 1); } $i++; }, @$activities->activities ?? []);
                 if(in_array(1, $reservation_arr_check)){ $reservation_check = 1;} // exceed all visits
             }else
                 $reservation_check = 2; // no activities for this member
         }else
-            $non_member = GymNonMember::select('id', 'name', 'phone')->where('id', $non_member_id)->first();
+            $non_member = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name', 'phone')->where('id', $non_member_id)->first();
 
-        $activity = GymActivity::where('id', $activity_id)->first();
-        $reservation_times = GymNonMemberTime::branch()->with(['member' => function($q){$q->select('id', 'name', 'phone');}, 'non_member' => function($q){$q->select('id', 'name', 'phone');}])
+        $activity = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $activity_id)->first();
+        $reservation_times = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member' => function($q){$q->select('id', 'name', 'phone');}, 'non_member' => function($q){$q->select('id', 'name', 'phone');}])
             ;//->where('date', '>=', Carbon::parse(@$start_date)->toDateString());
 
 
@@ -806,9 +808,9 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $selected_date = request('selected_date');
         $selected_time = request('selected_time');
         $type = @request('type');
-        $activity = GymActivity::where('id', $activity_id)->withTrashed()->first();
+        $activity = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $activity_id)->withTrashed()->first();
         if($activity && $non_member_id && $selected_date && $selected_time){
-            $reservation = GymNonMemberTime::branch();
+            $reservation = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
             if($type == 2)
                 $reservation = $reservation->where('member_id', $non_member_id)->whereDate('date',  Carbon::parse($selected_date)->toDateString())->where('time_slot', @$selected_time);
             else
@@ -823,16 +825,16 @@ class GymNonMemberFrontController extends GymGenericFrontController
 
                 if($type == 2) {
                     $member = GymMember::with('member_subscription_info')->where('id', $non_member_id)->first();
-                    $member_times_count = GymNonMemberTime::where('member_id', $member->id)->where('member_subscription_id', @$member->member_subscription_info->id)->count();
+                    $member_times_count = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)->where('member_subscription_id', @$member->member_subscription_info->id)->count();
                     $selected_activity = $this->getActivityByActivityId($member->member_subscription_info->activities, $activity_id);
                     if(@$selected_activity['training_times'] <= @$member_times_count)
                         return 'exceed_limit';
 
-                    $reservation = GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $non_member_id, 'member_subscription_id' => @$member->member_subscription_info->id, 'activity_id' => $activity_id, 'date' => Carbon::parse($selected_date)->toDateString() . ' ' . $selected_time, 'time_slot' => $selected_time, 'expire_date' => Carbon::now()->addDays(@$activity->reservation_period)->toDateString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+                    $reservation = GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $non_member_id, 'member_subscription_id' => @$member->member_subscription_info->id, 'activity_id' => $activity_id, 'date' => Carbon::parse($selected_date)->toDateString() . ' ' . $selected_time, 'time_slot' => $selected_time, 'expire_date' => Carbon::now()->addDays(@$activity->reservation_period)->toDateString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
                 }else
-                    $reservation = GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'non_member_id' => $non_member_id, 'activity_id' => $activity_id, 'date' => Carbon::parse($selected_date)->toDateString().' '.$selected_time, 'time_slot' => $selected_time, 'expire_date' => Carbon::now()->addDays(@$activity->reservation_period)->toDateString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+                    $reservation = GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'non_member_id' => $non_member_id, 'activity_id' => $activity_id, 'date' => Carbon::parse($selected_date)->toDateString().' '.$selected_time, 'time_slot' => $selected_time, 'expire_date' => Carbon::now()->addDays(@$activity->reservation_period)->toDateString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
 
-                $countCheck = GymNonMemberTime::branch()->where('date',  Carbon::parse($selected_date)->toDateString())->where('time_slot', @$selected_time)->count();
+                $countCheck = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('date',  Carbon::parse($selected_date)->toDateString())->where('time_slot', @$selected_time)->count();
                 if($countCheck >= (int)$activity->reservation_duration){
                     return 'reload';
                 }
@@ -856,9 +858,9 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $time = request('time');
 
         if($id){
-            $non_member_time = GymNonMemberTime::branch()->where('id', $id)->first();
+            $non_member_time = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $id)->first();
 //            if($non_member_time->member_id){
-//                $membership = GymMemberSubscription::where('member_id', $non_member_time->member_id)->where('status', TypeConstants::Active)->first();
+//                $membership = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $non_member_time->member_id)->where('status', TypeConstants::Active)->first();
 //                $visits = 0;
 //                $activity_result = [];
 //                foreach ($membership->activities as $i => $activity) {
@@ -874,7 +876,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
 //            }
 
             $non_member_time->delete();
-            $countCheck = GymNonMemberTime::branch()->where('date', Carbon::now()->toDateString())->where('time_slot', @$time)->count();
+            $countCheck = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('date', Carbon::now()->toDateString())->where('time_slot', @$time)->count();
             if($countCheck){
                 return 'reload';
             }
@@ -890,7 +892,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $activities = GymActivity::branch();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
 //        if(@$from && @$to) {
 //            $activities = $activities->when(($from), function ($query) use ($from) {
 //                $query->whereDate('date', '>=', Carbon::parse($from)->format('Y-m-d'));
@@ -929,7 +931,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
 
 
     public function listNonMemberInTimeCalendar($id, $date){
-        $non_members = GymNonMemberTime::select(['id', 'non_member_id', 'member_id', 'activity_id', 'attended_at'])
+        $non_members = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select(['id', 'non_member_id', 'member_id', 'activity_id', 'attended_at'])
             ->with(['non_member' => function ($q){$q->select(['id', 'name'])->withTrashed();}, 'member' => function ($q){$q->select(['id', 'name'])->withTrashed();;} ])
             ->where('activity_id', $id)
             ->whereDate('date', Carbon::parse($date)->toDateString())
@@ -941,7 +943,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
 
     public function createNonMemberAttendInTimeCalendar(){
         $id = @request('id');
-        $non_members = GymNonMemberTime::where('id', $id)->update(['attended_at' => Carbon::now()->toDateTimeString()]);
+        $non_members = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $id)->update(['attended_at' => Carbon::now()->toDateTimeString()]);
         return Response::json(['result' => Carbon::now()->toDateTimeString()], 200);
     }
 

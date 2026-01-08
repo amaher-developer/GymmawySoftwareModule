@@ -72,7 +72,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->limit = 5;
         $this->keys = ['code', 'image', 'name', 'phone', 'address', 'member_subscription'];
         $this->MemberRepository = new GymMemberRepository(new Application);
-        $this->MemberRepository = $this->MemberRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function showProfile($id)
@@ -89,7 +89,7 @@ class GymMemberFrontController extends GymGenericFrontController
             ])
             ->where('id', $id)->first();
 
-        $member_credit_transactions = GymMemberCredit::branch()->where('member_id', $member->id)->orderBy('id', 'desc')->limit(20)->get();
+        $member_credit_transactions = GymMemberCredit::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)->orderBy('id', 'desc')->limit(20)->get();
 
         return view('software::Front.member_front_profile', [
             'member' => $member,
@@ -107,9 +107,9 @@ class GymMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
         if (request('trashed')) {
-            $members = GymMember::branch()->onlyTrashed()->orderBy('id', 'DESC');
+            $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
         } else {
-            $members = GymMember::branch()->orderBy('id', 'DESC');
+            $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
 //        $members = $members->leftJoin('sw_gym_member_subscription', function($query)
@@ -213,9 +213,9 @@ class GymMemberFrontController extends GymGenericFrontController
             $total = $members->count();
         }
 
-        $subscriptions = GymSubscription::branch()->isSystem()->get();
-        $users = GymUser::branch()-> get();
-        $payment_types = GymPaymentType::get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
+        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)-> get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         
         // Load upcoming reservations for members
         $memberIds = $members instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator 
@@ -223,8 +223,7 @@ class GymMemberFrontController extends GymGenericFrontController
             : $members->pluck('id')->toArray();
         $upcomingReservations = [];
         if (!empty($memberIds)) {
-            $upcomingReservations = GymReservation::branch()
-                ->where('client_type', 'member')
+            $upcomingReservations = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('client_type', 'member')
                 ->whereIn('member_id', $memberIds)
                 ->whereDate('reservation_date', '>=', \Carbon\Carbon::today()->format('Y-m-d'))
                 ->whereNotIn('status', ['cancelled', 'missed'])
@@ -248,7 +247,7 @@ class GymMemberFrontController extends GymGenericFrontController
             if((count($id) <= $this->limit))
                 array_push($statues, TypeConstants::Expired);
 
-            $subscriptions = GymMemberSubscription::branch()->with(['subscription', 'member'])->when($id, function ($q) use ($id) {
+            $subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription', 'member'])->when($id, function ($q) use ($id) {
                 $q->whereIn('member_id', $id);
             })->whereIn('status', $statues)->get();
             $del_members = [];
@@ -526,7 +525,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $member =  new GymMember();
         $invoice = null;
         if(\request('reservation_id')){
-            $member = GymPotentialMember::where('id', \request('reservation_id'))->first();
+            $member = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', \request('reservation_id'))->first();
             if(!@$member){
                 $member = new GymMember();
             }
@@ -534,13 +533,13 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($member instanceof GymMember && $member->id) {
             $invoice = optional($member->billingInvoices()->latest()->first());
         }
-        $subscriptions = GymSubscription::branch()->isSystem()->get();
-        $channels = GymSaleChannel::branch()->get();
-        $users = GymUser::branch()->get();
-        $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
+        $channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_member', true)->get();
         $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         $billingSettings = SwBillingService::getSettings();
-        $payment_types = GymPaymentType::branch()->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         //        $this->mainSettings->last_barcode_number = $this->mainSettings->last_barcode_number + 1;
 //        $maxId = str_pad(($this->mainSettings->last_barcode_number), 14, 0, STR_PAD_LEFT);
 
@@ -591,7 +590,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function store(GymMemberRequest $request)
     {
-        $checkBlockUser = GymBlockMember::branch()->where('phone', $request->phone)->count();
+        $checkBlockUser = GymBlockMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('phone', $request->phone)->count();
         if ($checkBlockUser)
             return redirect()->back()->withErrors(['phone' => trans('sw.block_member_validate')]);
 
@@ -607,7 +606,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member_inputs['fp_id'] = (int)$member_inputs['code'];
         }
 
-        $subscription = GymSubscription::branch()->with(['activities' => function ($q) {
+        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['activities' => function ($q) {
             $q->select('id', 'activity_id', 'subscription_id', 'training_times')->with(['activity' => function ($q) {
                 $q->select('id', 'name_ar', 'name_en');
             }]);
@@ -658,12 +657,13 @@ class GymMemberFrontController extends GymGenericFrontController
                         'activities' => @$subscription->activities->toJson(),
                         'time_week' => @json_encode($subscription->time_week),
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
+                        'tenant_id' => @$this->user_sw->tenant_id,
                         'notes' => @$notes,
                     ];
 
-            $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
+            $member_subscription = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->insertGetId($sub);
 
-            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
 
                     $moneyBoxNotes = trans('sw.member_moneybox_add_msg',
@@ -692,6 +692,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'payment_type' => intval($request->payment_type)
                 , 'member_subscription_id' => @$member_subscription
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                , 'tenant_id' => @$this->user_sw->tenant_id
                     ]);
                 });
             } catch (\Throwable $e) {
@@ -794,7 +795,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
-            $message_notification = GymEventNotification::where('event_code', 'new_member')->first();
+            $message_notification = GymEventNotification::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('event_code', 'new_member')->first();
             $msg = @$message_notification->message;
             $member_subscription = GymMemberSubscription::with('member')->where('id',@$member_subscription)->first();
             $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
@@ -918,7 +919,7 @@ class GymMemberFrontController extends GymGenericFrontController
             abort(404);
         }
 
-        $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
+        $member_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription' => function ($q) {
             $q->withTrashed();
         }])
             ->where('member_id', $member->id)
@@ -933,10 +934,10 @@ class GymMemberFrontController extends GymGenericFrontController
             $member_subscriptions = $member_subscription_last;
         }
 
-        $subscriptions = GymSubscription::branch()->get();
-        $channels = GymSaleChannel::branch()->get();
-        $users = GymUser::branch()->get();
-        $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_member', true)->get();
         $maxId = GymMember::withTrashed()->max('id');
 
         $subscriptionPrice = (float) data_get($member, 'member_subscription_info.subscription.price', 0);
@@ -944,7 +945,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $vat = round($subscriptionPrice * ($vatPercentage / 100), 2);
 
         $title = trans('sw.member_edit');   
-        $payment_types = GymPaymentType::branch()->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         return view('software::Front.member_front_edit', ['member' => $member, 'member_subscriptions' => $member_subscriptions, 'subscriptions' => $subscriptions, 'discounts' => $discounts, 'channels' => $channels, 'users' => $users, 'maxId' => $maxId, 'title' => $title, 'vat' => @(float)$vat, 'payment_types' => $payment_types]);
     }
 
@@ -1196,8 +1197,8 @@ class GymMemberFrontController extends GymGenericFrontController
 
         $subscription_id = $request->subscription_id;
         $member_subscription_id = $request->member_subscription_id;
-        $member_subscription = GymMemberSubscription::branch()->with('member')->find($member_subscription_id);
-        $subscription = GymSubscription::branch()->withTrashed()->find($subscription_id);
+        $member_subscription = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member')->find($member_subscription_id);
+        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($subscription_id);
         $amount_paid = round(@$request->amount_paid, 2);
         $discount_value = round(@$request->discount_value, 2);
         $group_discount_id = @(int)$request->group_discount_id;
@@ -1226,7 +1227,7 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
 
-        $other_subscriptions = GymMemberSubscription::branch()->whereBetween('joining_date', [$joining_date, $expire_date])
+        $other_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereBetween('joining_date', [$joining_date, $expire_date])
             ->orWhereBetween('expire_date', [$joining_date, $expire_date])
             ->get();
         $other_subscriptions = $other_subscriptions->where('member_id', $member_subscription->member_id)
@@ -1294,7 +1295,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         }
                     } else {
                         // Amount decreased - deduct points proportionally
-                        $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
+                        $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)
                             ->whereIn('source_type', ['member_subscription', 'member_subscription_renew', 'member_subscription_edit', 'member_subscription_remaining_payment'])
                             ->where('source_id', $member_subscription->id)
                             ->where('type', 'earn')
@@ -1347,7 +1348,7 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
         if ($price_diff != 0) {
-            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
             $notes = trans('sw.member_moneybox_edit_msg', [
@@ -1375,6 +1376,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 //, 'payment_type' => $payment_type
                 , 'member_subscription_id' => @$member_subscription->id
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                , 'tenant_id' => @$this->user_sw->tenant_id
             ]);
             $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
         }
@@ -1400,7 +1402,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $member = GymMember::branch()->with(['member_subscription_info'])->withTrashed()->find($id);
+        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscription_info'])->withTrashed()->find($id);
         // zk delete member from machine
         if ($member->fp_id) {
             $member->fp_check = TypeConstants::ZK_EXPIRE_MEMBER;
@@ -1413,7 +1415,7 @@ class GymMemberFrontController extends GymGenericFrontController
         } else {
             $member->delete();
             if (\request('refund')) {
-                $amount_box = GymMoneyBox::branch()->latest()->first();
+                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $vat = @$member->member_subscription_info->vat;
@@ -1442,7 +1444,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         
                         if ($totalPointsEarned > 0 && $originalAmount > 0) {
                             // Check how many points have already been deducted for this subscription (from previous refunds)
-                            $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
+                            $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)
                                 ->where('type', 'manual')
                                 ->where('source_type', 'member_subscription_refund')
                                 ->where('source_id', $subscriptionId)
@@ -1543,6 +1545,7 @@ class GymMemberFrontController extends GymGenericFrontController
                     , 'member_id' => $member->id
                     , 'member_subscription_id' => $member->member_subscription_info->id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                    , 'tenant_id' => @$this->user_sw->tenant_id
                 ]);
                 $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
@@ -1567,13 +1570,13 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function destroySubscription($id)
     {
-        $subscription = GymMemberSubscription::branch()->with(['member', 'subscription'])->withTrashed()->find($id);
+        $subscription = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription'])->withTrashed()->find($id);
         if ($subscription->trashed()) {
             $subscription->restore();
         } else {
             $subscription->delete();
             if (\request('refund')) {
-                $amount_box = GymMoneyBox::branch()->latest()->first();
+                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $vat = @$subscription->vat;
@@ -1657,6 +1660,7 @@ class GymMemberFrontController extends GymGenericFrontController
                     , 'member_id' => @$subscription->member->id
                     , 'member_subscription_id' => $subscription->id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                    , 'tenant_id' => @$this->user_sw->tenant_id
                 ]);
                 $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
@@ -1679,7 +1683,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $id = request('id');
         $amountPaid = (float)request('amount_paid');
         $payment_type = (int)request('payment_type');
-        $memberInfo = GymMemberSubscription::branch()->with(['subscription'=> function ($q) {
+        $memberInfo = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription'=> function ($q) {
             $q->withTrashed();
         }, 'member'])->where('id', $id)->orderBy('id', 'desc')->first();
         if ($memberInfo) {
@@ -1721,7 +1725,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
-            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
             $notes = trans('sw.member_moneybox_remain_msg', ['subscription' => @$memberInfo->subscription->name, 'member' => $memberInfo->member->name, 'amount_paid' => $amountPaid, 'amount_remaining' => number_format($memberInfo->amount_remaining, 2)]);
@@ -1737,6 +1741,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'member_id' => @$memberInfo->member->id
                 , 'member_subscription_id' => @$memberInfo->id
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                , 'tenant_id' => @$this->user_sw->tenant_id
             ]);
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
@@ -1754,7 +1759,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $admin_note = request('admin_note');
         
         $this->updateSubscriptionsStatus([$id]);
-        $memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('status', TypeConstants::Active)->where('member_id', $id)->orderBy('id', 'desc')->first();
+        $memberInfo = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription'])->where('status', TypeConstants::Active)->where('member_id', $id)->orderBy('id', 'desc')->first();
         if ($memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active)) {
             // zk delete user from machine
             if ((@env('APP_ZK_FINGERPRINT') == false) && (@env('APP_ZK_GATE') == true) && @$memberInfo->member->fp_id && (!in_array($memberInfo->status, [TypeConstants::Freeze]))) {
@@ -1831,7 +1836,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $membership->end_freeze_date = Carbon::now();
             $membership->save();
             // complete active freeze record
-            $activeFreeze = GymMemberSubscriptionFreeze::where('member_subscription_id', $membership->id)
+            $activeFreeze = GymMemberSubscriptionFreeze::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_subscription_id', $membership->id)
                 ->whereIn('status', ['active','approved'])
                 ->orderBy('id','desc')
                 ->first();
@@ -1840,7 +1845,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 $activeFreeze->status = 'completed';
                 $activeFreeze->save();
             }
-            GymMemberAttendee::insert(['member_id' => $membership->member_id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$membership->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+            GymMemberAttendee::insert(['member_id' => $membership->member_id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$membership->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
 
 
             // update status of member
@@ -1861,7 +1866,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $enquiry = intval($request->enquiry);
         $msg = '';
 
-        $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
+        $member_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription' => function ($q) {
             $q->withTrashed();
         }])
             ->whereHas('member', function ($q) use ($code){
@@ -1922,7 +1927,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
                 if(!$enquiry && @$this->mainSettings->member_attendees_expire && ($member->member_subscription_info->status == TypeConstants::Expired)){
                     $member->member_subscription_info->increment('visits');
-                    GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+                    GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
                 }
 
                 if (($member->member_subscription_info->workouts_per_day > 0) && ($member->member_attendees_count >= $member->member_subscription_info->workouts_per_day)) {
@@ -1980,7 +1985,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         $member->member_subscription_info->increment('visits');
                         $member->member_subscription_info->status = TypeConstants::Active;
                         $member->member_subscription_info->save();
-                        GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+                        GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
 
                         $note = str_replace(':name', $member->name, trans('sw.barcode_scan_note'));
                         $this->userLog($note, TypeConstants::ScanMember);
@@ -1990,7 +1995,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 } else {
                     $msg = trans('sw.membership_expired_with_date', ['date' => $expireDate]);
                 }
-                $attend = GymMemberAttendee::where('member_id' , $member->id)->orderBy('id', 'desc')->first();
+                $attend = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id' , $member->id)->orderBy('id', 'desc')->first();
 
                 $member->store_balance = @number_format( $member->store_balance,2);
                 $member['total_amount_remaining'] = number_format(@$member->total_amount_remaining, 2);
@@ -2034,10 +2039,10 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function memberSubscriptionRenew(Request $request)
     {
-        $membership = GymMemberSubscription::branch()->with('member')->where('id', $request->id)->orderBy('id', 'desc')->withTrashed()->first();
+        $membership = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member')->where('id', $request->id)->orderBy('id', 'desc')->withTrashed()->first();
         $membership_id = $membership->subscription_id;
         $subscription = GymSubscription::withTrashed()->where('id', $membership_id)->first();
-        $subscriptions = GymSubscription::branch()->isSystem()->get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
         if(($subscription && $subscription->deleted_at != null) || ($subscription && $subscription->is_system))
             $subscriptions->push($subscription);
         $member = $membership->member;
@@ -2049,9 +2054,9 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function memberSubscriptionRenewStore(Request $request)
     {
-        $membership = GymMemberSubscription::where('id', $request->id)->first();
+        $membership = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $request->id)->first();
         $subscription_id = $request->membership_id;
-        $subscription = GymSubscription::branch()->with(['activities' => function ($q) {
+        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['activities' => function ($q) {
             $q->select('id', 'activity_id', 'subscription_id', 'training_times')->with(['activity' => function ($q) {
                 $q->select('id', 'name_ar', 'name_en');
             }]);
@@ -2079,7 +2084,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
         $expire_date = @$request->custom_expire_date ? Carbon::parse(@$request->custom_expire_date)->toDateString() : Carbon::now()->addDays((int)$subscription->period)->toDateString();
 
-        $other_subscriptions = GymMemberSubscription::branch()->
+        $other_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->
         where(function ($query) use ($custom_start_date, $expire_date) {
             $query->where('joining_date', '<=', Carbon::parse($custom_start_date))
                 ->where('expire_date', '>=', Carbon::parse($expire_date));
@@ -2118,12 +2123,13 @@ class GymMemberFrontController extends GymGenericFrontController
             'time_week' =>  @json_encode($subscription->time_week),
             'updated_at' => Carbon::now(),
             'branch_setting_id' => @$this->user_sw->branch_setting_id,
+            'tenant_id' => @$this->user_sw->tenant_id,
             'notes' => @$notes
         ];
         $member_subscription = GymMemberSubscription::insertGetId($renew_subscription);
 
 
-        $amount_box = GymMoneyBox::branch()->latest()->first();
+        $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
         $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
         $notes = str_replace(':subscription', $subscription->name, trans('sw.member_moneybox_renew_msg'));
@@ -2150,6 +2156,7 @@ class GymMemberFrontController extends GymGenericFrontController
             , 'payment_type' => $payment_type
             , 'member_subscription_id' => @$member_subscription
             , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            , 'tenant_id' => @$this->user_sw->tenant_id
         ]);
 
         $this->userLog($notes, TypeConstants::RenewMember);
@@ -2192,7 +2199,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->save();
         }
 
-        $message_notification = GymEventNotification::where('event_code', 'renew_member')->first();
+        $message_notification = GymEventNotification::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('event_code', 'renew_member')->first();
         $msg = @$message_notification->message;
         $member_subscription = GymMemberSubscription::with('member')->where('id',@$member_subscription)->first();
         $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
@@ -2485,7 +2492,7 @@ class GymMemberFrontController extends GymGenericFrontController
     public function downloadCard()
     {
         $code = \request('code');
-        $member = GymMember::branch()->where('code', $code)->first();
+        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $code)->first();
         $qrcodes_folder = base_path('uploads/barcodes/');
         $cards_folder = base_path('uploads/cards/');
         // ensure required folders exist
@@ -2569,7 +2576,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function memberCard($code)
     {
-        $member = GymMember::branch()->where('code', $code)->first();
+        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $code)->first();
         $qrcodes_folder = base_path('uploads/barcodes/');
         $cards_folder = base_path('uploads/cards/');
         // ensure required folders exist
@@ -2644,10 +2651,10 @@ class GymMemberFrontController extends GymGenericFrontController
     public function uploadExcel()
     {
         // venom
-//        $subscription = GymSubscription::first();
+//        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
 //        $rows =  DB::table('wemon_1')->orderBy('COL1', 'asc')->get();//original_data2
 //        foreach($rows as $row){
-//            $check_subscription = GymSubscription::where('branch_setting_id', 2)->where('name_en', $row->COL7)->first();
+//            $check_subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', 2)->where('name_en', $row->COL7)->first();
 //            if(!$check_subscription){
 //                $subscription = GymSubscription::create(['name_ar' => $row->COL7, 'name_en' => $row->COL7, 'branch_setting_id' => 2, 'user_id' => 3, 'price' => 0, 'period' => 0, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 1]);
 //            }else
@@ -2721,7 +2728,7 @@ class GymMemberFrontController extends GymGenericFrontController
             }
         }
         dd( 'sssss');
-        $members = GymMember::orderBy('id', 'asc')->limit(1000)->get();
+        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'asc')->limit(1000)->get();
         foreach ($members as $member){
             $get_members = GymMember::with('member_subscription_info')
                 ->where('phone', $member->phone)
@@ -2731,7 +2738,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 $get_members = $get_members->sortByDesc('member_subscription_info.expire_date');
                 $get_member_ids = $get_members->pluck('id');
                 $last_member = $get_members[0];
-                GymMember::where('phone', $last_member->phone)->where('id', '!=', $last_member->id)->delete();
+                GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('phone', $last_member->phone)->where('id', '!=', $last_member->id)->delete();
                 GymMemberSubscription::whereIn('member_id', $get_member_ids)->where('member_id', '!=', $last_member->id)->delete();
             }
         }
@@ -2742,8 +2749,8 @@ dd( 'sssss');
         $subscriptions = DB::table('settlement')->orderBy('id', 'asc')->where('id', '>',8000)->limit(1000)->get();
         foreach($subscriptions as $subscription){
             $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
-            $subscription_id = @GymSubscription::where('name_en', trim($subscription->COL3))->first()->id;
-            $payment_type_id = @GymPaymentType::where('name_en', trim($subscription->COL18))->first()->id;
+            $subscription_id = @GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('name_en', trim($subscription->COL3))->first()->id;
+            $payment_type_id = @GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('name_en', trim($subscription->COL18))->first()->id;
 
             $member = GymMember::create([
                 'code' => $maxId,
@@ -2787,10 +2794,10 @@ dd( 'sssss');
         }
 
         dd($member->id);
-        $subscription = GymSubscription::first();
+        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
         $rows =  DB::table('settlement')->orderBy('id', 'asc')->get();//original_data2
         foreach($rows as $row){
-            $check_subscription = GymSubscription::where('branch_setting_id', 1)->where('name_ar', $row->COL6)->first();
+            $check_subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', 1)->where('name_ar', $row->COL6)->first();
             if(!$check_subscription){
                 GymSubscription::insert(['name_ar' => $row->COL6, 'name_en' => $row->COL6, 'branch_setting_id' => 1, 'user_id' => 3, 'price' => 0, 'period' => 0, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 1]);
             }
@@ -2805,10 +2812,10 @@ dd( 'sssss');
             }
         }
 // venom
-//        $subscription = GymSubscription::first();
+//        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
 //        $rows =  DB::table('men_1')->orderBy('COL1', 'asc')->get();//original_data2
 //        foreach($rows as $row){
-//            $check_subscription = GymSubscription::where('branch_setting_id', 1)->where('name_ar', $row->COL6)->first();
+//            $check_subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', 1)->where('name_ar', $row->COL6)->first();
 //            if(!$check_subscription){
 //                GymSubscription::insert(['name_ar' => $row->COL6, 'name_en' => $row->COL6, 'branch_setting_id' => 1, 'user_id' => 3, 'price' => 0, 'period' => 0, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 1]);
 //            }
@@ -2828,7 +2835,7 @@ dd('ssss');
 //        $rows =  DB::table('original_data2')->get();//original_data2
 //
 //        foreach ($rows as $key => $row) {
-////            $subscription = GymSubscription::where('name_en', @$row->COL2)->first();
+////            $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('name_en', @$row->COL2)->first();
 ////            if(!@$subscription){
 ////                $from = @Carbon::createFromFormat('d/m/Y', @$row->COL8);
 ////                $to = @Carbon::createFromFormat('d/m/Y', @$row->COL9);
@@ -2865,7 +2872,7 @@ dd('ssss');
 //
 //            $diff_in_days = $to->diffInDays($from);
 
-//            $subscription = GymSubscription::where('name_ar', $row->COL4)->first();
+//            $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('name_ar', $row->COL4)->first();
 //            if($subscription){
 //                $row->COL19 = (float)abs(str_replace(',', '', $row->COL19));
 //                $subscription->price = $row->COL19;
@@ -2891,8 +2898,8 @@ dd('ssss');
                     $subscription = null;
                     $join_date = null;
                     $expire_date = null;
-                    if(@$text[1]){$member = GymMember::where('code', $text[1])->first();}
-                    if(@$row['col5']){$subscription = GymSubscription::where('name_ar', trim($row['col5']))->first();}
+                    if(@$text[1]){$member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $text[1])->first();}
+                    if(@$row['col5']){$subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('name_ar', trim($row['col5']))->first();}
                     if(@$row['col8']){$join_date = Carbon::parse(@(string)$row['col8'])->toDateString();}
                     if(@$row['col9']){$expire_date = Carbon::parse(@(string)$row['col9'])->toDateString();}
                     if (@$member && @$subscription && @$join_date && @$expire_date) {
@@ -2960,7 +2967,7 @@ dd('ssss');
     {
         $id = $request->id;
         $subscription_id = $request->subscription_id;
-        $membership = GymMemberSubscription::where('id', $subscription_id);
+        $membership = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $subscription_id);
         if (@!$this->mainSettings->allow_member_in_branches) {
             $membership = $membership->branch();
         }
@@ -2980,7 +2987,7 @@ dd('ssss');
 
                     $activity_result[$i]['visits'] = $visits;
 
-                    GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $membership->member_id, 'member_subscription_id' => @$membership->id, 'activity_id' => $activity['id'], 'date' => Carbon::now()->toDateTimeString(),  'attended_at' => Carbon::now()->toDateTimeString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+                    GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $membership->member_id, 'member_subscription_id' => @$membership->id, 'activity_id' => $activity['id'], 'date' => Carbon::now()->toDateTimeString(),  'attended_at' => Carbon::now()->toDateTimeString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
 
                 }
             }
@@ -2991,6 +2998,7 @@ dd('ssss');
                     ->update([
                         'activities' => json_encode($activity_result),
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
+                        'tenant_id' => @$this->user_sw->tenant_id,
                         'updated_at' => now()
                     ]);
                 
@@ -3002,7 +3010,7 @@ dd('ssss');
     public function creditMemberBalance()
     {
         $member_id = \request('member_id');
-        $member_credits = GymMemberCredit::where('member_id', $member_id)->get();
+        $member_credits = GymMemberCredit::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member_id)->get();
         $this->member_balance = 0;
         $member_credits->filter(function ($item) {
             if($item->operation != 0)
@@ -3034,9 +3042,9 @@ dd('ssss');
         }
         if($member_id && $amount){
             $this->member_balance = 0;
-            $member = GymMember::select('id', 'name')->where('id', $member_id)->first();
+            $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->where('id', $member_id)->first();
             $member_name = $member->name;
-            $member_credits = GymMemberCredit::where('member_id', $member_id)->get();
+            $member_credits = GymMemberCredit::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member_id)->get();
             $member_credits->filter(function ($item) {
                 if($item->operation != 0)
                     return $this->member_balance -= $item->amount;
@@ -3049,7 +3057,7 @@ dd('ssss');
 
             $member_credit = GymMemberCredit::create(['member_id' => $member_id, 'user_id' => Auth::guard('sw')->user()->id, 'amount' => $amount,'operation' => $type]);
 
-//            $amount_box = GymMoneyBox::branch()->latest()->first();
+//            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
 //            $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
 //
 //            $notes = str_replace(':amount', $amount, $note_message);
@@ -3075,7 +3083,7 @@ dd('ssss');
             $member->save();
 
             if(($member_balance_value >= 0) && ($type != 1)){
-                GymMoneyBox::where('is_store_balance', 2)->where('member_id', $member->id)->update(['is_store_balance' => 1, 'payment_type' => $payment_type]);
+                GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_store_balance', 2)->where('member_id', $member->id)->update(['is_store_balance' => 1, 'payment_type' => $payment_type]);
             }
         }
 

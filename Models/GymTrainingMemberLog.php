@@ -5,12 +5,10 @@ namespace Modules\Software\Models;
 use Modules\Generic\Models\GenericModel;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Schema;
 
 class GymTrainingMemberLog extends GenericModel
 {
     use SoftDeletes;
-use Illuminate\Support\Facades\Schema;
     
     protected $table = 'sw_gym_training_member_logs';
     protected $guarded = ['id'];

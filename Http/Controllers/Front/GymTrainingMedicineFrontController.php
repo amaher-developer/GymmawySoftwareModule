@@ -21,7 +21,7 @@ class GymTrainingMedicineFrontController extends GymGenericFrontController
     {
         $title = trans('sw.training_medicines');
         
-        $query = GymTrainingMedicine::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
+        $query = GymTrainingMedicine::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
 
         // Search filter
         if ($request->has('q') && $request->q) {
@@ -38,7 +38,7 @@ class GymTrainingMedicineFrontController extends GymGenericFrontController
         }
 
         $medicines = $query->orderBy('name_en')->paginate(20)->appends($request->except('page'));
-        $total = GymTrainingMedicine::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->count();
+        $total = GymTrainingMedicine::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->count();
 
         return view('software::Front.training_medicine_list', compact('title', 'medicines', 'total'));
     }
@@ -83,7 +83,7 @@ class GymTrainingMedicineFrontController extends GymGenericFrontController
     public function edit($id)
     {
         $title = trans('sw.edit_training_medicine');
-        $medicine = GymTrainingMedicine::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
+        $medicine = GymTrainingMedicine::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
             ->findOrFail($id);
         
         return view('software::Front.training_medicine_form', compact('title', 'medicine'));
@@ -94,7 +94,7 @@ class GymTrainingMedicineFrontController extends GymGenericFrontController
      */
     public function update(GymTrainingMedicineRequest $request, $id)
     {
-        $medicine = GymTrainingMedicine::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
+        $medicine = GymTrainingMedicine::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
             ->findOrFail($id);
 
         $inputs = $request->all();
@@ -119,7 +119,7 @@ class GymTrainingMedicineFrontController extends GymGenericFrontController
      */
     public function destroy($id)
     {
-        $medicine = GymTrainingMedicine::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
+        $medicine = GymTrainingMedicine::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
             ->findOrFail($id);
 
         $name = $medicine->name_en ?? $medicine->name_ar;

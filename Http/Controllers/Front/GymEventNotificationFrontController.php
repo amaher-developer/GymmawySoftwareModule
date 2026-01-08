@@ -17,14 +17,14 @@ class GymEventNotificationFrontController extends GymGenericFrontController
     public function edit()
     {
         $title = trans('sw.message_settings');
-        $event_notifications = GymEventNotification::branch()->get();
+        $event_notifications = GymEventNotification::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $total = $event_notifications->count();
         return view('software::Front.event_notification_front_list', ['total' => $total, 'event_notifications' => $event_notifications, 'title' => $title]);
     }
 
     public function updateAjax($id, $status)
     {
-        $event_notification = GymEventNotification::withTrashed()->find($id);
+        $event_notification = GymEventNotification::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $event_notification->status = $status;
         $event_notification->save();
 

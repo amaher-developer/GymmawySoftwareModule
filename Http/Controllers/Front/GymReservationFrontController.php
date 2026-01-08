@@ -25,8 +25,7 @@ class GymReservationFrontController extends GymGenericFrontController
         $this->ReservationRepository =
             new GymReservationRepository(new Application);
 
-        $this->ReservationRepository =
-            $this->ReservationRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function index()
@@ -118,7 +117,7 @@ class GymReservationFrontController extends GymGenericFrontController
             ]);
         }
 
-        $activities = GymActivity::branch()->get();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         
         // Set records - if paginated, use the paginator itself (it has items() method for iteration)
         // If not paginated, use the collection
@@ -130,9 +129,9 @@ class GymReservationFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.reservation_add');
-        $activities = GymActivity::branch()->get();
-        $members = GymMember::branch()->limit(100)->get(['id', 'name']);
-        $nonMembers = GymNonMember::branch()->limit(100)->get(['id', 'name']);
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->limit(100)->get(['id', 'name']);
+        $nonMembers = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->limit(100)->get(['id', 'name']);
 
         return view('software::Front.reservation_front_form', [
             'reservation' => new GymReservation(),
@@ -189,7 +188,7 @@ class GymReservationFrontController extends GymGenericFrontController
         }
         
         $title = trans('sw.reservation_edit');
-        $activities = GymActivity::branch()->get();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         
         // Only load members/non-members if they are needed for the current reservation
         // For editing, we only need to load the current client to pre-select it
@@ -198,7 +197,7 @@ class GymReservationFrontController extends GymGenericFrontController
         
         // If reservation has a member, load only that member
         if ($reservation->member_id) {
-            $member = GymMember::branch()->find($reservation->member_id);
+            $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->find($reservation->member_id);
             if ($member) {
                 $members = collect([$member]);
             }
@@ -206,7 +205,7 @@ class GymReservationFrontController extends GymGenericFrontController
         
         // If reservation has a non-member, load only that non-member
         if ($reservation->non_member_id) {
-            $nonMember = GymNonMember::branch()->find($reservation->non_member_id);
+            $nonMember = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->find($reservation->non_member_id);
             if ($nonMember) {
                 $nonMembers = collect([$nonMember]);
             }
@@ -221,7 +220,7 @@ class GymReservationFrontController extends GymGenericFrontController
     public function loadMembers(Request $request)
     {
         $search = $request->get('search', '');
-        $query = GymMember::branch();
+        $query = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -252,7 +251,7 @@ class GymReservationFrontController extends GymGenericFrontController
     public function loadNonMembers(Request $request)
     {
         $search = $request->get('search', '');
-        $query = GymNonMember::branch();
+        $query = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         
         if ($search) {
             $query->where('name', 'like', "%{$search}%");
@@ -494,7 +493,7 @@ class GymReservationFrontController extends GymGenericFrontController
 
         // Load existing reservations for that activity & date
         // Exclude cancelled and missed reservations
-        $existing = GymReservation::where('activity_id', $data['activity_id'])
+        $existing = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('activity_id', $data['activity_id'])
             ->whereDate('reservation_date', $date)
             ->whereNotIn('status', ['cancelled', 'missed'])
             ->get()
@@ -669,7 +668,7 @@ class GymReservationFrontController extends GymGenericFrontController
         }
         // If reservation_details is null or empty, skip all restrictions (allow reservation anytime)
 
-        $query = GymReservation::where('activity_id', $data['activity_id'])
+        $query = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('activity_id', $data['activity_id'])
             ->whereDate('reservation_date', $data['reservation_date']);
 
         // Exclude current reservation if editing
@@ -770,7 +769,7 @@ class GymReservationFrontController extends GymGenericFrontController
         $reservationLimit = (int)($activity->reservation_limit ?? 0);
         if ($reservationLimit > 0) {
             // Count overlapping reservations
-            $overlapCount = GymReservation::where('activity_id', $inputs['activity_id'])
+            $overlapCount = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('activity_id', $inputs['activity_id'])
                 ->whereDate('reservation_date', $inputs['reservation_date'])
                 ->whereNotIn('status', ['cancelled', 'missed'])
                 ->get()
@@ -874,7 +873,7 @@ class GymReservationFrontController extends GymGenericFrontController
         // Check for conflicts (exclude current reservation)
         $reservationLimit = (int)($activity->reservation_limit ?? 0);
         if ($reservationLimit > 0) {
-            $overlapCount = GymReservation::where('activity_id', $inputs['activity_id'])
+            $overlapCount = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('activity_id', $inputs['activity_id'])
                 ->whereDate('reservation_date', $inputs['reservation_date'])
                 ->where('id', '!=', $id)
                 ->whereNotIn('status', ['cancelled', 'missed'])
@@ -907,7 +906,7 @@ class GymReservationFrontController extends GymGenericFrontController
             }
         } else {
             // Check for simple conflicts
-            $exists = GymReservation::where('activity_id', $inputs['activity_id'])
+            $exists = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('activity_id', $inputs['activity_id'])
                 ->whereDate('reservation_date', $inputs['reservation_date'])
                 ->where('id', '!=', $id)
                 ->whereNotIn('status', ['cancelled', 'missed'])

@@ -217,8 +217,8 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $subscriptions = GymSubscription::branch()->get();
-        $logs = GymMemberSubscription::branch()->with(['member.member_subscription_info', 'subscription' => function($q){$q->withTrashed();}]);
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $logs = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member.member_subscription_info', 'subscription' => function($q){$q->withTrashed();}]);
         $logs->whereHas('member', function($q){$q->whereNull('deleted_at');})
             ->orderBy('expire_date', 'ASC');
         if(!$from) {
@@ -384,9 +384,9 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $subscriptions = GymSubscription::branch()->get();
-        $group_discounts = GymGroupDiscount::branch()->where('is_member', 1)->get();
-        $logs = GymMemberSubscription::branch()->with(['member', 'subscription' => function($q){$q->withTrashed();}
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $group_discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_member', 1)->get();
+        $logs = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription' => function($q){$q->withTrashed();}
             ,'member.member_remain_amount_subscriptions.subscription' => function ($q) {
                 $q->withTrashed();
             }
@@ -553,9 +553,9 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $subscriptions = GymPTSubscription::branch()->with('pt_classes')->get();
-        $classes = GymPTClass::branch()->get();
-        $logs = GymPTMember::branch()->with(['member.member_subscription_info', 'pt_subscription' => function($q){$q->withTrashed();}])->whereHas('member', function($q){$q->whereNull('deleted_at');})->orderBy('id', 'DESC');
+        $subscriptions = GymPTSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('pt_classes')->get();
+        $classes = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $logs = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member.member_subscription_info', 'pt_subscription' => function($q){$q->withTrashed();}])->whereHas('member', function($q){$q->whereNull('deleted_at');})->orderBy('id', 'DESC');
 
         $logs->when(($pt_subscription), function ($query) use ($pt_subscription) {
             $query->where('pt_subscription_id', $pt_subscription);
@@ -599,7 +599,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         }
         $search_query = request()->query();
 
-        $pt_trainers = GymPTTrainer::branch()->get();
+        $pt_trainers = GymPTTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         return view('software::Front.report_pt_subscription_member_front_list', compact('pt_trainers','subscriptions', 'classes', 'search_query','logs','title', 'total'));
     }
 
@@ -719,7 +719,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->request_array = ['search', 'subscription'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
-        $members = GymMember::branch()->with(['member_subscriptions'=> function($q){
+        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscriptions'=> function($q){
             $q->orderBy('id', 'desc');
         },'member_subscriptions.subscription' => function($q){$q->withTrashed();}])->when($search, function ($query) use ($search) {
             $query->where('id', '=', (int)$search);
@@ -753,7 +753,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $logs = GymMemberAttendee::branch()->with(['member' => function($q){
+        $logs = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member' => function($q){
                 $q->withTrashed();
             }, 'member.member_subscription_info' => function($q){
             $q->withTrashed();
@@ -908,7 +908,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $logs = GymMemberAttendee::branch()->with(['member' => function($q){
+        $logs = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member' => function($q){
             $q->withTrashed();
         }, 'user', 'pt_member_subscription' => function($q){
             $q->withTrashed();
@@ -941,8 +941,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $uniqueMembers = $attendedMemberIds->count();
         $uniqueTrainers = 0;
         if ($attendedMemberIds->isNotEmpty()) {
-            $uniqueTrainers = GymPTMember::branch()
-                ->whereIn('id', $attendedMemberIds)
+            $uniqueTrainers = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereIn('id', $attendedMemberIds)
                 ->whereNotNull('pt_trainer_id')
                 ->distinct('pt_trainer_id')
                 ->count('pt_trainer_id');
@@ -1080,7 +1079,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $logs = GymNonMemberTime::branch()->with(['member' => function($q){
+        $logs = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member' => function($q){
             $q->withTrashed();
         }, 'non_member' => function($q){
             $q->withTrashed();
@@ -1226,7 +1225,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->request_array = ['search', 'date'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
-        $logs = GymUser::branch()->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
+        $logs = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
             ->with(['user_attendees' => function ($q) use ($date){
             if(@$date)
                 $q->whereDate('created_at', Carbon::parse($date)->toDateString());
@@ -1363,16 +1362,14 @@ class GymUserLogFrontController extends GymGenericFrontController
         $to = request('to');
         $search = request('search');
 
-        $productsQuery = GymStoreOrderProduct::branch()
-            ->selectRaw('product_id, SUM(price) AS price, SUM(quantity) AS products')
+        $productsQuery = GymStoreOrderProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->selectRaw('product_id, SUM(price) AS price, SUM(quantity) AS products')
             ->with(['product' => function ($q) {
                 $q->withTrashed();
             }])
             ->groupBy('product_id')
             ->orderByDesc('products');
 
-        $ordersQuery = GymStoreOrder::branch()
-            ->with([
+        $ordersQuery = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with([
                 'member' => function ($q) {
                     $q->withTrashed();
                 },
@@ -1438,7 +1435,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             $request_array = $this->request_array;
             foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-            $orders = GymMoneyBox::branch()->with(['user', 'member_subscription.member' => function($q){
+            $orders = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user', 'member_subscription.member' => function($q){
                 $q->withTrashed();
             }, 'member_pt_subscription' => function($q){
                 $q->withTrashed();
@@ -1545,9 +1542,9 @@ class GymUserLogFrontController extends GymGenericFrontController
             $expenses = ($sorders->where('operation', 1)->sum('amount'));
             $earnings = ($revenues - $expenses);
 
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         if ($payment_types->isEmpty()) {
-            $payment_types = GymPaymentType::orderBy('id')->get();
+            $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         }
 
         ($sorders->filter(function ($item) use ($payment_types) {
@@ -1641,7 +1638,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $transaction = request('transaction');
         $operation = intVal($transaction-1);
 
-        $records = GymMoneyBox::branch()->with(['user', 'member_subscription.member' => function($q){
+        $records = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user', 'member_subscription.member' => function($q){
             $q->withTrashed();
         }, 'member_pt_subscription' => function($q){
             $q->withTrashed();
@@ -1918,7 +1915,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $orders = GymOnlinePaymentInvoice::branch()->with(['member', 'subscription' => function($q){
+        $orders = GymOnlinePaymentInvoice::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription' => function($q){
             $q->withTrashed();
         }])->orderBy('id', 'DESC');
 
@@ -1984,12 +1981,11 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $subscriptions = GymSubscription::branch()->get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         
         // Get members with any freeze records (all statuses)
         // Default: show all freezes, but can be filtered by status and date range
-        $members = GymMember::branch()
-            ->with([
+        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with([
                 'member_subscription_info' => function($q){
                     $q->with([
                         'subscription',
@@ -2072,8 +2068,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         
-        $members = GymMember::branch()
-            ->with([
+        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with([
                 'member_subscription_info' => function($q){
                     $q->with([
                         'subscription',
@@ -2201,8 +2196,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         
-        $members = GymMember::branch()
-            ->with([
+        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with([
                 'member_subscription_info' => function($q){
                     $q->with([
                         'subscription',

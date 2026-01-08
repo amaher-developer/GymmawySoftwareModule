@@ -37,7 +37,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         parent::__construct();
         $this->limit = 5;
         $this->GymMoneyBoxRepository = new GymMoneyBoxRepository(new Application);
-        $this->GymMoneyBoxRepository = $this->GymMoneyBoxRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -46,12 +46,12 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $title = trans('sw.moneybox');
         $this->request_array = ['search', 'from', 'to', 'payment_type', 'moneybox_type', 'user', 'subscription', 'is_store_balance'];
-        $users = GymUser::branch()->where('is_test', 0)->get();
+        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_test', 0)->get();
 
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $orders = GymMoneyBox::branch()->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC')->orderBy('id', 'DESC');
+        $orders = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC')->orderBy('id', 'DESC');
 
 
         //apply filters
@@ -112,13 +112,13 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             $orders = $orders->get();
             $total = $orders->count();
         }
-        $subscriptions = GymSubscription::get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $revenues = ($sorders->where('operation', 0)->sum('amount'));
         $expenses = ($sorders->where('operation', 1)->sum('amount'));
 
         $earnings = ($revenues - $expenses);
 
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         ($sorders->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $i => $payment_type){
 //                if(($item->member_subscription_id != null || $item->member_pt_subscription_id != null) && (@$item->payment_type == $payment_type->payment_id) && ($item->operation == TypeConstants::Add) ){
@@ -386,8 +386,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.add_to_money_box');
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
-        $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
+        $money_box_types = GymMoneyBoxType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_add_front_form', [
             'order' => new GymMoneyBox(),
@@ -402,7 +402,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     }
     public function store(GymMoneyBoxRequest $request)
     {
-        $gymMoneyBox = GymMoneyBox::branch()->latest()->first();
+        $gymMoneyBox = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
         $money_box_inputs = $request->except(['_token', 'is_vat', 'send_to_zatca']);
         $money_box_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $money_box_inputs['operation'] = 0;
@@ -445,8 +445,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function createWithdraw()
     {
         $title = trans('sw.withdraw_from_money_box');
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
-        $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
+        $money_box_types = GymMoneyBoxType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_withdraw_front_form', [
             'order' => new GymMoneyBox(),
@@ -458,7 +458,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
     public function storeWithdraw(GymMoneyBoxRequest $request)
     {
-        $gymMoneyBox = GymMoneyBox::branch()->latest()->first();
+        $gymMoneyBox = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
         $money_box_inputs = $request->except(['_token', 'is_vat']);
         $money_box_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $money_box_inputs['operation'] = 1;
@@ -486,8 +486,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function createWithdrawEarnings()
     {
         $title = trans('sw.withdraw_earning');
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
-        $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
+        $money_box_types = GymMoneyBoxType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('operation_type', 'DESC')->get();
 
         return view('software::Front.moneybox_withdraw_earnings_front_form', [
             'order' => new GymMoneyBox(),
@@ -500,7 +500,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     public function storeWithdrawEarnings(GymMoneyBoxRequest $request)
     {
 
-        $gymMoneyBox = GymMoneyBox::branch()->orderBy('created_at','desc')->first();
+        $gymMoneyBox = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('created_at','desc')->first();
         $money_box_inputs = $request->except(['_token', 'is_vat']);
         $money_box_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $money_box_inputs['operation'] = 2;
@@ -534,7 +534,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $id = $id ?? request('id');
         $amount = $amount ?? request('amount');
         if($id){
-            $gymMoneyBox = GymMoneyBox::branch()->where('id', '>=', $id)->orderBy('created_at', 'asc')->get();
+            $gymMoneyBox = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', '>=', $id)->orderBy('created_at', 'asc')->get();
             foreach($gymMoneyBox as $i => $moneyBox){
                 if($i == 0){
                     $moneyBox->amount = $amount;
@@ -572,7 +572,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $branch_setting_id = $user->branch_setting_id ?? 1;
         
         // Find the order - use branch_setting_id directly to ensure it works
-        $order = GymMoneyBox::where('branch_setting_id', $branch_setting_id)
+        $order = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $branch_setting_id)
             ->where('id', $id)
             ->first();
         
@@ -597,12 +597,12 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $title = trans('sw.moneybox_daily');
         $this->request_array = ['search', 'payment_type', 'moneybox_type', 'user', 'is_store_balance'];
-        $users = GymUser::branch()->where('is_test', 0)->get();
+        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_test', 0)->get();
 
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $orders = GymMoneyBox::branch()->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC');
+        $orders = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC');
 
         //apply filters
         $orders = $orders->whereDate('created_at', Carbon::now()->toDateString());
@@ -650,13 +650,13 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-        $subscriptions = GymSubscription::get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $revenues = ($sorders->where('operation', 0)->sum('amount'));
         $expenses = ($sorders->where('operation', 1)->sum('amount'));
 
         $earnings = ($revenues - $expenses);
 
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         ($sorders->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $i => $payment_type){
 //                if(($item->member_subscription_id != null || $item->member_pt_subscription_id != null) && (@$item->payment_type == $payment_type->payment_id) && ($item->operation == TypeConstants::Add) ){

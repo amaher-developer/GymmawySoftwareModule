@@ -31,7 +31,6 @@ class GymActivityFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->ActivityRepository =new GymActivityRepository(new Application);
-        $this->ActivityRepository = $this->ActivityRepository->branch();
         $this->imageManager = new ImageManager(new Driver());
     }
 
@@ -44,11 +43,11 @@ class GymActivityFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $activities = $this->ActivityRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $activities = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $activities = $this->ActivityRepository->orderBy('id', 'DESC');
+            $activities = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -73,7 +72,7 @@ class GymActivityFrontController extends GymGenericFrontController
 
 
     function exportExcel(){
-        $records = $this->ActivityRepository->get();
+        $records = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $this->fileName = 'activities-' . Carbon::now()->toDateTimeString();
 
 //        $title = trans('sw.activities');
@@ -118,7 +117,7 @@ class GymActivityFrontController extends GymGenericFrontController
         return $result;
     }
     function exportPDF(){
-        $records = $this->ActivityRepository->get();
+        $records = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $this->fileName = 'activities-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name', 'price'];
@@ -214,14 +213,14 @@ class GymActivityFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $activity =$this->ActivityRepository->withTrashed()->find($id);
+        $activity =$this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $title = trans('sw.activity_edit');
         return view('software::Front.activity_front_form', ['activity' => $activity,'title'=>$title]);
     }
 
     public function update(GymActivityRequest $request, $id)
     {
-        $activity =$this->ActivityRepository->withTrashed()->find($id);
+        $activity =$this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $activity_inputs = $this->prepare_inputs($request->except(['_token']));
         $activity_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $activity_inputs['is_web'] = @(int)$activity_inputs['is_web'];
@@ -241,7 +240,7 @@ class GymActivityFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $activity =$this->ActivityRepository->withTrashed()->find($id);
+        $activity =$this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         if($activity->trashed())
         {
             $activity->restore();

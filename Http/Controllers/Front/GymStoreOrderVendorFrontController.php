@@ -39,7 +39,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreOrderVendorRepository=new GymStoreOrderVendorRepository(new Application);
-        $this->StoreOrderVendorRepository=$this->StoreOrderVendorRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -164,7 +164,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
     public function show($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrderVendor::branch()->with(['product' => function($query){
+        $order = GymStoreOrderVendor::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['product' => function($query){
             $query->withTrashed();
         }])->where('id', $id)->first();
 
@@ -197,7 +197,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
     public function showPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrderVendor::branch()->with(['pay_type', 'product'])->where('id', $id)->first();
+        $order = GymStoreOrderVendor::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pay_type', 'product'])->where('id', $id)->first();
 
 
         if(@$this->mainSettings->vat_details['saudi']){
@@ -235,10 +235,10 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
         else
         {
 
-            GymStoreProduct::where('id', $order->product_id)->decrement('quantity', $order->quantity);
+            GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order->product_id)->decrement('quantity', $order->quantity);
 
             if(\request('refund')){
-                $amount_box = GymMoneyBox::branch()->latest()->first();
+                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $amount = ($order->amount);
@@ -258,6 +258,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
                         , 'member_id' => @$order->member_id
                         , 'payment_type' => intval($order->payment_type)
                         , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                        , 'tenant_id' => @$this->user_sw->tenant_id
                     ]);
                         $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
                 }

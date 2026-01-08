@@ -5,7 +5,6 @@ namespace Modules\Software\Models;
 use Modules\Generic\Models\GenericModel;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * LoyaltyCampaign Model

@@ -48,15 +48,14 @@ class GymHomeFrontController extends GymGenericFrontController
     public $money_box_daily_sum = 0;
     public function home(){
         // Optimize: Use select to limit columns and reduce memory
-        $activities = GymActivity::branch()->select('id', 'name_ar', 'name_en')->get();
-        $subscriptions = GymSubscription::branch()->select('id', 'name_ar', 'name_en', 'price', 'period')->get();
-        $money_box = GymMoneyBox::branch()->select('id', 'amount', 'amount_before', 'operation', 'created_at')->orderBy('created_at', 'desc')->first();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name_ar', 'name_en')->get();
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name_ar', 'name_en', 'price', 'period')->get();
+        $money_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'amount', 'amount_before', 'operation', 'created_at')->orderBy('created_at', 'desc')->first();
         $money_box_now = @GymMoneyBoxFrontController::amountAfter($money_box['amount'] ?? 0, $money_box['amount_before'] ?? 0, $money_box['operation'] ?? 0);
 
-        $last_created_member = GymMember::branch()->select('id', 'name')->orderBy('created_at', 'desc')->first();
-        $last_created_non_member = GymNonMember::branch()->select('id', 'name')->orderBy('created_at', 'desc')->first();
-        $last_enter_member = GymMemberAttendee::branch()
-            ->select('id', 'member_id', 'created_at')
+        $last_created_member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->orderBy('created_at', 'desc')->first();
+        $last_created_non_member = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->orderBy('created_at', 'desc')->first();
+        $last_enter_member = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'member_id', 'created_at')
             ->with('member:id,name')
             ->orderBy('created_at', 'desc')
             ->first();
@@ -68,8 +67,7 @@ class GymHomeFrontController extends GymGenericFrontController
         
         // Get member IDs that are not deleted (cache this for reuse)
         // Optimize: Single query to get all active member IDs, then use whereIn (faster than whereHas)
-        $activeMemberIds = GymMember::branch()
-            ->withoutTrashed()
+        $activeMemberIds = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withoutTrashed()
             ->pluck('id')
             ->toArray();
         
@@ -80,8 +78,7 @@ class GymHomeFrontController extends GymGenericFrontController
             $last_new_members = collect();
         } else {
             // Batch load all member subscriptions with proper eager loading using whereIn instead of whereHas
-            $last_expired_members = GymMemberSubscription::branch()
-                ->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
+            $last_expired_members = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
                 ->whereIn('member_id', $activeMemberIds)
             ->with(['member' => function($q) {
                 $q->select('id', 'name', 'image')->withoutTrashed();
@@ -91,8 +88,7 @@ class GymHomeFrontController extends GymGenericFrontController
                 ->limit(9)
                 ->get();
                 
-            $last_expiring_members = GymMemberSubscription::branch()
-                ->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
+            $last_expiring_members = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
                 ->whereIn('member_id', $activeMemberIds)
                 ->with(['member' => function($q) {
                     $q->select('id', 'name', 'image')->withoutTrashed();
@@ -102,8 +98,7 @@ class GymHomeFrontController extends GymGenericFrontController
                 ->limit(9)
                 ->get();
                 
-            $last_new_members = GymMemberSubscription::branch()
-                ->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
+            $last_new_members = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('sw_gym_member_subscription.id', 'sw_gym_member_subscription.member_id', 'sw_gym_member_subscription.expire_date', 'sw_gym_member_subscription.joining_date', 'sw_gym_member_subscription.status')
                 ->whereIn('member_id', $activeMemberIds)
                 ->with(['member' => function($q) {
                     $q->select('id', 'name', 'image')->withoutTrashed();
@@ -114,16 +109,14 @@ class GymHomeFrontController extends GymGenericFrontController
                 ->get();
         }
 
-        $birthday_members = GymMember::branch()
-            ->select('id', 'name', 'dob', 'image')
+        $birthday_members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name', 'dob', 'image')
             ->whereMonth('dob', $now->format('m'))
             ->whereDay('dob', $now->format('d'))
             ->orderBy('dob', 'asc')
             ->limit(9)
             ->get();
 
-        $last_attendance_members = GymMemberAttendee::branch()
-            ->select('id', 'member_id', 'created_at')
+        $last_attendance_members = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'member_id', 'created_at')
             ->with(['member' => function($q) {
                 $q->select('id', 'name', 'image')->withoutTrashed();
             }, 'member.member_subscription_info' => function($q) {
@@ -141,16 +134,15 @@ class GymHomeFrontController extends GymGenericFrontController
     public function home_mini(){
 
         $title = trans('sw.member_login');
-//        $last_created_member = GymMember::select('id', 'name')->orderBy('id', 'desc')->first();
-//        $last_created_non_member = GymNonMember::select('id', 'name')->orderBy('id', 'desc')->first();
-        $last_enter_member = GymMemberAttendee::branch()->with('member:id,name')->orderBy('id', 'desc')->first();
+//        $last_created_member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->orderBy('id', 'desc')->first();
+//        $last_created_non_member = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->orderBy('id', 'desc')->first();
+        $last_enter_member = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member:id,name')->orderBy('id', 'desc')->first();
         return view('software::Front.dashboard_mini', compact(['title', 'last_enter_member']));
     }
     public function home_pt_mini(){
 
         $title = trans('sw.pt_member_login');
-        $last_enter_member = GymMemberAttendee::branch()
-            ->with(['member:id,name,image'])
+        $last_enter_member = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member:id,name,image'])
             ->where('type', TypeConstants::ATTENDANCE_TYPE_PT)
             ->orderBy('created_at', 'desc')
             ->first();
@@ -160,13 +152,11 @@ class GymHomeFrontController extends GymGenericFrontController
         $todayStart = $today->copy()->startOfDay();
         $todayEnd = $today->copy()->endOfDay();
 
-        $assignments = GymPTClassTrainer::branch()
-            ->with(['class', 'trainer'])
+        $assignments = GymPTClassTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['class', 'trainer'])
             ->where('is_active', true)
             ->get();
 
-        $classesWithSchedule = GymPTClass::branch()
-            ->with('pt_subscription')
+        $classesWithSchedule = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('pt_subscription')
             ->whereNotNull('schedule')
             ->where(function ($query) {
                 $query->whereNull('is_active')
@@ -184,8 +174,7 @@ class GymHomeFrontController extends GymGenericFrontController
 
         $timelineToday = $this->sessionService->resolveVirtualTimeline($assignments, $todayStart, $todayEnd);
 
-        $attendanceToday = GymPTMemberAttendee::branch()
-            ->whereBetween('session_date', [$todayStart, $todayEnd])
+        $attendanceToday = GymPTMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereBetween('session_date', [$todayStart, $todayEnd])
             ->get();
 
         $todaySessionsTotal = $timelineToday->count();
@@ -224,8 +213,7 @@ class GymHomeFrontController extends GymGenericFrontController
             ]
             : null;
 
-        $sessionTotals = GymPTMember::branch()
-            ->selectRaw('COALESCE(SUM(total_sessions), 0) as total_sessions_sum, COALESCE(SUM(remaining_sessions), 0) as remaining_sessions_sum')
+        $sessionTotals = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->selectRaw('COALESCE(SUM(total_sessions), 0) as total_sessions_sum, COALESCE(SUM(remaining_sessions), 0) as remaining_sessions_sum')
             ->first();
 
         $totalSessionsSum = (int) data_get($sessionTotals, 'total_sessions_sum', 0);
@@ -249,8 +237,7 @@ class GymHomeFrontController extends GymGenericFrontController
 
         $timelineCalendar = $this->sessionService->resolveVirtualTimeline($assignments, $calendarStart, $calendarEnd);
 
-        $attendanceLookup = GymPTMemberAttendee::branch()
-            ->with('pt_member')
+        $attendanceLookup = GymPTMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('pt_member')
             ->whereBetween('session_date', [$calendarStart, $calendarEnd])
             ->get()
             ->groupBy(function (GymPTMemberAttendee $attendee) {
@@ -319,9 +306,9 @@ class GymHomeFrontController extends GymGenericFrontController
     public function home_fingerprint_mini(){
 
         $title = trans('sw.fingerprint');
-//        $last_created_member = GymMember::select('id', 'name')->orderBy('id', 'desc')->first();
-//        $last_created_non_member = GymNonMember::select('id', 'name')->orderBy('id', 'desc')->first();
-        $last_enter_member = GymMemberAttendee::branch()->with('member:id,name')->orderBy('id', 'desc')->first();
+//        $last_created_member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->orderBy('id', 'desc')->first();
+//        $last_created_non_member = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->orderBy('id', 'desc')->first();
+        $last_enter_member = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member:id,name')->orderBy('id', 'desc')->first();
         return view('software::Front.dashboard_fingerprint_mini', compact(['title', 'last_enter_member']));
     }
     public function statistics(Request $request){
@@ -330,41 +317,41 @@ class GymHomeFrontController extends GymGenericFrontController
         $to_date = $request->input('to_date');
 
         // Members Statistics
-        $members_count = GymMember::branch()->count();
-        $non_members_count = GymNonMember::branch()->count();
-        $potential_members_count = GymPotentialMember::branch()->count();
-        $admin_count = GymUser::branch()->count();
-        $members_active_count = GymMember::branch()->with('member_subscription_info')->whereHas('member_subscription_info', function ($q){$q->where('status', TypeConstants::Active);})->count();
+        $members_count = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
+        $non_members_count = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
+        $potential_members_count = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
+        $admin_count = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
+        $members_active_count = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member_subscription_info')->whereHas('member_subscription_info', function ($q){$q->where('status', TypeConstants::Active);})->count();
         $members_deactive_count = $members_count - $members_active_count;
 
         // New Members (Today or Date Range)
         if ($from_date && $to_date) {
-            $new_members_count = GymMember::branch()->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59'])->count();
-            $new_non_members_count = GymNonMember::branch()->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59'])->count();
+            $new_members_count = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59'])->count();
+            $new_non_members_count = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59'])->count();
         } else {
-            $new_members_count = GymMember::branch()->whereDate('created_at', Carbon::today())->count();
-            $new_non_members_count = GymNonMember::branch()->whereDate('created_at', Carbon::today())->count();
+            $new_members_count = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereDate('created_at', Carbon::today())->count();
+            $new_non_members_count = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereDate('created_at', Carbon::today())->count();
         }
 
         // Attendance Statistics
         if ($from_date && $to_date) {
-            $attendance_count = \Modules\Software\Models\GymMemberAttendee::branch()->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59'])->count();
+            $attendance_count = \Modules\Software\Models\GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59'])->count();
         } else {
-            $attendance_count = \Modules\Software\Models\GymMemberAttendee::branch()->whereDate('created_at', Carbon::today())->count();
+            $attendance_count = \Modules\Software\Models\GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereDate('created_at', Carbon::today())->count();
         }
 
         // Expiring Soon (Next 7 days)
-        $expiring_soon_count = GymMember::branch()->with('member_subscription_info')->whereHas('member_subscription_info', function ($q){
+        $expiring_soon_count = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member_subscription_info')->whereHas('member_subscription_info', function ($q){
             $q->where('status', TypeConstants::Active)
               ->whereBetween('expire_date', [Carbon::now(), Carbon::now()->addDays(7)]);
         })->count();
 
 //        $members_count_monthly = GymMember::whereDate('created_at', '>=', Carbon::now()->startOfMonth()->subMonth()->toDateTimeString())->count();
 //        $non_members_count_monthly = GymNonMember::whereDate('created_at', '>=', Carbon::now()->startOfMonth()->subMonth()->toDateTimeString())->count();
-//        $activities_count = GymActivity::count();
-//        $subscription_count = GymSubscription::count();
+//        $activities_count = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
+//        $subscription_count = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
 
-        $money_box = GymMoneyBox::branch()->select(['id', 'amount', 'operation', 'amount_before', 'created_at'])->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('id', 'DESC');
+        $money_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select(['id', 'amount', 'operation', 'amount_before', 'created_at'])->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('id', 'DESC');
         
         if ($from_date && $to_date) {
             $money_box = $money_box->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59']);
@@ -379,11 +366,11 @@ class GymHomeFrontController extends GymGenericFrontController
 
         $earnings = ($revenues - $expenses);
 
-        $money_box_daily = @$money_box[0] ? $money_box[0] : GymMoneyBox::orderBy('id', 'desc')->first();
-//        $money_box = GymMoneyBox::branch()->orderBy('id', 'desc')->first();
+        $money_box_daily = @$money_box[0] ? $money_box[0] : GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'desc')->first();
+//        $money_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'desc')->first();
 
         $money_box_now = @GymMoneyBoxFrontController::amountAfter($money_box_daily['amount'], $money_box_daily['amount_before'], $money_box_daily['operation']);
-//        $money_box_by_payment_types = GymMoneyBox::branch()
+//        $money_box_by_payment_types = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
 //            ->select('payment_type', DB::raw('sum(amount) as total'))
 //            ->groupBy('payment_type')
 //            ->get();
@@ -395,14 +382,14 @@ class GymHomeFrontController extends GymGenericFrontController
 //        $money_box_daily_now = $this->money_box_daily_sum;
 
         // Subscriptions with member count (always show active)
-        $subscriptions = GymSubscription::branch()->select('id', 'name_ar', 'name_en', 'price', 'workouts', 'period', 'created_at')
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name_ar', 'name_en', 'price', 'workouts', 'period', 'created_at')
             ->withCount(['member_subscriptions' => function ($q){
                  $q->where('status', TypeConstants::Active);
             }])
             ->orderBy('member_subscriptions_count', 'desc')->get();
 
         // Member subscriptions for chart (filtered by date)
-        $membersQuery = GymMemberSubscription::branch();
+        $membersQuery = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         if ($from_date && $to_date) {
             $membersQuery->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59']);
         }
@@ -414,14 +401,14 @@ class GymHomeFrontController extends GymGenericFrontController
         $expired_members = implode(',', $this->getMemberCountByType($members, 2));
         
         // Logs (filtered by date)
-        $logsQuery = GymUserLog::branch()->orderBy('id', 'desc');
+        $logsQuery = GymUserLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'desc');
         if ($from_date && $to_date) {
             $logsQuery->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59']);
         }
         $logs = $logsQuery->limit(20)->get();
 
         // Reservations Statistics
-        $reservationsQuery = GymReservation::branch();
+        $reservationsQuery = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         if ($from_date && $to_date) {
             $reservationsQuery->whereBetween('reservation_date', [$from_date, $to_date]);
         } else {
@@ -487,7 +474,7 @@ class GymHomeFrontController extends GymGenericFrontController
         $to_date = $request->get('to_date');
         
         // Build base query with date filters
-        $query = GymMemberSubscription::branch();
+        $query = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         if ($from_date) {
             $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
         }
@@ -506,27 +493,23 @@ class GymHomeFrontController extends GymGenericFrontController
             ->where('status', TypeConstants::Active)
             ->sum('amount_paid');
         
-        $monthly_revenue = GymMemberSubscription::branch()
-            ->where('status', TypeConstants::Active)
+        $monthly_revenue = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('status', TypeConstants::Active)
             ->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('amount_paid');
         
         // New subscriptions this month
-        $new_this_month = GymMemberSubscription::branch()
-            ->whereMonth('created_at', Carbon::now()->month)
+        $new_this_month = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->count();
         
         // Expiring soon (within 7 days)
-        $expiring_soon = GymMemberSubscription::branch()
-            ->where('status', TypeConstants::Active)
+        $expiring_soon = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('status', TypeConstants::Active)
             ->whereBetween('expire_date', [Carbon::now(), Carbon::now()->addDays(7)])
             ->count();
         
         // Popular subscriptions with revenue
-        $popular_subscriptions = GymSubscription::branch()
-            ->withCount(['member_subscriptions' => function ($q) use ($from_date, $to_date){
+        $popular_subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withCount(['member_subscriptions' => function ($q) use ($from_date, $to_date){
                 $q->where('status', TypeConstants::Active);
                 if ($from_date) {
                     $q->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
@@ -553,8 +536,7 @@ class GymHomeFrontController extends GymGenericFrontController
             ->take(10);
         
         // Reservations Statistics for Members
-        $memberReservationsQuery = GymReservation::branch()
-            ->where('client_type', 'member');
+        $memberReservationsQuery = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('client_type', 'member');
         if ($from_date) {
             $memberReservationsQuery->where('reservation_date', '>=', $from_date);
         }
@@ -593,7 +575,7 @@ class GymHomeFrontController extends GymGenericFrontController
         $to_date = $request->get('to_date');
         
         // Build base query with date filters
-        $query = GymStoreOrder::branch();
+        $query = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         if ($from_date) {
             $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
         }
@@ -610,18 +592,16 @@ class GymHomeFrontController extends GymGenericFrontController
         // Revenue calculations
         $store_revenue = (clone $query)->sum('amount_paid');
         
-        $monthly_revenue = GymStoreOrder::branch()
-            ->whereMonth('created_at', Carbon::now()->month)
+        $monthly_revenue = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('amount_paid');
         
         // Product statistics
-        $total_products = GymStoreProduct::branch()->count();
-        $low_stock_products = GymStoreProduct::branch()->where('quantity', '<=', 10)->where('quantity', '>', 0)->count();
+        $total_products = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
+        $low_stock_products = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('quantity', '<=', 10)->where('quantity', '>', 0)->count();
         
         // Top products with sales data
-        $top_products = GymStoreProduct::branch()
-            ->with(['order_product'])
+        $top_products = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['order_product'])
             ->get()
             ->map(function($product) {
                 $product->sales_count = $product->order_product->count();
@@ -635,8 +615,7 @@ class GymHomeFrontController extends GymGenericFrontController
             ->take(10);
         
         // Recent orders with payment status
-        $recent_orders_query = GymStoreOrder::branch()
-            ->with(['member', 'pay_type']);
+        $recent_orders_query = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'pay_type']);
         
         if ($from_date) {
             $recent_orders_query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
@@ -676,7 +655,7 @@ class GymHomeFrontController extends GymGenericFrontController
     }
 
     private function getSubscriptionChartData($status, $from_date = null, $to_date = null){
-        $query = GymMemberSubscription::branch();
+        $query = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         
         if ($from_date) {
             $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
@@ -712,7 +691,7 @@ class GymHomeFrontController extends GymGenericFrontController
     }
 
     private function getStoreChartData($status, $from_date = null, $to_date = null){
-        $query = GymStoreOrder::branch();
+        $query = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         
         if ($from_date) {
             $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
@@ -769,7 +748,7 @@ class GymHomeFrontController extends GymGenericFrontController
         $to_date = $request->get('to_date');
         
         // Build base query with date filters
-        $query = GymPTMember::branch();
+        $query = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         if ($from_date) {
             $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
         }
@@ -795,8 +774,7 @@ class GymHomeFrontController extends GymGenericFrontController
             return $member->status == TypeConstants::Active;
         })->sum('amount_paid');
         
-        $monthly_pt_revenue = GymPTMember::branch()
-            ->whereMonth('created_at', Carbon::now()->month)
+        $monthly_pt_revenue = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->get()
             ->filter(function($member) {
@@ -805,12 +783,11 @@ class GymHomeFrontController extends GymGenericFrontController
             ->sum('amount_paid');
         
         // Trainer and class statistics
-        $total_trainers = GymPTTrainer::branch()->count();
-        $total_pt_classes = GymPTClass::branch()->count();
+        $total_trainers = GymPTTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
+        $total_pt_classes = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->count();
         
         // Popular PT subscriptions with revenue
-        $popular_pt_subscriptions = GymPTSubscription::branch()
-            ->with(['pt_members'])
+        $popular_pt_subscriptions = GymPTSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pt_members'])
             ->get()
             ->map(function($subscription) {
                 $active_members = $subscription->pt_members->filter(function($member) {
@@ -824,8 +801,7 @@ class GymHomeFrontController extends GymGenericFrontController
             ->take(10);
         
         // Top trainers with revenue
-        $top_trainers = GymPTTrainer::branch()
-            ->with(['pt_members'])
+        $top_trainers = GymPTTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pt_members'])
             ->get()
             ->map(function($trainer) {
                 $active_members = $trainer->pt_members->filter(function($member) {
@@ -855,7 +831,7 @@ class GymHomeFrontController extends GymGenericFrontController
     }
 
     private function getPTSubscriptionChartData($status, $from_date = null, $to_date = null){
-        $query = GymPTMember::branch();
+        $query = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         
         if ($from_date) {
             $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
@@ -903,7 +879,7 @@ class GymHomeFrontController extends GymGenericFrontController
         $to_date = $request->get('to_date');
         
         // Build base query with date filters for non-members
-        $query = GymNonMember::branch();
+        $query = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         if ($from_date) {
             $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
         }
@@ -912,7 +888,7 @@ class GymHomeFrontController extends GymGenericFrontController
         }
         
         // Build base query with date filters for sessions
-        $session_query = GymNonMemberTime::branch();
+        $session_query = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         if ($from_date) {
             $session_query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
         }
@@ -944,14 +920,12 @@ class GymHomeFrontController extends GymGenericFrontController
         
         // Revenue calculations
         $total_revenue = (clone $query)->sum('price');
-        $monthly_revenue = GymNonMember::branch()
-            ->whereMonth('created_at', Carbon::now()->month)
+        $monthly_revenue = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('price');
         
         // Popular activities
-        $popular_activities = GymActivity::branch()
-            ->with(['non_member_times'])
+        $popular_activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['non_member_times'])
             ->get()
             ->map(function($activity) {
                 $activity->sessions_count = $activity->non_member_times->count();
@@ -965,8 +939,7 @@ class GymHomeFrontController extends GymGenericFrontController
             ->take(10);
         
         // Recent non-members
-        $recent_non_members = GymNonMember::branch()
-            ->with(['non_member_times'])
+        $recent_non_members = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['non_member_times'])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get()
@@ -977,8 +950,7 @@ class GymHomeFrontController extends GymGenericFrontController
             });
         
         // Reservations Statistics for Non-Members
-        $reservationsQuery = GymReservation::branch()
-            ->where('client_type', 'non_member');
+        $reservationsQuery = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('client_type', 'non_member');
         if ($from_date) {
             $reservationsQuery->where('reservation_date', '>=', $from_date);
         }
@@ -1010,7 +982,7 @@ class GymHomeFrontController extends GymGenericFrontController
 
     private function getNonMemberChartData($type, $from_date = null, $to_date = null){
         if ($type == 'members') {
-            $query = GymNonMember::branch();
+            $query = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
             if ($from_date) {
                 $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
             }
@@ -1022,7 +994,7 @@ class GymHomeFrontController extends GymGenericFrontController
                     return Carbon::parse($date->created_at)->format('m');
                 });
         } elseif ($type == 'sessions') {
-            $query = GymNonMemberTime::branch();
+            $query = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
             if ($from_date) {
                 $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
             }
@@ -1034,8 +1006,7 @@ class GymHomeFrontController extends GymGenericFrontController
                     return Carbon::parse($date->created_at)->format('m');
                 });
         } else { // attendance
-            $query = GymNonMemberTime::branch()
-                ->whereNotNull('attended_at');
+            $query = GymNonMemberTime::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereNotNull('attended_at');
             if ($from_date) {
                 $query->where('created_at', '>=', Carbon::parse($from_date)->startOfDay());
             }
@@ -1071,7 +1042,7 @@ class GymHomeFrontController extends GymGenericFrontController
     }
 
     private function getReservationChartData($client_type = null, $from_date = null, $to_date = null){
-        $query = GymReservation::branch();
+        $query = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
         
         if ($client_type) {
             $query->where('client_type', $client_type);

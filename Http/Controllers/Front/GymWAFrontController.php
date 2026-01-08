@@ -22,8 +22,8 @@ class GymWAFrontController extends GymGenericFrontController
     public $consume_message_count = 0;
     public function __construct()
     {
-        $this->consume_user_count = GymWALog::branch()->distinct()->where('status', 1)->whereDate('created_at', Carbon::now()->toDateString())->count(['phone']);
-        $this->consume_message_count = GymWALog::branch()->where('status', 1)->whereDate('created_at', '>', Carbon::now()->subMonth()->toDateString())->count(['phone']);
+        $this->consume_user_count = GymWALog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->distinct()->where('status', 1)->whereDate('created_at', Carbon::now()->toDateString())->count(['phone']);
+        $this->consume_message_count = GymWALog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('status', 1)->whereDate('created_at', '>', Carbon::now()->subMonth()->toDateString())->count(['phone']);
 
         parent::__construct();
     }
@@ -122,7 +122,7 @@ class GymWAFrontController extends GymGenericFrontController
     {
         $title = trans('sw.wa_logs');
 
-        $logs = GymWALog::branch()->with(['user']);
+        $logs = GymWALog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
         $logs->orderBy('id', 'DESC');
@@ -136,9 +136,9 @@ class GymWAFrontController extends GymGenericFrontController
         $phones = [];
         $type = request('type');
         if($type == 2){
-            $phones = GymNonMember::branch()->pluck('phone')->toArray();
+            $phones = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
         }else if($type == 3){
-            $phones = GymMember::branch()->pluck('phone')->toArray();
+            $phones = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
         }
         return implode(', ', $phones);
     }

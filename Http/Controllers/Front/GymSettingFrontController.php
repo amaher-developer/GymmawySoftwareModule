@@ -341,7 +341,7 @@ class GymSettingFrontController extends GymGenericFrontController
         }
         else
         {
-            $payment_types = GymPaymentType::orderBy('id', 'DESC');
+            $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -448,11 +448,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $group_discounts = GymGroupDiscount::branch()->onlyTrashed()->orderBy('id', 'DESC');
+            $group_discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $group_discounts = GymGroupDiscount::branch()->orderBy('id', 'DESC');
+            $group_discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -558,7 +558,7 @@ class GymSettingFrontController extends GymGenericFrontController
         }
         else
         {
-            $sale_channels = GymSaleChannel::orderBy('id', 'DESC');
+            $sale_channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -664,7 +664,7 @@ class GymSettingFrontController extends GymGenericFrontController
         }
         else
         {
-            $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC');
+            $money_box_types = GymMoneyBoxType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('operation_type', 'DESC');
         }
 
         //apply filters
@@ -782,7 +782,7 @@ class GymSettingFrontController extends GymGenericFrontController
         }
         else
         {
-            $store_groups = GymStoreGroup::orderBy('id', 'DESC');
+            $store_groups = GymStoreGroup::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
         //apply filters

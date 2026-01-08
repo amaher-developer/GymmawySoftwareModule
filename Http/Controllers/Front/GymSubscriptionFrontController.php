@@ -200,8 +200,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.subscription_add');
-        $activities = GymActivity::branch()->get();
-        $categories = GymCategory::branch()->where('is_subscription', true)->get();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $categories = GymCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_subscription', true)->get();
         return view('software::Front.subscription_front_form', ['activities' => $activities,'categories' => $categories,'subscription' => new GymSubscription(), 'title' => $title]);
     }
 
@@ -237,12 +237,13 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                     $activity_training_times = is_numeric($value) ? (int)$value : null;
                 }
                 if($activity_id && $activity_training_times && $activity_training_times > 0){
-                    GymActivitySubscription::branch()->where('activity_id', $activity_id)->where('subscription_id', @$subscription->id)->forceDelete();
+                    GymActivitySubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('activity_id', $activity_id)->where('subscription_id', @$subscription->id)->forceDelete();
                     GymActivitySubscription::create([
                         'activity_id' => $activity_id,
                         'subscription_id' => @$subscription->id,
                         'training_times' => $activity_training_times,
-                        'branch_setting_id' => @$this->user_sw->branch_setting_id
+                        'branch_setting_id' => @$this->user_sw->branch_setting_id,
+                        'tenant_id' => @$this->user_sw->tenant_id
                     ]);
                 }
             }
@@ -263,8 +264,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     {
         $subscription = $this->GymSubscriptionRepository->with('activities')->withTrashed()->find($id);
         $title = trans('sw.subscription_edit');
-        $activities = GymActivity::branch()->get();
-        $categories = GymCategory::branch()->where('is_subscription', true)->get();
+        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $categories = GymCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_subscription', true)->get();
         return view('software::Front.subscription_front_form', ['activities' => $activities, 'categories' => $categories, 'subscription' => $subscription, 'title' => $title]);
     }
 
@@ -290,7 +291,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
 
-        GymActivitySubscription::branch()->where('subscription_id', @$subscription->id)->forceDelete();
+        GymActivitySubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('subscription_id', @$subscription->id)->forceDelete();
         if(is_array($activities) && count($activities) > 0 && @$subscription->id){
             foreach ($activities as $key => $value){
                 $activity_id = null; $activity_training_times = null;
@@ -305,7 +306,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                         'activity_id' => $activity_id,
                         'subscription_id' => @$subscription->id,
                         'training_times' => $activity_training_times,
-                        'branch_setting_id' => @$this->user_sw->branch_setting_id
+                        'branch_setting_id' => @$this->user_sw->branch_setting_id,
+                        'tenant_id' => @$this->user_sw->tenant_id
                     ]);
                 }
             }
@@ -339,7 +341,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $subscription = GymSubscription::branch()->withTrashed()->find($id);
+        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         if ($subscription->trashed()) {
             $subscription->restore();
         } else {

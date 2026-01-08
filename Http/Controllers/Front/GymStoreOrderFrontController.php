@@ -41,7 +41,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreOrderRepository=new GymStoreOrderRepository(new Application);
-        $this->StoreOrderRepository=$this->StoreOrderRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -171,17 +171,16 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     public function show($id)
     {
         $title = trans('sw.invoice');
-        $orderModel = GymStoreOrder::branch()
-            ->with(['member', 'loyaltyRedemption.rule', 'zatcaInvoice'])
+        $orderModel = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'loyaltyRedemption.rule', 'zatcaInvoice'])
             ->where('id', $id)
             ->firstOrFail();
 
         $order = $orderModel->toArray();
         $invoice = $orderModel->zatcaInvoice;
-        $payment_types = \Modules\Software\Models\GymPaymentType::get();
+        $payment_types = \Modules\Software\Models\GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
 
         foreach ($order['products'] as $i => $product_id){
-            $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
+            $order['products'][$i]['details'] = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $product_id)->withTrashed()->first()->toArray();
         }
 
         $qrcodes_folder = base_path('uploads/invoices/');
@@ -218,17 +217,16 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     public function showPOS($id)
     {
         $title = trans('sw.invoice');
-        $orderModel = GymStoreOrder::branch()
-            ->with(['pay_type', 'member', 'loyaltyRedemption.rule', 'zatcaInvoice'])
+        $orderModel = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pay_type', 'member', 'loyaltyRedemption.rule', 'zatcaInvoice'])
             ->where('id', $id)
             ->firstOrFail();
 
         $order = $orderModel->toArray();
         $invoice = $orderModel->zatcaInvoice;
-        $payment_types = \Modules\Software\Models\GymPaymentType::get();
+        $payment_types = \Modules\Software\Models\GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
 
         foreach ($order['products'] as $i => $product_id){
-            $order['products'][$i]['details'] = GymStoreProduct::branch()->where('id', $product_id)->withTrashed()->first()->toArray();
+            $order['products'][$i]['details'] = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $product_id)->withTrashed()->first()->toArray();
         }
 
         if(@$this->mainSettings->vat_details['saudi']){
@@ -263,27 +261,27 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.sell_products');
-        $products = GymStoreProduct::branch()->isSystem();
+        $products = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem();
         if(@$this->mainSettings->store_active_quantity)
             $products = $products->where('quantity', '>', 0);
 
         $products = $products->get();
-        $last_order_id = @GymStoreOrder::branch()->orderBy('id', 'desc')->first()->id;
-        $discounts = GymGroupDiscount::branch()->where('is_store', true)->get();
+        $last_order_id = @GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'desc')->first()->id;
+        $discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_store', true)->get();
         return view('software::Front.store_order_front_form', ['order' => new GymStoreOrder(), 'discounts' => $discounts, 'products' => $products, 'title'=>$title, 'last_order_id' => @$last_order_id]);
     }
 
     public function createPOS()
     {
         $title = trans('sw.sell_products_pos');
-        $products = GymStoreProduct::branch()->isSystem()->with(['store_category', 'category']);
+        $products = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->with(['store_category', 'category']);
         if(@$this->mainSettings->store_active_quantity)
             $products = $products->where('quantity', '>', 0);
 
         $products = $products->get();
         
         // Get all categories
-        $allCategories = \Modules\Software\Models\GymStoreCategory::branch()->get();
+        $allCategories = \Modules\Software\Models\GymStoreCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         
         // Filter to only show categories that have products (check both store_category_id and category_id)
         $categories = $allCategories->filter(function($category) use ($products) {
@@ -292,8 +290,8 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             })->count() > 0;
         });
             
-        $members = GymMember::branch()->get();
-        $payment_types = \Modules\Software\Models\GymPaymentType::all();
+        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $payment_types = \Modules\Software\Models\GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->all();
         
         return view('software::Front.store_order_pos_front_form', compact('products', 'categories', 'members', 'payment_types', 'title'));
     }
@@ -308,7 +306,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         $amount_before_discount = 0;
         if(is_array($input_products['id']) && count($input_products['id']) > 0) {
             foreach ($input_products['id'] as $key => $product_id) {
-                $product = GymStoreProduct::branch()->where('id', $product_id)->first();
+                $product = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $product_id)->first();
                 if (@$product)
                     $amount_before_discount += $product->price * $input_products['quantity'][$key];
             }
@@ -336,7 +334,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
         if($request->member_id){
             if(!isset($member)) {
-                $member = GymMember::branch()->where('id', (int)@$request->member_id)->first();
+                $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', (int)@$request->member_id)->first();
             }
             $order_inputs['member_id'] = @$member->id;
             if(@$request->store_member_use_balance){
@@ -469,9 +467,9 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         }
         
         foreach($order_inputs['products'] as $product) {
-            GymStoreOrderProduct::create(['order_id' => $order->id, 'product_id' => $product['id'], 'quantity' => $product['quantity'], 'price' => ($product['quantity'] * $product['price']), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+            GymStoreOrderProduct::create(['order_id' => $order->id, 'product_id' => $product['id'], 'quantity' => $product['quantity'], 'price' => ($product['quantity'] * $product['price']), 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
 
-            GymStoreProduct::where('id', $product['id'])
+            GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $product['id'])
                 ->update([
                     'quantity' => DB::raw('quantity - '.$product['quantity'])
                 ]);
@@ -525,7 +523,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         $is_store_balance = 0;
         if(@$request->store_member_use_balance && @$member){
             $notes = $notes.' - '.trans('sw.use_from_balance');
-            GymMemberCredit::create(['branch_setting_id' => @$this->user_sw->branch_setting_id, 'user_id' => Auth::guard('sw')->user()->id,'member_id' => @$member->id, 'amount' => @$order_inputs['total_amount'],'operation' => 2,'payment_type' => @$order_inputs['payment_type']]);
+            GymMemberCredit::create(['branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id, 'user_id' => Auth::guard('sw')->user()->id,'member_id' => @$member->id, 'amount' => @$order_inputs['total_amount'],'operation' => 2,'payment_type' => @$order_inputs['payment_type']]);
 
             if($member->member_balance() >= 0)
                 $is_store_balance = 1;
@@ -536,7 +534,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $member->save();
 
         }
-        $amount_box = GymMoneyBox::branch()->latest()->first();
+        $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
         $amount_after = $amount_box ? GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation) : 0;
 
         GymMoneyBox::create([
@@ -550,6 +548,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             , 'member_id' => @$member->id
             , 'payment_type' => @$order_inputs['payment_type']
             , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            , 'tenant_id' => @$this->user_sw->tenant_id
             , 'store_order_id' => $order_id
             , 'is_store_balance' => $is_store_balance
         ]);
@@ -593,7 +592,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         if(count($products['id']) > 0){
             foreach ($products['id'] as $key => $id){
                 if(@$this->mainSettings->store_active_quantity) {
-                    $quantity = GymStoreProduct::select('quantity')->where('id', $id)->first();
+                    $quantity = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('quantity')->where('id', $id)->first();
                     if ($quantity->quantity < $products['quantity'][$key]) {
                         $result = [];
                         break;
@@ -603,7 +602,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                 $result[$key]['price'] = @$products['price'][$key] ?? 0;
                 $result[$key]['quantity'] = $products['quantity'][$key];
 
-//                GymStoreProduct::where('id',$id)->update(['solid_quantity' => $products['quantity'][$key]]);
+//                GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id',$id)->update(['solid_quantity' => $products['quantity'][$key]]);
             }
         }
         return $result;
@@ -645,16 +644,16 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         {
             $order->delete();
 
-            $orders = GymStoreOrderProduct::where('order_id', $order->id)->get();
+            $orders = GymStoreOrderProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('order_id', $order->id)->get();
             if (count($orders) > 0) {
                 foreach ($orders as $ord) {
-                    GymStoreProduct::where('id', $ord->product_id)->increment('quantity', $ord->quantity);
+                    GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $ord->product_id)->increment('quantity', $ord->quantity);
                 }
             }
-            GymStoreOrderProduct::where('order_id', $order->id)->delete();
+            GymStoreOrderProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('order_id', $order->id)->delete();
 
             if(\request('refund')){
-                $amount_box = GymMoneyBox::branch()->latest()->first();
+                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 // Calculate refund amount (full or partial)
@@ -673,7 +672,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                         $member = GymMember::find($order->member_id);
                         if ($member) {
                             // Find loyalty transactions for this order
-                            $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::where('source_type', 'store_order')
+                            $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('source_type', 'store_order')
                                 ->where('source_id', $order->id)
                                 ->where('type', 'earn')
                                 ->where('is_expired', false)
@@ -683,7 +682,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                             
                             if ($totalPointsEarned > 0 && $order->amount_paid > 0) {
                                 // Check how many points have already been deducted for this order (from previous refunds)
-                                $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
+                                $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)
                                     ->where('type', 'manual')
                                     ->where('source_type', 'store_order_refund')
                                     ->where('source_id', $order->id)
@@ -793,6 +792,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                     , 'type' => TypeConstants::DeleteStoreOrder
                     , 'member_id' => $order->member_id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                    , 'tenant_id' => @$this->user_sw->tenant_id
                     , 'store_order_id' => @$order->id
                 ]);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
@@ -836,7 +836,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             return [];
         }
 
-        $memberQuery = GymMember::branch()->with(['member_subscription_info.subscription']);
+        $memberQuery = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscription_info.subscription']);
 
         $member = $memberQuery->where('code', $member_input)
             ->when(strlen($member_input) > 5, function ($query) use ($member_input) {
@@ -845,7 +845,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             ->first();
 
         if(!$member && is_numeric($member_input)){
-            $member = GymMember::branch()->with(['member_subscription_info.subscription'])
+            $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscription_info.subscription'])
                 ->where('id', (int)$member_input)
                 ->first();
         }

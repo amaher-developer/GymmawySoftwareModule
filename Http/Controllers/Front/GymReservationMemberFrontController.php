@@ -30,7 +30,7 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->ReservationMemberRepository=new GymReservationMemberRepository(new Application);
-        $this->ReservationMemberRepository=$this->ReservationMemberRepository->branch()->reservation();
+        $this->ReservationMemberRepository=$this->ReservationMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->reservation();
     }
 
 
@@ -43,7 +43,7 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         if(request('trashed'))
         {
             // Optimize: Use select to limit columns
-            $members = GymPotentialMember::branch()->reservation()->onlyTrashed()
+            $members = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->reservation()->onlyTrashed()
                 ->select('id', 'name', 'phone', 'status', 'type', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
                 ->with([
                     'member' => function($q) {
@@ -61,7 +61,7 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         else
         {
             // Optimize: Use select to limit columns and add nested subscription relation
-            $members = GymPotentialMember::branch()->reservation()
+            $members = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->reservation()
                 ->select('id', 'name', 'phone', 'status', 'type', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
                 ->with([
                     'member' => function($q) {
@@ -148,13 +148,13 @@ class GymReservationMemberFrontController extends GymGenericFrontController
     }
 
     public function updateReservationMember(){
-        $reservation_members= GymPotentialMember::branch()->reservation()->select('id', 'phone', 'status')->where("status", TypeConstants::NotFound)->get();
+        $reservation_members= GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->reservation()->select('id', 'phone', 'status')->where("status", TypeConstants::NotFound)->get();
         if (is_array($$reservation_members) && count($$reservation_members) > 0){
             $reservation_member_phones = collect($reservation_members)->pluck('phone')->toArray();
-            $members = GymMember::branch()->select('id', 'phone')->whereIn('phone', $reservation_member_phones)->count();
+            $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'phone')->whereIn('phone', $reservation_member_phones)->count();
             if($members > 0){
                 foreach ($reservation_members as $reservation_member){
-                    if(GymMember::branch()->where('phone', $reservation_member->phone)->first()){
+                    if(GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('phone', $reservation_member->phone)->first()){
                         $reservation_member->status = TypeConstants::Found;
                         $reservation_member->save();
                     }

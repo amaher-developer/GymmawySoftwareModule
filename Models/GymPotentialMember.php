@@ -5,9 +5,7 @@ namespace Modules\Software\Models;
 use Modules\Generic\Models\GenericModel;
 use Illuminate\Support\Facades\Schema;
 use Modules\Software\Classes\TypeConstants;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Schema;
 
 class GymPotentialMember extends GenericModel
 {

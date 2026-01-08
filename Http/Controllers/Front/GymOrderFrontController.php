@@ -49,7 +49,7 @@ class GymOrderFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->GymOrderRepository = new GymOrderRepository(new Application);
-        $this->GymOrderRepository = $this->GymOrderRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -79,7 +79,7 @@ class GymOrderFrontController extends GymGenericFrontController
 
     public function show($id)
     {
-        $order = GymMoneyBox::branch()->with(['member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
+        $order = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
         $transaction_value = 1;
         if(in_array($order->type, [TypeConstants::DeleteMember, TypeConstants::DeleteStoreOrder, TypeConstants::DeleteNonMember, TypeConstants::DeletePTMember, TypeConstants::DeleteSubscription, TypeConstants::DeleteStorePurchaseOrder]))
         {
@@ -96,7 +96,7 @@ class GymOrderFrontController extends GymGenericFrontController
             $title_details = trans('sw.invoice_details');
         }
 //        foreach ($order['products'] as $i => $product_id){
-//            $order['products'][$i]['details'] = GymStoreProduct::where('id', $product_id)->withTrashed()->first()->toArray();
+//            $order['products'][$i]['details'] = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $product_id)->withTrashed()->first()->toArray();
 //        }
         $qrcodes_folder = base_path('uploads/invoices/');
         if (!File::exists($qrcodes_folder)) {
@@ -122,7 +122,7 @@ class GymOrderFrontController extends GymGenericFrontController
             // Convert absolute path to relative path for asset() function
             $qr_img_invoice = str_replace(base_path(), '', $qr_img_invoice);
         }
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         return view('software::Front.order_front_show', ['title_details' => $title_details,'order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'payment_types' => $payment_types]);
     }
 
@@ -130,7 +130,7 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymMoneyBox::branch()->with(['pay_type', 'member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
+        $order = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pay_type', 'member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
         if(@$this->mainSettings->vat_details['saudi']){
             $qrcodes_folder = base_path('uploads/invoices/');
             if (!File::exists($qrcodes_folder)) {
@@ -157,9 +157,9 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscription($id)
     {
         $title = trans('sw.subscription_contract');
-        $order = GymMemberSubscription::branch()->with(['pay_type', 'member' => function($q){$q->withTrashed();}, 'subscription' => function($q){$q->withTrashed();}])->where('id', $id)->first();
-        $money_box = GymMoneyBox::branch()->where('member_id', $order->member_id)->where('member_subscription_id', $order->id)->get();
-        $payment_types = GymPaymentType::get();
+        $order = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pay_type', 'member' => function($q){$q->withTrashed();}, 'subscription' => function($q){$q->withTrashed();}])->where('id', $id)->first();
+        $money_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $order->member_id)->where('member_subscription_id', $order->id)->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $money_box->filter(function ($item) use ($payment_types){
             foreach ($payment_types as $payment_type){
                 if($item->payment_type == $payment_type->payment_id){ $this->payments[$payment_type->payment_id][] = ($item->operation == 1 ? -1 : 1) * $item->amount; }
@@ -230,17 +230,17 @@ class GymOrderFrontController extends GymGenericFrontController
         $image_type = $image_type_aux[1];
         $image_base64 = base64_decode($image_parts[1]);
         if(@request('type') == 'sw.showOrderSubscriptionNonMember'){
-            $order = GymNonMember::where('id', $order_id)->first();
+            $order = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order_id)->first();
             $prefix = 'non-member';
             $file_name = rand(0, 20000) . time() . '_' . $prefix .'_' . $order->id . '_signature' . '.'.$image_type;
             $log_type = TypeConstants::UploadSignatureFileNonMember;
         }elseif(@request('type') == 'sw.showOrderPTSubscription'){
-            $order = GymPTMember::where('id', $order_id)->first();
+            $order = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order_id)->first();
             $prefix = 'pt-member';
             $file_name = rand(0, 20000) . time() . '_' . $prefix .'_' . $order->id . '_signature' . '.'.$image_type;
             $log_type = TypeConstants::UploadSignatureFilePTMember;
         }else{
-            $order = GymMemberSubscription::where('id', $order_id)->first();
+            $order = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order_id)->first();
             $prefix = 'member';
             $file_name = rand(0, 20000) . time() . '_' . $prefix .'_' . $order->id . '_signature' . '.'.$image_type;
             $log_type = TypeConstants::UploadSignatureFileMember;
@@ -303,7 +303,7 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscriptionPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymMemberSubscription::branch()->with(['pay_type', 'member' => function($q){$q->withTrashed();}, 'subscription' => function($q){$q->withTrashed();}])->where('id', $id)->first();
+        $order = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pay_type', 'member' => function($q){$q->withTrashed();}, 'subscription' => function($q){$q->withTrashed();}])->where('id', $id)->first();
         $vat = 0;
         if(@$this->mainSettings->vat_details['saudi']){
 
@@ -332,10 +332,10 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showPTSubscription($id)
     {
         $title = trans('sw.subscription_contract');
-        $order = GymPTMember::branch()->with(['member', 'pt_subscription'])->where('id', $id)->first();
-        $money_box = GymMoneyBox::branch()->where('member_id', $order->member_id)->where('member_pt_subscription_id', $order->id)->get();
+        $order = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'pt_subscription'])->where('id', $id)->first();
+        $money_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $order->member_id)->where('member_pt_subscription_id', $order->id)->get();
         $order->subscription = @$order->pt_subscription;
-        $payment_types = GymPaymentType::get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
 
         $money_box->filter(function ($item) use ($payment_types) {
             foreach ($payment_types as $payment_type){
@@ -387,7 +387,7 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showPTSubscriptionPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymPTMember::branch()->with(['member', 'pt_subscription'])->where('id', $id)->first();
+        $order = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'pt_subscription'])->where('id', $id)->first();
         $order->subscription = @$order->pt_subscription;
         $vat = 0;
         if(@$this->mainSettings->vat_details['saudi']){
@@ -419,9 +419,9 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscriptionNonMember($id)
     {
         $title = trans('sw.invoice');
-        $order = GymNonMember::branch()->with('zatcaInvoice')->where('id', $id)->first();
-        $money_box = GymMoneyBox::branch()->where('non_member_subscription_id', $order->id)->get();
-        $payment_types = GymPaymentType::get();
+        $order = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('zatcaInvoice')->where('id', $id)->first();
+        $money_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('non_member_subscription_id', $order->id)->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $order->member = (object)["name" => $order->name];
         $name_activities = [];
         foreach ($order->activities as $activity){   $name_activities[] = $activity['name'];}
@@ -491,7 +491,7 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscriptionPOSNonMember($id)
     {
         $title = trans('sw.invoice');
-        $order = GymNonMember::branch()->with('zatcaInvoice')->where('id', $id)->first();
+        $order = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('zatcaInvoice')->where('id', $id)->first();
         $order->member = (object)["name" => $order->name];
         $order->subscription = (object)["name" => implode(', ', $order->activities[$this->lang = 'ar' ? 0 : 1])];
         $order->amount_paid = $order->price;
@@ -525,7 +525,7 @@ class GymOrderFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('admin.order_add');
-        $subscriptions = GymSubscription::branch()->whereHas('member',function ($q){
+        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereHas('member',function ($q){
             $q->where('user_id', $this->user->id);
         })->get();
         return view('software::Front.user.gymorder_front_form',
@@ -542,7 +542,7 @@ class GymOrderFrontController extends GymGenericFrontController
         $gymorder_inputs['member_id'] = $memberId;
         $dateFrom = Carbon::parse($request->date_from);
         $dateTo = $request->date_to;
-        $subscription = GymSubscription::branch()->select(['duration', 'price'])->where('id', $request->subscription_id)->first();
+        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select(['duration', 'price'])->where('id', $request->subscription_id)->first();
         if (!$dateTo) {
             $dateTo = $dateFrom->copy()->addDays($subscription->duration);
         } else
@@ -620,17 +620,17 @@ class GymOrderFrontController extends GymGenericFrontController
         $destinationPath = base_path(GymMoneyBox::$uploads_path.'/');
         $order_id = @request('order_id');
         if(@request('type') == 'sw.showOrderSubscriptionNonMember'){
-            $order = GymNonMember::where('id', $order_id)->first();
+            $order = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order_id)->first();
             $order_contract_files = (array)$order->contract_files;
             $prefix = 'non-member';
             $log_type = TypeConstants::UploadContractFileNonMember;
         }elseif(@request('type') == 'sw.showOrderPTSubscription'){
-            $order = GymPTMember::where('id', $order_id)->first();
+            $order = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order_id)->first();
             $order_contract_files = (array)$order->contract_files;
             $log_type = TypeConstants::UploadContractFilePTMember;
             $prefix = 'pt-member';
         }else{
-            $order = GymMemberSubscription::where('id', $order_id)->first();
+            $order = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order_id)->first();
             $order_contract_files = (array)$order->contract_files;
             $log_type = TypeConstants::UploadContractFileMember;
             $prefix = 'member';

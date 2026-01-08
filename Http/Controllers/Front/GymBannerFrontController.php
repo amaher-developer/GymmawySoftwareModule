@@ -30,7 +30,6 @@ class GymBannerFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->BannerRepository=new GymBannerRepository(new Application);
-        $this->BannerRepository=$this->BannerRepository->branch();
     }
 
 
@@ -43,13 +42,13 @@ class GymBannerFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $banners = GymBanner::branch()->onlyTrashed()->with(['user' => function($q){
+            $banners = GymBanner::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->with(['user' => function($q){
                 $q->withTrashed();
             }])->orderBy('id', 'DESC');
         }
         else
         {
-            $banners = GymBanner::branch()->with(['user' => function($q){
+            $banners = GymBanner::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user' => function($q){
                 $q->withTrashed();
             }])->orderBy('id', 'DESC');
         }
@@ -82,7 +81,7 @@ class GymBannerFrontController extends GymGenericFrontController
 
     public function gallery()
     {
-        $mainSettings = Setting::branch()->first();
+        $mainSettings = Setting::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
         $imagePath = asset(Setting::$uploads_path.'gyms/');
         $title = trans('sw.gallery');
         $this->request_array = ['search', 'from', 'to'];
@@ -94,7 +93,7 @@ class GymBannerFrontController extends GymGenericFrontController
 
 
     function exportExcel(){
-        $records = $this->BannerRepository->get();
+        $records = $this->BannerRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $this->fileName =  'banners-' . Carbon::now()->toDateTimeString();
 
 //        $title = trans('sw.daily_clients');
@@ -127,7 +126,7 @@ class GymBannerFrontController extends GymGenericFrontController
         $keys = ['name', 'phone', 'created_at'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
 
-        $records = $this->BannerRepository->select($keys)->get();
+        $records = $this->BannerRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select($keys)->get();
         $this->fileName =  'banners-' . Carbon::now()->toDateTimeString();
         foreach ($records as $record){
             $record['created_at'] = Carbon::parse($record['created_at'])->toDateString();
@@ -221,14 +220,14 @@ class GymBannerFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $banner = $this->BannerRepository->find($id);
+        $banner = $this->BannerRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->find($id);
         $title = trans('sw.banner_edit');
         return view('software::Front.banner_front_form', ['banner' => $banner, 'title' => $title]);
     }
 
     public function update(GymBannerRequest $request, $id)
     {
-        $banner = $this->BannerRepository->withTrashed()->find($id);
+        $banner = $this->BannerRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $banner_inputs = $this->prepare_inputs($request->except(['_token']));
 
         $banner->update($banner_inputs);
@@ -246,7 +245,7 @@ class GymBannerFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $banner =$this->BannerRepository->withTrashed()->find($id);
+        $banner =$this->BannerRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $banner->delete();
 
 

@@ -29,7 +29,7 @@ class GymNotificationFrontController extends GymGenericFrontController
         $notification->body = @$request->get('content');
         $notification->save();
 
-        $users = GymUser::branch()->whereIn('id', $request->users)->get();
+        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereIn('id', $request->users)->get();
         foreach ($request->users as $user) {
             $data = ['title' => @$request->get('content'), 'content' => @$request->get('content'), 'user_id' => $user, 'created_at' => Carbon::now()->diffForHumans(Carbon::now())];
             event(new UserEvent($data));
@@ -48,7 +48,7 @@ class GymNotificationFrontController extends GymGenericFrontController
         $notification->title = @$request['title'];
         $notification->body = @$request['content'];
         $notification->save();
-        $users = GymUser::branch()->get();
+        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         foreach ($users->pluck('id') as $user) {
             $data = ['title' => @$request['title'],'content' => @$request['content'], 'url' => @$request['url'], 'user_id' => $user, 'created_at' => Carbon::now()->diffForHumans(Carbon::now())];
             event(new UserEvent($data));

@@ -451,7 +451,7 @@ class GymUserFrontController extends GymGenericFrontController
     public function userAttendees(){
 
         $title = trans('sw.user_login');
-        $last_enter_member = GymUserAttendee::branch()->with('user:id,name')->orderBy('id', 'desc')->first();
+        $last_enter_member = GymUserAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('user:id,name')->orderBy('id', 'desc')->first();
 //        $colors = ['purple', 'grey', 'yellow', 'green', 'red'];
 
         return view('software::Front.user_front_attendee', compact(['title', 'last_enter_member']));
@@ -464,7 +464,7 @@ class GymUserFrontController extends GymGenericFrontController
         $enquiry = intval($request->enquiry);
         $msg = '';
         $status = false;
-        $user = GymUser::where('id', $code)->first();
+        $user = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $code)->first();
         if($user){
             $status = true;
             $last_attendee_today = GymUserAttendee::whereDate('created_at', Carbon::now()->toDateString())->orderBy('id', 'desc')->first();

@@ -21,8 +21,7 @@ class GymReservationAttendanceFrontController extends GymGenericFrontController
         $this->ReservationRepository =
             new GymReservationRepository(new Application);
 
-        $this->ReservationRepository =
-            $this->ReservationRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function attendForm($id)

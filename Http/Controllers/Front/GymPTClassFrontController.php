@@ -32,7 +32,7 @@ class GymPTClassFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->ClassRepository=new GymPTClassRepository(new Application);
-        $this->ClassRepository=$this->ClassRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
 
         $this->classTrainerHasScheduleColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'schedule');
         $this->classTrainerHasDateFromColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'date_from');
@@ -200,8 +200,8 @@ class GymPTClassFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.pt_class_add');
-        $subscriptions = GymPTSubscription::branch()->get();
-        $trainers = GymPTTrainer::branch()->withTrashed()->orderBy('name')->get();
+        $subscriptions = GymPTSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $trainers = GymPTTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->orderBy('name')->get();
 
         $class = new GymPTClass();
         $class->setRelation('classTrainers', collect());
@@ -241,8 +241,8 @@ class GymPTClassFrontController extends GymGenericFrontController
             ->find($id);
         $title = trans('sw.pt_class_edit');
 
-        $subscriptions = GymPTSubscription::branch()->get();
-        $trainers = GymPTTrainer::branch()->withTrashed()->orderBy('name')->get();
+        $subscriptions = GymPTSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $trainers = GymPTTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->orderBy('name')->get();
 
         if ($class) {
             $class->loadMissing('classTrainers.trainer');

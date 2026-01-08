@@ -18,7 +18,7 @@ class GymUserPermissionFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->PermissionRepository = new GymUserPermissionRepository(new Application);
-        $this->PermissionRepository = $this->PermissionRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function index()
@@ -181,7 +181,7 @@ class GymUserPermissionFrontController extends GymGenericFrontController
     private function updateUsersPermissions($permission_group_id, $permissions)
     {
         // Get all users using this permission group
-        $users = \Modules\Software\Models\GymUser::where('permission_group_id', $permission_group_id)->get();
+        $users = \Modules\Software\Models\GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('permission_group_id', $permission_group_id)->get();
         
         // Update each user's permissions
         foreach($users as $user){

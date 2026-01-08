@@ -43,7 +43,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         $title = trans('sw.training_member_logs');
         
         // Get all members for selection
-        $query = GymMember::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
+        $query = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
 
         // Search filter
         if ($request->has('q') && $request->q) {
@@ -61,7 +61,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         }
 
         $members = $query->orderBy('name', 'asc')->paginate(20)->appends($request->except('page'));
-        $total = GymMember::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->count();
+        $total = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->count();
 
         return view('software::Front.training_member_log_list', compact('title', 'members', 'total'));
     }
@@ -73,12 +73,12 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     {
         $title = trans('sw.training_member_management');
         
-        $member = GymMember::where('id', $memberId)
+        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $memberId)
             ->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
             ->firstOrFail();
 
         // Get logs with related data
-        $logs = GymTrainingMemberLog::where('member_id', $memberId)
+        $logs = GymTrainingMemberLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)
             ->with(['creator'])
             ->latest()
             ->paginate(20);
@@ -89,7 +89,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         }
 
         // Get latest assessment
-        $latestAssessment = GymTrainingAssessment::where('member_id', $memberId)
+        $latestAssessment = GymTrainingAssessment::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)
             ->latest()
             ->first();
 
@@ -100,23 +100,23 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
             ->get();
 
         // Get all plans for selection
-        $allPlans = GymTrainingPlan::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
+        $allPlans = GymTrainingPlan::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
             ->select('id', 'title', 'type')
             ->orderBy('title')
             ->get();
 
         // Get all medicines for selection
-        $allMedicines = GymTrainingMedicine::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
+        $allMedicines = GymTrainingMedicine::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
             ->where('status', 1) // Only active medicines
             ->select('id', 'name_ar', 'name_en')
             ->orderBy('name_en')
             ->get();
 
         // Get member files
-        $files = GymTrainingFile::where('member_id', $memberId)->latest()->get();
+        $files = GymTrainingFile::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)->latest()->get();
 
         // Get member tracks
-        $tracks = GymTrainingTrack::where('member_id', $memberId)->latest()->take(10)->get();
+        $tracks = GymTrainingTrack::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)->latest()->take(10)->get();
         
         // Get VAT percentage from system settings
         $vatPercentage = 0;
@@ -125,10 +125,10 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         }
         
         // Get payment types from database
-        $paymentTypes = GymPaymentType::orderBy('payment_id')->get();
+        $paymentTypes = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('payment_id')->get();
         
         // Get all member logs for count badges in AI modal
-        $memberLogs = GymTrainingMemberLog::where('member_id', $memberId)->get();
+        $memberLogs = GymTrainingMemberLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)->get();
 
         return view('software::Front.training_member_log_manage', compact(
             'title', 'member', 'logs', 'memberLogs', 'latestAssessment', 'activePlans', 
@@ -313,7 +313,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
             $total = $request->total ?? $price;
             $amountPaid = $request->amount_paid;
             
-            $gymMoneyBox = GymMoneyBox::branch()->orderBy('created_at','desc')->first();
+            $gymMoneyBox = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('created_at','desc')->first();
             $amount_before = GymMoneyBoxFrontController::amountAfter((float)@$gymMoneyBox->amount, (float)@$gymMoneyBox->amount_before, @$gymMoneyBox->operation);
          
             $moneyBoxData = [
@@ -605,7 +605,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         ]);
 
         // Get member assessment
-        $assessment = GymTrainingAssessment::where('member_id', $memberId)->latest()->first();
+        $assessment = GymTrainingAssessment::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)->latest()->first();
 
         $context = [
             'assessment' => $assessment ? $assessment->answers : null,
@@ -692,7 +692,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     {
         try {
             // Get the log entry
-            $log = GymTrainingMemberLog::where('member_id', $memberId)
+            $log = GymTrainingMemberLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)
                 ->where('id', $logId)
                 ->where('training_type', 'plan')
                 ->firstOrFail();
@@ -1067,7 +1067,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
 
         // Include assessment if requested
         if ($request->include_assessment) {
-            $assessment = GymTrainingAssessment::where('member_id', $memberId)
+            $assessment = GymTrainingAssessment::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)
                 ->latest()
                 ->first();
             
@@ -1090,7 +1090,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
                 $selectColumns = ['*']; // Fallback to all columns
             }
             
-            $tracks = GymTrainingTrack::where('member_id', $memberId)
+            $tracks = GymTrainingTrack::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get($selectColumns);
@@ -1142,7 +1142,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
 
         // Include medicines if requested
         if ($request->include_medicines) {
-            $medicineLogs = GymTrainingMemberLog::where('member_id', $memberId)
+            $medicineLogs = GymTrainingMemberLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $memberId)
                 ->where('training_type', 'medicine')
                 ->with('medicine')
                 ->orderBy('created_at', 'desc')

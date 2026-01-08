@@ -32,7 +32,6 @@ class GymBlockMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->BlockMemberRepository=new GymBlockMemberRepository(new Application);
-        $this->BlockMemberRepository=$this->BlockMemberRepository->branch();
     }
 
 
@@ -45,11 +44,11 @@ class GymBlockMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $members = $this->BlockMemberRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $members = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $members = $this->BlockMemberRepository->orderBy('id', 'DESC');
+            $members = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -74,7 +73,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
     }
 
     function exportExcel(){
-        $records = $this->BlockMemberRepository->get();
+        $records = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $this->fileName = 'block-clients-' . Carbon::now()->toDateTimeString();
 
 //        $title =  trans('sw.block_list');
@@ -118,7 +117,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
     }
 
     function exportPDF(){
-        $records = $this->BlockMemberRepository->get();
+        $records = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $this->fileName = 'block_members-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name', 'phone'];
@@ -216,14 +215,14 @@ class GymBlockMemberFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $member =$this->BlockMemberRepository->withTrashed()->find($id);
+        $member =$this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $title = trans('sw.block_member_edit');
         return view('software::Front.blockmember_front_form', ['member' => $member,'title'=>$title]);
     }
 
     public function update(GymBlockMemberRequest $request, $id)
     {
-        $member = $this->BlockMemberRepository->withTrashed()->find($id);
+        $member = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $block_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $member->update($block_member_inputs);
 
@@ -240,7 +239,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $member = $this->BlockMemberRepository->withTrashed()->find($id);
+        $member = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
         $member->forceDelete();
 //        if($member->trashed())
 //        {

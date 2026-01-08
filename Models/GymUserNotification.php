@@ -5,11 +5,8 @@ namespace Modules\Software\Models;
 use App\Modules\Access\Models\User;
 use Illuminate\Support\Facades\Schema;
 use Modules\Generic\Models\GenericModel;
-use Illuminate\Support\Facades\Schema;
 use Modules\Software\Events\UserEvent;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
 
 class GymUserNotification extends GenericModel
 {

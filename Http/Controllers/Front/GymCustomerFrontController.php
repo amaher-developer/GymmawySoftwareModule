@@ -50,8 +50,8 @@ class GymCustomerFrontController extends GymGenericFrontController
     {
         $title = trans('sw.user_profile');
         $number_of_attendees = 0;
-        $number_of_attendees = GymMemberAttendee::where('created_at', '>=', Carbon::now()->subHour(2)->toDateTimeString())->count();
-        $member = GymMember::with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('id', @$this->customer->id)->first();
+        $number_of_attendees = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('created_at', '>=', Carbon::now()->subHour(2)->toDateTimeString())->count();
+        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('id', @$this->customer->id)->first();
 
         return view('software::Web.customer_web_profile', ['title' => $title, 'member' => $member, 'number_of_attendees' => $number_of_attendees]);
     }
@@ -59,13 +59,13 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function subscriptions()
     {
         $title = trans('sw.memberships');
-        $subscriptions = GymMemberSubscription::with(['subscription' => function($q){$q->withTrashed();}, 'member'])->where('member_id', $this->customer->id)->orderBy('id', 'desc')->limit(10)->get();
+        $subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription' => function($q){$q->withTrashed();}, 'member'])->where('member_id', $this->customer->id)->orderBy('id', 'desc')->limit(10)->get();
         return view('software::Web.customer_web_subscriptions', ['title' => $title, 'member' => $this->customer, 'subscriptions' => $subscriptions]);
     }
     public function activities()
     {
         $title = trans('sw.memberships');
-        $subscriptions = GymMemberSubscription::with(['subscription' => function($q){$q->withTrashed();}, 'member'])->where('member_id', $this->customer->id)->orderBy('id', 'desc')->limit(10)->get();
+        $subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription' => function($q){$q->withTrashed();}, 'member'])->where('member_id', $this->customer->id)->orderBy('id', 'desc')->limit(10)->get();
         return view('software::Web.customer_web_activities', ['title' => $title, 'member' => $this->customer, 'subscriptions' => $subscriptions]);
     }
 
@@ -74,7 +74,7 @@ class GymCustomerFrontController extends GymGenericFrontController
         $title = trans('sw.training_tracks');
 
         $search_query = request()->query();
-        $tracks = GymTrainingTrack::with(['member'])->where('member_id', $this->customer->id)->orderBy('date', 'desc')->paginate(5);
+        $tracks = GymTrainingTrack::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member'])->where('member_id', $this->customer->id)->orderBy('date', 'desc')->paginate(5);
         return view('software::Web.customer_web_tracking', ['search_query' => $search_query, 'title' => $title, 'member' => $this->customer, 'tracks' => $tracks]);
     }
 
@@ -82,7 +82,7 @@ class GymCustomerFrontController extends GymGenericFrontController
     {
         $title = trans('sw.pt');
 
-        $pts = GymPTMember::with(['member', 'pt_class.pt_subscription'])
+        $pts = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'pt_class.pt_subscription'])
             ->where('member_id', $this->customer->id)
             ->where('joining_date', '<=', Carbon::now())
             ->where('expire_date', '>=', Carbon::now())
@@ -94,7 +94,7 @@ class GymCustomerFrontController extends GymGenericFrontController
     {
         $title = trans('sw.training_plans');
         $search_query = request()->query();
-        $trainings = GymTrainingMember::where('member_id', $this->customer->id)->orderBy('id', 'desc')->paginate(5);
+        $trainings = GymTrainingMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $this->customer->id)->orderBy('id', 'desc')->paginate(5);
         return view('software::Web.customer_web_training', ['title' => $title, 'member' => $this->customer, 'trainings'=> $trainings, 'search_query' => $search_query]);
     }
     public function review()
@@ -117,7 +117,7 @@ class GymCustomerFrontController extends GymGenericFrontController
     {
         $title = trans('sw.login');
 
-        $member = GymMember::with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('phone', @$request->phone)->where('code', @$request->code)->first();
+        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('phone', @$request->phone)->where('code', @$request->code)->first();
         if($member){
             request()->session()->put('swCustomer', $member);
             //Cache::store('file')->put('swCustomer',$member );
@@ -222,7 +222,7 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function userAttendees(){
 
         $title = trans('sw.user_login');
-        $last_enter_member = GymUserAttendee::branch()->with('user:id,name')->orderBy('id', 'desc')->first();
+        $last_enter_member = GymUserAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('user:id,name')->orderBy('id', 'desc')->first();
 //        $colors = ['purple', 'grey', 'yellow', 'green', 'red'];
 
         return view('software::Front.user_front_attendee', compact(['title', 'last_enter_member']));

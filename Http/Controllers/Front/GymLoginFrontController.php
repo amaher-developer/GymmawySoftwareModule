@@ -33,7 +33,7 @@ class GymLoginFrontController extends GymGenericFrontController
     }
     public function login(\Illuminate\Http\Request $request){
         $request->validate(['email' => 'required', 'password' => 'required']);
-        
+
         $getUser = GymUser::where('email', $request->email)->first();
         // Debug logging
         // \Log::info('Login attempt', [

@@ -20,7 +20,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->TransactionRepository = new GymUserTransactionRepository(new Application);
-        $this->TransactionRepository = $this->TransactionRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function index()
@@ -74,7 +74,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
         }
 
         // Get employees for filter
-        $employees = GymUser::branch()->orderBy('name', 'ASC')->get();
+        $employees = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('name', 'ASC')->get();
 
         return view('software::Front.user_transaction_front_list', compact('transactions','title', 'total', 'search_query', 'employees'));
     }
@@ -82,8 +82,8 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.employee_transaction_add');
-        $employees = GymUser::branch()->orderBy('name', 'ASC')->get();
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $employees = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('name', 'ASC')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         return view('software::Front.user_transaction_front_form', [
             'transaction' => new GymUserTransaction(),
             'title' => $title,
@@ -128,8 +128,8 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     {
         $transaction = $this->TransactionRepository->withTrashed()->find($id);
         $title = trans('sw.employee_transaction_edit');
-        $employees = GymUser::branch()->orderBy('name', 'ASC')->get();
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $employees = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('name', 'ASC')->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         return view('software::Front.user_transaction_front_form', [
             'transaction' => $transaction,
             'title' => $title,
@@ -189,7 +189,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
             
             // IMPORTANT: Get ALL money box entries BEFORE deleting transaction
             // (excluding previous cancellations to avoid double-reversing)
-            $allEntries = \Modules\Software\Models\GymMoneyBox::where('user_transaction_id', $transaction->id)
+            $allEntries = \Modules\Software\Models\GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('user_transaction_id', $transaction->id)
                 ->where('notes', 'not like', '%' . trans('sw.cancellation') . '%')
                 ->orderBy('id', 'ASC')
                 ->get();
@@ -209,8 +209,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
                 // If cumulative is zero, nothing to reverse
                 if ($cumulativeNet != 0) {
                     // Get the last money box balance
-                    $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch()
-                        ->orderBy('id', 'DESC')
+                    $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC')
                         ->first();
                     
                     $amount_before = $lastMoneyBox ? $lastMoneyBox->amount_before + $lastMoneyBox->amount * ($lastMoneyBox->operation == 0 ? 1 : -1) : 0;
@@ -332,8 +331,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
         $operation = $transaction->transaction_type === 'penalty_deduction' ? 0 : 1;
 
         // Get the last money box balance
-        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch()
-            ->orderBy('id', 'DESC')
+        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC')
             ->first();
         
         $amount_before = $lastMoneyBox ? $lastMoneyBox->amount_before + $lastMoneyBox->amount * ($lastMoneyBox->operation == 0 ? 1 : -1) : 0;
@@ -365,7 +363,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     {
         // Get ALL money box entries for this transaction (excluding cancellations only)
         // We MUST include corrections to calculate the cumulative net properly
-        $oldEntries = \Modules\Software\Models\GymMoneyBox::where('user_transaction_id', $transaction->id)
+        $oldEntries = \Modules\Software\Models\GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('user_transaction_id', $transaction->id)
             ->where('notes', 'not like', '%' . trans('sw.cancellation') . '%')
             ->orderBy('id', 'ASC')
             ->get();
@@ -410,8 +408,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
         }
 
         // Get the last money box balance
-        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch()
-            ->orderBy('id', 'DESC')
+        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC')
             ->first();
         
         $amount_before = $lastMoneyBox ? $lastMoneyBox->amount_before + $lastMoneyBox->amount * ($lastMoneyBox->operation == 0 ? 1 : -1) : 0;
@@ -447,8 +444,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     {
         $operation = $transaction->transaction_type === 'penalty_deduction' ? 0 : 1;
         
-        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch()
-            ->orderBy('id', 'DESC')
+        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC')
             ->first();
         
         $amount_before = $lastMoneyBox ? $lastMoneyBox->amount_before + $lastMoneyBox->amount * ($lastMoneyBox->operation == 0 ? 1 : -1) : 0;
@@ -478,8 +474,7 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     private function createAdvanceMoneyBoxEntries($transaction, $employeeName, $skipDelete = false)
     {
         // Get the last money box balance
-        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch()
-            ->orderBy('id', 'DESC')
+        $lastMoneyBox = \Modules\Software\Models\GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC')
             ->first();
         
         $amount_before = $lastMoneyBox ? $lastMoneyBox->amount_before + $lastMoneyBox->amount * ($lastMoneyBox->operation == 0 ? 1 : -1) : 0;

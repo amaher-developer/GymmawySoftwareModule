@@ -5,11 +5,8 @@ namespace Modules\Software\Models;
 use Modules\Generic\Models\GenericModel;
 use Illuminate\Support\Facades\Schema;
 use Modules\Software\Classes\TypeConstants;
-use Illuminate\Support\Facades\Schema;
 use Milon\Barcode\DNS1D;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 
 class GymStoreProduct extends GenericModel
 {

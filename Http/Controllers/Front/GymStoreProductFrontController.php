@@ -35,7 +35,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreProductRepository=new GymStoreProductRepository(new Application);
-        $this->StoreProductRepository=$this->StoreProductRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
         $this->imageManager = new ImageManager(new Driver());
     }
 
@@ -197,8 +197,8 @@ class GymStoreProductFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.store_product_add');
-        $categories = GymStoreCategory::branch()->get();
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $categories = GymStoreCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         return view('software::Front.store_product_front_form', [
             'product' => new GymStoreProduct(),
             'title' => $title,
@@ -240,7 +240,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
 //            $product->save();
 
             if(@$vendor_inputs['amount']) {
-                $amount_box = GymMoneyBox::branch()->latest()->first();
+                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $notes = trans('sw.store_purchase_order_add', ['id' => $order->id]);
@@ -255,6 +255,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
                     , 'payment_type' => @$vendor_inputs['payment_method']
                     , 'member_id' => @$order->member_id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                    , 'tenant_id' => @$this->user_sw->tenant_id
                 ]);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
@@ -278,8 +279,8 @@ class GymStoreProductFrontController extends GymGenericFrontController
     {
         $product = $this->StoreProductRepository->withTrashed()->find($id);
         $title = trans('sw.store_product_edit');
-        $categories = GymStoreCategory::branch()->get();
-        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $categories = GymStoreCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
 
         return view('software::Front.store_product_front_form', [
             'product' => $product,
@@ -446,7 +447,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
             if($vendor_is_vat){
                 $vat = $this->calculateVat($amount);
             }
-            $product = GymStoreProduct::where('id', $product_id)->first();
+            $product = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $product_id)->first();
 
             $product->quantity = (int)$product->quantity + $quantity;
             $product->save();
@@ -458,7 +459,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
                     'notes' => @$notes ];
                 $order = GymStoreOrderVendor::create($data);
 
-                $amount_box = GymMoneyBox::branch()->latest()->first();
+                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $notes = trans('sw.store_purchase_order_add', ['id' => $order->id]);
@@ -473,6 +474,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
                     , 'payment_type' => $payment_type
                     , 'member_id' => @$order->member_id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                    , 'tenant_id' => @$this->user_sw->tenant_id
                 ]);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 

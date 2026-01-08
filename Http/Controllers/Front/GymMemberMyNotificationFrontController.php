@@ -29,7 +29,7 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
     {
         $title = trans('sw.notification_logs');
 
-        $logs = GymMemberNotificationLog::branch()->with(['user']);
+        $logs = GymMemberNotificationLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
         $logs->orderBy('id', 'DESC');
@@ -45,8 +45,8 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
         $title = trans('sw.p_application', ['name' => @env('APP_NAME_'.strtoupper($this->lang))]);
 //        $members = new MemberNotification();
 //        $members = $members->getMembersList();
-        $members = GymPushToken::branch()->with('member')->where('member_id' ,'!=', '')->get();
-//        $members = GymMember::all();
+        $members = GymPushToken::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member')->where('member_id' ,'!=', '')->get();
+//        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->all();
 
         return view('software::Front.my_notification_front_create', ['title'=>$title, 'members' => $members]);
     }
@@ -70,7 +70,7 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
 
         if($msg){
             if(@$user_inputs['member_codes'] && (count(@$user_inputs['member_codes']) > 0) && !@$user_inputs['member_code_all']) {
-                $members = GymMember::branch()->whereIn('code', $user_inputs['member_codes'])->pluck('id');
+                $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereIn('code', $user_inputs['member_codes'])->pluck('id');
                 $result = $this->pushToMember($data, $members);
             }
 
@@ -95,6 +95,7 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
                     "created_at" => Carbon::now(),
                     "updated_at" => Carbon::now(),
                     "branch_setting_id" => @$this->user_sw->branch_setting_id,
+                    "tenant_id" => @$this->user_sw->tenant_id,
                 ]);
             }
         }

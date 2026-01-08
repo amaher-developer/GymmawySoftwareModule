@@ -36,7 +36,7 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         parent::__construct();
 
         $this->PotentialMemberRepository=new GymPotentialMemberRepository(new Application);
-        $this->PotentialMemberRepository=$this->PotentialMemberRepository->branch();
+        // Repository branch filtering removed from constructor - now applied per query
         $this->imageManager = new ImageManager(new Driver());
     }
 
@@ -50,7 +50,7 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         if(request('trashed'))
         {
             // Optimize: Use select to limit columns
-            $members = GymPotentialMember::branch()->where('type', 1)->onlyTrashed()
+            $members = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('type', 1)->onlyTrashed()
                 ->select('id', 'name', 'phone', 'national_id', 'status', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
                 ->with([
                     'member' => function($q) {
@@ -68,7 +68,7 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         else
         {
             // Optimize: Use select to limit columns
-            $members = GymPotentialMember::branch()->where('type', 1)
+            $members = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('type', 1)
                 ->select('id', 'name', 'phone', 'national_id', 'status', 'subscription_id', 'activity_id', 'pt_subscription_id', 'user_id', 'created_at')
                 ->with([
                     'member' => function($q) {
@@ -154,15 +154,13 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
     }
 
     public function updatePotentialMember(){
-        $potential_members = GymPotentialMember::branch()
-            ->select('id', 'phone', 'status')
+        $potential_members = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'phone', 'status')
             ->where("status", TypeConstants::NotFound)
             ->get();
         if ($potential_members->isNotEmpty()){
             $potential_member_phones = $potential_members->pluck('phone')->filter()->unique()->toArray();
             if(!empty($potential_member_phones)){
-                $memberPhones = GymMember::branch()
-                    ->select('phone')
+                $memberPhones = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('phone')
                     ->whereIn('phone', $potential_member_phones)
                     ->pluck('phone')
                     ->toArray();
