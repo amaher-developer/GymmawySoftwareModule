@@ -53,5 +53,93 @@ class GymPTClassRequest extends FormRequest
             'class_trainers.*.date_to' => 'nullable|date',
         ];
     }
+
+    /**
+     * Prepare data for validation
+     */
+    protected function prepareForValidation()
+    {
+        $schedule = $this->input('schedule');
+        if ($schedule) {
+            $scheduleData = is_string($schedule) ? json_decode($schedule, true) : $schedule;
+            if (is_array($scheduleData) && isset($scheduleData['work_days'])) {
+                $this->sanitizeScheduleTimes($scheduleData);
+                $this->merge(['schedule' => $scheduleData]);
+            }
+        }
+
+        $classTrainers = $this->input('class_trainers', []);
+        if (is_array($classTrainers)) {
+            foreach ($classTrainers as $index => $trainer) {
+                if (isset($trainer['schedule'])) {
+                    $trainerSchedule = is_string($trainer['schedule'])
+                        ? json_decode($trainer['schedule'], true)
+                        : $trainer['schedule'];
+
+                    if (is_array($trainerSchedule) && isset($trainerSchedule['work_days'])) {
+                        $this->sanitizeScheduleTimes($trainerSchedule);
+                        $classTrainers[$index]['schedule'] = $trainerSchedule;
+                    }
+                }
+            }
+            $this->merge(['class_trainers' => $classTrainers]);
+        }
+    }
+
+    /**
+     * Sanitize time strings in schedule data
+     */
+    protected function sanitizeScheduleTimes(array &$scheduleData): void
+    {
+        if (!isset($scheduleData['work_days']) || !is_array($scheduleData['work_days'])) {
+            return;
+        }
+
+        foreach ($scheduleData['work_days'] as $day => &$daySchedule) {
+            if (!is_array($daySchedule)) {
+                continue;
+            }
+
+            if (isset($daySchedule['start']) && $daySchedule['start']) {
+                $daySchedule['start'] = $this->sanitizeTimeString($daySchedule['start']);
+            }
+
+            if (isset($daySchedule['end']) && $daySchedule['end']) {
+                $daySchedule['end'] = $this->sanitizeTimeString($daySchedule['end']);
+            }
+        }
+    }
+
+    /**
+     * Sanitize a time string to ensure valid format
+     */
+    protected function sanitizeTimeString(?string $timeString): ?string
+    {
+        if (!$timeString) {
+            return null;
+        }
+
+        $timeString = trim($timeString);
+
+        if (preg_match('/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i', $timeString, $matches)) {
+            $hour = (int) $matches[1];
+            $minute = $matches[2];
+            $meridiem = strtoupper($matches[3]);
+
+            if ($hour === 0) {
+                $hour = 12;
+            } elseif ($hour > 12) {
+                return $timeString;
+            }
+
+            if ((int) $minute > 59) {
+                return $timeString;
+            }
+
+            return sprintf('%d:%s %s', $hour, $minute, $meridiem);
+        }
+
+        return $timeString;
+    }
 }
 

@@ -113,9 +113,19 @@ class PTSessionService
             if ($workDay && data_get($workDay, 'status')) {
                 $startTime = data_get($workDay, 'start');
                 if ($startTime) {
-                    $slotDate = $cursor->copy()->setTimeFromTimeString($startTime);
-                    if ($slotDate->gte($start) && $slotDate->lte($end)) {
-                        $slots->push($slotDate->copy());
+                    $startTime = $this->sanitizeTimeString($startTime);
+                    if ($startTime) {
+                        try {
+                            $slotDate = $cursor->copy()->setTimeFromTimeString($startTime);
+                            if ($slotDate->gte($start) && $slotDate->lte($end)) {
+                                $slots->push($slotDate->copy());
+                            }
+                        } catch (\Exception $e) {
+                            \Log::warning("Failed to parse time string: {$startTime}", [
+                                'error' => $e->getMessage(),
+                                'class_id' => $class->id,
+                            ]);
+                        }
                     }
                 }
             }
@@ -170,6 +180,42 @@ class PTSessionService
         }
 
         return $normalized;
+    }
+
+    protected function sanitizeTimeString(string $timeString): ?string
+    {
+        $timeString = trim($timeString);
+
+        if (preg_match('/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i', $timeString, $matches)) {
+            $hour = (int) $matches[1];
+            $minute = $matches[2];
+            $meridiem = strtoupper($matches[3]);
+
+            if ($hour === 0) {
+                $hour = 12;
+            } elseif ($hour > 12) {
+                return null;
+            }
+
+            if ((int) $minute > 59) {
+                return null;
+            }
+
+            return sprintf('%d:%s %s', $hour, $minute, $meridiem);
+        }
+
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $timeString, $matches)) {
+            $hour = (int) $matches[1];
+            $minute = $matches[2];
+
+            if ($hour > 23 || (int) $minute > 59) {
+                return null;
+            }
+
+            return $timeString;
+        }
+
+        return null;
     }
 
     protected function resolveWeekdayIndex($key): ?int
