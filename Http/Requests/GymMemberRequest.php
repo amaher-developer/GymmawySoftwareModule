@@ -4,6 +4,7 @@ namespace Modules\Software\Http\Requests;
 
 use Modules\Software\Models\GymMember;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class GymMemberRequest extends FormRequest
 {
@@ -35,9 +36,13 @@ class GymMemberRequest extends FormRequest
         $arr = [
             'name'=> 'required',
             'gender'=> 'required',
-            'phone'=> 'required|unique:sw_gym_members'.$phone,
+            'phone'=> 'required',
+            Rule::unique('sw_gym_members', 'phone')
+                ->where('branch_setting_id', @$this->user_sw->branch_setting_id),
 //            'fp_id'=> 'unique:sw_gym_members'.$fp_id,
-            'code'=> 'numeric|unique:sw_gym_members'.$code,
+            'code'=> 'numeric',
+            Rule::unique('sw_gym_members', 'code')
+                ->where('branch_setting_id', @$this->user_sw->branch_setting_id),
             'address'=> 'required',
             'additional_info' => 'nullable|string',
 //            'dob'=> 'required|date',

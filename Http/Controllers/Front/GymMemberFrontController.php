@@ -595,7 +595,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($checkBlockUser)
             return redirect()->back()->withErrors(['phone' => trans('sw.block_member_validate')]);
 
-        $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
+        $maxId = str_pad((GymMember::withTrashed()->where('branch_setting_id', $this->user_sw->branch_setting_id)->max('code') + 1), 14, 0, STR_PAD_LEFT);
         if(@(int)$request->code)
             $maxId = str_pad(intval(@$request->code), 14, 0, STR_PAD_LEFT);
 
@@ -629,7 +629,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $moneyBox = null;
             $sub = [];
 
-            try {
+            //try {
                 DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes) {
             $member = $this->MemberRepository->create($member_inputs);
 
@@ -677,7 +677,7 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($discount_value)
                         $moneyBoxNotes = $moneyBoxNotes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
 
-            if ($this->mainSettings->vat_details['vat_percentage']) {
+            if (@$this->mainSettings->vat_details['vat_percentage']) {
                         $moneyBoxNotes = $moneyBoxNotes . ' - ' . trans('sw.vat_added');
             }
 
@@ -696,15 +696,15 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'tenant_id' => @$this->user_sw->tenant_id
                     ]);
                 });
-            } catch (\Throwable $e) {
-                Log::error('Failed to create member with subscription', [
-                    'subscription_id' => $request->subscription_id,
-                    'phone' => $request->phone,
-                    'error' => $e->getMessage()
-                ]);
+            // } catch (\Throwable $e) {
+            //     Log::error('Failed to create member with subscription', [
+            //         'subscription_id' => $request->subscription_id,
+            //         'phone' => $request->phone,
+            //         'error' => $e->getMessage()
+            //     ]);
 
-                return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
-            }
+            //     return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+            // }
 
             if (!$member || !$member_subscription) {
                 Log::warning('Member subscription transaction did not persist', [
@@ -724,7 +724,7 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($discount_value)
                 $notes = $notes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
 
-            if ($this->mainSettings->vat_details['vat_percentage']) {
+            if (@$this->mainSettings->vat_details['vat_percentage']) {
                 $notes = $notes . ' - ' . trans('sw.vat_added');
             }
 
@@ -1371,7 +1371,7 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($discount_value)
                 $notes = $notes . trans('sw.discount_msg', ['value' => $discount_value]);
 
-            if ($this->mainSettings->vat_details['vat_percentage']) {
+            if (@$this->mainSettings->vat_details['vat_percentage']) {
                 $notes = $notes . ' - ' . trans('sw.vat_added');
             }
             $moneyBoxAdjustment = GymMoneyBox::create([
@@ -2207,7 +2207,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($request->discount_value)
             $notes = $notes . trans('sw.discount_msg', ['value' => $request->discount_value]);
 
-        if ($this->mainSettings->vat_details['vat_percentage']) {
+        if (@$this->mainSettings->vat_details['vat_percentage']) {
             $notes = $notes . ' - ' . trans('sw.vat_added');
         }
 
@@ -2381,6 +2381,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
         if (@$this->user_sw->branch_setting_id) {
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
 
         if (is_string(request($input_file)) && (strpos(request($input_file), 'data:image/png;base64') !== false)) {

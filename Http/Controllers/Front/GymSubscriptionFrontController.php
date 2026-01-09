@@ -390,6 +390,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
         return $inputs;
     }

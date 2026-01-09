@@ -413,6 +413,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $money_box_inputs['operation'] = 0;
         $money_box_inputs['type'] = TypeConstants::CreateMoneyBoxAdd;
         $money_box_inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+        $money_box_inputs['tenant_id'] = @$this->user_sw->tenant_id;
         $money_box_inputs['vat'] = 0;
         if($request->is_vat)  $money_box_inputs['vat'] = $this->calculateVat(@(float)$request->amount);
 
@@ -469,6 +470,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $money_box_inputs['operation'] = 1;
         $money_box_inputs['type'] = TypeConstants::CreateMoneyBoxWithdraw;
         $money_box_inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+        $money_box_inputs['tenant_id'] = @$this->user_sw->tenant_id;
         $money_box_inputs['vat'] = 0;
         if($request->is_vat)  $money_box_inputs['vat'] = $this->calculateVat(@(float)$request->amount);
 
@@ -511,6 +513,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $money_box_inputs['operation'] = 2;
         $money_box_inputs['type'] = TypeConstants::CreateMoneyBoxWithdrawEarnings;
         $money_box_inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+        $money_box_inputs['tenant_id'] = @$this->user_sw->tenant_id;
         $money_box_inputs['vat'] = 0;
         if($request->is_vat)  $money_box_inputs['vat'] = $this->calculateVat(@(float)$request->amount);
 
@@ -574,7 +577,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         if (!$user) {
             return trans('admin.operation_failed');
         }
-        $branch_setting_id = $user->branch_setting_id ?? 1;
+        $branch_setting_id = @$this->user_sw->branch_setting_id ?? 1;
         
         // Find the order - use branch_setting_id directly to ensure it works
         $order = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $branch_setting_id)

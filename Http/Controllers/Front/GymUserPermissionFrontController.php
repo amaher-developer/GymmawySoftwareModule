@@ -77,9 +77,10 @@ class GymUserPermissionFrontController extends GymGenericFrontController
             $inputs['content_en'] = '';
         }
 
-        
+
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
         if(@$this->user_sw->id){
             $inputs['user_id'] = @$this->user_sw->id;
@@ -162,9 +163,10 @@ class GymUserPermissionFrontController extends GymGenericFrontController
             $inputs['content_en'] = '';
         }
 
-        
+
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
 //        !$inputs['deleted_at']?$inputs['deleted_at']=null:'';
 
