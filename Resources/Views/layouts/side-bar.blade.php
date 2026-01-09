@@ -2,7 +2,7 @@
     $identifier = request()->segment(3);
     //$sidebarMetricsEnabled = config('app.debug');
     //$sidebarRenderStartedAt = $sidebarMetricsEnabled ? microtime(true) : null;
-/*
+
     $showSettingsMenu = $isSuperUser
         || isset($permissionsMap['listUser'])
         || isset($permissionsMap['listPTTrainer'])
@@ -15,8 +15,6 @@
         || ((isset($permissionsMap['listActivity']) || isset($permissionsMap['listReservation'])) && (@$mainSettings->active_activity || @$mainSettings->active_activity_reservation))
         || (isset($permissionsMap['listReservation']) && @$mainSettings->active_activity_reservation)
         || ((isset($permissionsMap['listLoyaltyPointRule']) || isset($permissionsMap['listLoyaltyCampaign'])) && @$mainSettings->active_loyalty);
-*/
-
 @endphp
 <style>
     .sub-menu span {
@@ -248,6 +246,8 @@
                 <!--end:Menu link-->
             </div>
 
+
+            
             @php
             /*
                 $localeKey = $lang ?? app()->getLocale() ?? 'en';
@@ -267,9 +267,67 @@
                             })->toArray(),
                         ];
                     });
-            */
             @endphp
 
+            @if($serviceMenus->isNotEmpty())
+                <div class="menu-content px-3 py-3">
+                    <span class="menu-section text-muted text-uppercase fs-8">{{ __('Software Systems') }}</span>
+                </div>
+                @foreach($serviceMenus as $section)
+                    @php
+                        $flagEnabled = $section['feature_flag'] ? (bool) data_get($mainSettings, $section['feature_flag']) : true;
+                        $visibleLinks = collect($section['links'])->filter(function ($link) use ($permissionsMap, $isSuperUser) {
+                            if (! $link['route'] || ! Route::has($link['route'])) {
+                                return false;
+                            }
+
+                            if ($isSuperUser || empty($link['permissions'])) {
+                                return true;
+                            }
+
+                            foreach ($link['permissions'] as $permission) {
+                                if (isset($permissionsMap[$permission])) {
+                                    return true;
+                                }
+                            }
+
+                            return false;
+                        })->values();
+
+                        $accordionActive = $visibleLinks->contains(function ($link) {
+                            return request()->routeIs($link['route']) || request()->routeIs($link['route'].'.*');
+                        });
+                    @endphp
+
+                    @if($swUser && $flagEnabled && $visibleLinks->isNotEmpty())
+                        <div data-kt-menu-trigger="click"
+                             class="menu-item menu-accordion {{ $accordionActive ? 'show' : '' }}">
+                            <span class="menu-link {{ $accordionActive ? 'show' : '' }}">
+                                <span class="menu-icon">
+                                    <i class="{{ $section['icon'] }} fs-2"></i>
+                                </span>
+                                <span class="menu-title">{{ $section['label'] }}</span>
+                                <span class="menu-arrow"></span>
+                            </span>
+
+                            <div class="menu-sub menu-sub-accordion">
+                                @foreach($visibleLinks as $link)
+                                    <div class="menu-item">
+                                        <a class="menu-link {{ request()->routeIs($link['route']) || request()->routeIs($link['route'].'.*') ? 'active' : '' }}"
+                                           href="{{ route($link['route']) }}">
+                                            <span class="menu-bullet">
+                                                <span class="bullet bullet-dot"></span>
+                                            </span>
+                                            <span class="menu-title">{{ $link['label'] }}</span>
+                                        </a>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
+            @endif
+            @php */ @endphp
 
             @if ($swUser && (isset($permissionsMap['statistics']) || $isSuperUser))
                 <!--begin:Menu item-->
@@ -288,6 +346,7 @@
                     <!--begin:Menu sub-->
             <div class="menu-sub menu-sub-accordion">
                 <!--begin:Menu item-->
+                @if (@$mainSettings->active_subscription)
                 <div class="menu-item">
                             <!--begin:Menu link-->
                             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/statistics') && !Request::is(($lang ?? 'ar') . '/statistics/*')) active @endif"
@@ -299,6 +358,7 @@
                             </a>
                             <!--end:Menu link-->
                 </div>
+                @endif
                 <!--end:Menu item-->
 
                 <!--begin:Menu item-->
@@ -485,6 +545,113 @@
         <!--end:Menu item-->
         @endif
 
+        @if ($mainSettings->active_store && $swUser && (
+                isset($permissionsMap['createStoreOrderPOS']) ||
+                isset($permissionsMap['listStoreProducts']) ||
+                isset($permissionsMap['listStoreOrders']) ||
+                isset($permissionsMap['listStoreOrderVendor']) ||
+                isset($permissionsMap['listStoreCategory']) ||
+                $isSuperUser
+            ))
+            <!--begin:Menu item-->
+            <div data-kt-menu-trigger="click"
+                class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/store*')) show @endif">
+                <!--begin:Menu link-->
+                <span class="menu-link @if (Request::is(($lang ?? 'ar') . '/store*')) show @endif">
+                    <span class="menu-icon">
+                        <i class="ki-outline ki-shop fs-2"></i>
+                    </span>
+                    <span class="menu-title">{{ trans('sw.store') }}</span>
+                    <span class="menu-arrow"></span>
+                </span>
+                <!--end:Menu link-->
+
+                <!--begin:Menu sub-->
+                <div class="menu-sub menu-sub-accordion">
+                    @if ($swUser && (isset($permissionsMap['createStoreOrderPOS']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/store/order/create-pos*')) active @endif"
+                                href="{{ route('sw.createStoreOrderPOS') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.sell_products') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
+
+                    @if ($swUser && (isset($permissionsMap['listStoreProducts']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/store/product*')) active @endif"
+                                href="{{ route('sw.listStoreProducts') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.list_products') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
+
+                    @if ($swUser && (isset($permissionsMap['listStoreOrders']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link  @if (Request::is(($lang ?? 'ar') . '/store/order*') && !Request::is(($lang ?? 'ar') . '/store/order/create-pos')) active @endif"
+                                href="{{ route('sw.listStoreOrders') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.sales_invoices') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
+
+                    @if ($swUser && (isset($permissionsMap['listStoreOrderVendor']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/store/vendor/order*')) active @endif "
+                                href="{{ route('sw.listStoreOrderVendor') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.purchase_invoices') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
+
+                    @if ($swUser && (isset($permissionsMap['listStoreCategory']) || $isSuperUser))
+                        <!--begin:Menu item-->
+                        <div class="menu-item">
+                            <!--begin:Menu link-->
+                            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/store/category*')) active @endif "
+                                href="{{ route('sw.listStoreCategory') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">{{ trans('sw.store_categories') }}</span>
+                            </a>
+                            <!--end:Menu link-->
+                        </div>
+                        <!--end:Menu item-->
+                    @endif
+                </div>
+                <!--end:Menu sub-->
+    </div>
+    <!--end:Menu item-->
+    @endif
 
     @if ($mainSettings->active_pt && $swUser && (
             isset($permissionsMap['listPTSubscription']) ||
@@ -606,6 +773,76 @@
             <!--end:Menu sub-->
 </div>
 <!--end:Menu item-->
+@endif
+
+@if ($mainSettings->active_training && $swUser && (
+        isset($permissionsMap['listTrainingPlan']) ||
+        isset($permissionsMap['listTrainingMember']) ||
+        isset($permissionsMap['listTrainingTrack']) ||
+        $isSuperUser
+    ))
+    <!--begin:Menu item-->
+    <div data-kt-menu-trigger="click"
+        class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/training*')) show @endif">
+        <!--begin:Menu link-->
+        <span class="menu-link @if (Request::is(($lang ?? 'ar') . '/training*')) show @endif">
+            <span class="menu-icon">
+                <i class="ki-outline ki-calendar-tick fs-2"></i>
+            </span>
+            <span class="menu-title">{{ trans('sw.training') }}</span>
+            <span class="menu-arrow"></span>
+        </span>
+        <!--end:Menu link-->
+
+        @if ($swUser && (isset($permissionsMap['listTrainingPlan']) || $isSuperUser))
+            <!--begin:Menu sub-->
+            <div class="menu-sub menu-sub-accordion">
+                <!--begin:Menu item - Training Plans-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/plan*')) active @endif"
+                        href="{{ route('sw.listTrainingPlan') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.training_plans') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
+
+                <!--begin:Menu item - Member Training Management-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/member-log*')) active @endif"
+                        href="{{ route('sw.listTrainingMemberLog') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.training_member_logs') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
+
+                <!--begin:Menu item - Medicines-->
+                <div class="menu-item">
+                    <!--begin:Menu link-->
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/training/medicine*')) active @endif"
+                        href="{{ route('sw.listTrainingMedicine') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.training_medicines') }}</span>
+                    </a>
+                    <!--end:Menu link-->
+                </div>
+                <!--end:Menu item-->
+            </div>
+            <!--end:Menu sub-->
+        @endif
+    </div>
+    <!--end:Menu item-->
 @endif
 
 {{-- moved Activities, Subscriptions, Users under Settings submenu --}}
@@ -1321,7 +1558,7 @@
     <!--end:Menu item-->
 @endif
 
-@if ($swUser)
+@if ($swUser && $showSettingsMenu)
     <!--begin:Menu item-->
     <div data-kt-menu-trigger="click"
         class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
@@ -1409,7 +1646,7 @@
                     </a>
                 </div>
             @endif
-
+ {{-- Activities (moved under Settings) --}}
             @if ((@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && ($swUser && (isset($permissionsMap['listActivity']) || $isSuperUser)    ))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/activity*')) active @endif"
