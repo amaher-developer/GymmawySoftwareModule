@@ -20,18 +20,30 @@ class GymMoneyBoxType extends GenericModel
     public static $thumbnails_uploads_path='uploads/gymorders/thumbnails/';
 
     // This is a shared lookup table - no branch/tenant scoping needed
-    // public static function booted()
-    // {
-    //     static::addGlobalScope('branch', function ($query) {
-    //         $branchId = parent::getCurrentBranchId();
-    //         $query->where('branch_setting_id', $branchId);
-    //     });
-    // }
+    public static function booted()
+    {
+        static::addGlobalScope('branch', function ($query) {
+            $branchId = parent::getCurrentBranchId();
+            $query->where('branch_setting_id', $branchId);
+        });
+
+        // Automatically set tenant_id and branch_setting_id when creating
+        static::creating(function ($model) {
+            $user = parent::getCurrentSwUser();
+            if ($user) {
+                if (!isset($model->branch_setting_id)) {
+                    $model->branch_setting_id = $user->branch_setting_id ?? 1;
+                }
+                if (!isset($model->tenant_id) && Schema::hasColumn($model->getTable(), 'tenant_id')) {
+                    $model->tenant_id = $user->tenant_id ?? 1;
+                }
+            }
+        });
+    }
 
     /**
-     * Manual branch and tenant scope (no-op for this shared table)
-     * This table doesn't have branch_setting_id or tenant_id columns
-     * It's a shared lookup table across all branches/tenants
+     * Manual branch and tenant scope
+     * Filters by branch_setting_id and optionally tenant_id
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @param int $branchId - Default: 1
@@ -40,8 +52,13 @@ class GymMoneyBoxType extends GenericModel
      */
     public function scopeBranch($query, $branchId = 1, $tenantId = 1)
     {
-        // No-op: This is a shared lookup table
-        // Don't filter by branch_setting_id or tenant_id
+        $query->where('branch_setting_id', $branchId);
+
+        // Only filter by tenant_id if the column exists in the table
+        if (Schema::hasColumn($this->getTable(), 'tenant_id')) {
+            $query->where('tenant_id', $tenantId);
+        }
+
         return $query;
     }
 

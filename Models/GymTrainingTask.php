@@ -27,6 +27,19 @@ class GymTrainingTask extends GenericModel
             $branchId = parent::getCurrentBranchId();
             $query->where('branch_setting_id', $branchId);
         });
+        // Automatically set tenant_id and branch_setting_id when creating
+        static::creating(function ($model) {
+            $user = parent::getCurrentSwUser();
+            if ($user) {
+                if (!isset($model->branch_setting_id)) {
+                    $model->branch_setting_id = $user->branch_setting_id ?? 1;
+                }
+                if (!isset($model->tenant_id) && Schema::hasColumn($model->getTable(), 'tenant_id')) {
+                    $model->tenant_id = $user->tenant_id ?? 1;
+                }
+            }
+        });
+
     }
 
     /**

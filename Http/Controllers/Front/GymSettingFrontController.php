@@ -36,7 +36,7 @@ class GymSettingFrontController extends GymGenericFrontController
     public function edit()
     {
 
-        $mainSetting = Setting::branch()->first();
+        $mainSetting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
 
         $title = trans('sw.settings');
         $smsPoints = $this->formatSmsPoints(0);
@@ -67,12 +67,18 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function update(GymSettingRequest $request)
     {
-        $setting = Setting::branch()->first();
-        
+        $setting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
+
         $setting_inputs = $this->prepare_inputs($request->only(['name_ar', 'name_en', 'facebook', 'twitter', 'instagram',  'tiktok',  'snapchat', 'youtube', 'address_ar', 'address_en',
             'latitude', 'longitude', 'phone', 'support_email', 'meta_keywords_ar', 'meta_keywords_en', 'meta_description_ar', 'meta_description_en',
             'about_ar', 'about_en', 'terms_ar', 'terms_en', 'sms_username', 'sms_email', 'sms_sms_sender_id'
             , 'images', 'vat_details', 'reservation_details']));
+
+        // Setting model needs explicit tenant_id/branch_setting_id for updates
+        if(@$this->user_sw->branch_setting_id){
+            $setting_inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+            $setting_inputs['tenant_id'] = @$this->user_sw->tenant_id;
+        }
 
         $billingInput = $request->input('billing');
         if ($billingInput !== null) {
@@ -229,20 +235,17 @@ class GymSettingFrontController extends GymGenericFrontController
             $inputs['content_en'] = '';
         }
 
-
-
-        if(@$this->user_sw->branch_setting_id){
-            $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
-        }
-
+        // Note: tenant_id and branch_setting_id are now automatically set by model creating events
+        // for GymPaymentType, GymGroupDiscount, GymSaleChannel, GymStoreGroup
+        // GymMoneyBoxType is a shared lookup table and doesn't have these columns
+        // Setting model gets these fields added explicitly in its update() method
         return $inputs;
     }
 
 
     function updateImage()
     {
-        $settings = Setting::branch()->first();
+        $settings = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
 //        if(@request('type') == 2){
 //            $setting_images = (array)$settings->cover_images;
 //            $input_file = 'cover_file';
@@ -309,7 +312,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     function updateImageDelete(){
 
-        $settings = Setting::branch()->first();
+        $settings = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
         if(request('type') == 2){ $setting_images = (array)$settings->cover_images;}else{$setting_images = (array)$settings->images;}
         $index = array_search(request('image'),$setting_images);
         if($index !== FALSE){
