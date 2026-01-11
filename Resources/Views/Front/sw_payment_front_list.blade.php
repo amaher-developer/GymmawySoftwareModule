@@ -543,15 +543,15 @@
                             <div class="pricing-head ">
                         <!-- <div class="pricing hover-effect @if(($index + 1) == $my_package) pricing-active @endif">
                             <div class="pricing-head @if(($index + 1) == $my_package) pricing-head-active @endif"> -->
-                                <h3>{{$package['name_'.$lang]}}</h3>
+                                <h3>{{ trans('sw.subscriptions_p_'.($index + 1)) }}</h3>
                                 <h4>
-                                    {{$package['price']}}
+                                    {{ number_format($package['price']) }}
                                     @if(@$package['before_discount_value'])
                                         <i style="text-decoration: line-through;color: rgba(255,255,255,0.6);font-size: 24px;">
-                                            {{@$package['before_discount_value']}}
+                                            {{ number_format(@$package['before_discount_value']) }}
                                         </i>
                                     @endif
-                                    <i>{{@$package['price_unit']}}</i>
+                                    <i>{{ trans('sw.app_currency') }}</i>
                                 </h4>
                                 <span>+ {{ trans('sw.transaction_fees')}}</span>
                             </div>
@@ -683,7 +683,7 @@
                                         @if(isset($order['response']['amount_cents']))
                                             {{ number_format($order['response']['amount_cents']/100) }} {{@$order['response']['currency']}}
                                         @elseif(isset($order['price']))
-                                            {{ number_format($order['price']) }} {{ trans('sw.egp') }}
+                                            {{ number_format($order['price']) }} {{ trans('sw.app_currency') }}
                                         @else
                                             -
                                         @endif
