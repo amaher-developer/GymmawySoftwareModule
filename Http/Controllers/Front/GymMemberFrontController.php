@@ -2726,288 +2726,119 @@ class GymMemberFrontController extends GymGenericFrontController
      */
     public function uploadExcel()
     {
-        // venom
-//        $subscription = GymSubscription::first();
-//        $rows =  DB::table('wemon_1')->orderBy('COL1', 'asc')->get();//original_data2
-//        foreach($rows as $row){
-//            $check_subscription = GymSubscription::where('branch_setting_id', 2)->where('name_en', $row->COL7)->first();
-//            if(!$check_subscription){
-//                $subscription = GymSubscription::create(['name_ar' => $row->COL7, 'name_en' => $row->COL7, 'branch_setting_id' => 2, 'user_id' => 3, 'price' => 0, 'period' => 0, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 1]);
-//            }else
-//                $subscription = $check_subscription;
-//
-//            $code = str_pad(((int)$row->COL2 + 1222), 14, 0, STR_PAD_LEFT);
-//            $member = ['id' => ((int)$row->COL1),'user_id' => 3, 'branch_setting_id' => 2,'code' => $code, 'name' => $row->COL3, 'phone' => trim($row->COL6, '-'), 'on_app' => 1, 'gender' => 1, 'is_blocked' => 0, 'sms_new_member' => 0, 'sms_renew_member' => 0, 'sms_before_expire_member' => 0, 'sms_expire_member' => 0];
-//            $member = GymMember::create($member);
-//            if(@$member){
-////                                var_dump($row->COL8);
-////                                var_dump(Carbon::createFromFormat('d/m/Y', @$row->COL8)->toDateString());
-////                                var_dump([ 'member_id' => @$member->id, 'subscription_id' => $subscription->id, 'payment_type' => $payment_type->id,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => abs($row->COL18), 'vat' => $vat, 'joining_date' => Carbon::createFromFormat('d/m/Y', $row->COL8), 'expire_date' => Carbon::createFromFormat('d/m/Y', $row->COL9), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-//                GymMemberSubscription::insert([ 'member_id' => $member->id, 'branch_setting_id' => 2, 'subscription_id' => $subscription->id, 'payment_type' => 0,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => 0, 'vat' => 0, 'joining_date' => Carbon::now()->toDateString(), 'expire_date' => Carbon::parse($row->COL10)->toDateString(), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-//            }
-//        }
-        dd('sssss');
-        $members = DB::table('member22')->get();
-        foreach($members as $member){
-            $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
-            $id = (GymMember::withTrashed()->max('id') + 1);
-            $set_member = GymMember::create([
-                'id' => $id,
-                'code' => $maxId,
-                'branch_setting_id' => 1,
-                'name' => trim($member->COL1),
-                'phone' => trim($member->COL8),
-                'email' => '',
-                'created_at' => Carbon::createFromFormat('m/d/Y', $member->COL3)->toDateString() ?? Carbon::now(),
-                'updated_at' => Carbon::createFromFormat('m/d/Y', $member->COL3)->toDateString() ?? Carbon::now(),
-                'on_app' => 1,
-                'sms_new_member' => 0,
-                'smsm_renew_member' => 0,
-                'sms_before_expire_member' => 0,
-                'sms_expire_member' => 0,
-                'is_blocked' => 0,
-
-            ]);
-            if($set_member){
-                $total_amount = ((float)trim($member->COL5) + (float)trim($member->COL6) + (float)trim($member->COL7));
-                $payment_type = 0;
-                if(trim($member->COL7)){
-                    $payment_type = 1;
-                }elseif(trim($member->COL6)){
-                    $payment_type = 2;
-                }else{
-                    $payment_type = 0;
-                }
-                GymMemberSubscription::insert([
-                    'member_id' => $id,
-                    'branch_setting_id' => 1,
-                    'subscription_id' => 8,
-                    'workouts' => 0,
-                    'visits' => 0,
-                    'amount_remaining' => 0,
-                    'amount_paid' => $total_amount,
-                    'vat' => 0,
-                    'vat_percentage' => 0,
-                    'joining_date' => Carbon::createFromFormat('m/d/Y', trim($member->COL3))->toDateString() ?? Carbon::now(),
-                    'expire_date' => Carbon::createFromFormat('m/d/Y', trim($member->COL4))->toDateString(),
-                    'freeze_limit' => 0,
-                    'status' => 0,
-                    'number_times_freeze' => 0,
-                    'created_at' => Carbon::createFromFormat('m/d/Y', $member->COL3)->toDateString() ?? Carbon::now(),
-                    'updated_at' => Carbon::createFromFormat('m/d/Y', $member->COL3)->toDateString() ?? Carbon::now(),
-                    'amount_before_discount' => $total_amount,
-                    'discount_value' => 0,
-                    'discount_type' => 0,
-                    'payment_type' => $payment_type,
-                ]);
-
-            }
-        }
-        dd( 'sssss');
-        $members = GymMember::orderBy('id', 'asc')->limit(1000)->get();
-        foreach ($members as $member){
-            $get_members = GymMember::with('member_subscription_info')
-                ->where('phone', $member->phone)
-                ->orderBy('id', 'desc')
-                ->get();
-            if(count($get_members) > 1){
-                $get_members = $get_members->sortByDesc('member_subscription_info.expire_date');
-                $get_member_ids = $get_members->pluck('id');
-                $last_member = $get_members[0];
-                GymMember::where('phone', $last_member->phone)->where('id', '!=', $last_member->id)->delete();
-                GymMemberSubscription::whereIn('member_id', $get_member_ids)->where('member_id', '!=', $last_member->id)->delete();
-            }
-        }
-
-dd( 'sssss');
-        // vit
-
-        $subscriptions = DB::table('settlement')->orderBy('id', 'asc')->where('id', '>',8000)->limit(1000)->get();
-        foreach($subscriptions as $subscription){
-            $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
-            $subscription_id = @GymSubscription::where('name_en', trim($subscription->COL3))->first()->id;
-            $payment_type_id = @GymPaymentType::where('name_en', trim($subscription->COL18))->first()->id;
-
-            $member = GymMember::create([
-                'code' => $maxId,
-                'name' => trim($subscription->COL9),
-                'phone' => trim($subscription->COL11),
-                'email' => trim($subscription->COL10),
-                'created_at' => Carbon::parse($subscription->COL16)->toDateString(),
-                'updated_at' => Carbon::parse($subscription->COL16)->toDateString(),
-                'on_app' => 1,
-                'sms_new_member' => 0,
-                'smsm_renew_member' => 0,
-                'sms_before_expire_member' => 0,
-                'sms_expire_member' => 0,
-                'is_blocked' => 0,
-
-                ]);
-            if($member){
-                GymMemberSubscription::insert([
-                    'member_id' => $member->id,
-                    'subscription_id' => $subscription_id,
-                    'workouts' => 0,
-                    'visits' => 0,
-                    'amount_remaining' => 0,
-                    'amount_paid' => (float)str_replace(',', '', trim($subscription->COL23)),
-                    'vat' => (float)str_replace(',', '', trim($subscription->COL22)),
-                    'vat_percentage' => 15,
-                    'joining_date' => Carbon::parse(trim($subscription->COL12))->toDateString(),
-                    'expire_date' => Carbon::parse(trim($subscription->COL13))->toDateString(),
-                    'freeze_limit' => 0,
-                    'status' => 0,
-                    'number_times_freeze' => 0,
-                    'created_at' => Carbon::parse($subscription->COL16)->toDateString(),
-                    'updated_at' => Carbon::parse($subscription->COL16)->toDateString(),
-                    'amount_before_discount' => (float)str_replace(',', '', trim($subscription->COL21)),
-                    'discount_value' => 0,
-                    'discount_type' => 0,
-                    'payment_type' => $payment_type_id,
-                ]);
-
-            }
-        }
-
-        dd($member->id);
-        $subscription = GymSubscription::first();
-        $rows =  DB::table('settlement')->orderBy('id', 'asc')->get();//original_data2
-        foreach($rows as $row){
-            $check_subscription = GymSubscription::where('branch_setting_id', 1)->where('name_ar', $row->COL6)->first();
-            if(!$check_subscription){
-                GymSubscription::insert(['name_ar' => $row->COL6, 'name_en' => $row->COL6, 'branch_setting_id' => 1, 'user_id' => 3, 'price' => 0, 'period' => 0, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 1]);
-            }
-            $code = str_pad(((int)$row->COL2 + 1147), 14, 0, STR_PAD_LEFT);
-            $member = ['id' => ((int)$row->COL1 + 1147),'user_id' => 3, 'branch_setting_id' => 2,'code' => $code, 'name' => $row->COL3, 'phone' => trim($row->COL5, '-'), 'on_app' => 1, 'gender' => 2, 'is_blocked' => 0, 'sms_new_member' => 0, 'sms_renew_member' => 0, 'sms_before_expire_member' => 0, 'sms_expire_member' => 0];
-            $member = GymMember::create($member);
-            if(@$member){
-//                                var_dump($row->COL8);
-//                                var_dump(Carbon::createFromFormat('d/m/Y', @$row->COL8)->toDateString());
-//                                var_dump([ 'member_id' => @$member->id, 'subscription_id' => $subscription->id, 'payment_type' => $payment_type->id,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => abs($row->COL18), 'vat' => $vat, 'joining_date' => Carbon::createFromFormat('d/m/Y', $row->COL8), 'expire_date' => Carbon::createFromFormat('d/m/Y', $row->COL9), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-                GymMemberSubscription::insert([ 'member_id' => $member->id, 'branch_setting_id' => 2, 'subscription_id' => $subscription->id, 'payment_type' => 0,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => 0, 'vat' => 0, 'joining_date' => Carbon::now()->toDateString(), 'expire_date' => Carbon::parse($row->COL8)->toDateString(), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-            }
-        }
-// venom
-//        $subscription = GymSubscription::first();
-//        $rows =  DB::table('men_1')->orderBy('COL1', 'asc')->get();//original_data2
-//        foreach($rows as $row){
-//            $check_subscription = GymSubscription::where('branch_setting_id', 1)->where('name_ar', $row->COL6)->first();
-//            if(!$check_subscription){
-//                GymSubscription::insert(['name_ar' => $row->COL6, 'name_en' => $row->COL6, 'branch_setting_id' => 1, 'user_id' => 3, 'price' => 0, 'period' => 0, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 1]);
-//            }
-//            $code = str_pad(((int)$row->COL2 + 1147), 14, 0, STR_PAD_LEFT);
-//            $member = ['id' => ((int)$row->COL1 + 1147),'user_id' => 3, 'branch_setting_id' => 2,'code' => $code, 'name' => $row->COL3, 'phone' => trim($row->COL5, '-'), 'on_app' => 1, 'gender' => 2, 'is_blocked' => 0, 'sms_new_member' => 0, 'sms_renew_member' => 0, 'sms_before_expire_member' => 0, 'sms_expire_member' => 0];
-//            $member = GymMember::create($member);
-//            if(@$member){
-////                                var_dump($row->COL8);
-////                                var_dump(Carbon::createFromFormat('d/m/Y', @$row->COL8)->toDateString());
-////                                var_dump([ 'member_id' => @$member->id, 'subscription_id' => $subscription->id, 'payment_type' => $payment_type->id,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => abs($row->COL18), 'vat' => $vat, 'joining_date' => Carbon::createFromFormat('d/m/Y', $row->COL8), 'expire_date' => Carbon::createFromFormat('d/m/Y', $row->COL9), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-//                GymMemberSubscription::insert([ 'member_id' => $member->id, 'branch_setting_id' => 2, 'subscription_id' => $subscription->id, 'payment_type' => 0,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => 0, 'vat' => 0, 'joining_date' => Carbon::now()->toDateString(), 'expire_date' => Carbon::parse($row->COL8)->toDateString(), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-//            }
-//        }
-dd('ssss');
-
-//        $rows =  DB::table('original_data2')->get();//original_data2
-//        $rows =  DB::table('original_data2')->get();//original_data2
-//
-//        foreach ($rows as $key => $row) {
-////            $subscription = GymSubscription::where('name_en', @$row->COL2)->first();
-////            if(!@$subscription){
-////                $from = @Carbon::createFromFormat('d/m/Y', @$row->COL8);
-////                $to = @Carbon::createFromFormat('d/m/Y', @$row->COL9);
-////                $diff_in_days = @$to->diffInDays($from);
-////
-////
-////                echo @$diff_in_days .' - '. @$key . ' - ' . @$row->COL2.'<br/>';
-////                GymSubscription::create(['name_ar' => $row->COL2, 'name_en' => $row->COL2, 'user_id' => 1, 'price' => abs($row->COL18), 'period' => $diff_in_days, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 0]);
-////            }
-//
-//                        $row->COL16 = (float)abs(str_replace(',', '', $row->COL16));
-//                        $row->COL17 = (float)abs(str_replace(',', '', $row->COL17));
-//                        $row->COL18 = (float)abs(str_replace(',', '', $row->COL18));
-//                        $code = str_pad(($key+3692), 14, 0, STR_PAD_LEFT);
-//                        $subscription = DB::table('sw_gym_subscriptions')->where('name_ar', $row->COL2)->first();
-//                        $payment_type = DB::table('sw_gym_payment_types')->first();
-//
-//                        if($subscription && $payment_type && $row->COL5 && $row->COL4) {
-//                            $vat = 0;
-//                            if($row->COL18){$vat = (15 / abs($row->COL18))*100;}
-//                            //$member = ['user_id' => 1, 'code' => $code, 'name' => $row->COL4, 'phone' => $row->COL5, 'on_app' => 1, 'gender' => 1, 'is_blocked' => 0, 'sms_new_member' => 0, 'sms_renew_member' => 0, 'sms_before_expire_member' => 0, 'sms_expire_member' => 0];
-//                            //$member = GymMember::create(['user_id' => 1, 'code' => $code, 'name' => $row->COL4, 'phone' => $row->COL5, 'on_app' => 1, 'gender' => 1, 'is_blocked' => 0, 'sms_new_member' => 0, 'sms_renew_member' => 0, 'sms_before_expire_member' => 0, 'sms_expire_member' => 0]);
-//                            if(@$member){
-////                                var_dump($row->COL8);
-////                                var_dump(Carbon::createFromFormat('d/m/Y', @$row->COL8)->toDateString());
-////                                var_dump([ 'member_id' => @$member->id, 'subscription_id' => $subscription->id, 'payment_type' => $payment_type->id,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => abs($row->COL18), 'vat' => $vat, 'joining_date' => Carbon::createFromFormat('d/m/Y', $row->COL8), 'expire_date' => Carbon::createFromFormat('d/m/Y', $row->COL9), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-//                                GymMemberSubscription::insert([ 'member_id' => $member->id, 'subscription_id' => $subscription->id, 'payment_type' => $payment_type->id,'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => abs($row->COL18), 'vat' => $vat, 'joining_date' => Carbon::createFromFormat('d/m/Y', $row->COL8), 'expire_date' => Carbon::createFromFormat('d/m/Y', $row->COL9), 'freeze_limit' => 0, 'number_times_freeze' => 0]);
-//                           }
-//        }
-
-
-            //            $to = \Carbon\Carbon::parse($row->COL12);
-//            $from = \Carbon\Carbon::parse($row->COL11);
-//
-//            $diff_in_days = $to->diffInDays($from);
-
-//            $subscription = GymSubscription::where('name_ar', $row->COL4)->first();
-//            if($subscription){
-//                $row->COL19 = (float)abs(str_replace(',', '', $row->COL19));
-//                $subscription->price = $row->COL19;
-//                $subscription->save();
-//            }
-//            GymSubscription::insert(['user_id'=> 1, 'price' => abs($row->COL19), 'period' => $diff_in_days, 'workouts' => 0, 'freeze_limit' => 0, 'number_times_freeze' => 0, 'is_expire_changeable' => 1, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now(),  'name_ar'=> $row->COL4, 'name_en' => $row->COL4]);
-//            if(@$row->col6){
-//                $expire_date_arr = explode('/', $row->col6);
-//                $expire_date = $expire_date_arr[2].'-'.$expire_date_arr[1].'-'.$expire_date_arr[0];
-//                DB::table('new_memberships')->where('id', $row->id)->update(['col9' => $expire_date]);
-//            }
-
-//        }
-
-        //dd('s');
-        /*
-        foreach ($rows as $key => $row){
-            if($key > 0) {
-                $row = (array)$row;
-                if ($row['col2']) {
-                    $text = explode("#", @$row['col2']);
-                    $member = null;
-                    $subscription = null;
-                    $join_date = null;
-                    $expire_date = null;
-                    if(@$text[1]){$member = GymMember::where('code', $text[1])->first();}
-                    if(@$row['col5']){$subscription = GymSubscription::where('name_ar', trim($row['col5']))->first();}
-                    if(@$row['col8']){$join_date = Carbon::parse(@(string)$row['col8'])->toDateString();}
-                    if(@$row['col9']){$expire_date = Carbon::parse(@(string)$row['col9'])->toDateString();}
-                    if (@$member && @$subscription && @$join_date && @$expire_date) {
-                        //data = ['user_id' => Auth::guard('sw')->user()->id, 'name' => $row[1], 'code' => $row[0], 'phone' => (string)$phone, 'dob' => @Carbon::now(), 'branch_setting_id' => @Auth::guard('sw')->user()->branch_setting_id];
-                        $data = [ 'branch_setting_id' => 1
-                            , 'member_id' => @$member->id, 'subscription_id' => @$subscription->id, 'workouts' => 0, 'visits' => 0, 'amount_remaining' => 0, 'amount_paid' => 0, 'vat' => 0, 'vat_percentage' => 0, 'freeze_limit' => 0
-                            , 'number_times_freeze' => 0, 'amount_before_discount' => 0, 'discount_value' => 0, 'payment_type' => 0
-                            , 'joining_date' => @$join_date, 'expire_date' => @$expire_date, 'status' => 0,
-                            'created_at' => Carbon::now()->toDateString(), 'updated_at' => Carbon::now()->toDateString()
-                        ];
-
-                        GymMemberSubscription::insert($data);
-                    }
-                }
-            }
-    }
-        */
-        //dd('end');
         $title = trans('sw.members_excel_add');
 
         return view('software::Front.upload_excel', [
-            'title' => $title]);
+            'title' => $title
+        ]);
     }
 
+    /**
+     * Process the uploaded Excel file and import members with subscriptions
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
     public function uploadExcelStore(Request $request)
     {
-        $path = $request->file('excel_data')->getRealPath();
-        $records = [];
+        // Validate the uploaded file
+        $validator = Validator::make($request->all(), [
+            'excel_data' => 'required|file|mimes:xlsx,xls|max:5120', // Max 5MB
+        ], [
+            'excel_data.required' => trans('sw.excel_file_required'),
+            'excel_data.mimes' => trans('sw.excel_file_must_be_xlsx_or_xls'),
+            'excel_data.max' => trans('sw.excel_file_max_size_5mb'),
+        ]);
+
+        if ($validator->fails()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()->all()
+                ], 422);
+            }
+
+            return redirect(route('sw.uploadExcel'))
+                ->withErrors($validator)
+                ->withInput();
+        }
+
         try {
-            Excel::import(new ImportExcel, $path);
-//            \Session::flash('success', 'Users uploaded successfully.');
-            return redirect(route('sw.uploadExcel'))->with(['records' => $records]);
+            // Create import instance
+            $import = new MembersSubscriptionsImport();
+
+            // Import the Excel file
+            Excel::import($import, $request->file('excel_data'));
+
+            // Get import statistics
+            $stats = $import->getStats();
+
+            // Prepare response message
+            $message = trans('sw.import_completed') . ': ' .
+                       $stats['successful_rows'] . ' ' . trans('sw.successful') . ', ' .
+                       $stats['failed_rows'] . ' ' . trans('sw.failed');
+
+            // Return JSON response for AJAX requests
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'data' => $stats
+                ]);
+            }
+
+            // Return redirect response for traditional form submissions
+            if ($stats['failed_rows'] > 0) {
+                return redirect(route('sw.uploadExcel'))
+                    ->with([
+                        'warning' => $message,
+                        'import_stats' => $stats
+                    ]);
+            }
+
+            return redirect(route('sw.uploadExcel'))
+                ->with([
+                    'success' => $message,
+                    'import_stats' => $stats
+                ]);
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+
+            foreach ($failures as $failure) {
+                $errors[] = [
+                    'row_number' => $failure->row(),
+                    'attribute' => $failure->attribute(),
+                    'error_message' => implode(', ', $failure->errors())
+                ];
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.validation_errors_in_excel'),
+                    'data' => [
+                        'total_rows' => 0,
+                        'successful_rows' => 0,
+                        'failed_rows' => count($errors),
+                        'errors' => $errors
+                    ]
+                ], 422);
+            }
+
+            return redirect(route('sw.uploadExcel'))
+                ->with([
+                    'error' => trans('sw.validation_errors_in_excel'),
+                    'import_stats' => [
+                        'total_rows' => 0,
+                        'successful_rows' => 0,
+                        'failed_rows' => count($errors),
+                        'errors' => $errors
+                    ]
+                ]);
+
         } catch (\Exception $e) {
             Log::error('Excel Import Error: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
@@ -3036,6 +2867,7 @@ dd('ssss');
                 ->with('error', $errorMessage);
         }
     }
+
 
     public function fingerprintRefresh()
     {

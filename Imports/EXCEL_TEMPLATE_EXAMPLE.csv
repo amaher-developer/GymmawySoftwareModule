@@ -1,4 +1,4 @@
-member_code,name,phone,email,gender,dob,national_id,address,sale_channel,fp_id,fp_uid,subscription_code,joining_date,expire_date,workouts,visits,amount_paid,amount_remaining,vat_percentage,discount_value,discount_type,payment_type,status
+member_code,name,phone,email,gender,dob,national_id,address,sale_channel,fp_id,fp_uid,subscription_id,joining_date,expire_date,workouts,visits,amount_paid,amount_remaining,vat_percentage,discount_value,discount_type,payment_type,status
 ,Ahmad Al-Mansour,0501234567,ahmad@example.com,male,1990-05-15,1234567890,Riyadh - King Fahd District,Website,,,GOLD-2024,2024-01-01,2024-12-31,0,0,3000,0,15,100,fixed,cash,active
 ,Fatima Al-Zahrani,0507654321,fatima@example.com,female,1985-06-20,0987654321,Jeddah - Al-Hamra,Direct,FP001,UID001,SILVER-2024,2024-01-15,2024-07-15,12,5,1500,500,15,50,percentage,card,active
 ,Mohammed Ibrahim,0503456789,mohammed@example.com,male,1988-03-10,1122334455,Dammam - Corniche,Phone,,,PLATINUM-2024,2024-02-01,2025-02-01,0,0,5000,0,15,0,fixed,bank,active

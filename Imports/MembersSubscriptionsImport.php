@@ -44,7 +44,7 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
                 if (isset($row['dob'])) {
                     $row['dob'] = $this->parseExcelDate($row['dob']);
                 }
-                $row['image'] = $row['image'].'.jpg';
+                //$row['image'] = $row['image'].'.jpg';
                 $validator = $this->validateRow($row, $rowNumber);
 
                 if ($validator->fails()) {
@@ -73,20 +73,18 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
                 }
 
                 // Find subscription by code
-                $subscription = GymSubscription::where('branch_setting_id', $branchSettingId)
+                $subscription = GymSubscription::branch(21, 48)->where('branch_setting_id', $branchSettingId)
                     ->where(function($query) use ($row) {
-                        $query->where('id', $row['subscription_code'])
-                              ->orWhere('name_ar', $row['subscription_code'])
-                              ->orWhere('name_en', $row['subscription_code']);
+                        $query->where('id', $row['subscription_id']);
                     })
                     ->first();
 
-                if (!$subscription) {
+                    if (!$subscription) {
                     $this->failedRows++;
                     $this->errors[] = [
                         'row_number' => $rowNumber,
                         'member_phone' => $row['phone'] ?? 'N/A',
-                        'error_message' => 'Subscription not found with code: ' . $row['subscription_code']
+                        'error_message' => 'Subscription not found with code: ' . $row['subscription_id']
                     ];
                     DB::rollBack();
                     continue;
@@ -122,7 +120,7 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
             'dob' => 'nullable|date_format:Y-m-d',
             'fp_id' => 'nullable|numeric',
             'fp_uid' => 'nullable|numeric',
-            'subscription_code' => 'required',
+            'subscription_id' => 'required',
             'joining_date' => 'required|date_format:Y-m-d',
             'expire_date' => 'required|date_format:Y-m-d|after:joining_date',
             'amount_paid' => 'nullable|numeric|min:0',
@@ -140,7 +138,7 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
             'phone.required' => 'Phone number is required',
             'gender.in' => 'Gender must be male or female',
             'dob.date_format' => 'Date of birth must be in Y-m-d format',
-            'subscription_code.required' => 'Subscription code is required',
+            'subscription_id.required' => 'Subscription code is required',
             'joining_date.required' => 'Joining date is required',
             'joining_date.date_format' => 'Joining date must be in Y-m-d format',
             'expire_date.required' => 'Expire date is required',

@@ -33,7 +33,7 @@ $headers = [
     'sale_channel',
     'fp_id',
     'fp_uid',
-    'subscription_code',
+    'subscription_id',
     'joining_date',
     'expire_date',
     'workouts',
@@ -88,7 +88,7 @@ $columnWidths = [
     'I' => 15,  // sale_channel
     'J' => 12,  // fp_id
     'K' => 12,  // fp_uid
-    'L' => 18,  // subscription_code
+    'L' => 18,  // subscription_id
     'M' => 15,  // joining_date
     'N' => 15,  // expire_date
     'O' => 10,  // workouts
