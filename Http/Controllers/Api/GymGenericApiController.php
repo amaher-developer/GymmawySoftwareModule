@@ -210,7 +210,7 @@ class GymGenericApiController extends GenericController
     }
     public function memberInfo(Request $request){
 
-        $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
+        $member_subscriptions = GymMemberSubscription::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription' => function ($q) {
             $q->withTrashed();
         }])
             ->where('member_id', @Auth::guard('api')->user()->id)
@@ -429,7 +429,7 @@ class GymGenericApiController extends GenericController
 
     public function memberSubscriptionFreeze(){
         $member_id =  @Auth::guard('api')->user()->id;
-        $memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('member_id', $member_id)->orderBy('id', 'desc')->first();
+        $memberInfo = GymMemberSubscription::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription'])->where('member_id', $member_id)->orderBy('id', 'desc')->first();
         $is_freeze = $this->SettingRepository->select('is_freeze')->first()->is_freeze;
         if(@$is_freeze && $memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active) ){
             $memberInfo->status = TypeConstants::Freeze;

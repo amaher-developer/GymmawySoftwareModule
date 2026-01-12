@@ -62,7 +62,7 @@ class GymWAFrontController extends GymGenericFrontController
             return redirect(route('sw.createWA'));
         }
 
-        $setting = Setting::branch()->select('wa_details')->first();
+        $setting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('wa_details')->first();
         if(((int)$this->consume_message_count <= @(int)$setting->wa_details['wa_package_messages'])) {
             if (is_array($$phones) && count($$phones) > 0){
                 foreach ($phones as $phone) {

@@ -60,10 +60,10 @@ class GymUserLogFrontController extends GymGenericFrontController
         parent::__construct();
         $this->imageManager = new ImageManager(new Driver());
 
-        $this->UserLogRepository = (new GymUserLogRepository(new Application))->branch();
-        $this->MemberAttendeeRepository = (new GymMemberAttendeeRepository(new Application))->branch();
-        $this->UserAttendeeRepository = (new GymUserAttendeeRepository(new Application))->branch();
-        $this->GymMoneyBoxRepository = (new GymMoneyBoxRepository(new Application))->branch();
+        $this->UserLogRepository = (new GymUserLogRepository(new Application));
+        $this->MemberAttendeeRepository = (new GymMemberAttendeeRepository(new Application));
+        $this->UserAttendeeRepository = (new GymUserAttendeeRepository(new Application));
+        $this->GymMoneyBoxRepository = (new GymMoneyBoxRepository(new Application));
     }
 
 
@@ -76,7 +76,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $logs = $this->UserLogRepository->with(['user']);
+        $logs = $this->UserLogRepository->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
 
@@ -106,7 +106,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     public function reportRenewMemberList(){
         $title = trans('sw.logs_renew');
         $search_query = request()->query();
-        $logs = $this->UserLogRepository->with(['user'])->where('type', 1)->orderBy('id', 'DESC');
+        $logs = $this->UserLogRepository->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user'])->where('type', 1)->orderBy('id', 'DESC');
         $logs = $logs->paginate($this->limit)->onEachSide(1);
         $total = $logs->total();
 
@@ -1250,7 +1250,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->request_array = ['search', 'date'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
-        $logs = GymUser::branch()->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
+        $logs = GymUser::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
             ->with(['user_attendees' => function ($q) use ($date){
             if(@$date)
                 $q->whereDate('created_at', Carbon::parse($date)->toDateString());
@@ -1276,7 +1276,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->request_array = ['search', 'date'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
-        $logs = GymUser::branch()->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
+        $logs = GymUser::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name', 'title', 'phone', 'image', "salary", "start_time_work", "end_time_work")
             ->with(['user_attendees' => function ($q) use ($date){
             if(@$date)
                 $q->whereDate('created_at', Carbon::parse($date)->toDateString());
@@ -1549,7 +1549,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $to = request('to');
         $search = request('search');
 
-        $ordersQuery = GymStoreOrder::branch()
+        $ordersQuery = GymStoreOrder::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
             ->with([
                 'member' => function ($q) {
                     $q->withTrashed();
@@ -1609,7 +1609,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $to = request('to');
         $search = request('search');
 
-        $ordersQuery = GymStoreOrder::branch()
+        $ordersQuery = GymStoreOrder::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
             ->with([
                 'member' => function ($q) {
                     $q->withTrashed();
@@ -2080,7 +2080,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $transaction = request('transaction');
         $operation = intVal($transaction-1);
 
-        $records = $this->GymMoneyBoxRepository->with(['user', 'member_subscription.member' => function($q){
+        $records = $this->GymMoneyBoxRepository->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user', 'member_subscription.member' => function($q){
             $q->withTrashed();
         }, 'member_pt_subscription' => function($q){
             $q->withTrashed();
@@ -2246,7 +2246,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $orders = GymOnlinePaymentInvoice::branch()->with(['member', 'subscription' => function($q){
+        $orders = GymOnlinePaymentInvoice::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription' => function($q){
             $q->withTrashed();
         }])->orderBy('id', 'DESC');
 
@@ -2279,7 +2279,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $orders = GymOnlinePaymentInvoice::branch()->with(['member', 'subscription' => function($q){
+        $orders = GymOnlinePaymentInvoice::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription' => function($q){
             $q->withTrashed();
         }])->orderBy('id', 'DESC');
 

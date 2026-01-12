@@ -205,7 +205,7 @@ class GymOrderFrontController extends GymGenericFrontController
         $upcomingReservations = collect();
         if ($order->member_id) {
             $upcomingReservations = GymReservation::query()
-                ->branch()
+                ->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
                 ->where('member_id', $order->member_id)
                 ->where('client_type', 'member')
                 ->whereDate('reservation_date', '>=', Carbon::now()->toDateString())
@@ -471,7 +471,7 @@ class GymOrderFrontController extends GymGenericFrontController
         $upcomingReservations = collect();
         if ($order->id) {
             $upcomingReservations = GymReservation::query()
-                ->branch()
+                ->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
                 ->where('non_member_id', $order->id)
                 ->where('client_type', 'non_member')
                 ->whereDate('reservation_date', '>=', Carbon::now()->toDateString())

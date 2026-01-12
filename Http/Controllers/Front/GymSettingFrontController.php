@@ -37,7 +37,6 @@ class GymSettingFrontController extends GymGenericFrontController
     {
 
         $mainSetting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
-
         $title = trans('sw.settings');
         $smsPoints = $this->formatSmsPoints(0);
         try {

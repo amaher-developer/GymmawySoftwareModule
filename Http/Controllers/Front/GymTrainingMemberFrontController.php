@@ -323,7 +323,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function memberPlans($info){
         //$encrypted = base64_encode('2'.','.'000000000002');
         $encrypted = base64_encode('558'.','.'000000000558');
-        $setting = Setting::branch()->select('name_ar', 'name_en', 'logo_ar', 'logo_en',  'phone', 'support_email')->first();
+        $setting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('name_ar', 'name_en', 'logo_ar', 'logo_en',  'phone', 'support_email')->first();
 
         $info_decode = base64_decode($info);
         $info_arr = explode(',', $info_decode);

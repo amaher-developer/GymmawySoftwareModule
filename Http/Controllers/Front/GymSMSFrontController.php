@@ -24,7 +24,7 @@ class GymSMSFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.sms_add');
-        $mainSettings = Setting::branch()->first();
+        $mainSettings = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
         $smsPoints = $this->formatSmsPoints(0);
 
         try {

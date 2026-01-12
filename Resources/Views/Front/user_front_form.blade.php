@@ -333,7 +333,7 @@
                                 <option value="" data-label="{{ trans('sw.custom_permissions') }}">
                                     {{ trans('sw.custom_permissions') }}
                                 </option>
-                                @foreach(\Modules\Software\Models\GymUserPermission::branch()->get() as $group)
+                                @foreach(\Modules\Software\Models\GymUserPermission::branch(@$mainSettings->id, @$mainSettings->tenant_id)->get() as $group)
                                     <option
                                         value="{{ $group->id }}"
                                         data-permissions="{{ json_encode($group->permissions) }}"

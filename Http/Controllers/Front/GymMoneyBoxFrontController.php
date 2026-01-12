@@ -637,7 +637,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             }
 
             // Find the moneybox record using branch scope
-            $moneyBox = GymMoneyBox::branch()
+            $moneyBox = GymMoneyBox::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
                 ->where('id', $id)
                 ->first();
 
@@ -715,7 +715,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             }
 
             // Find the trashed moneybox record using branch scope
-            $moneyBox = GymMoneyBox::branch()
+            $moneyBox = GymMoneyBox::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
                 ->onlyTrashed()
                 ->where('id', $id)
                 ->first();
@@ -729,7 +729,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             }
 
             // Get the previous record to determine the correct amount_before
-            $previousRecord = GymMoneyBox::branch()
+            $previousRecord = GymMoneyBox::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
                 ->where('id', '<', $id)
                 ->orderBy('created_at', 'desc')
                 ->orderBy('id', 'desc')
@@ -784,7 +784,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
      */
     private function rebuildMoneyboxFromId($startId, $previousAmountAfter){
         // Get all records after the deleted one, ordered by created_at and id
-        $gymMoneyBoxRecords = GymMoneyBox::branch()
+        $gymMoneyBoxRecords = GymMoneyBox::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)
             ->where('id', '>', $startId)
             ->orderBy('created_at', 'asc')
             ->orderBy('id', 'asc')
