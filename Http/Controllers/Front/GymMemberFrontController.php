@@ -1967,9 +1967,19 @@ class GymMemberFrontController extends GymGenericFrontController
 
         $preferredSubscriptionId = null;
         if($member_subscriptions instanceof \Illuminate\Support\Collection){
+            // First, try to find an Active subscription
             $preferredSubscription = $member_subscriptions->first(function ($subscription) {
-                return $subscription->status != TypeConstants::Coming;
+                return $subscription->status == TypeConstants::Active;
             });
+
+            // If no Active subscription, find any non-Coming subscription (Freeze, Expired, etc.)
+            if(!$preferredSubscription){
+                $preferredSubscription = $member_subscriptions->first(function ($subscription) {
+                    return $subscription->status != TypeConstants::Coming;
+                });
+            }
+
+            // If still no subscription found, fall back to the first one
             if(!$preferredSubscription){
                 $preferredSubscription = $member_subscriptions->first();
             }
