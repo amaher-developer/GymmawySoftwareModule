@@ -956,12 +956,12 @@ class GymMemberFrontController extends GymGenericFrontController
         }])
             ->where('member_id', $member->id)
 //            ->whereDate('expire_date', '>=', Carbon::now()->toDateString())
-            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM)
+            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2)
             ->orderBy('id', 'desc')
             ->get();
         $expired_member_subscriptions_count = $member_subscriptions->where('status', TypeConstants::Expired)->count();
 
-        if ((count($member_subscriptions) >= TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM) && ($expired_member_subscriptions_count == TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM)) {
+        if ((count($member_subscriptions) >= TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2) && ($expired_member_subscriptions_count == TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2)) {
             $member_subscription_last[] = $member_subscriptions[0];
             $member_subscriptions = $member_subscription_last;
         }
@@ -1961,7 +1961,7 @@ class GymMemberFrontController extends GymGenericFrontController
             ->whereHas('member', function ($q) use ($code){
                 $q->where('code', $code);
             })
-            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM)
+            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2)
             ->orderBy('id', 'desc')
             ->get();
             
