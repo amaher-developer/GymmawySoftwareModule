@@ -366,7 +366,7 @@
                                                 <!--end::Pay-->
                                                 
                                                 <!--begin::Edit-->
-                                                @if(in_array('editMember', (array)$swUser->permissions) || $swUser->is_super_user)
+                                                @if(($key < 2) && (in_array('editMember', (array)$swUser->permissions) || $swUser->is_super_user))
                                                     <a class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
                                                        onclick="edit_member_membership('{{@$member_subscription->id}}')"
                                                        expire_date="{{\Carbon\Carbon::parse(@$member_subscription->expire_date)->toDateString()}}"

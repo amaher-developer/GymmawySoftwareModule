@@ -1964,7 +1964,7 @@ class GymMemberFrontController extends GymGenericFrontController
             ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM)
             ->orderBy('id', 'desc')
             ->get();
-
+            
         $preferredSubscriptionId = null;
         if($member_subscriptions instanceof \Illuminate\Support\Collection){
             // First, try to find an Active subscription

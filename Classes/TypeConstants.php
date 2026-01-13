@@ -394,6 +394,7 @@ class TypeConstants {
     const TAX_TRANSACTION_SALES = 1;
     const TAX_TRANSACTION_REFUND = 2;
 
+    const RENEW_MEMBERSHIPS_MAX_NUM_2 = 4;
     const RENEW_MEMBERSHIPS_MAX_NUM = 2;
     const FEMALE = 2;
     const MALE = 1;
