@@ -59,6 +59,12 @@ Route::prefix('user/log')
         Route::name('sw.exportTodayMemberExcel')
             ->get('/today-member-excel', 'Front\GymUserLogFrontController@exportTodayMemberExcel');
 
+        // Attendance management - create and delete permissions
+        Route::name('sw.createAttendance')
+            ->post('/create-attendance', 'Front\GymUserLogFrontController@createAttendance');
+        Route::name('sw.deleteAttendance')
+            ->delete('/attendance/delete/{id}', 'Front\GymUserLogFrontController@deleteAttendance');
+
         // Today PT member report - view permission
         Route::name('sw.reportTodayPTMemberList')
             ->get('pt-today', 'Front\GymUserLogFrontController@reportTodayPTMemberList');

@@ -348,6 +348,38 @@ class GymMemberFrontController extends GymGenericFrontController
         ]);
         return  Response::json(['status' => true], 200);
     }
+
+    /**
+     * Search members by code or name for Select2 dropdown
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMembersBySearch()
+    {
+        $search = request()->get('search', '');
+        $page = request()->get('page', 1);
+        $perPage = 10;
+
+        $query = $this->MemberRepository->branch();
+
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('code', 'like', '%' . $search . '%')
+                  ->orWhere('phone', 'like', '%' . $search . '%');
+            });
+        }
+
+        $members = $query->orderBy('name', 'asc')
+                         ->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'data' => $members->items(),
+            'current_page' => $members->currentPage(),
+            'last_page' => $members->lastPage(),
+            'total' => $members->total(),
+        ]);
+    }
+
     private function updateMoneyBox()
     {
         $oneMonthAgo = GymMoneyBox::whereDate('created_at', '<=',Carbon::now()->subMonth()->toDateString())->orderBy('created_at','desc')->first();

@@ -897,6 +897,121 @@ class GymUserLogFrontController extends GymGenericFrontController
         return $pdf->download($this->fileName . '.pdf');
     }
 
+    /**
+     * Create a new attendance record for a member
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function createAttendance()
+    {
+        try {
+            $validator = \Validator::make(request()->all(), [
+                'member_id' => 'required|integer|exists:sw_gym_members,id',
+                'attendance_date' => 'required|date',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.validation_error'),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $memberId = request()->get('member_id');
+            $attendanceDate = request()->get('attendance_date');
+
+            // Get member's last active subscription
+            $member = \Modules\Software\Models\GymMember::branch()->find($memberId);
+
+            if (!$member) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.member_not_found')
+                ], 404);
+            }
+
+            // Get the member's last subscription
+            $subscription = \Modules\Software\Models\GymMemberSubscription::branch()
+                ->where('member_id', $memberId)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.no_subscription_found')
+                ], 404);
+            }
+
+            // Create attendance record
+            $attendance = new \Modules\Software\Models\GymMemberAttendee();
+            $attendance->member_id = $memberId;
+            $attendance->subscription_id = $subscription->id;
+            $attendance->user_id = auth('sw')->id();
+            $attendance->branch_setting_id = @$this->mainSettings->id;
+            $attendance->created_at = Carbon::parse($attendanceDate);
+            $attendance->updated_at = Carbon::parse($attendanceDate);
+            $attendance->save();
+
+            // Log the action
+            $logNotes = trans('sw.attendance_created_for_member') . ': ' . $member->name;
+            $this->userLog($logNotes, TypeConstants::CreateAttendance);
+
+            return response()->json([
+                'success' => true,
+                'message' => trans('sw.attendance_created_successfully'),
+                'data' => $attendance
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error creating attendance: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => trans('sw.operation_failed') . ': ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete an attendance record
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteAttendance($id)
+    {
+        try {
+            $attendance = \Modules\Software\Models\GymMemberAttendee::branch()->find($id);
+
+            if (!$attendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.attendance_not_found')
+                ], 404);
+            }
+
+            $memberName = $attendance->member ? $attendance->member->name : trans('sw.unknown');
+
+            // Delete the attendance record
+            $attendance->delete();
+
+            // Log the action
+            $logNotes = trans('sw.attendance_deleted_for_member') . ': ' . $memberName;
+            $this->userLog($logNotes, TypeConstants::DeleteAttendance);
+
+            return response()->json([
+                'success' => true,
+                'message' => trans('sw.attendance_deleted_successfully')
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error deleting attendance: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => trans('sw.operation_failed') . ': ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     /* --------------------------------------------------------------------------- */
 

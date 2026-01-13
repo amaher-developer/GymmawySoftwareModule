@@ -661,6 +661,18 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('exportMemberPDF', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.export_pdf_member_report')}}</span></label>
                                             </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createAttendance"
+                                                                            @if(@in_array('createAttendance', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.create_attendance')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteAttendance"
+                                                                            @if(@in_array('deleteAttendance', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete_attendance')}}</span></label>
+                                            </div>
 
                                         </div>
                                     </div>

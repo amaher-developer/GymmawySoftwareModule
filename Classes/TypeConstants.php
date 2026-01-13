@@ -344,6 +344,9 @@ class TypeConstants {
     const ExportOnlinePaymentExcel = 183;
     const ExportOnlinePaymentPDF = 184;
 
+    const CreateAttendance = 185;
+    const DeleteAttendance = 186;
+
     const Add = 0;
     const Sub = 1;
     const SubEarning = 2;

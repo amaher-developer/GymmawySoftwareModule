@@ -106,6 +106,16 @@
         </div>
         <div class="card-toolbar">
             <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
+                <!--begin::Create Attendance-->
+                @if(in_array('createAttendance', (array)$swUser->permissions) || $swUser->is_super_user)
+
+                <button type="button" class="btn btn-sm btn-flex btn-success" id="btn-create-attendance">
+                    <i class="ki-outline ki-plus fs-6"></i>
+                    {{ trans('sw.create_attendance') }}
+                </button>
+                @endif
+                <!--end::Create Attendance-->
+
                 <!--begin::Filter-->
                 <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_today_members_filter_collapse">
                     <i class="ki-outline ki-filter fs-6"></i>
@@ -226,6 +236,9 @@
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.date')}}
                             </th>
+                            <th class="min-w-100px text-center text-nowrap">
+                                <i class="ki-outline ki-setting-2 fs-6 me-2"></i>{{ trans('sw.actions')}}
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="fw-semibold text-gray-600">
@@ -315,6 +328,17 @@
                                         </div>
                                     </div>
                                 </td>
+                                <td class="text-center">
+                                @if(in_array('deleteAttendance', (array)$swUser->permissions) || $swUser->is_super_user)
+
+                                    <button type="button" class="btn btn-sm btn-icon btn-light-danger delete-attendance-btn"
+                                            data-attendance-id="{{ $log->id }}"
+                                            data-member-name="{{ @$log->member->name }}"
+                                            title="{{ trans('sw.delete_attendance') }}">
+                                        <i class="ki-outline ki-trash fs-5"></i>
+                                    </button>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -352,6 +376,56 @@
     <!--end::Card body-->
 </div>
 <!--end::Report-->
+
+<!--begin::Create Attendance Modal-->
+<div class="modal fade" id="modal-create-attendance" tabindex="-1" aria-labelledby="modalCreateAttendanceLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCreateAttendanceLabel">
+                    <i class="ki-outline ki-user-tick fs-3 me-2"></i>
+                    {{ trans('sw.create_attendance') }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="form-create-attendance">
+                @csrf
+                <div class="modal-body">
+                    <!--begin::Member Select-->
+                    <div class="mb-5">
+                        <label class="form-label required fs-6 fw-semibold">{{ trans('sw.member') }}</label>
+                        <select class="form-select" id="member-select" name="member_id" required>
+                            <option value="">{{ trans('sw.select_member') }}</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <!--end::Member Select-->
+
+                    <!--begin::Attendance Date-->
+                    <div class="mb-5">
+                        <label class="form-label required fs-6 fw-semibold">{{ trans('sw.attendance_date') }}</label>
+                        <input type="text" class="form-control" id="attendance-date" name="attendance_date"
+                               placeholder="{{ trans('sw.select_date') }}" required autocomplete="off">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <!--end::Attendance Date-->
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                        <i class="ki-outline ki-cross fs-6"></i>
+                        {{ trans('sw.cancel') }}
+                    </button>
+                    <button type="submit" class="btn btn-success" id="btn-submit-attendance">
+                        <i class="ki-outline ki-check fs-6"></i>
+                        {{ trans('sw.save') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!--end::Create Attendance Modal-->
 
 @endsection
 
@@ -405,6 +479,214 @@
                 setTimeout(() => {
                     $(this).closest('form').find('select').trigger('change');
                 }, 100);
+            });
+
+            // Initialize attendance date picker
+            $('#attendance-date').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true,
+                clearBtn: true,
+                orientation: 'bottom auto',
+                defaultDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() },
+                defaultViewDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() }
+            }).datepicker('setDate', new Date());
+
+            // Initialize Select2 for member search
+            function initMemberSelect() {
+                $('#member-select').select2({
+                    dropdownParent: $('#modal-create-attendance'),
+                    placeholder: '{{ trans("sw.search_member_by_code_or_name") }}',
+                    allowClear: true,
+                    ajax: {
+                        url: '{{ route("sw.getMembersBySearch") }}',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                search: params.term,
+                                page: params.page || 1
+                            };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: data.data.map(function(member) {
+                                    return {
+                                        id: member.id,
+                                        text: member.name + ' (' + member.code + ')',
+                                        member: member
+                                    };
+                                }),
+                                pagination: {
+                                    more: data.current_page < data.last_page
+                                }
+                            };
+                        },
+                        cache: true
+                    },
+                    minimumInputLength: 0,
+                    templateResult: formatMemberOption,
+                    templateSelection: formatMemberSelection
+                });
+            }
+
+            function formatMemberOption(member) {
+                if (!member.id || !member.member) {
+                    return member.text;
+                }
+                var $member = $(
+                    '<div class="d-flex align-items-center">' +
+                        '<div class="me-3">' +
+                            '<img src="' + (member.member.image || '/assets/default-avatar.png') + '" class="rounded-circle" style="width: 32px; height: 32px;" />' +
+                        '</div>' +
+                        '<div>' +
+                            '<div class="fw-bold">' + member.member.name + '</div>' +
+                            '<div class="text-muted fs-7">{{ trans("sw.code") }}: ' + member.member.code + ' | {{ trans("sw.phone") }}: ' + (member.member.phone || '-') + '</div>' +
+                        '</div>' +
+                    '</div>'
+                );
+                return $member;
+            }
+
+            function formatMemberSelection(member) {
+                return member.text || member.member?.name || '{{ trans("sw.select_member") }}';
+            }
+
+            // Open create attendance modal
+            $('#btn-create-attendance').on('click', function() {
+                $('#form-create-attendance')[0].reset();
+                $('#member-select').val(null).trigger('change');
+                $('#attendance-date').datepicker('setDate', new Date());
+                $('.invalid-feedback').text('').hide();
+                $('#form-create-attendance .form-control').removeClass('is-invalid');
+                initMemberSelect();
+                $('#modal-create-attendance').modal('show');
+            });
+
+            // Handle delete attendance
+            $(document).on('click', '.delete-attendance-btn', function() {
+                var attendanceId = $(this).data('attendance-id');
+                var memberName = $(this).data('member-name');
+
+                Swal.fire({
+                    title: '{{ trans("sw.are_you_sure") }}',
+                    text: '{{ trans("sw.delete_attendance_confirmation") }}' + ' ' + memberName + '?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: '{{ trans("sw.yes_delete") }}',
+                    cancelButtonText: '{{ trans("sw.cancel") }}'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '{{ url("/user/log/attendance/delete") }}/' + attendanceId,
+                            type: 'DELETE',
+                            data: {
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: '{{ trans("admin.successfully_added") }}',
+                                        text: response.message || '{{ trans("sw.attendance_deleted_successfully") }}',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    }).then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: '{{ trans("sw.error") }}',
+                                        text: response.message || '{{ trans("sw.operation_failed") }}'
+                                    });
+                                }
+                            },
+                            error: function(xhr) {
+                                var errorMessage = '{{ trans("sw.operation_failed") }}';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    errorMessage = xhr.responseJSON.message;
+                                }
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: '{{ trans("sw.error") }}',
+                                    text: errorMessage
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Handle create attendance form submission
+            $('#form-create-attendance').on('submit', function(e) {
+                e.preventDefault();
+
+                // Clear previous errors
+                $('.invalid-feedback').text('').hide();
+                $('.form-control').removeClass('is-invalid');
+
+                var submitBtn = $('#btn-submit-attendance');
+                var originalText = submitBtn.html();
+                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>{{ trans("sw.saving") }}...');
+
+                var formData = {
+                    member_id: $('#member-select').val(),
+                    attendance_date: $('#attendance-date').val(),
+                    _token: '{{ csrf_token() }}'
+                };
+
+                $.ajax({
+                    url: '{{ route("sw.createAttendance") }}',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            $('#modal-create-attendance').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: '{{ trans("admin.successfully_added") }}',
+                                text: response.message || '{{ trans("sw.attendance_created_successfully") }}',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: '{{ trans("sw.error") }}',
+                                text: response.message || '{{ trans("sw.operation_failed") }}'
+                            });
+                        }
+                        submitBtn.prop('disabled', false).html(originalText);
+                    },
+                    error: function(xhr) {
+                        submitBtn.prop('disabled', false).html(originalText);
+
+                        if (xhr.status === 422) {
+                            // Validation errors
+                            var errors = xhr.responseJSON.errors;
+                            $.each(errors, function(field, messages) {
+                                var input = $('[name="' + field + '"]');
+                                input.addClass('is-invalid');
+                                input.siblings('.invalid-feedback').text(messages[0]).show();
+                            });
+                        } else {
+                            var errorMessage = '{{ trans("sw.operation_failed") }}';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMessage = xhr.responseJSON.message;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: '{{ trans("sw.error") }}',
+                                text: errorMessage
+                            });
+                        }
+                    }
+                });
             });
         });
     </script>

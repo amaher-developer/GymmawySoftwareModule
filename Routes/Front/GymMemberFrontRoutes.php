@@ -110,4 +110,8 @@ Route::prefix('member')
         Route::name('sw.membersRefresh')
             ->get('/members-refresh', 'Front\GymMemberFrontController@membersRefresh');
 
+        // Search members for Select2 - view permission
+        Route::name('sw.getMembersBySearch')
+            ->get('/search', 'Front\GymMemberFrontController@getMembersBySearch');
+
     });
