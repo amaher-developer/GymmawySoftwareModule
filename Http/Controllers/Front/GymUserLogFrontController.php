@@ -953,6 +953,9 @@ class GymUserLogFrontController extends GymGenericFrontController
             $attendance->updated_at = Carbon::parse($attendanceDate);
             $attendance->save();
 
+            GymMemberSubscription::where('id', $attendance->subscription_id)
+            ->increment('visits', 1);
+
             // Log the action
             $logNotes = trans('sw.attendance_created_for_member') . ': ' . $member->name;
             $this->userLog($logNotes, TypeConstants::CreateAttendance);
@@ -981,7 +984,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     {
         try {
             $attendance = \Modules\Software\Models\GymMemberAttendee::branch()->find($id);
-
+            
             if (!$attendance) {
                 return response()->json([
                     'success' => false,
@@ -991,6 +994,8 @@ class GymUserLogFrontController extends GymGenericFrontController
 
             $memberName = $attendance->member ? $attendance->member->name : trans('sw.unknown');
 
+            GymMemberSubscription::where('id', $attendance->subscription_id)
+    ->decrement('visits', 1);
             // Delete the attendance record
             $attendance->delete();
 
