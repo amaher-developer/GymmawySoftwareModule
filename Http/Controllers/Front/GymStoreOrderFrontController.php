@@ -353,8 +353,11 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
                 }
                 // Set order amount_paid to 0 as it's paid from balance
-                $order_inputs['amount_paid'] = 0;
-                $order_inputs['amount_remaining'] = 0;
+                // $order_inputs['amount_paid'] = 0;
+                // $order_inputs['amount_remaining'] = 0;
+                
+                $order_inputs['amount_paid'] = $request->amount_paid; // This should come from the form
+                $order_inputs['amount_remaining'] = $finalOrderTotal - $order_inputs['amount_paid'];
             } else {
                 // If not using store balance, amount_paid is what was submitted, remaining is total - paid
                 $order_inputs['amount_paid'] = $request->amount_paid; // This should come from the form
