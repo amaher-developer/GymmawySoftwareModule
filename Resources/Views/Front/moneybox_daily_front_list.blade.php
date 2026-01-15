@@ -443,34 +443,69 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">{{ trans('sw.earnings_by_category')}}</h3>
+                        {{-- إيرادات نقدية (Cash Revenues) --}}
+                        <div class="card mb-4">
+                            <div class="card-header bg-light-success">
+                                <h3 class="card-title">
+                                    <i class="ki-outline ki-dollar fs-4 me-2 text-success"></i>
+                                    {{ trans('sw.cash_revenues')}}
+                                </h3>
                             </div>
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="fw-semibold text-gray-900">{{ trans('sw.subscription_earnings')}}</span>
-                                    <span class="fs-6 fw-bold text-primary">{{number_format($total_subscriptions, 2)}}</span>
+                                    <span class="fs-6 fw-bold text-success">{{number_format($total_subscriptions, 2)}}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="fw-semibold text-gray-900">{{ trans('sw.pt_subscription_earnings')}}</span>
-                                    <span class="fs-6 fw-bold text-primary">{{number_format($total_pt_subscriptions, 2)}}</span>
+                                    <span class="fs-6 fw-bold text-success">{{number_format($total_pt_subscriptions, 2)}}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="fw-semibold text-gray-900">{{ trans('sw.activity_earnings')}}</span>
-                                    <span class="fs-6 fw-bold text-primary">{{number_format($total_activities, 2)}}</span>
+                                    <span class="fs-6 fw-bold text-success">{{number_format($total_activities, 2)}}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="fw-semibold text-gray-900">{{ trans('sw.store_earnings')}}</span>
-                                    <span class="fs-6 fw-bold text-primary">{{number_format($total_stores, 2)}}</span>
+                                    <span class="fs-6 fw-bold text-success">{{number_format($total_stores, 2)}}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="fw-semibold text-gray-900">{{ trans('sw.add_moneybox_revenues')}}</span>
-                                    <span class="fs-6 fw-bold text-primary">{{$total_add_to_money_box}}</span>
+                                    <span class="fs-6 fw-bold text-success">{{number_format($total_add_to_money_box, 2)}}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="fw-semibold text-gray-900">{{ trans('sw.withdraw_moneybox_revenues')}}</span>
-                                    <span class="fs-6 fw-bold text-primary">{{$total_withdraw_from_money_box}}</span>
+                                    <span class="fs-6 fw-bold text-danger">{{number_format($total_withdraw_from_money_box, 2)}}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- عمليات رصيد (Balance Operations - NOT Revenue) --}}
+                        <div class="card">
+                            <div class="card-header bg-light-warning">
+                                <h3 class="card-title">
+                                    <i class="ki-outline ki-wallet fs-4 me-2 text-warning"></i>
+                                    {{ trans('sw.balance_operations')}}
+                                </h3>
+                                <span class="badge badge-light-warning fs-8">{{ trans('sw.not_revenue')}}</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning py-2 mb-3">
+                                    <i class="ki-outline ki-information-5 fs-6 me-2"></i>
+                                    <small>{{ trans('sw.balance_operations_note')}}</small>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="fw-semibold text-gray-900">
+                                        <i class="ki-outline ki-plus-circle fs-6 me-2 text-info"></i>
+                                        {{ trans('sw.total_wallet_topups')}}
+                                    </span>
+                                    <span class="fs-6 fw-bold text-info">{{number_format($total_wallet_topups ?? 0, 2)}}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="fw-semibold text-gray-900">
+                                        <i class="ki-outline ki-check-circle fs-6 me-2 text-primary"></i>
+                                        {{ trans('sw.total_debt_payments')}}
+                                    </span>
+                                    <span class="fs-6 fw-bold text-primary">{{number_format($total_debt_payments ?? 0, 2)}}</span>
                                 </div>
                             </div>
                         </div>

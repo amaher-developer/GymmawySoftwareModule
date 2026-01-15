@@ -193,8 +193,14 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $total_pt_subscriptions = ($sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 0)->sum('amount')
             - $sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 1)->sum('amount'));
 
-        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder  ])->where('operation', 0)->sum('amount')
-            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder  ])->where('operation', 1)->sum('amount'));
+        // Store sales: includes old CreateStoreOrder (for legacy) and new CashSale type
+        // NOTE: WalletTopUp and DebtPayment are NOT sales - they are wallet/debt operations
+        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale  ])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale  ])->where('operation', 1)->sum('amount'));
+
+        // Wallet operations (NOT revenue - these are customer advances/liability and debt settlements)
+        $total_wallet_topups = $sorders->where('type', TypeConstants::WalletTopUp)->where('operation', 0)->sum('amount');
+        $total_debt_payments = $sorders->where('type', TypeConstants::DebtPayment)->where('operation', 0)->sum('amount');
 
         return view('software::Front.moneybox_front_list', compact(
             'revenues', 'expenses', 'earnings'
@@ -203,6 +209,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 //                    ,'bank_revenues', 'bank_expenses', 'bank_earnings'
                     ,'total_add_to_money_box', 'total_withdraw_from_money_box'
                     ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores'//, 'total_non_members'
+                    ,'total_wallet_topups', 'total_debt_payments'  // Wallet operations (NOT revenue)
                     , 'orders', 'title', 'total', 'search_query', 'users', 'subscriptions'
                     , 'payment_expenses', 'payment_revenues', 'payment_types'));
     }
@@ -937,8 +944,14 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $total_pt_subscriptions = ($sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 0)->sum('amount')
             - $sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 1)->sum('amount'));
 
-        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder ])->where('operation', 0)->sum('amount')
-            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder  ])->where('operation', 1)->sum('amount'));
+        // Store sales: includes old CreateStoreOrder (for legacy) and new CashSale type
+        // NOTE: WalletTopUp and DebtPayment are NOT sales - they are wallet/debt operations
+        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale ])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale  ])->where('operation', 1)->sum('amount'));
+
+        // Wallet operations (NOT revenue - these are customer advances/liability and debt settlements)
+        $total_wallet_topups = $sorders->where('type', TypeConstants::WalletTopUp)->where('operation', 0)->sum('amount');
+        $total_debt_payments = $sorders->where('type', TypeConstants::DebtPayment)->where('operation', 0)->sum('amount');
 
         return view('software::Front.moneybox_daily_front_list', compact(
             'revenues', 'expenses', 'earnings'
@@ -947,6 +960,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 //                    ,'bank_revenues', 'bank_expenses', 'bank_earnings'
             ,'total_add_to_money_box', 'total_withdraw_from_money_box'
             ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores', 'total_non_members'
+            ,'total_wallet_topups', 'total_debt_payments'  // Wallet operations (NOT revenue)
             , 'orders', 'title', 'total', 'search_query', 'users', 'subscriptions'
             , 'payment_expenses', 'payment_revenues', 'payment_types'));
     }

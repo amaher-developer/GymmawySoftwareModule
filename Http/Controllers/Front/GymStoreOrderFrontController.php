@@ -340,28 +340,60 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             }
             $order_inputs['member_id'] = @$member->id;
             if(@$request->store_member_use_balance){
+                // Using store balance (wallet) for payment
+                $memberBalanceBefore = $member->store_balance ?? 0;
 
                 if(!@$this->mainSettings->store_postpaid){
-                    if(@$member->store_balance < $finalOrderTotal){
+                    // Prepaid mode - must have enough balance
+                    if($memberBalanceBefore < $finalOrderTotal){
                         return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
                     }
                     // Deduct from member's balance for prepaid mode
-                    $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
+                    $member->update(['store_balance' => $memberBalanceBefore - $finalOrderTotal]);
+                    // Order is FULLY PAID from wallet balance
+                    // amount_paid = full amount (for store order report)
+                    // Money Box will NOT be created (no new cash received)
+                    $order_inputs['amount_paid'] = $finalOrderTotal; // Order IS paid (from balance)
+                    $order_inputs['amount_remaining'] = 0;
+                    $order_inputs['payment_status'] = 'paid';
                 } else {
-                    // For postpaid mode, allow deduction even if balance goes negative
-                    $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
+                    // Postpaid mode - allow negative balance (debt)
+                    $member->update(['store_balance' => $memberBalanceBefore - $finalOrderTotal]);
 
+                    // Check if this creates debt (balance going negative or was already negative)
+                    $newBalance = $memberBalanceBefore - $finalOrderTotal;
+                    if ($newBalance < 0) {
+                        // This is a postpaid/debt purchase
+                        // What was covered by existing positive balance (if any)
+                        $paidFromBalance = max(0, $memberBalanceBefore);
+
+                        // For store order report: show what's been paid vs remaining debt
+                        $order_inputs['amount_paid'] = $paidFromBalance;
+                        $order_inputs['amount_remaining'] = $finalOrderTotal - $paidFromBalance;
+                        $order_inputs['payment_status'] = $order_inputs['amount_remaining'] > 0
+                            ? ($paidFromBalance > 0 ? 'partial' : 'unpaid')
+                            : 'paid';
+                        // Money Box will NOT be created (no new cash - this is debt)
+                    } else {
+                        // Member had enough balance, fully paid from wallet
+                        $order_inputs['amount_paid'] = $finalOrderTotal; // Order IS paid (from balance)
+                        $order_inputs['amount_remaining'] = 0;
+                        $order_inputs['payment_status'] = 'paid';
+                        // Money Box will NOT be created (no new cash received)
+                    }
                 }
-                // Set order amount_paid to 0 as it's paid from balance
-                // $order_inputs['amount_paid'] = 0;
-                // $order_inputs['amount_remaining'] = 0;
-                
-                $order_inputs['amount_paid'] = $request->amount_paid; // This should come from the form
-                $order_inputs['amount_remaining'] = $finalOrderTotal - $order_inputs['amount_paid'];
             } else {
-                // If not using store balance, amount_paid is what was submitted, remaining is total - paid
-                $order_inputs['amount_paid'] = $request->amount_paid; // This should come from the form
+                // Not using store balance - normal cash/card payment
+                $order_inputs['amount_paid'] = $request->amount_paid ?? 0;
                 $order_inputs['amount_remaining'] = $finalOrderTotal - $order_inputs['amount_paid'];
+                // Set payment status based on remaining amount
+                if ($order_inputs['amount_remaining'] <= 0) {
+                    $order_inputs['payment_status'] = 'paid';
+                } elseif ($order_inputs['amount_paid'] > 0) {
+                    $order_inputs['payment_status'] = 'partial';
+                } else {
+                    $order_inputs['payment_status'] = 'unpaid';
+                }
             }
         }
 
@@ -539,23 +571,33 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $member->save();
 
         }
-        $amount_box = GymMoneyBox::branch()->latest()->first();
-        $amount_after = $amount_box ? GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation) : 0;
+        // ACCOUNTING RULE: Only create Money Box entry for cash sales (NOT when using store balance)
+        // When using store balance (is_store_balance = 1 or 2), the money was already recorded when wallet was topped up
+        // Creating Money Box here would double-count the revenue
+        //if ($is_store_balance == 0) {
+            // Normal cash sale - create Money Box entry (this IS revenue)
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = $amount_box ? GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation) : 0;
 
-        GymMoneyBox::create([
-            'user_id' => Auth::guard('sw')->user()->id
-            , 'amount' => @$order_inputs['amount_paid']
-            , 'vat' => @$order_inputs['vat']
-            , 'operation' => TypeConstants::Add
-            , 'amount_before' => $amount_after
-            , 'notes' => $notes
-            , 'type' => TypeConstants::CreateStoreOrder
-            , 'member_id' => @$member->id
-            , 'payment_type' => @$order_inputs['payment_type']
-            , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-            , 'store_order_id' => $order_id
-            , 'is_store_balance' => $is_store_balance
-        ]);
+            GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id
+                , 'amount' => @$order_inputs['amount_paid']
+                , 'vat' => @$order_inputs['vat']
+                , 'operation' => TypeConstants::Add
+                , 'amount_before' => $amount_after
+                , 'notes' => $notes
+                , 'type' => TypeConstants::CashSale  // Use CashSale type to distinguish from wallet operations
+                , 'member_id' => @$member->id
+                , 'payment_type' => @$order_inputs['payment_type']
+                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                , 'store_order_id' => $order_id
+                , 'is_store_balance' => 0
+            ]);
+        //}
+        // When is_store_balance = 1 (prepaid) or 2 (postpaid/debt):
+        // - Invoice is created (revenue)
+        // - Member credit is deducted
+        // - NO Money Box entry (cash flow already recorded when wallet was topped up, or will be recorded when debt is paid)
         $this->userLog($notes, TypeConstants::CreateStoreOrder);
 
         // ✅ Create ZATCA Invoice if enabled (Phase 2)

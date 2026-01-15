@@ -347,6 +347,11 @@ class TypeConstants {
     const CreateAttendance = 185;
     const DeleteAttendance = 186;
 
+    // Money Box types for wallet and debt operations (distinct from sales)
+    const WalletTopUp = 187;      // Advance payment - NOT revenue
+    const DebtPayment = 188;      // Debt settlement - NOT revenue
+    const CashSale = 189;         // Normal cash sale - IS revenue
+
     const Add = 0;
     const Sub = 1;
     const SubEarning = 2;

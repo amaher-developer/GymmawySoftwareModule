@@ -237,7 +237,7 @@
     @if(@$mainSettings->vat_details['vat_percentage'])
     <tr>
         <th colspan="3" class="total text">{{ trans('sw.total_for_price')}} ({{ trans('sw.excluding_vat')}})</th>
-        <th class="total ">{{number_format(($order['amount_paid'] - @$order['vat']), 2)}} {{@trans('sw.app_currency')}}</th>
+        <th class="total ">{{number_format((($order['total_amount'] ?? $order['amount_paid']) - @$order['vat']), 2)}} {{@trans('sw.app_currency')}}</th>
     </tr>
 
     @if(@$order['loyalty_redemption'])
@@ -256,7 +256,7 @@
 
     <tr>
         <th colspan="3" class="total text">{{ trans('sw.total_for_price')}} </th>
-        <th class="total ">{{number_format($order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</th>
+        <th class="total ">{{number_format($order['total_amount'] ?? $order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</th>
     </tr>
     </tbody>
 </table>
