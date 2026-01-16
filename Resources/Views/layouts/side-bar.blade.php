@@ -837,6 +837,8 @@
 
 @if ($swUser && (
         isset($permissionsMap['listMoneyBox']) ||
+        isset($permissionsMap['salesReport']) ||
+        isset($permissionsMap['customerBalancesReport']) ||
         isset($permissionsMap['reportMoneyboxTax']) ||
         isset($permissionsMap['reportZatcaInvoices']) ||
         isset($permissionsMap['reportRenewMemberList']) ||
@@ -859,9 +861,9 @@
         )) ||
         $isSuperUser
     ))
-<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
     <!--begin:Menu link-->
-    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
         <span class="menu-icon">
             <i class="ki-outline ki-graph-up  fs-2"></i>
         </span>
@@ -882,6 +884,38 @@
                         <span class="bullet bullet-dot"></span>
                     </span>
                     <span class="menu-title">{{ trans('sw.money_report') }}</span>
+                </a>
+                <!--end:Menu link-->
+            </div>
+            <!--end:Menu item-->
+        @endif
+
+        @if ($swUser && (isset($permissionsMap['salesReport']) || $isSuperUser))
+            <!--begin:Menu item-->
+            <div class="menu-item">
+                <!--begin:Menu link-->
+                <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/sales-report*')) active @endif"
+                    href="{{ route('sw.salesReport') }}">
+                    <span class="menu-bullet">
+                        <span class="bullet bullet-dot"></span>
+                    </span>
+                    <span class="menu-title">{{ trans('sw.sales_report') }}</span>
+                </a>
+                <!--end:Menu link-->
+            </div>
+            <!--end:Menu item-->
+        @endif
+
+        @if ($swUser && (isset($permissionsMap['customerBalancesReport']) || $isSuperUser))
+            <!--begin:Menu item-->
+            <div class="menu-item">
+                <!--begin:Menu link-->
+                <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/customer-balances*')) active @endif"
+                    href="{{ route('sw.customerBalancesReport') }}">
+                    <span class="menu-bullet">
+                        <span class="bullet bullet-dot"></span>
+                    </span>
+                    <span class="menu-title">{{ trans('sw.customer_balances_report') }}</span>
                 </a>
                 <!--end:Menu link-->
             </div>

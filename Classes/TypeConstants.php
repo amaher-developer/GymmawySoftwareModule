@@ -352,6 +352,14 @@ class TypeConstants {
     const DebtPayment = 188;      // Debt settlement - NOT revenue
     const CashSale = 189;         // Normal cash sale - IS revenue
 
+    // Sales Report exports
+    const ExportSalesReportPDF = 190;
+    const ExportSalesReportExcel = 191;
+
+    // Customer Balances Report exports
+    const ExportCustomerBalancesPDF = 192;
+    const ExportCustomerBalancesExcel = 193;
+
     const Add = 0;
     const Sub = 1;
     const SubEarning = 2;

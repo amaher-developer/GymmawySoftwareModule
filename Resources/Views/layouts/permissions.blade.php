@@ -770,6 +770,58 @@ if(!isset($permission_group->permissions)){
                                             </div>
 
                                         </div>
+
+                                        {{-- Sales Report --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-chart-simple-2"></i> {{ trans('sw.sales_report') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-2 ">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="salesReport"
+                                                                            @if(@in_array('salesReport', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.sales_report')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportSalesReportExcel"
+                                                                            @if(@in_array('exportSalesReportExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.excel_export')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportSalesReportPDF"
+                                                                            @if(@in_array('exportSalesReportPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.pdf_export')}}</span></label>
+                                            </div>
+                                        </div>
+
+                                        {{-- Customer Balances Report --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-wallet"></i> {{ trans('sw.customer_balances_report') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-2 ">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="customerBalancesReport"
+                                                                            @if(@in_array('customerBalancesReport', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.customer_balances_report')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportCustomerBalancesExcel"
+                                                                            @if(@in_array('exportCustomerBalancesExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.excel_export')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportCustomerBalancesPDF"
+                                                                            @if(@in_array('exportCustomerBalancesPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.pdf_export')}}</span></label>
+                                            </div>
+                                        </div>
                                     </div>
 
 
