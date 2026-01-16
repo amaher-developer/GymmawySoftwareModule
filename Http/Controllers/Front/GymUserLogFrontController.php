@@ -932,6 +932,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
             // Get the member's last subscription
             $subscription = \Modules\Software\Models\GymMemberSubscription::branch()
+                ->where('status', TypeConstants::Active)
                 ->where('member_id', $memberId)
                 ->orderBy('id', 'desc')
                 ->first();
