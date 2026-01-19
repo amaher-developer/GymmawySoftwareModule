@@ -139,7 +139,7 @@
             <div class="mw-lg-950px mx-auto w-100">
                 <!-- begin::Header-->
                 <div class="d-flex justify-content-between flex-column flex-sm-row mb-19">
-                    <h4 class="fw-bolder text-gray-800 fs-2qx pe-5 pb-7">{{ trans('sw.invoice') }}</h4>
+                    <h4 class="fw-bolder text-gray-800 fs-2qx pe-5 pb-7">{{ trans('sw.tax_invoice') }}</h4>
                     <!--end::Logo-->
                     <div class="text-sm-end">
                         <!--begin::Logo-->
