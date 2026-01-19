@@ -38,20 +38,28 @@ class GymCustomerFrontController extends GymGenericFrontController
         parent::__construct();
         $request = request();
 
-        if (app()->runningInConsole() || ! $request->hasSession()) {
-            $this->customer = null;
-        } else {
-            $this->customer = $request->session()->get('swCustomer');
-        }
+        
         $this->imageManager = new ImageManager(new Driver());
     }
 
     public function show()
-    {
+    {   
+        $this->customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();
+        
+        if (!$this->customer  || empty($this->customer->id)) {
+            request()->session()->forget('sw_customer_id');
+            return redirect()->route('sw.customerLogin');
+        }
+
         $title = trans('sw.user_profile');
         $number_of_attendees = 0;
         $number_of_attendees = GymMemberAttendee::where('created_at', '>=', Carbon::now()->subHour(2)->toDateTimeString())->count();
-        $member = GymMember::with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('id', @$this->customer->id)->first();
+        $member = GymMember::with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('id', $this->customer->id)->first();
+
+        if (!$member) {
+            request()->session()->forget('sw_customer_id');
+            return redirect()->route('sw.customerLogin');
+        }
 
         return view('software::Web.customer_web_profile', ['title' => $title, 'member' => $member, 'number_of_attendees' => $number_of_attendees]);
     }
@@ -59,12 +67,14 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function subscriptions()
     {
         $title = trans('sw.memberships');
+        $this->customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();
         $subscriptions = GymMemberSubscription::with(['subscription' => function($q){$q->withTrashed();}, 'member'])->where('member_id', $this->customer->id)->orderBy('id', 'desc')->limit(10)->get();
         return view('software::Web.customer_web_subscriptions', ['title' => $title, 'member' => $this->customer, 'subscriptions' => $subscriptions]);
     }
     public function activities()
     {
         $title = trans('sw.memberships');
+        $this->customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();
         $subscriptions = GymMemberSubscription::with(['subscription' => function($q){$q->withTrashed();}, 'member'])->where('member_id', $this->customer->id)->orderBy('id', 'desc')->limit(10)->get();
         return view('software::Web.customer_web_activities', ['title' => $title, 'member' => $this->customer, 'subscriptions' => $subscriptions]);
     }
@@ -72,6 +82,7 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function tracking()
     {
         $title = trans('sw.training_tracks');
+        $this->customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();
 
         $search_query = request()->query();
         $tracks = GymTrainingTrack::with(['member'])->where('member_id', $this->customer->id)->orderBy('date', 'desc')->paginate(5);
@@ -81,6 +92,7 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function pt()
     {
         $title = trans('sw.pt');
+        $this->customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();
 
         $pts = GymPTMember::with(['member', 'pt_class.pt_subscription'])
             ->where('member_id', $this->customer->id)
@@ -93,6 +105,8 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function training()
     {
         $title = trans('sw.training_plans');
+        $this->customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();
+
         $search_query = request()->query();
         $trainings = GymTrainingMember::where('member_id', $this->customer->id)->orderBy('id', 'desc')->paginate(5);
         return view('software::Web.customer_web_training', ['title' => $title, 'member' => $this->customer, 'trainings'=> $trainings, 'search_query' => $search_query]);
@@ -100,14 +114,16 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function review()
     {
         $title = trans('sw.review');
+        $this->customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();
+
         return view('software::Web.customer_web_review', ['title' => $title, 'member' => $this->customer]);
     }
 
     public function login()
     {
         $title = trans('sw.login');
-        $this->customer = request()->session()->get('swCustomer');//Cache::store('file')->get('swCustomer');
-        if($this->customer) {
+        $customer = GymMember::where('id', @session()->get('sw_customer_id'))->first();//Cache::store('file')->get('swCustomer');
+        if($customer) {
             return redirect()->route('sw.showCustomerProfile');
         }
 
@@ -116,11 +132,12 @@ class GymCustomerFrontController extends GymGenericFrontController
     public function loginSubmit(Request $request)
     {
         $title = trans('sw.login');
-
-        $member = GymMember::with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('phone', @$request->phone)->where('code', @$request->code)->first();
+        // Convert code to integer to match database storage (accessor adds leading zeros on read)
+        $code = (int) $request->code;
+        $member = GymMember::with(['member_subscription_info.subscription' => function($q){$q->withTrashed();}])->where('phone', $request->phone)->where('code', $code)->first();
         if($member){
-            request()->session()->put('swCustomer', $member);
-            //Cache::store('file')->put('swCustomer',$member );
+            session()->put('sw_customer_id', (int) $member->id);
+            session()->save();
             return redirect()->route('sw.showCustomerProfile');
         }
 
@@ -128,7 +145,7 @@ class GymCustomerFrontController extends GymGenericFrontController
     }
 
     public function logout(){
-        request()->session()->put('swCustomer', []);
+        request()->session()->forget('sw_customer_id');
         return  redirect()->route('sw.customerLogin');
     }
 
