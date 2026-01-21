@@ -79,8 +79,8 @@ class GymSMSFrontController extends GymGenericFrontController
             $phones = GymMember::branch()->pluck('phone')->toArray();
         }else if($type == 4){
             $phones = GymMember::branch()->pluck('phone')->whereHas('member_subscription_info', function ($q) {
-                $q->whereRaw('sw_gym_member_subscription.id IN (select MAX(a2.id) from sw_gym_member_subscription as a2 join sw_gym_members as u2 on u2.id = a2.member_id group by u2.id) and sw_gym_member_subscription.status = 1');
-                //$q->where('status', (int)$status);
+                //$q->whereRaw('sw_gym_member_subscription.id IN (select MAX(a2.id) from sw_gym_member_subscription as a2 join sw_gym_members as u2 on u2.id = a2.member_id group by u2.id) and sw_gym_member_subscription.status = 1');
+                $q->where('status', TypeConstants::Active);
             })->toArray();
         }
         return implode(', ', $phones);
