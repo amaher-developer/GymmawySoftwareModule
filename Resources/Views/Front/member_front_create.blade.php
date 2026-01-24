@@ -229,15 +229,6 @@
                                 </select>
                             </div>
                             @endif
-                            
-                            <!-- Invitations -->
-                            <div class="col-md-6">
-                                <label class="form-label">{{ trans('sw.invitations_num')}}</label>
-                                <input class="form-control" placeholder="{{ trans('sw.invitations_num')}}"
-                                       name="invitations"
-                                       value="{{ old('invitations', $member->invitations) }}"
-                                       type="number">
-                            </div>
                         <!-- Additional Information -->
                         <div class="col-md-12">
                             <label class="form-label">{{ trans('sw.additional_information')}}</label>

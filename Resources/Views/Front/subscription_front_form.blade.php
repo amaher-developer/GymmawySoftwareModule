@@ -217,6 +217,18 @@
                             </div>
                         </div>
                         <!--end::Default Discount Type-->
+                        
+                        <!--begin::Invitations-->
+                        <div class="col-md-6">
+                            <div class="fv-row">
+                                <label class="form-label">{{ trans('sw.invitations_num') }}</label>
+                                <input type="number" name="invitations" class="form-control"
+                                       placeholder="{{ trans('sw.invitations_num') }}"
+                                       value="{{ old('invitations', $subscription->invitations ?? 0) }}"
+                                       min="0" />
+                            </div>
+                        </div>
+                        <!--end::Invitations-->
                     </div>
                 </div>
                 <!--end::Card body-->
@@ -519,14 +531,15 @@
                                 <label class="form-label">{{ trans('sw.max_freeze_extension_sum') }}
                                     <a href="#" class="ms-1 text-muted small freeze-def-toggle" data-target="#def_max_freeze_extension_sum"><i class="bi bi-info-circle"></i></a>
                                 </label>
-                                <input type="number" name="max_freeze_extension_sum" class="form-control" 
-                                       placeholder="{{ trans('sw.enter_max_freeze_extension_sum') }}" 
-                                       value="{{ old('max_freeze_extension_sum', $subscription->max_freeze_extension_sum ?? 0) }}" 
+                                <input type="number" name="max_freeze_extension_sum" class="form-control"
+                                       placeholder="{{ trans('sw.enter_max_freeze_extension_sum') }}"
+                                       value="{{ old('max_freeze_extension_sum', $subscription->max_freeze_extension_sum ?? 0) }}"
                                        min="0" />
                                 <div id="def_max_freeze_extension_sum" class="form-text d-none">{{ trans('sw.field_help_max_freeze_extension_sum') }}</div>
                             </div>
                         </div>
                         <!--end::Max Sum of Freeze and Extension-->
+
                     </div>
                 </div>
                 <!--end::Card body-->

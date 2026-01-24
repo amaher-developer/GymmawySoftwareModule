@@ -693,6 +693,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'time_week' => @json_encode($subscription->time_week),
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
                         'notes' => @$notes,
+                        'invitations' => (int) ($subscription->invitations ?? 0),
                     ];
 
             $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
@@ -985,7 +986,7 @@ class GymMemberFrontController extends GymGenericFrontController
     public function update(GymMemberRequest $request, $id)
     {
         $member = $this->MemberRepository->with('member_subscription_info.subscription')->withTrashed()->find($id);
-        $member_inputs = $this->prepare_inputs($request->only(['image', 'code', 'name', 'gender', 'phone', 'address', 'dob', 'national_id', 'fp_id', 'invitations', 'sale_channel_id', 'sale_user_id', 'additional_info']));
+        $member_inputs = $this->prepare_inputs($request->only(['image', 'code', 'name', 'gender', 'phone', 'address', 'dob', 'national_id', 'fp_id', 'sale_channel_id', 'sale_user_id', 'additional_info']));
 
         // Check if user intentionally removed the image
         // If no file uploaded, no camera photo, and member currently has an image, then user removed it
@@ -1251,6 +1252,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $freeze_limit = @$request->freeze_limit;
         $max_extension_days = (int)@$request->max_extension_days;
         $max_freeze_extension_sum = (int)@$request->max_freeze_extension_sum;
+        $invitations = (int)@$request->invitations;
         $notes = @(string)$request->notes;
         $joining_date = Carbon::parse(@$request->joining_date)->toDateString();
         $expire_date = @$request->expire_date ? Carbon::parse(@$request->expire_date)->toDateString() : Carbon::now()->addDays((int)$subscription->period)->toDateString();
@@ -1307,6 +1309,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $member_subscription->number_times_freeze = $number_times_freeze;
         $member_subscription->max_extension_days = $max_extension_days;
         $member_subscription->max_freeze_extension_sum = $max_freeze_extension_sum;
+        $member_subscription->invitations = $invitations;
         $member_subscription->amount_before_discount = $get_subscription_price;
         $member_subscription->time_week = $subscription->time_week;
         $member_subscription->notes = $notes;
@@ -2124,12 +2127,15 @@ class GymMemberFrontController extends GymGenericFrontController
     {
         $code = str_replace('root', '', $request->code);
         $msg = '';
-        $member = $this->MemberRepository->where('code', $code)->first();
+        $member = $this->MemberRepository->with('member_subscription_info_has_active')->where('code', $code)->first();
         $status = false;
-        if ($member && ($member->invitations > 0)) {
-            $member->decrement('invitations');
+        $activeSubscription = $member?->member_subscription_info_has_active;
+        if ($member && $activeSubscription && ($activeSubscription->invitations > 0)) {
+            $activeSubscription->decrement('invitations');
             $note = str_replace(':name', $member->name, trans('sw.member_invitation_used'));
             $this->userLog($note, TypeConstants::ScanMember);
+            // Reload member with updated subscription data
+            $member->load('member_subscription_info_has_active');
             return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
 
         }
@@ -2227,7 +2233,8 @@ class GymMemberFrontController extends GymGenericFrontController
             'time_week' =>  @json_encode($subscription->time_week),
             'updated_at' => Carbon::now(),
             'branch_setting_id' => @$this->user_sw->branch_setting_id,
-            'notes' => @$notes
+            'notes' => @$notes,
+            'invitations' => (int) ($subscription->invitations ?? 0),
         ];
         $member_subscription = GymMemberSubscription::insertGetId($renew_subscription);
 

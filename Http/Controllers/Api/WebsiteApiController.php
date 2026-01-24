@@ -233,14 +233,14 @@ class WebsiteApiController extends GenericApiController
         if(!$this->validateApiRequest(['code', 'phone']))
             return $this->response;
 
-        $member =  GymMember::with([ 'member_attendees'])->withCount('member_attendees')->where(['code' => $code, 'phone' => $phone])->first();
+        $member =  GymMember::with(['member_attendees', 'member_subscription_info_has_active'])->withCount('member_attendees')->where(['code' => $code, 'phone' => $phone])->first();
         if($member){
             $data = [
                 'id' => $member->id,
                 'name' => $member->name,
                 'phone' => $member->phone,
                 'image' => $member->image,
-                'invitations' => $member->invitations,
+                'invitations' => $member->member_subscription_info_has_active?->invitations ?? 0,
                 'code_url' => $member->code_url,
                 'code' => $member->code,
                 'attendees_count' => @$member->member_attendees_count,

@@ -37,7 +37,7 @@ class MemberResource extends JsonResource
                 'name' => $this->name,
                 'phone' => $this->phone,
                 'image' => $this->image,
-                'invitations' => (int)$this->invitations ?? 0,
+                'invitations' => (int)($this->member_subscription_info_has_active?->invitations ?? 0),
                 'code_url' => @$qrcodes_path,
                 'code' => $this->code,
                 'subscription_id' => @$this->member_subscription_info->subscription->id,

@@ -276,18 +276,6 @@
                     @endif
                     <!--end::Sale Channels-->
 
-                    <!--begin::Invitations-->
-                    <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.invitations_num')}} </label>
-                        <div class="col-md-9">
-                            <input class="form-control" placeholder="{{ trans('sw.invitations_num')}}"
-                                   name="invitations"
-                                   value="{{ old('invitations', $member->invitations) }}"
-                                   type="number">
-                        </div>
-                    </div>
-                    <!--end::Invitations-->
-
                     <!--begin::Additional Info-->
                     <div class="row mb-5">
                         <label class="col-md-3 col-form-label">{{ trans('sw.additional_information')}} </label>
@@ -610,11 +598,22 @@
                         <label class="col-md-3 col-form-label">{{ trans('sw.max_freeze_extension_sum')}}</label>
                         <div class="col-md-9">
                             <input id="EditMembershipMaxFreezeExtensionSum" value="" min="0"
-                                   name="max_freeze_extension_sum" type="number" class="form-control" 
+                                   name="max_freeze_extension_sum" type="number" class="form-control"
                                    placeholder="{{ trans('sw.max_freeze_extension_sum')}}">
                         </div>
                     </div>
                     <!--end::Max Freeze+Extension Sum-->
+
+                    <!--begin::Invitations-->
+                    <div class="row mb-5">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.invitations_num')}}</label>
+                        <div class="col-md-9">
+                            <input id="EditMembershipInvitations" value="" min="0"
+                                   name="invitations" type="number" class="form-control"
+                                   placeholder="{{ trans('sw.invitations_num')}}">
+                        </div>
+                    </div>
+                    <!--end::Invitations-->
 
                     <!--begin::Separator-->
                     <div class="separator separator-dashed my-5"></div>
@@ -822,9 +821,9 @@
                         var expire_attr = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
                         var membership_selected = '';
                             if(data.membership[i]['id'] == data.member_membership['subscription_id']){
-                            output += '<option start_date="' + data.member_membership['joining_date'] + '" expire_date="' + data.member_membership['expire_date'] + '" period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '" workouts="' + data.membership[i]['workouts'] + '" freeze_limit="' + data.member_membership['freeze_limit'] + '" number_times_freeze="' + data.member_membership['number_times_freeze'] + '" max_extension_days="' + (data.member_membership['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.member_membership['max_freeze_extension_sum'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  selected="" >' + data.membership[i]['name'] + ' </option>';
+                            output += '<option start_date="' + data.member_membership['joining_date'] + '" expire_date="' + data.member_membership['expire_date'] + '" period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '" workouts="' + data.membership[i]['workouts'] + '" freeze_limit="' + data.member_membership['freeze_limit'] + '" number_times_freeze="' + data.member_membership['number_times_freeze'] + '" max_extension_days="' + (data.member_membership['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.member_membership['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.member_membership['invitations'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  selected="" >' + data.membership[i]['name'] + ' </option>';
                         }else{
-                            output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
+                            output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.membership[i]['invitations'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
                         }
                     }
                     $('#EditMembershipSelect').html(output).trigger('change.select2');
@@ -962,6 +961,7 @@
     var selectedMembershipNumberTimesFreeze = 0;
     var selectedMembershipMaxExtensionDays = 0;
     var selectedMembershipMaxFreezeExtensionSum = 0;
+    var selectedMembershipInvitations = 0;
 
     $("#EditMembershipSelect").select2({
         dropdownParent: $('#modelEditMembership'),
@@ -979,6 +979,7 @@
             selectedMembershipNumberTimesFreeze = $(this).attr('number_times_freeze');
             selectedMembershipMaxExtensionDays = $(this).attr('max_extension_days');
             selectedMembershipMaxFreezeExtensionSum = $(this).attr('max_freeze_extension_sum');
+            selectedMembershipInvitations = $(this).attr('invitations');
         });
 
         var totalPrice =  Number(record['amount_before_discount']) ;
@@ -1001,6 +1002,7 @@
         $('#EditMembershipNumberTimesFreeze').val(selectedMembershipNumberTimesFreeze);
         $('#EditMembershipMaxExtensionDays').val(selectedMembershipMaxExtensionDays);
         $('#EditMembershipMaxFreezeExtensionSum').val(selectedMembershipMaxFreezeExtensionSum);
+        $('#EditMembershipInvitations').val(selectedMembershipInvitations);
         $('#EditMembershipNotes').val(notes);
         // document.getElementById("payment_type_"+record['payment_type']).selected = "true";
 
@@ -1018,6 +1020,7 @@
          'freeze_limit': $('#EditMembershipFreezeLimit').val(),
          'max_extension_days': $('#EditMembershipMaxExtensionDays').val(),
          'max_freeze_extension_sum': $('#EditMembershipMaxFreezeExtensionSum').val(),
+         'invitations': $('#EditMembershipInvitations').val(),
          'discount_value': $('#discount_value').val(),
          'group_discount_id': $('#group_discount_id').val(),
          'amount_paid': $('#create_amount_paid').val(),
