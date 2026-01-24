@@ -89,23 +89,16 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
 
 
     function exportStoreOrderVendorExcel(){
-//        $records = $this->StoreOrderRepository->get();
-//        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
-
-//        $title = trans('sw.store_orders');
-//        $records = $this->prepareForExport($records);
-
-
-        $this->limit = null;
+        //$this->limit = null;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
 
-        $this->fileName = 'store_order-vendors-' . Carbon::now()->toDateTimeString();
+        $fileName = 'store_order-vendors-' . Carbon::now()->toDateTimeString();
 
         $notes = trans('sw.export_excel_store_orders');
         $this->userLog($notes, TypeConstants::ExportStoreOrderExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'],'lang' => $this->lang]), $fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -139,25 +132,74 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
 //        return $result;
 //    }
     function exportStoreOrderVendorPDF(){
-        $this->limit = null;
+        //$this->limit = null;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
-        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
-
-
-//        $records = $this->StoreOrderRepository->get();
-//        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
+        $fileName = 'store-vendor-orders-' . Carbon::now()->toDateTimeString();
 
         $keys = ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
 
         $title = trans('sw.store_orders');
-        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys]);
+        $customPaper = array(0, 0, 720, 1440);
+
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L',
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records,
+                    'title' => $title,
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+
+                $mpdf->WriteHTML($html);
+
+                $notes = trans('sw.export_pdf_store_orders');
+                $this->userLog($notes, TypeConstants::ExportStoreOrderPDF);
+
+                return response($mpdf->Output($fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $fileName . '.pdf"'
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+
+        $pdf = PDF::loadView('software::Front.export_pdf', [
+            'records' => $records,
+            'title' => $title,
+            'keys' => $keys,
+            'lang' => $this->lang
+        ])
+        ->setPaper($customPaper, 'landscape')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+            'isPhpEnabled' => true,
+            'isJavascriptEnabled' => false
+        ]);
 
         $notes = trans('sw.export_pdf_store_orders');
         $this->userLog($notes, TypeConstants::ExportStoreOrderPDF);
 
-        return $pdf->download($this->fileName.'.pdf');
+        return $pdf->download($fileName.'.pdf');
     }
 
 
