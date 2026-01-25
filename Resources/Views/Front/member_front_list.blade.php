@@ -68,6 +68,13 @@
             }
         }
 
+        /* Fix for iOS touch events on action buttons */
+        .actions-column [data-kt-menu-trigger] {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
         @media (max-width: 1200px) {
             .actions-column {
                 min-width: 120px !important;
@@ -1657,6 +1664,41 @@
                     $(this).closest('form').find('select').trigger('change');
                 }, 100);
             });
+
+            // Fix for iOS Safari: Action button dropdown not working on touch devices
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                $(document).on('touchend', '.actions-column [data-kt-menu-trigger="click"]', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var $this = $(this);
+                    var $menu = $this.next('[data-kt-menu="true"]');
+
+                    // Close all other open menus first
+                    $('[data-kt-menu="true"].show').not($menu).removeClass('show').removeAttr('style');
+
+                    // Toggle this menu
+                    if ($menu.hasClass('show')) {
+                        $menu.removeClass('show').removeAttr('style');
+                    } else {
+                        // Position the menu
+                        var rect = $this[0].getBoundingClientRect();
+                        $menu.addClass('show').css({
+                            'position': 'fixed',
+                            'top': rect.bottom + 'px',
+                            'right': (window.innerWidth - rect.right) + 'px',
+                            'left': 'auto',
+                            'z-index': 1050
+                        });
+                    }
+                });
+
+                // Close menu when touching outside
+                $(document).on('touchend', function(e) {
+                    if (!$(e.target).closest('.actions-column').length) {
+                        $('[data-kt-menu="true"].show').removeClass('show').removeAttr('style');
+                    }
+                });
+            }
         });
 
 
