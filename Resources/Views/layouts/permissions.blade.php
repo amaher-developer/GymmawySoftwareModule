@@ -1341,6 +1341,30 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportStoreOrderExcel"
+                                                                            @if(@in_array('exportStoreOrderExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_store_order_excel')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportStoreOrderPDF"
+                                                                            @if(@in_array('exportStoreOrderPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_store_order_pdf')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportStoreOrderVendorExcel"
+                                                                            @if(@in_array('exportStoreOrderVendorExcel', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_store_order_vendor_excel')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="exportStoreOrderVendorPDF"
+                                                                            @if(@in_array('exportStoreOrderVendorPDF', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.export_store_order_vendor_pdf')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="reportStoreList"
                                                                             @if(@in_array('reportStoreList', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.store_report')}}</span></label>

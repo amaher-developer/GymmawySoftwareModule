@@ -44,7 +44,6 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
                 if (isset($row['dob'])) {
                     $row['dob'] = $this->parseExcelDate($row['dob']);
                 }
-                $row['image'] = $row['image'].'.jpg';
                 $validator = $this->validateRow($row, $rowNumber);
 
                 if ($validator->fails()) {

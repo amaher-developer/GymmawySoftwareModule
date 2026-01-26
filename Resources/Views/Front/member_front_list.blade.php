@@ -35,14 +35,9 @@
 
         /* Actions column styling */
         .actions-column {
-            min-width: 140px !important;
+            min-width: 140px;
+            text-align: right;
             white-space: nowrap;
-            position: relative;
-        }
-
-        .actions-column .actions-menu {
-            min-width: 240px;
-            z-index: 1050;
         }
 
         .actions-column .menu-link {
@@ -55,37 +50,6 @@
             font-size: 1rem;
         }
 
-        .members-table-responsive {
-            overflow-x: auto;
-            overflow-y: visible;
-            position: relative;
-        }
-
-        /* Allow dropdowns to escape the table container on iOS Safari */
-        @supports (-webkit-touch-callout: none) {
-            .members-table-responsive {
-                overflow: visible !important;
-            }
-        }
-
-        /* Fix for iOS touch events on action buttons */
-        .actions-column [data-kt-menu-trigger] {
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }
-
-        @media (max-width: 1200px) {
-            .actions-column {
-                min-width: 120px !important;
-            }
-        }
-
-        @media (max-width: 992px) {
-            .actions-column {
-                min-width: 100px !important;
-            }
-        }
 
         .loader {
             border: 16px solid #f3f3f3;
@@ -194,7 +158,7 @@
             <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
                 
                 <!--begin::Filter-->
-                <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_members_filter_collapse">
+                <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-toggle="collapse" data-target="#kt_members_filter_collapse">
                     <i class="ki-outline ki-filter fs-6"></i>
                     {{ trans('sw.filter')}}
                 </button>
@@ -386,7 +350,7 @@
         <div id="fingerprint_error_msg" class="alert alert-warning" @if(@$mainSettings->active_zk && @env('APP_ZK_LOCAL_HOST') && ((@$mainSettings->zk_online_at == null) || (\Carbon\Carbon::parse($mainSettings->zk_online_at)->toDateString() < \Carbon\Carbon::now()->subDays(3)->toDateString() ))) style="display: block;" @endif><i class="ki-outline ki-warning fs-6 me-2"></i>  {!! trans('sw.zk_not_connect_msg') !!}</div>
         @if(count($members) > 0)
             <!--begin::Table-->
-            <div class="table-responsive members-table-responsive">
+            <div class="table-responsive">
                 <table class="table align-middle table-row-dashed fs-6 gy-5" id="kt_members_table">
                     <thead>
                         <tr class="text-gray-500 fw-bold fs-7 text-uppercase gs-0">
@@ -642,7 +606,7 @@
                                     {{ trans('admin.actions') }}
                                     <i class="ki-outline ki-down fs-5 ms-1"></i>
                                 </a>
-                                <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold fs-7 w-250px py-4 actions-menu" data-kt-menu="true">
+                                <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold fs-7 w-250px py-4" data-kt-menu="true">
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)" class="menu-link px-3 modalProfileBtn"
                                            data-target="#modalProfileMember"
@@ -1664,41 +1628,6 @@
                     $(this).closest('form').find('select').trigger('change');
                 }, 100);
             });
-
-            // Fix for iOS Safari: Action button dropdown not working on touch devices
-            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-                $(document).on('touchend', '.actions-column [data-kt-menu-trigger="click"]', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    var $this = $(this);
-                    var $menu = $this.next('[data-kt-menu="true"]');
-
-                    // Close all other open menus first
-                    $('[data-kt-menu="true"].show').not($menu).removeClass('show').removeAttr('style');
-
-                    // Toggle this menu
-                    if ($menu.hasClass('show')) {
-                        $menu.removeClass('show').removeAttr('style');
-                    } else {
-                        // Position the menu
-                        var rect = $this[0].getBoundingClientRect();
-                        $menu.addClass('show').css({
-                            'position': 'fixed',
-                            'top': rect.bottom + 'px',
-                            'right': (window.innerWidth - rect.right) + 'px',
-                            'left': 'auto',
-                            'z-index': 1050
-                        });
-                    }
-                });
-
-                // Close menu when touching outside
-                $(document).on('touchend', function(e) {
-                    if (!$(e.target).closest('.actions-column').length) {
-                        $('[data-kt-menu="true"].show').removeClass('show').removeAttr('style');
-                    }
-                });
-            }
         });
 
 
