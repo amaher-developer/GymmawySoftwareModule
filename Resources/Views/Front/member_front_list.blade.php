@@ -158,7 +158,7 @@
             <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
                 
                 <!--begin::Filter-->
-                <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-toggle="collapse" data-target="#kt_members_filter_collapse">
+                <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_members_filter_collapse">
                     <i class="ki-outline ki-filter fs-6"></i>
                     {{ trans('sw.filter')}}
                 </button>
