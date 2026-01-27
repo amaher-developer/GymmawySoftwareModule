@@ -39,7 +39,7 @@
         }
 
         .table-responsive table {
-            min-width: 800px;
+            min-width: 900px;
         }
 
         /* Actions column styling */
@@ -116,8 +116,11 @@
                 <table class="table align-middle table-row-dashed fs-6 gy-5" id="kt_event_notifications_table">
                 <thead>
                     <tr class="text-gray-500 fw-bold fs-7 text-uppercase gs-0">
-                        <th class="min-w-300px text-nowrap">
+                        <th class="min-w-200px text-nowrap">
                             <i class="ki-outline ki-notification fs-6 me-2"></i>{{ trans('sw.name')}}
+                        </th>
+                        <th class="min-w-300px text-nowrap">
+                            <i class="ki-outline ki-message-text fs-6 me-2"></i>{{ trans('sw.message')}}
                         </th>
                         <th class="text-end min-w-150px text-nowrap actions-column">
                             <i class="ki-outline ki-setting-2 fs-6 me-2"></i>{{ trans('admin.actions')}}
@@ -145,8 +148,18 @@
                                     </div>
                                 </div>
                             </td>
+                            <td>
+                                <div class="text-gray-700 fs-7" id="message_display_{{$event_notification->id}}" style="white-space: pre-wrap; max-width: 400px;">{{ $event_notification->message }}</div>
+                            </td>
                             <td class="text-end actions-column">
-                                <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
+                                <div class="d-flex justify-content-end align-items-center gap-2 flex-wrap">
+                                    <!--begin::Edit Button-->
+                                    <button type="button" class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
+                                            onclick="openEditModal({{$event_notification->id}}, '{{ addslashes($event_notification->title) }}')"
+                                            title="{{ trans('sw.edit_message')}}">
+                                        <i class="ki-outline ki-pencil fs-2"></i>
+                                    </button>
+                                    <!--end::Edit Button-->
                                     <div class="form-check form-switch form-check-custom form-check-solid">
                                         <input type="checkbox" value="1" onchange="event_notification({{$event_notification->id}})"
                                                id="event_notification_status_{{$event_notification->id}}"
@@ -181,6 +194,37 @@
 </div>
 <!--end::Event Notifications-->
 
+<!--begin::Edit Message Modal-->
+<div class="modal fade" id="editMessageModal" tabindex="-1" aria-labelledby="editMessageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editMessageModalLabel">{{ trans('sw.edit_message')}}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit_notification_id">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ trans('sw.name')}}</label>
+                    <div class="form-control-plaintext fw-bold" id="edit_notification_title"></div>
+                </div>
+                <div class="mb-3">
+                    <label for="edit_notification_message" class="form-label fw-semibold">{{ trans('sw.message')}}</label>
+                    <textarea class="form-control" id="edit_notification_message" rows="6" dir="auto"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('admin.cancel')}}</button>
+                <button type="button" class="btn btn-primary" onclick="saveMessage()">
+                    <i class="ki-outline ki-check fs-6 me-1"></i>
+                    {{ trans('sw.save')}}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!--end::Edit Message Modal-->
+
 @endsection
 
 @section('scripts')
@@ -207,7 +251,48 @@
             }
         });
         return false;
+    }
 
+    function openEditModal(id, title) {
+        $('#edit_notification_id').val(id);
+        $('#edit_notification_title').text(title);
+        var message = $('#message_display_' + id).text().trim();
+        $('#edit_notification_message').val(message);
+        var modal = new bootstrap.Modal(document.getElementById('editMessageModal'));
+        modal.show();
+    }
+
+    function saveMessage() {
+        var id = $('#edit_notification_id').val();
+        var message = $('#edit_notification_message').val();
+
+        if (!message.trim()) {
+            swal("{{ trans('admin.error')}}", "{{ trans('sw.message_required')}}", "error");
+            return;
+        }
+
+        $.ajax({
+            url: '{{ route('sw.updateEventNotificationMessage') }}',
+            type: 'POST',
+            data: {
+                id: id,
+                message: message,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#message_display_' + id).text(message);
+                    bootstrap.Modal.getInstance(document.getElementById('editMessageModal')).hide();
+                    swal("{{ trans('admin.done')}}", "{{ trans('admin.successfully_edited')}}", "success");
+                } else {
+                    swal("{{ trans('admin.error')}}", response.message, "error");
+                }
+            },
+            error: function(reject) {
+                swal("{{ trans('admin.error')}}", "{{ trans('admin.something_went_wrong')}}", "error");
+                console.log(reject);
+            }
+        });
     }
     </script>
 

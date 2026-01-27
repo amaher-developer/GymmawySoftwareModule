@@ -10,6 +10,8 @@ Route::prefix('event-notification')
                 ->get('edit', 'Front\GymEventNotificationFrontController@edit');
             Route::name('sw.editEventNotificationAjax')
                 ->get('edit/{id}/{status}', 'Front\GymEventNotificationFrontController@updateAjax');
+            Route::name('sw.updateEventNotificationMessage')
+                ->post('update-message', 'Front\GymEventNotificationFrontController@updateMessageAjax');
         });
 
     });

@@ -1919,10 +1919,93 @@ class GymMemberFrontController extends GymGenericFrontController
             $this->updateSubscriptionsStatus([@$id]);
 
             session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_processed'),
-            'type' => 'success'
-        ]);
+                'title' => trans('admin.done'),
+                'message' => trans('admin.successfully_processed'),
+                'type' => 'success'
+            ]);
+
+
+            // send notification when freeze member
+            $message_notification = GymEventNotification::where('event_code', 'unfreeze_member')->first();
+            $msg = @$message_notification->message;
+            $member_subscription = $memberInfo;
+            $member = $memberInfo->member;
+            $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
+
+            if(@$message_notification && @$member->phone && $this->mainSettings->active_sms && @env('SMS_GATEWAY')){
+                try {
+                    $sms = new SMSFactory(@env('SMS_GATEWAY'));
+                    $sms->send(trim(@$member->phone), $msg);
+                    Log::info('SMS sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send SMS', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && (@env('WA_GATEWAY') == 'ULTRA')) {
+                try {
+                    $wa = new WAUltramsg();
+                    $wa->sendText(trim(@$member->phone), $msg);
+                    Log::info('WhatsApp message sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send WhatsApp message', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && @env('WA_USER_TOKEN')) {
+//                $qrcodes_folder = base_path('uploads/barcodes/');
+//                $d = new DNS1D();
+//                $d->setStorPath($qrcodes_folder);
+//                $img = $d->getBarcodePNGPath($member->code, TypeConstants::BarcodeType);
+//                $msg = trans('sw.wa_msg_new_member', ['name' => $member->name,'id' => $member->code,'start_date' => Carbon::parse($sub['joining_date'])->toDateString(),
+//                    'end_date' => Carbon::parse($sub['expire_date'])->toDateString(),'paid' => @$request->amount_paid,'reminder' => $sub['amount_remaining']]);
+
+//                $wa = new WAUltramsg();
+//                $wa->sendImage(trim($member->phone), ($msg), asset($img));
+                $member_card_url = @$this->memberCard($member->code);
+                // send wa
+                $wa = new WA();
+                $wa->sendTextImageWithTemplate(trim($member->phone), 'gymmawy_new_subscription',
+                    [
+                        [
+                            "type" => "text",
+                            "text" => "*" . $member->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->phone . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->facebook . "*"
+                        ]
+                    ], $member_card_url);
+                // end send wa
+
+            }
+
+
+
             return redirect()->back();
         }
 
@@ -1977,11 +2060,92 @@ class GymMemberFrontController extends GymGenericFrontController
             // update status of member
             $this->updateSubscriptionsStatus([@$membership->member_id]);
 
+
+            // send notification for freeze member
+            $message_notification = GymEventNotification::where('event_code', 'freeze_member')->first();
+            $msg = @$message_notification->message;
+            $member_subscription = $membership;
+            $member = $membership->member;
+            $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
+
+            if(@$message_notification && @$member->phone && $this->mainSettings->active_sms && @env('SMS_GATEWAY')){
+                try {
+                    $sms = new SMSFactory(@env('SMS_GATEWAY'));
+                    $sms->send(trim($member->phone), $msg);
+                    Log::info('SMS sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send SMS', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && (@env('WA_GATEWAY') == 'ULTRA')) {
+                try {
+                    $wa = new WAUltramsg();
+                    $wa->sendText(trim($member->phone), $msg);
+                    Log::info('WhatsApp message sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send WhatsApp message', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && @env('WA_USER_TOKEN')) {
+//                $qrcodes_folder = base_path('uploads/barcodes/');
+//                $d = new DNS1D();
+//                $d->setStorPath($qrcodes_folder);
+//                $img = $d->getBarcodePNGPath($member->code, TypeConstants::BarcodeType);
+//                $msg = trans('sw.wa_msg_new_member', ['name' => $member->name,'id' => $member->code,'start_date' => Carbon::parse($sub['joining_date'])->toDateString(),
+//                    'end_date' => Carbon::parse($sub['expire_date'])->toDateString(),'paid' => @$request->amount_paid,'reminder' => $sub['amount_remaining']]);
+
+//                $wa = new WAUltramsg();
+//                $wa->sendImage(trim($member->phone), ($msg), asset($img));
+                $member_card_url = @$this->memberCard($member->code);
+                // send wa
+                $wa = new WA();
+                $wa->sendTextImageWithTemplate(trim($member->phone), 'gymmawy_new_subscription',
+                    [
+                        [
+                            "type" => "text",
+                            "text" => "*" . $member->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->phone . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->facebook . "*"
+                        ]
+                    ], $member_card_url);
+                // end send wa
+
+            }
+
+
             session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_processed'),
-            'type' => 'success'
-        ]);
+                'title' => trans('admin.done'),
+                'message' => trans('admin.successfully_processed'),
+                'type' => 'success'
+            ]);
             return Response::json(['status' => true], 200);
         }
         return Response::json(['status' => false], 200);
