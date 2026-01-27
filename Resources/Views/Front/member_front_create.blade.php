@@ -371,7 +371,21 @@
                                     @endforeach
                                 </select>
                             </div>
-                            
+
+                            <!-- Tabby Payment Option -->
+                            @if(env('TABBY_MERCHANT_CODE'))
+                            <div class="col-md-6" id="tabby_payment_option">
+                                <label class="form-label">{{ trans('sw.tabby_payment')}}</label>
+                                <div class="form-check form-switch form-check-custom form-check-solid">
+                                    <input class="form-check-input" type="checkbox" name="send_tabby_link" id="send_tabby_link" value="1"/>
+                                    <label class="form-check-label" for="send_tabby_link">
+                                        {{ trans('sw.send_tabby_payment_link')}}
+                                    </label>
+                                </div>
+                                <div class="text-muted fs-7 mt-1">{{ trans('sw.tabby_payment_description')}}</div>
+                            </div>
+                            @endif
+
                             <!-- Notes -->
                             <div class="col-md-12">
                                 <label class="form-label">{{ trans('sw.notes')}}</label>
@@ -599,7 +613,7 @@
 
             $('#create_amount_remaining').val(Number(selectedMembershipPriceWithVat - valueAmountPaid ).toFixed(2));
             $('#create_amount_paid').attr('max', Number(selectedMembershipPriceWithVat).toFixed(2));
-            
+
             // Calculate loyalty points
             console.log('Calling calculateMemberLoyaltyPoints from amount_paid change');
             calculateMemberLoyaltyPoints();
@@ -628,7 +642,7 @@
             $('#editCustomStartDate').val('{{\Carbon\Carbon::now()->toDateString()}}');
 
             apply_discount_subscription();
-            
+
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
         });
@@ -666,10 +680,9 @@
 
             $('#editCustomExpireDate').val(selectedMembershipExpireDate);
             $('#editCustomStartDate').val('{{\Carbon\Carbon::now()->toDateString()}}');
-            
+
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
-
         }
 
         function editBarCodeInput(){
@@ -708,11 +721,9 @@
             $('#myTotalWithVat').text("{{ trans('sw.including_vat')}} = " + parseFloat(priceWithVat).toFixed(2));
             $('#create_amount_paid').val(parseFloat(priceWithVat).toFixed(2)).attr('max', parseFloat(priceWithVat).toFixed(2));
             $('#create_amount_remaining').val(0);
-            
+
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
-
-            // });
         }
         $('#group_discount_id').on('change', function (event){
             let discount_id = $(this).find(":selected").val();

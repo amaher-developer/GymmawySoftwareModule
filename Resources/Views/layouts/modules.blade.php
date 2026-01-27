@@ -164,10 +164,24 @@
                 <!-- Notes -->
                 <div class="mb-4">
                     <label class="form-label">{{trans('sw.notes')}}</label>
-                    <textarea rows="3" maxlength="255" name="notes" id="renew_notes" 
-                              class="form-control form-control-solid" 
+                    <textarea rows="3" maxlength="255" name="notes" id="renew_notes"
+                              class="form-control form-control-solid"
                               placeholder="{{trans('sw.enter_notes_optional')}}"></textarea>
                 </div>
+
+                <!-- Tabby Payment Option -->
+                @if(env('TABBY_MERCHANT_CODE'))
+                <div class="mb-4" id="renew_tabby_payment_option">
+                    <label class="form-label">{{trans('sw.tabby_payment')}}</label>
+                    <div class="form-check form-switch form-check-custom form-check-solid">
+                        <input class="form-check-input" type="checkbox" name="send_tabby_link" id="renew_send_tabby_link" value="1"/>
+                        <label class="form-check-label" for="renew_send_tabby_link">
+                            {{trans('sw.send_tabby_payment_link')}}
+                        </label>
+                    </div>
+                    <div class="text-muted fs-7 mt-1">{{trans('sw.tabby_payment_description')}}</div>
+                </div>
+                @endif
             </div>
 
             @if(@$mainSettings->active_loyalty)

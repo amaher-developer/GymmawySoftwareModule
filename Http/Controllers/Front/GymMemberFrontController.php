@@ -8,6 +8,7 @@ use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
 use Modules\Software\Imports\MembersSubscriptionsImport;
 use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Classes\SMSFactory;
+use Modules\Software\Services\TabbyPaymentService;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
 use Modules\Software\Classes\WAUltramsg;
@@ -905,6 +906,38 @@ class GymMemberFrontController extends GymGenericFrontController
                 // end send wa
 
             }
+
+            // Send Tabby payment link if checkbox is checked and member has remaining amount
+            if (!empty(env('TABBY_MERCHANT_CODE')) && $request->input('send_tabby_link')) {
+                try {
+                    $tabbyService = new TabbyPaymentService();
+                    $tabbyResult = $tabbyService->processNewMemberPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $sub['amount_remaining'],
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tabbyResult['success']) {
+                        Log::info('Tabby payment link sent for new member', [
+                            'member_id' => $member->id,
+                            'amount_remaining' => $sub['amount_remaining'],
+                            'payment_url' => $tabbyResult['payment_url'],
+                            'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
+                            'sent_sms' => $tabbyResult['sent_sms'],
+                            'sent_email' => $tabbyResult['sent_email'] ?? false,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process Tabby payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_added'),
@@ -2385,6 +2418,42 @@ class GymMemberFrontController extends GymGenericFrontController
                 (new FirebaseApiController())->push([$member->id], $notify_data);
             } else {
                 Log::warning('FirebaseApiController class missing; skipping push notification.');
+            }
+        }
+
+        // Send Tabby payment link if checkbox is checked and member has remaining amount
+        if (!empty(env('TABBY_MERCHANT_CODE')) && $request->input('send_tabby_link')) {
+            try {
+                $tabbyService = new TabbyPaymentService();
+                $memberSubObj = GymMemberSubscription::find($member_subscription);
+
+                if ($memberSubObj) {
+                    $tabbyResult = $tabbyService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_remaining,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tabbyResult['success']) {
+                        Log::info('Tabby payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription,
+                            'amount_remaining' => $amount_remaining,
+                            'payment_url' => $tabbyResult['payment_url'],
+                            'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
+                            'sent_sms' => $tabbyResult['sent_sms'],
+                            'sent_email' => $tabbyResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tabby payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
