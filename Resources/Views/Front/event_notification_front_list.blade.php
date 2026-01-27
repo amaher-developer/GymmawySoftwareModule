@@ -212,6 +212,29 @@
                     <label for="edit_notification_message" class="form-label fw-semibold">{{ trans('sw.message')}}</label>
                     <textarea class="form-control" id="edit_notification_message" rows="6" dir="auto"></textarea>
                 </div>
+                <!--begin::Dynamic Variables Hint-->
+                <div class="notice d-flex bg-light-primary rounded border-primary border border-dashed p-4 mt-4">
+                    <i class="ki-outline ki-information-4 fs-2tx text-primary me-4"></i>
+                    <div class="d-flex flex-stack flex-grow-1">
+                        <div class="fw-semibold">
+                            <h6 class="text-gray-900 fw-bold">{{ trans('sw.dynamic_variables')}}</h6>
+                            <div class="fs-7 text-gray-700" style="direction: ltr;">
+                                <code class="me-2">#member_name</code>
+                                <code class="me-2">#member_code</code>
+                                <code class="me-2">#member_phone</code><br class="d-block mt-1">
+                                <code class="me-2">#membership_name</code>
+                                <code class="me-2">#membership_start_date</code>
+                                <code class="me-2">#membership_expire_date</code><br class="d-block mt-1">
+                                <code class="me-2">#membership_amount_paid</code>
+                                <code class="me-2">#membership_amount_remaining</code>
+                                <code class="me-2">#days_remaining</code><br class="d-block mt-1">
+                                <code class="me-2">#setting_name</code>
+                                <code class="me-2">#setting_phone</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--end::Dynamic Variables Hint-->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('admin.cancel')}}</button>
