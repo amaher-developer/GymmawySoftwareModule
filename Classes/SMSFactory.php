@@ -12,6 +12,8 @@ class SMSFactory
             $this->gateway = new JAWALY();
         }else if ($gateway == 'SALA') {
             $this->gateway = new SALA();
+        }else if ($gateway == 'Taqnyat') {
+            $this->gateway = new Taqnyat();
         } else {
             $this->gateway = new SMSEG();
         }
