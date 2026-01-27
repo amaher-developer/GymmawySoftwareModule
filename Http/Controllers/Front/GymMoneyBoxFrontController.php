@@ -814,7 +814,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     {
 
         $title = trans('sw.moneybox_daily');
-        $this->request_array = ['search', 'payment_type', 'moneybox_type', 'user', 'is_store_balance'];
+        $this->request_array = ['search', 'payment_type', 'moneybox_type', 'user', 'is_store_balance', 'subscription'];
         $users = GymUser::branch()->where('is_test', 0)->get();
 
         $request_array = $this->request_array;
@@ -826,6 +826,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $orders = $orders->whereDate('created_at', Carbon::now()->toDateString());
         $orders = $orders->when(((isset($_GET['payment_type'])) &&(!is_null($payment_type))), function ($query) use ($payment_type) {
             $query->where('payment_type', '=', (int)@$payment_type);
+        })->when(((isset($_GET['subscription'])) &&(!is_null($subscription))), function ($query) use ($subscription) {
+            $query->whereHas('member_subscription', function ($q) use ($subscription){$q->where('subscription_id','=', (int)@$subscription);} );
         })->when(((isset($_GET['moneybox_type'])) &&(!is_null($moneybox_type))), function ($query) use ($moneybox_type) {
             $query->where('type', '=', (int)@$moneybox_type);
         })->when(((isset($_GET['is_store_balance'])) &&(!is_null($is_store_balance))), function ($query) use ($is_store_balance) {

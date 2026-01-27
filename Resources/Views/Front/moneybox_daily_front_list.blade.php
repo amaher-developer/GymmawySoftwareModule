@@ -236,6 +236,24 @@
                                     <option value="1" @if(request('is_store_balance') == 1) selected="" @endif>{{ trans('sw.excluding_balance')}}</option>
                                 </select>
                             </div>
+                            <div class="col-md-4">
+                                <label class="form-label fs-6 fw-semibold">{{ trans('sw.users')}}</label>
+                                <select name="user" class="form-select form-select-solid">
+                                    <option value="">{{ trans('sw.users')}}...</option>
+                                    @foreach($users as $user)
+                                        <option value="{{$user->id}}" @if(isset($_GET['user']) && ((request('user') != "") && (request('user') == $user->id))) selected="" @endif>{{$user->name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fs-6 fw-semibold">{{ trans('sw.subscriptions')}}</label>
+                                <select name="subscription" class="form-select form-select-solid">
+                                    <option value="">{{ trans('sw.subscriptions')}}...</option>
+                                    @foreach($subscriptions as $subscription)
+                                        <option value="{{$subscription->id}}" @if(request('subscription') == $subscription->id) selected="" @endif>{{$subscription->name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                         <div class="d-flex justify-content-end mt-5">
                             <a href="{{ route('sw.listMoneyBoxDaily') }}" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</a>
