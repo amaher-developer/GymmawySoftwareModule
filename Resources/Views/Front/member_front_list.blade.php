@@ -128,7 +128,12 @@
             }
         }
 
+
+        .menu.menu-sub-dropdown {
+            z-index: 99999 !important;
+        }
     </style>
+    
 
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 @endsection
