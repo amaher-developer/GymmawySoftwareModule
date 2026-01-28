@@ -961,6 +961,9 @@ class GymMemberFrontController extends GymGenericFrontController
             , '#membership_start_date' => Carbon::parse($membership->joining_date)->addHours(12)->toDateString()
             , '#membership_expire_date' => Carbon::parse($membership->expire_date)->toDateString()
             , '#membership_amount_paid' => @$membership->amount_paid
+            , '#freeze_start_date' => @Carbon::parse($membership->start_freeze_date)->addHours(12)->toDateString()
+            , '#freeze_end_date' => @Carbon::parse($membership->end_freeze_date)->toDateString()
+            , '#membership_resume_date' => Carbon::now()->addHours(12)->toDateString()
             , '#membership_name' => @$membership->subscription->name
             , '#setting_phone' => @$setting->phone
         ];
