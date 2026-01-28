@@ -132,6 +132,23 @@
         .menu.menu-sub-dropdown {
             z-index: 99999 !important;
         }
+
+        /* Fix dropdown menu being hidden behind table-responsive overflow */
+        .table-responsive {
+            overflow: visible !important;
+        }
+
+        .table-responsive .table {
+            overflow: visible !important;
+        }
+
+        /* For horizontal scroll on small screens, wrap in a scrollable container */
+        @media (max-width: 1200px) {
+            .table-responsive {
+                overflow-x: auto !important;
+                overflow-y: visible !important;
+            }
+        }
     </style>
     
 
