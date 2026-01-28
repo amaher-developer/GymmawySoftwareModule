@@ -830,7 +830,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
-            $message_notification = GymEventNotification::where('event_code', 'new_member')->first();
+            $message_notification = GymEventNotification::where('event_code', 'new_member')->where('status', 1)->first();
             $msg = @$message_notification->message;
             $member_subscription = GymMemberSubscription::with('member')->where('id',@$member_subscription)->first();
             $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
@@ -1926,7 +1926,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
 
             // send notification when freeze member
-            $message_notification = GymEventNotification::where('event_code', 'unfreeze_member')->first();
+            $message_notification = GymEventNotification::where('event_code', 'freeze_member')->where('status', 1)->first();
             $msg = @$message_notification->message;
             $member_subscription = $memberInfo;
             $member = $memberInfo->member;
@@ -2062,7 +2062,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
 
             // send notification for freeze member
-            $message_notification = GymEventNotification::where('event_code', 'freeze_member')->first();
+            $message_notification = GymEventNotification::where('event_code', 'unfreeze_member')->where('status', 1)->first();
             $msg = @$message_notification->message;
             $member_subscription = $membership;
             $member = $membership->member;
@@ -2505,7 +2505,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->save();
         }
 
-        $message_notification = GymEventNotification::where('event_code', 'renew_member')->first();
+        $message_notification = GymEventNotification::where('event_code', 'renew_member')->where('status', 1)->first();
         $msg = @$message_notification->message;
         $member_subscription = GymMemberSubscription::with('member')->where('id',@$member_subscription)->first();
         $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);

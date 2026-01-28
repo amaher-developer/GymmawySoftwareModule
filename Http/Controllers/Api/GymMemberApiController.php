@@ -16,6 +16,7 @@ use Modules\Software\Models\GymMemberAttendee;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserAttendee;
 use Modules\Software\Models\GymZKFingerprint;
+use Modules\Software\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -28,16 +29,38 @@ class GymMemberApiController extends GenericApiController
     public function sendMemberToGymmawy(){
         \Artisan::call('command:swmembers');
     }
-    // for send expire and before expire membership
+    // for send expire, before expire and unfreeze membership notifications
     public function sendSwMyAppNotifications(){
         try {
-            if(@\Artisan::call('command:swmyappnotifications')){
-                return true;
-            }
+            $notificationService = new NotificationService();
+
+            $results = [
+                'expiring' => $notificationService->sendExpiringNotifications(3), // 3 days before
+                'expired' => $notificationService->sendExpiredNotifications(),
+                'unfreeze' => $notificationService->sendUnfreezeNotifications(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notifications processed successfully',
+                'data' => [
+                    'expiring_total' => $results['expiring']['total'],
+                    'expiring_success' => $results['expiring']['success'],
+                    'expiring_failed' => $results['expiring']['failed'],
+                    'expired_total' => $results['expired']['total'],
+                    'expired_success' => $results['expired']['success'],
+                    'expired_failed' => $results['expired']['failed'],
+                    'unfreeze_total' => $results['unfreeze']['total'],
+                    'unfreeze_success' => $results['unfreeze']['success'],
+                    'unfreeze_failed' => $results['unfreeze']['failed'],
+                ]
+            ]);
         } catch (\Exception $e){
-            return false;
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
-        return false;
     }
     // for send renew member or any type
     public function sendOneMemberToGymmawy($memberId = null, $type = 0){
