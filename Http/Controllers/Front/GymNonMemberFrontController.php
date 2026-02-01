@@ -945,6 +945,59 @@ class GymNonMemberFrontController extends GymGenericFrontController
         return Response::json(['result' => Carbon::now()->toDateTimeString()], 200);
     }
 
+    /**
+     * Pay remaining amount for non-member
+     */
+    public function payAmountRemaining()
+    {
+        $id = request('id');
+        $amountPaid = (float)request('amount_paid');
+        $payment_type = (int)request('payment_type');
+
+        $nonMember = GymNonMember::branch()->where('id', $id)->first();
+
+        if ($nonMember) {
+            $amount_remaining = round($nonMember->amount_remaining, 2);
+
+            if ($amountPaid == 0) return trans('sw.amount_paid_must_not_zero');
+            if ($amount_remaining < $amountPaid) return str_replace(':amount_paid', $amount_remaining, trans('sw.amount_paid_must_less'));
+
+            $nonMember->amount_remaining = ($amount_remaining - $amountPaid);
+            $nonMember->price = ($nonMember->price + $amountPaid);
+            $nonMember->save();
+
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
+
+            $activities = @array_filter(array_map(function ($activity) {
+                return $activity['name_'.$this->lang] ?? $activity['name'] ?? '';
+            }, $nonMember->activities ?? []));
+
+            $notes = trans('sw.non_member_moneybox_remain_msg', [
+                'activities' => implode(', ', $activities),
+                'member' => $nonMember->name,
+                'amount_paid' => $amountPaid,
+                'amount_remaining' => number_format($nonMember->amount_remaining, 2)
+            ]);
+
+            GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id,
+                'amount' => abs((float)$amountPaid),
+                'operation' => $amountPaid > 0 ? TypeConstants::Add : TypeConstants::Sub,
+                'amount_before' => $amount_after,
+                'notes' => $notes,
+                'type' => TypeConstants::CreateNonMemberPayAmountRemainingForm,
+                'payment_type' => $payment_type,
+                'non_member_subscription_id' => $nonMember->id,
+                'branch_setting_id' => @$this->user_sw->branch_setting_id
+            ]);
+            $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+            return 1;
+        }
+        return trans('admin.operation_failed');
+    }
+
 
 }
 

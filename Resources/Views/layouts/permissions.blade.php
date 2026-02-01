@@ -504,6 +504,12 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="createNonMemberPayAmountRemainingForm"
+                                                                            @if(@in_array('createNonMemberPayAmountRemainingForm', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.pay_remaining')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="editNonMemberDiscount"
                                                                             @if(@in_array('editNonMemberDiscount', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.add_discount')}}</span></label>

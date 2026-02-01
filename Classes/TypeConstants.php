@@ -360,6 +360,9 @@ class TypeConstants {
     const ExportCustomerBalancesPDF = 192;
     const ExportCustomerBalancesExcel = 193;
 
+    // Non-member pay remaining amount
+    const CreateNonMemberPayAmountRemainingForm = 194;
+
     const Add = 0;
     const Sub = 1;
     const SubEarning = 2;

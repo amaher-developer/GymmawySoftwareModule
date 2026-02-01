@@ -64,4 +64,8 @@ Route::prefix('non-member')
         Route::name('sw.deleteReservationNonMemberAjax')
             ->get('delete-reservation-non-member-ajax', 'Front\GymNonMemberFrontController@deleteReservationNonMemberAjax');
 
+        // Pay amount remaining - edit permission
+        Route::name('sw.createNonMemberPayAmountRemainingForm')
+            ->get('/pay-amount-remaining', 'Front\GymNonMemberFrontController@payAmountRemaining');
+
     });

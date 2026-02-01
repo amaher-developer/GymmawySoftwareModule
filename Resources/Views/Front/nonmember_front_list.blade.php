@@ -298,6 +298,21 @@
                                         </a>
                                     </div>
 
+                                    @if(@$member->amount_remaining > 0 && (in_array('createNonMemberPayAmountRemainingForm', (array)$swUser->permissions) || $swUser->is_super_user))
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)"
+                                           data-target="#modalPayNonMember" data-toggle="modal"
+                                           data-id="{{$member->id}}"
+                                           data-name="{{$member->name}}"
+                                           data-amount="{{$member->amount_remaining}}"
+                                           class="menu-link px-3 btn-pay-nonmember"
+                                           title="{{ trans('sw.pay_remaining')}}">
+                                            <i class="ki-outline ki-dollar text-warning"></i>
+                                            <span>{{ trans('sw.pay_remaining')}}</span>
+                                        </a>
+                                    </div>
+                                    @endif
+
                                     @if($active_activity_reservation)
                                         @if($member->reservations_count > 0)
                                         <div class="menu-item px-3">
@@ -791,7 +806,47 @@
     </div>
     <!--end::Quick Booking Modal-->
     @endif
-    
+
+    <!-- start modal pay non-member -->
+    <div class="modal" id="modalPayNonMember">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content modal-content-demo">
+                <div class="modal-header">
+                    <h6 class="modal-title">{{ trans('sw.pay_remaining')}}</h6>
+                    <button aria-label="Close" class="close" data-dismiss="modal" type="button"><span
+                                aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <h6 id="payNonMemberName" style="font-weight: bolder"></h6>
+                    <p class="text-muted mb-3">{{ trans('sw.amount_remaining')}}: <span id="payNonMemberAmountRemaining" class="fw-bold text-primary"></span></p>
+                    <div id="modalPayNonMemberResult"></div>
+                    <form id="form_pay_nonmember" action="" method="GET">
+                        <input type="hidden" name="pay_nonmember_id" id="pay_nonmember_id" value="">
+                        <div class="row">
+                            <div class="form-group col-lg-6">
+                                <label class="form-label">{{ trans('sw.amount_paid')}}</label>
+                                <input name="amount_paid_nonmember" class="form-control" type="number" id="amount_paid_nonmember" step="0.01"
+                                       placeholder="{{ trans('sw.enter_amount_paid')}}">
+                            </div>
+                            <div class="form-group col-lg-6">
+                                <label class="form-label">{{ trans('sw.payment_type')}}</label>
+                                <select class="form-control" name="payment_type_nonmember" id="payment_type_nonmember">
+                                    @foreach($payment_types as $payment_type)
+                                        <option value="{{$payment_type->payment_id}}">{{$payment_type->name}}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <br/>
+                        <button class="btn ripple btn-primary rounded-3" id="form_pay_nonmember_btn"
+                                type="submit">{{ trans('sw.pay')}}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end modal pay non-member -->
+
 @section('scripts')
     @parent
     <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
@@ -853,6 +908,54 @@
                 setTimeout(() => {
                     $(this).closest('form').find('select').trigger('change');
                 }, 100);
+            });
+        });
+
+        // Non-member pay remaining amount
+        $('.btn-pay-nonmember').off('click').on('click', function (e) {
+            var that = $(this);
+            var id = that.data('id');
+            var name = that.data('name');
+            var amount = that.data('amount');
+            $('#modalPayNonMemberResult').hide();
+            $('#amount_paid_nonmember').val('');
+            $('#pay_nonmember_id').val(id);
+            $('#payNonMemberName').text(name);
+            $('#payNonMemberAmountRemaining').text(parseFloat(amount).toFixed(2));
+        });
+
+        $(document).on('click', '#form_pay_nonmember_btn', function (event) {
+            event.preventDefault();
+            let id = $('#pay_nonmember_id').val();
+            let amount_paid = $('#amount_paid_nonmember').val();
+            let payment_type = $('#payment_type_nonmember').val();
+            $('#modalPayNonMemberResult').show();
+            $.ajax({
+                url: '{{route('sw.createNonMemberPayAmountRemainingForm')}}',
+                cache: false,
+                type: 'GET',
+                dataType: 'text',
+                data: {id: id, amount_paid: amount_paid, payment_type: payment_type},
+                success: function (response) {
+                    if (response == '1') {
+                        $('#modalPayNonMemberResult').html('<div class="alert alert-success">{{ trans('admin.successfully_paid')}}</div>');
+                        setTimeout(function(){
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        $('#modalPayNonMemberResult').html('<div class="alert alert-danger">' + response + '</div>');
+                    }
+                },
+                error: function (request, error) {
+                    Swal.fire({
+                        title: '{{ trans('sw.error') }}',
+                        text: 'Something went wrong.',
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
+                    console.error("Request: " + JSON.stringify(request));
+                    console.error("Error: " + JSON.stringify(error));
+                }
             });
         });
     </script>
