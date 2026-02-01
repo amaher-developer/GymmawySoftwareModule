@@ -46,10 +46,10 @@ class TabbyPaymentService
      * Check if Tabby payment should be offered
      * (configured + member has remaining amount)
      *
-     * @param float $amountRemaining
+     * @param float $amountPaid
      * @return bool
      */
-    public function shouldOfferTabbyPayment(float $amountRemaining): bool
+    public function shouldOfferTabbyPayment(float $amountPaid): bool
     {
         if (!$this->isEnabled) {
             return false;
@@ -58,7 +58,7 @@ class TabbyPaymentService
         // Tabby minimum is usually 1 SAR/AED
         $minimumAmount = (float) env('TABBY_MINIMUM_AMOUNT', 1);
 
-        return $amountRemaining >= $minimumAmount;
+        return $amountPaid >= $minimumAmount;
     }
 
     /**
@@ -67,7 +67,7 @@ class TabbyPaymentService
      * @param GymMember $member
      * @param GymMemberSubscription $memberSubscription
      * @param GymSubscription $subscription
-     * @param float $amountRemaining
+     * @param float $amountPaid
      * @param int|null $branchSettingId
      * @return array ['success' => bool, 'payment_url' => string|null, 'error' => string|null]
      */
@@ -75,7 +75,7 @@ class TabbyPaymentService
         GymMember $member,
         GymMemberSubscription $memberSubscription,
         GymSubscription $subscription,
-        float $amountRemaining,
+        float $amountPaid,
         ?int $branchSettingId = null
     ): array {
         if (!$this->isEnabled) {
@@ -97,12 +97,13 @@ class TabbyPaymentService
                 : Carbon::now()->addDays($duration);
 
             $result = $this->tabbyController->createMemberPaymentLink([
-                'amount' => $amountRemaining,
+                'amount' => $amountPaid,
                 'currency' => $this->currency,
                 'subscription_name' => $subscriptionName,
                 'duration' => $duration,
                 'member_id' => $member->id,
                 'subscription_id' => $subscription->id,
+                'member_subscription_id' => $memberSubscription->id,
                 'branch_setting_id' => $branchSettingId ?? $memberSubscription->branch_setting_id,
                 'member_name' => $member->name,
                 'member_phone' => $this->formatPhoneNumber($member->phone),
@@ -126,7 +127,7 @@ class TabbyPaymentService
                     'transaction_id' => null,
                     'status' => TypeConstants::PENDING,
                     'payment_method' => TypeConstants::TABBY_TRANSACTION,
-                    'amount' => $amountRemaining,
+                    'amount' => $amountPaid,
                     'name' => $member->name,
                     'phone' => $member->phone,
                     'email' => $member->email,
@@ -144,7 +145,7 @@ class TabbyPaymentService
                 Log::info('Tabby payment link generated', [
                     'member_id' => $member->id,
                     'subscription_id' => $subscription->id,
-                    'amount' => $amountRemaining,
+                    'amount' => $amountPaid,
                     'payment_url' => $result['payment_url'],
                     'invoice_id' => $invoice->id,
                 ]);
@@ -156,7 +157,7 @@ class TabbyPaymentService
             Log::error('Failed to generate Tabby payment link', [
                 'member_id' => $member->id,
                 'subscription_id' => $subscription->id,
-                'amount' => $amountRemaining,
+                'amount' => $amountPaid,
                 'error' => $e->getMessage(),
             ]);
 
@@ -174,7 +175,7 @@ class TabbyPaymentService
      * @param GymMember $member
      * @param string $paymentUrl
      * @param GymSubscription $subscription
-     * @param float $amountRemaining
+     * @param float $amountPaid
      * @param object $mainSettings
      * @return array ['whatsapp' => bool, 'sms' => bool, 'email' => bool]
      */
@@ -182,7 +183,7 @@ class TabbyPaymentService
         GymMember $member,
         string $paymentUrl,
         GymSubscription $subscription,
-        float $amountRemaining,
+        float $amountPaid,
         $mainSettings
     ): array {
         $results = ['whatsapp' => false, 'sms' => false, 'email' => false];
@@ -195,7 +196,7 @@ class TabbyPaymentService
         $message = $this->buildPaymentMessage(
             $member->name,
             $subscriptionName,
-            $amountRemaining,
+            $amountPaid,
             $paymentUrl,
             $mainSettings
         );
@@ -248,7 +249,7 @@ class TabbyPaymentService
                 $emailData = $this->buildPaymentEmailData(
                     $member,
                     $subscriptionName,
-                    $amountRemaining,
+                    $amountPaid,
                     $paymentUrl,
                     $mainSettings
                 );
@@ -286,7 +287,7 @@ class TabbyPaymentService
      * @param GymMember $member
      * @param int $memberSubscriptionId
      * @param GymSubscription $subscription
-     * @param float $amountRemaining
+     * @param float $amountPaid
      * @param object $mainSettings
      * @param int|null $branchSettingId
      * @return array
@@ -295,7 +296,7 @@ class TabbyPaymentService
         GymMember $member,
         int $memberSubscriptionId,
         GymSubscription $subscription,
-        float $amountRemaining,
+        float $amountPaid,
         $mainSettings,
         ?int $branchSettingId = null
     ): array {
@@ -309,7 +310,7 @@ class TabbyPaymentService
             $member,
             $memberSubscription,
             $subscription,
-            $amountRemaining,
+            $amountPaid,
             $branchSettingId
         );
 
@@ -325,7 +326,7 @@ class TabbyPaymentService
             $member,
             $linkResult['payment_url'],
             $subscription,
-            $amountRemaining,
+            $amountPaid,
             $mainSettings
         );
 
@@ -344,7 +345,7 @@ class TabbyPaymentService
      * @param GymMember $member
      * @param int $memberSubscriptionId
      * @param GymSubscription $subscription
-     * @param float $amountRemaining
+     * @param float $amountPaid
      * @param object $mainSettings
      * @param int|null $branchSettingId
      * @return array
@@ -353,7 +354,7 @@ class TabbyPaymentService
         GymMember $member,
         int $memberSubscriptionId,
         GymSubscription $subscription,
-        float $amountRemaining,
+        float $amountPaid,
         $mainSettings,
         ?int $branchSettingId = null
     ): array {
@@ -362,7 +363,7 @@ class TabbyPaymentService
             $member,
             $memberSubscriptionId,
             $subscription,
-            $amountRemaining,
+            $amountPaid,
             $mainSettings,
             $branchSettingId
         );

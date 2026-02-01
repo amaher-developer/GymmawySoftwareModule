@@ -915,7 +915,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         $member,
                         $member_subscription->id,
                         $subscription,
-                        $sub['amount_remaining'],
+                        $sub['amount_paid'],
                         $this->mainSettings,
                         @$this->user_sw->branch_setting_id
                     );
@@ -923,7 +923,7 @@ class GymMemberFrontController extends GymGenericFrontController
                     if ($tabbyResult['success']) {
                         Log::info('Tabby payment link sent for new member', [
                             'member_id' => $member->id,
-                            'amount_remaining' => $sub['amount_remaining'],
+                            'amount_paid' => $sub['amount_paid'],
                             'payment_url' => $tabbyResult['payment_url'],
                             'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
                             'sent_sms' => $tabbyResult['sent_sms'],
