@@ -29,7 +29,7 @@ class SettingResource extends JsonResource
                 "terms" => $this->terms,
                 "ios_version" => $this->ios_version,
                 "android_version" => $this->android_version,
-                "map_location_image" => @env('APP_WEBSITE') ? @env('APP_WEBSITE').'map_location.png' : '',
+                "map_location_image" => @env('APP_WEBSITE') ? @env('APP_WEBSITE') . @env('APP_URL_ASSETS') . 'map_location.png' : '',
                 "map_link" => "https://maps.google.com/?q=".$this->latitude.",".$this->longitude
             ];
     }
