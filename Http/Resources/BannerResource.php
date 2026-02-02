@@ -21,7 +21,7 @@ class BannerResource extends JsonResource
             [
                 "id" => $this->id,
                 "title" => $this->title,
-                "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').'placeholder_black.png',
+                "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
                 "date" => Carbon::parse(@$this->created_at)->translatedFormat('d F Y'),
                 "is_new" => @$this->is_new ? $this->is_new : 0,
                 "new_title" => @$this->is_new ? trans('sw.new') : '',

@@ -18,7 +18,7 @@ class BannerContentResource extends JsonResource
             [
                 "id" => $this->id,
                 "title" => $this->title,
-                "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').'placeholder_black.png',
+                "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
                 "url" => $this->url ? $this->url : '',
                 "phone" => $this->phone ? $this->phone : '',
                 "content" => $this->content ? $this->content : ''

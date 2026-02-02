@@ -64,7 +64,7 @@ class GymStoreProduct extends GenericModel
         $image = $this->getRawOriginal('image');
         if (!$image) {
             if (@env('APP_WEBSITE')) {
-                return @env('APP_WEBSITE') . 'placeholder_black.png';
+                return @env('APP_WEBSITE') . @env('APP_URL_ASSETS') . 'placeholder_black.png';
             }
             return asset('resources/assets/new_front/img/blank-image.svg');
         }
@@ -93,7 +93,7 @@ class GymStoreProduct extends GenericModel
         }
 
         if (@env('APP_WEBSITE')) {
-            return @env('APP_WEBSITE') . 'placeholder_black.png';
+            return @env('APP_WEBSITE') . @env('APP_URL_ASSETS') . 'placeholder_black.png';
         }
 
         return asset('resources/assets/new_front/img/blank-image.svg');

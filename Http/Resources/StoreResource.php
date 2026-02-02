@@ -20,7 +20,7 @@ class StoreResource extends JsonResource
             [
                 "id" => $this->id,
                 "name" => $this->name,
-                "image" => $this->image ? @$this->image : @env('APP_WEBSITE').'placeholder_black.png',
+                "image" => $this->image ? @$this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
                 "price" => number_format($this->price + ( $this->price * (@$setting->vat_details['vat_percentage'] / 100)) , 2),
                 "price_unit" =>  env('APP_CURRENCY_'.strtoupper($this->lang))
             ];

@@ -18,7 +18,7 @@ class SubscriptionActivityResource extends JsonResource
             [
                 "id" => $this->id,
                 "name" => @$this->activity->name ?? '',
-                "image" => @$this->activity->image_name ? $this->activity->image : @env('APP_WEBSITE').'placeholder_black.png',
+                "image" => @$this->activity->image_name ? $this->activity->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
                 "price" => @$this->activity->price ? $this->activity->price . ' ' . env('APP_CURRENCY_'.strtoupper($this->lang)) . ' ' : '',
                 "training_times" => @$this->training_times ? $this->training_times . ' '. trans('sw.pt_class_2').' '   : 0,
             ];

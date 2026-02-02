@@ -2576,7 +2576,7 @@ class GymMemberFrontController extends GymGenericFrontController
             // end send wa
         }
         if(@$message_notification &&  $this->mainSettings->active_mobile){
-            $notify_data['image'] = @env('APP_WEBSITE') ? @env('APP_WEBSITE') . 'placeholder_black.png' : @$this->mainSettings->logo;
+            $notify_data['image'] = @env('APP_WEBSITE') ? @env('APP_WEBSITE') . @env('APP_URL_ASSETS') . 'placeholder_black.png' : @$this->mainSettings->logo;
             $notify_data['sound'] = 'default';
             $notify_data['badge'] = '1';
             $notify_data['e'] = 1;

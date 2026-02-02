@@ -20,7 +20,7 @@ class PTResource extends JsonResource
             [
                 "id" => $this->id,
                 "name" => $this->name ?? $this->pt_subscription->name ,
-                "image" => @$this->pt_subscription->image_name ? @$this->pt_subscription->image : @env('APP_WEBSITE').'placeholder_black.png',
+                "image" => @$this->pt_subscription->image_name ? @$this->pt_subscription->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
                 "price" => @$this->price  ? (string)number_format($this->price + ( $this->price * (@$setting->vat_details['vat_percentage'] / 100)) , 2) : '',
                 "price_unit" =>  env('APP_CURRENCY_'.strtoupper($this->lang)),
                 "currency" =>  env('APP_CURRENCY_'.strtoupper($this->lang)),
