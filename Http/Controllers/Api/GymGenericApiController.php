@@ -105,7 +105,7 @@ class GymGenericApiController extends GenericController
 
         $this->checkExpiredToken();
 
-        $app_welcome_member = trans('sw.app_welcome_member', ['name' => @$this->SettingRepository->select('name_ar', 'name_en')->first()->name]);
+        $app_welcome_member = trans('sw.app_welcome_member', ['name' => @Str::limit($this->SettingRepository->select('name_ar', 'name_en')->first()->name, 20)]);
         $app_welcome_msg = trans('sw.app_welcome_msg', ['name' => Auth::guard('api')->user() ? @strtok(@Auth::guard('api')->user()->name, " ").' ' : ' ']);
         $subscriptions = GymSubscription::where('is_mobile', 1)->where('category_id', null)->orderBy('id', 'desc')->limit(5)->get();
         $activities = GymActivity::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
