@@ -219,6 +219,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $subscriptions = GymSubscription::branch()->isSystem()->get();
         $users = GymUser::branch()-> get();
         $payment_types = GymPaymentType::get();
+        $group_discounts = GymGroupDiscount::branch()->where('is_member', 1)->get();
         
         // Load upcoming reservations for members
         $memberIds = $members instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator 
@@ -240,7 +241,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 ->groupBy('member_id');
         }
         
-        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query', 'upcomingReservations','payment_types'));
+        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query', 'upcomingReservations','payment_types', 'group_discounts'));
     }
 
     public function updateSubscriptionsStatus($id = [], $all = false)
