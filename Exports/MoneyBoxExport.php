@@ -63,7 +63,7 @@ class MoneyBoxExport implements FromCollection, WithHeadings, WithMapping, WithS
             else if($key == 'operation')
                 $arr[] = strip_tags($data['operation_name']);
             else if($key == 'payment_type_name')
-                $arr[] = (@$data->member_subscription->payment_type == 0 ? trans('sw.payment_cash') : (@$data->member_subscription->payment_type == 1 ? trans('sw.payment_online') : trans('sw.payment_bank_transfer')));
+                $arr[] = @$data->pay_type->name ?? @$data->member_subscription->pay_type->name ?? '';
             else if($key == 'date')
                 $arr[] = Carbon::parse($data['created_at'])->format('Y-m-d') . ' ' . Carbon::parse($data['created_at'])->format('h:i a');
             else if($key == 'by')

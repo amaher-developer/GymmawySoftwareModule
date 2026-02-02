@@ -85,14 +85,7 @@ class GymMoneyBox extends GenericModel
 
     public function getPaymentTypeNameAttribute()
     {
-        $payment_type = $this->getRawOriginal('payment_type');
-        if($payment_type == 0){
-            return trans('sw.payment_cash');
-        }else if($payment_type == 1){
-            return trans('sw.payment_online');
-        }else if($payment_type == 2){
-            return trans('sw.payment_bank_transfer');
-        }
+        return $this->pay_type->name ?? '';
     }
 
     public function toArray()
