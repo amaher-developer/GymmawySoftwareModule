@@ -613,6 +613,9 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         if(@$request->store_member_use_balance && @$member){
             $notes = $notes.' - '.trans('sw.use_from_balance');
             GymMemberCredit::create(['branch_setting_id' => @$this->user_sw->branch_setting_id, 'user_id' => Auth::guard('sw')->user()->id,'member_id' => @$member->id, 'amount' => @$order_inputs['total_amount'],'operation' => 2,'payment_type' => @$order_inputs['payment_type']]);
+            @$order_inputs['amount_paid'] = 0;
+            @$order_inputs['amount_remaining'] = @$order_inputs['total_amount'];
+            @$order_inputs['payment_status'] = 'paid';
 
             if($member->member_balance() >= 0)
                 $is_store_balance = 1;

@@ -3263,70 +3263,71 @@ class GymMemberFrontController extends GymGenericFrontController
 
             $member_credit = GymMemberCredit::create(['member_id' => $member_id, 'user_id' => Auth::guard('sw')->user()->id, 'amount' => $amount,'operation' => $type]);
 
-            // ACCOUNTING RULE: Create Money Box entry for cash received (wallet top-up or debt payment)
-            // These are cash flow entries, NOT sales/revenue
-            // The Money Box type distinguishes:
-            // - WalletTopUp: Advance payment when balance >= 0 (liability to customer)
-            // - DebtPayment: Debt settlement when balance < 0 (clearing accounts receivable)
-            if ($type == 0) { // Only for additions (type 0), not refunds (type 1)
-                $amount_box = GymMoneyBox::branch()->latest()->first();
-                $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
+            // ACCOUNTING RULE: Create Money Box entry for cash transactions
+            // - Type 0 (Add): Cash received (wallet top-up or debt payment)
+            // - Type 1 (Refund): Cash withdrawn (refund from balance)
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
 
-                $notes = str_replace(':amount', $amount, $note_message);
-                $notes = str_replace(':member_name', $member_name, $notes);
+            $notes = str_replace(':amount', $amount, $note_message);
+            $notes = str_replace(':member_name', $member_name, $notes);
 
-                // Determine if this is a wallet top-up or debt payment
+            if ($type == 0) {
+                // Adding to balance: Determine if this is a wallet top-up or debt payment
                 // If member had negative balance before, this is paying off debt
                 // If member had zero or positive balance, this is topping up wallet
                 $moneybox_entry_type = ($this->member_balance < 0) ? TypeConstants::DebtPayment : TypeConstants::WalletTopUp;
+            } else {
+                // Refund from balance: This is a withdrawal
+                $moneybox_entry_type = $moneybox_type; // TypeConstants::CreateMoneyBoxWithdraw
+            }
 
-                $moneyBox = GymMoneyBox::create([
-                    'user_id' => Auth::guard('sw')->user()->id
-                    , 'amount' => @(float)$amount
-                    , 'operation' => $operation_type
-                    , 'amount_before' => $amount_after
-                    , 'notes' => $notes
-                    , 'type' => $moneybox_entry_type  // WalletTopUp or DebtPayment (NOT sales revenue)
-                    , 'member_id' => $member_id
-                    , 'payment_type' => $payment_type
-                    , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-                ]);
+            $moneyBox = GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id
+                , 'amount' => @(float)$amount
+                , 'operation' => $operation_type
+                , 'amount_before' => $amount_after
+                , 'notes' => $notes
+                , 'type' => $moneybox_entry_type
+                , 'member_id' => $member_id
+                , 'payment_type' => $payment_type
+                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            ]);
 
-                // DEBT PAYMENT LOGIC: Link payment to unpaid store orders
-                // If member had debt (negative balance), apply this payment to their unpaid invoices
-                if ($this->member_balance < 0) {
-                    $remainingPayment = (float)$amount;
+            // DEBT PAYMENT LOGIC: Link payment to unpaid store orders (only for additions)
+            // If member had debt (negative balance), apply this payment to their unpaid invoices
+            if ($type == 0 && $this->member_balance < 0) {
+                $remainingPayment = (float)$amount;
 
-                    // Find unpaid/partial store orders for this member (oldest first - FIFO)
-                    $unpaidOrders = GymStoreOrder::where('member_id', $member_id)
-                        ->whereIn('payment_status', ['unpaid', 'partial'])
-                        ->where('amount_remaining', '>', 0)
-                        ->orderBy('created_at', 'asc')
-                        ->get();
+                // Find unpaid/partial store orders for this member (oldest first - FIFO)
+                $unpaidOrders = GymStoreOrder::where('member_id', $member_id)
+                    ->whereIn('payment_status', ['unpaid', 'partial'])
+                    ->where('amount_remaining', '>', 0)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
 
-                    foreach ($unpaidOrders as $order) {
-                        if ($remainingPayment <= 0) break;
+                foreach ($unpaidOrders as $order) {
+                    if ($remainingPayment <= 0) break;
 
-                        $amountToApply = min($remainingPayment, $order->amount_remaining);
+                    $amountToApply = min($remainingPayment, $order->amount_remaining);
 
-                        // Update order payment fields
-                        $newAmountPaid = $order->amount_paid + $amountToApply;
-                        $newAmountRemaining = $order->amount_remaining - $amountToApply;
+                    // Update order payment fields
+                    $newAmountPaid = $order->amount_paid + $amountToApply;
+                    $newAmountRemaining = $order->amount_remaining - $amountToApply;
 
-                        // Determine new payment status
-                        $newPaymentStatus = 'paid';
-                        if ($newAmountRemaining > 0) {
-                            $newPaymentStatus = $newAmountPaid > 0 ? 'partial' : 'unpaid';
-                        }
-
-                        $order->update([
-                            'amount_paid' => $newAmountPaid,
-                            'amount_remaining' => $newAmountRemaining,
-                            'payment_status' => $newPaymentStatus
-                        ]);
-
-                        $remainingPayment -= $amountToApply;
+                    // Determine new payment status
+                    $newPaymentStatus = 'paid';
+                    if ($newAmountRemaining > 0) {
+                        $newPaymentStatus = $newAmountPaid > 0 ? 'partial' : 'unpaid';
                     }
+
+                    $order->update([
+                        'amount_paid' => $newAmountPaid,
+                        'amount_remaining' => $newAmountRemaining,
+                        'payment_status' => $newPaymentStatus
+                    ]);
+
+                    $remainingPayment -= $amountToApply;
                 }
             }
 
