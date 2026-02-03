@@ -126,7 +126,7 @@
 
 
 {{--            <div class="form-group col-md-12">--}}
-{{--                <label class="col-md-3  control-label">{{ trans('sw.calculate_process')}} <span class="required">*</span></label>--}}
+{{--                <label class="col-md-3  control-label">{{ trans('sw.calculate_process')}} <span class="required"></span></label>--}}
 {{--                <div class="col-md-9">--}}
 
 {{--                    <div class="radio-list col-md-12">--}}

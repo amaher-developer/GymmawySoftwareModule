@@ -122,7 +122,7 @@
                     
                     <!--begin::Identification Code-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.identification_code')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.identification_code')}} <span class="required"></span></label>
                         <div class="col-md-6">
                             <input name="code" onkeydown="return event.key!=='Enter';" value="{{ old('code', $member->code) }}"
                                    type="text" class="form-control" min="0"
@@ -156,7 +156,7 @@
 
                     <!--begin::Name-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.name')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.name')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input name="name" value="{{ old('name', $member->name) }}" type="text" class="form-control"
                                    id="unsubscribedClientInputName" placeholder="{{ trans('sw.enter_name')}}" required>
@@ -166,7 +166,7 @@
 
                     <!--begin::Gender-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.gender')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.gender')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <div class="d-flex gap-5">
                                 <label class="form-check form-check-custom form-check-solid">
@@ -188,7 +188,7 @@
 
                     <!--begin::Phone-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.phone')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.phone')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input name="phone" value="{{ old('phone', $member->phone) }}" type="text" class="form-control"
                                    id="subscribedClientInputPhone"
@@ -220,7 +220,7 @@
 
                     <!--begin::Address-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.address')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.address')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input name="address" value="{{ old('address', $member->address) }}" type="text" class="form-control"
                                    id="subscribedClientInputAddress"
@@ -676,7 +676,7 @@
 
                     <!--begin::Amount Paid-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_paid')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_paid')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input id="create_amount_paid" class="form-control" name="amount_paid" 
                                    value="{{ old('amount_paid', @($member->amount_paid)) }}"
@@ -690,15 +690,16 @@
 
                     <!--begin::Amount Remaining-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_remaining')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_remaining')}} <span class="required"></span></label>
                         <div class="col-md-9">
-                            <input id="create_amount_remaining" class="form-control" name="amount_remaining" 
+                            <input id="create_amount_remaining" class="form-control" name="amount_remaining"
                                    value="{{@old('amount_remaining', @$member->amount_remaining)}}"
-                                   placeholder="{{ trans('sw.enter_amount_remaining')}}" 
+                                   placeholder="{{ trans('sw.enter_amount_remaining')}}"
                                    disabled type="number" step="0.01" min="0"/>
                         </div>
                     </div>
                     <!--end::Amount Remaining-->
+
 
                     <!--begin::Notes-->
                     <div class="row mb-5">
@@ -732,6 +733,19 @@
                         </div>
                     </div>
                     <!--end::Diff Payment Info-->
+                    
+                    <!--begin::Payment Type-->
+                    <div class="row mb-5" id="payment_type_row" style="display: none;">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.payment_type')}} <span class="required"></span></label>
+                        <div class="col-md-9">
+                            <select id="edit_payment_type" name="payment_type" class="form-control">
+                                @foreach($payment_types as $payment_type)
+                                    <option value="{{$payment_type->payment_id}}">{{$payment_type->name}}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <!--end::Payment Type-->
 
                 </div>
                 <!--end::Modal body-->
@@ -1004,7 +1018,9 @@
         $('#EditMembershipMaxFreezeExtensionSum').val(selectedMembershipMaxFreezeExtensionSum);
         $('#EditMembershipInvitations').val(selectedMembershipInvitations);
         $('#EditMembershipNotes').val(notes);
-        // document.getElementById("payment_type_"+record['payment_type']).selected = "true";
+        if(record['payment_type']) {
+            $('#edit_payment_type').val(record['payment_type']);
+        }
 
     }
 
@@ -1025,7 +1041,7 @@
          'group_discount_id': $('#group_discount_id').val(),
          'amount_paid': $('#create_amount_paid').val(),
          'notes': $('#EditMembershipNotes').val(),
-         // 'payment_type': $('#edit_payment_type').val(),
+         'payment_type': $('#edit_payment_type').val(),
          "_token": "{{ csrf_token() }}"
         }
 
@@ -1077,6 +1093,15 @@
         $('#editBarcodeBtn').hide();
     }
 
+    function togglePaymentTypeVisibility() {
+        let diffAmount = parseFloat($('#diff_amount_paid').text()) || 0;
+        if (diffAmount !== 0) {
+            $('#payment_type_row').show();
+        } else {
+            $('#payment_type_row').hide();
+        }
+    }
+
     $("#create_amount_paid").change(function () {
         selectedMembershipPrice = 0;
         $.each($("#EditMembershipSelect option:selected"), function () {
@@ -1100,6 +1125,7 @@
 
         let prev_amount_paid_input = $('#prev_amount_paid_input').val();
         $('#diff_amount_paid').html(Number(valueAmountPaid - prev_amount_paid_input).toFixed(2));
+        togglePaymentTypeVisibility();
     });
 
     $('#EditMembershipSelect').change(function () {
@@ -1126,6 +1152,7 @@
 
         let prev_amount_paid_input = $('#prev_amount_paid_input').val();
         $('#diff_amount_paid').html(Number(selectedMembershipPriceWithVat - prev_amount_paid_input).toFixed(2));
+        togglePaymentTypeVisibility();
     });
 
     $('#start_date_membership').change(function () {
@@ -1175,6 +1202,7 @@
 
         let prev_amount_paid_input = $('#prev_amount_paid_input').val();
         $('#diff_amount_paid').html(Number(parseFloat(priceWithVat).toFixed(2) - prev_amount_paid_input).toFixed(2));
+        togglePaymentTypeVisibility();
     // });
     }
 

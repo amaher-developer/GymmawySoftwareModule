@@ -165,7 +165,7 @@
                     </div>
                     <!--end::Input group-->
 {{--            <div class="form-group col-md-12">--}}
-{{--                <label class="col-md-3  control-label">{{ trans('sw.branch')}} <span class="required">*</span></label>--}}
+{{--                <label class="col-md-3  control-label">{{ trans('sw.branch')}} <span class="required"></span></label>--}}
 {{--                <div class="col-md-9">--}}
 {{--                    <select id="branch_setting_id" name="branch_setting_id" class="form-control select2" required>--}}
 {{--                        <option value="">{{ trans('sw.choose')}}...</option>--}}

@@ -1283,7 +1283,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $amount_paid = round(@$request->amount_paid, 2);
         $discount_value = round(@$request->discount_value, 2);
         $group_discount_id = @(int)$request->group_discount_id;
-//            $payment_type = @$request->payment_type;
+        $payment_type = @$request->payment_type;
         $workouts = @$request->workouts;
         $number_times_freeze = @$request->number_times_freeze;
         $freeze_limit = @$request->freeze_limit;
@@ -1456,7 +1456,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'notes' => $notes
                 , 'type' => TypeConstants::EditMember
                 , 'member_id' => @$member_subscription->member->id
-                //, 'payment_type' => $payment_type
+                , 'payment_type' => $payment_type
                 , 'member_subscription_id' => @$member_subscription->id
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
             ]);
