@@ -1033,7 +1033,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
             $query->orderBy('id', 'desc');
         }, 'pt_subscription'])->withCount(['pt_member_attendees' => function($q){
             $q->whereDate('created_at', Carbon::now()->toDateString());
-        }])->where('id', $code)
+        }])->whereHas('member', function ($q) use ($code){ $q->where('code', $code); })
             ->when(@$enquiry && (strlen(intval($code)) >= 5), function ($q) use ($code){
                 $q->orWhereHas('member', function ($q) use ($code){ $q->where('phone', 'like', '%' . $code . '%');});
             });
