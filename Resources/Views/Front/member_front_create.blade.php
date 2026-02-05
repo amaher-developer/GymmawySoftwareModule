@@ -751,17 +751,18 @@
             if(amount) {
                 let discount_message = '{{ trans('sw.discount_subscription_message', ['amount'=> ':amount', 'type' => ':type'])}}';
 
-                if (type === 0) {
-                    $('#discount_value').val(amount);
-                    discount_value(amount);
-                    discount_message = discount_message.replace(':type', '');
-                } else {
+                if (type === 1) {
                     result = parseFloat(Number(price) * (Number(amount) / 100)).toFixed(2);
                     $('#discount_value').val(result);
                     discount_value(result);
-                    discount_message = discount_message.replace(':type', '%');
+                    discount_message = discount_message.replace(':amount', amount);
+                    discount_message = discount_message.replace(':type', '% (' + result + ')');
+                } else if (type === 2) {
+                    $('#discount_value').val(amount);
+                    discount_value(amount);
+                    discount_message = discount_message.replace(':amount', amount);
+                    discount_message = discount_message.replace(':type', ' ({{ trans('sw.fixed_amount') }})');
                 }
-                discount_message = discount_message.replace(':amount', amount);
                 $('#discount_subscription_message').html('<div class="alert alert-danger">'+discount_message+'</div>');
                 $('#group_discount_id').val(0);
             }

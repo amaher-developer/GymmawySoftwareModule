@@ -1136,6 +1136,8 @@
     var trans_after_discount = '{{trans('sw.after_discount')}}';
     var get_vat_percentage = '{{@$mainSettings->vat_details['vat_percentage']}}';
     var trans_discount_value_must_more_zero = '{{trans('sw.trans_discount_value_must_more_zero')}}';
+    var trans_discount_subscription_message = '{{trans('sw.discount_subscription_message', ['amount'=> ':amount', 'type' => ':type'])}}';
+    var trans_fixed_amount = '{{trans('sw.fixed_amount')}}';
 
     var member_attendees_url = '{{route('sw.memberAttendees')}}';
     var pt_member_attendees_url = '{{route('sw.memberPTAttendees')}}';

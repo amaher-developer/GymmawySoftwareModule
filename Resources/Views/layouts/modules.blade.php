@@ -102,6 +102,11 @@
                     </div>
                 </div>
 
+                <!-- Discount Subscription Message -->
+                <div class="col-md-12 mb-4">
+                    <div id="renew_discount_subscription_message"></div>
+                </div>
+
                 <!-- Discount Section -->
                 <div class="row mb-4" @if($swUser && ((in_array('editMemberDiscount', (array)($swUser->permissions ?? []))) || $swUser->is_super_user)) style="display: block;" @else style="display: none;" @endif>
                     <div class="col-md-6">

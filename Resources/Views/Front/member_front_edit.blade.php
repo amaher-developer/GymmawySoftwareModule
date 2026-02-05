@@ -633,6 +633,14 @@
                     </div>
                     <!--end::Price Display-->
 
+                    <!--begin::Discount Subscription Message-->
+                    <div class="row mb-5">
+                        <div class="col-md-12">
+                            <div id="edit_discount_subscription_message"></div>
+                        </div>
+                    </div>
+                    <!--end::Discount Subscription Message-->
+
                     <!--begin::Discount Section-->
                     <div class="row mb-5" @if((in_array('editMemberDiscount', (array)$swUser->permissions)) || $swUser->is_super_user) style="display: flex" @else style="display: none" @endif>
                         <label class="col-md-3 col-form-label">{{ trans('sw.discount_value')}}</label>
@@ -835,9 +843,9 @@
                         var expire_attr = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
                         var membership_selected = '';
                             if(data.membership[i]['id'] == data.member_membership['subscription_id']){
-                            output += '<option start_date="' + data.member_membership['joining_date'] + '" expire_date="' + data.member_membership['expire_date'] + '" period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '" workouts="' + data.membership[i]['workouts'] + '" freeze_limit="' + data.member_membership['freeze_limit'] + '" number_times_freeze="' + data.member_membership['number_times_freeze'] + '" max_extension_days="' + (data.member_membership['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.member_membership['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.member_membership['invitations'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  selected="" >' + data.membership[i]['name'] + ' </option>';
+                            output += '<option start_date="' + data.member_membership['joining_date'] + '" expire_date="' + data.member_membership['expire_date'] + '" period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '" workouts="' + data.membership[i]['workouts'] + '" freeze_limit="' + data.member_membership['freeze_limit'] + '" number_times_freeze="' + data.member_membership['number_times_freeze'] + '" max_extension_days="' + (data.member_membership['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.member_membership['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.member_membership['invitations'] ?? 0) + '" discount_type="' + (data.membership[i]['default_discount_type'] || 0) + '" discount_value="' + (data.membership[i]['default_discount_value'] || 0) + '"  value="' + data.membership[i]['id'] + '"  selected="" >' + data.membership[i]['name'] + ' </option>';
                         }else{
-                            output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.membership[i]['invitations'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
+                            output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.membership[i]['invitations'] ?? 0) + '" discount_type="' + (data.membership[i]['default_discount_type'] || 0) + '" discount_value="' + (data.membership[i]['default_discount_value'] || 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
                         }
                     }
                     $('#EditMembershipSelect').html(output).trigger('change.select2');
@@ -1153,6 +1161,8 @@
         let prev_amount_paid_input = $('#prev_amount_paid_input').val();
         $('#diff_amount_paid').html(Number(selectedMembershipPriceWithVat - prev_amount_paid_input).toFixed(2));
         togglePaymentTypeVisibility();
+
+        apply_discount_subscription_edit();
     });
 
     $('#start_date_membership').change(function () {
@@ -1221,6 +1231,32 @@
             discount_value(result);
         }
     });
+
+    function apply_discount_subscription_edit(){
+        let type = parseInt($('#EditMembershipSelect option:selected').attr('discount_type'));
+        let amount = parseFloat($('#EditMembershipSelect option:selected').attr('discount_value'));
+        let price = parseFloat($('#EditMembershipSelect option:selected').attr('price'));
+        let result = 0;
+        $('#edit_discount_subscription_message').html('');
+        if(amount) {
+            let discount_message = '{{ trans('sw.discount_subscription_message', ['amount'=> ':amount', 'type' => ':type'])}}';
+
+            if (type === 1) {
+                result = parseFloat(Number(price) * (Number(amount) / 100)).toFixed(2);
+                $('#discount_value').val(result);
+                discount_value(result);
+                discount_message = discount_message.replace(':amount', amount);
+                discount_message = discount_message.replace(':type', '% (' + result + ')');
+            } else if (type === 2) {
+                $('#discount_value').val(amount);
+                discount_value(amount);
+                discount_message = discount_message.replace(':amount', amount);
+                discount_message = discount_message.replace(':type', ' ({{ trans('sw.fixed_amount') }})');
+            }
+            $('#edit_discount_subscription_message').html('<div class="alert alert-danger">'+discount_message+'</div>');
+            $('#group_discount_id').val(0);
+        }
+    }
 </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.25/webcam.min.js"></script>
