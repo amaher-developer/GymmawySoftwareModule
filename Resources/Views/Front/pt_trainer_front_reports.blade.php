@@ -118,7 +118,7 @@
                                 </div>
 
                                 <!-- Filter Button -->
-                                <div class="col-lg-1 col-md-6 d-flex align-items-end">
+                                <div class="col-lg-2 col-md-6 d-flex align-items-end">
                                     <button class="btn btn-primary w-100" id="filter" type="submit">
                                         <i class="ki-outline ki-filter fs-4"></i>
                                         <span class="d-none d-lg-inline ms-1">{{ trans('sw.filter') }}</span>
