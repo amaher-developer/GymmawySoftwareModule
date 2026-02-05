@@ -1293,13 +1293,16 @@ class GymPTMemberFrontController extends GymGenericFrontController
 
     }
     public function listPTMemberInClassCalendar($pt_class_id, $pt_trainer_id){
-        $pt_members = GymPTMember::select(['id', 'member_id'])
+        $pt_members = GymPTMember::select([
+                          'id', 'member_id', 'start_date', 'end_date', 'joining_date', 'expire_date',
+                          'total_sessions', 'remaining_sessions', 'classes', 'visits'
+                      ])
                       ->with(['member' => function ($q){$q->select(['id', 'name', 'code']);}])
                       ->where('pt_class_id', $pt_class_id)
                       ->where('pt_trainer_id', $pt_trainer_id)
                       ->whereDate('joining_date', '<=', Carbon::now()->toDateString())
                       ->whereDate('expire_date', '>=', Carbon::now()->toDateString())
-                      ->limit(50)->get();
+                      ->get();
         return Response::json(['result' => $pt_members], 200);
     }
 

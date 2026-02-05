@@ -37,58 +37,156 @@
 @endsection
 @section('page_body')
     <div class="row">
-
-        <div class="row " style="padding-bottom: 15px;">
-            <form id="form_filter"
-                  action=""
-                  method="get">
-
-                <div class="col-lg-3 col-md-3 col-xs-9 mg-t-20 mg-lg-t-0">
-
-                    <div class="input-group  date-picker input-daterange" data-date="10/11/2012"
-                         data-date-format="mm/dd/yyyy">
-                        <input type="text" class="form-control" name="from"
-                               value="@php echo @strip_tags($_GET['from']) @endphp" autocomplete="off">
-                        <span class="input-group-addon">
-												 {{ trans('sw.to')}} </span>
-                        <input type="text" class="form-control" name="to"
-                               value="@php echo @strip_tags($_GET['to']) @endphp" autocomplete="off">
+        <!-- Filter Card -->
+        <div class="col-12 mb-5">
+            <div class="card card-flush">
+                <div class="card-header">
+                    <div class="card-title">
+                        <h3 class="fw-bold m-0">
+                            <i class="ki-outline ki-filter fs-3 me-2"></i>
+                            {{ trans('sw.filter') }}
+                        </h3>
                     </div>
-                    <!-- /input-group -->
-
-                </div><!-- end filter div -->
-                    <!-- /input-group -->
-
-                <div class="col-lg-2 col-md-2 col-xs-2 mg-t-20 mg-lg-t-0" style="padding-bottom: 5px">
-                    <select name="pt_class_id" id="pt_class_id" class="form-control select2">
-                        <option value="">{{ trans('sw.all_classes')}}...</option>
-                        @foreach($subscriptions as $subscription)
-                            <optgroup label="{{$subscription->name}}">{{$subscription->name}}</optgroup>
-                            @foreach($subscription->pt_classes as $class)
-                                <option value="{{$class->id}}" @if(request('pt_class_id') == $class->id) selected="" @endif >{{$class->name}}</option>
-                            @endforeach
-                        @endforeach
-                    </select>
+                    <div class="card-toolbar">
+                        <button type="button" class="btn btn-sm btn-icon btn-light-primary" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                            <i class="ki-outline ki-minus fs-2"></i>
+                        </button>
+                    </div>
                 </div>
+                <div class="collapse show" id="filterCollapse">
+                    <div class="card-body pt-0">
+                        <form id="form_filter" action="" method="get">
+                            <div class="row g-4">
+                                <!-- Quick Month Selector -->
+                                <div class="col-lg-3 col-md-6">
+                                    <label class="form-label fw-semibold">{{ trans('sw.quick_select') }}</label>
+                                    <select id="month_selector" class="form-select" onchange="selectMonth(this.value)">
+                                        <option value="">{{ trans('sw.select_month') }}...</option>
+                                        @php
+                                            $currentMonth = \Carbon\Carbon::now();
+                                            for ($i = 0; $i < 12; $i++) {
+                                                $month = $currentMonth->copy()->subMonths($i);
+                                                $monthStart = $month->copy()->startOfMonth()->format('Y-m-d');
+                                                $monthEnd = $month->copy()->endOfMonth()->format('Y-m-d');
+                                                $isSelected = (request('from') == $monthStart && request('to') == $monthEnd);
+                                        @endphp
+                                        <option value="{{ $monthStart }}|{{ $monthEnd }}" @if($isSelected) selected @endif>
+                                            {{ $month->translatedFormat('F Y') }}
+                                        </option>
+                                        @php } @endphp
+                                    </select>
+                                </div>
 
+                                <!-- Date Range -->
+                                <div class="col-lg-4 col-md-6">
+                                    <label class="form-label fw-semibold">{{ trans('sw.date_range') }}</label>
+                                    <div class="input-group date-picker input-daterange">
+                                        <input type="text" class="form-control" name="from" id="filter_from"
+                                               value="{{ request('from') }}" placeholder="{{ trans('sw.from') }}" autocomplete="off">
+                                        <span class="input-group-text bg-light">
+                                            <i class="ki-outline ki-arrow-right fs-4"></i>
+                                        </span>
+                                        <input type="text" class="form-control" name="to" id="filter_to"
+                                               value="{{ request('to') }}" placeholder="{{ trans('sw.to') }}" autocomplete="off">
+                                    </div>
+                                </div>
 
-                <div class="col-lg-2 col-md-2 col-xs-2 mg-t-20 mg-lg-t-0">
-                    <select name="pt_trainer" class="form-control select2">
-                        <option value="">{{ trans('admin.choose')}}...</option>
-                        @foreach($pt_trainers as $trainer)
-                            <option value="{{$trainer->id}}" @if(request('pt_trainer') == $trainer->id) selected="" @endif>{{$trainer->name}}</option>
-                        @endforeach
-                    </select>
+                                <!-- Class Selector -->
+                                <div class="col-lg-2 col-md-6">
+                                    <label class="form-label fw-semibold">{{ trans('sw.pt_class') }}</label>
+                                    <select name="pt_class_id" id="pt_class_id" class="form-select select2" data-placeholder="{{ trans('sw.all_classes') }}...">
+                                        <option value="">{{ trans('sw.all_classes') }}...</option>
+                                        @foreach($subscriptions as $subscription)
+                                            <optgroup label="{{ $subscription->name }}">
+                                                @foreach($subscription->pt_classes as $class)
+                                                    <option value="{{ $class->id }}" @if(request('pt_class_id') == $class->id) selected @endif>{{ $class->name }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Trainer Selector -->
+                                <div class="col-lg-2 col-md-6">
+                                    <label class="form-label fw-semibold">{{ trans('sw.pt_trainer') }}</label>
+                                    <select name="pt_trainer" class="form-select select2" data-placeholder="{{ trans('admin.choose') }}...">
+                                        <option value="">{{ trans('admin.choose') }}...</option>
+                                        @foreach($pt_trainers as $trainer)
+                                            <option value="{{ $trainer->id }}" @if(request('pt_trainer') == $trainer->id) selected @endif>{{ $trainer->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Filter Button -->
+                                <div class="col-lg-1 col-md-6 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" id="filter" type="submit">
+                                        <i class="ki-outline ki-filter fs-4"></i>
+                                        <span class="d-none d-lg-inline ms-1">{{ trans('sw.filter') }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <div class="col-lg-2 col-md-2 col-xs-3">
-                    <button class="btn btn-primary  rounded-3 btn-block" id="filter" type="submit"><i
-                            class="fa fa-filter mx-1"></i> {{ trans('sw.filter')}}</button>
-                </div>
-
-            </form>
+            </div>
         </div>
-        <div style="clear: none"></div>
+
+        <!-- Stats Summary -->
+        <div class="col-12 mb-5">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card bg-light-primary">
+                        <div class="card-body py-4">
+                            <div class="d-flex align-items-center">
+                                <div class="symbol symbol-50px me-4">
+                                    <span class="symbol-label bg-primary">
+                                        <i class="ki-outline ki-calendar-8 fs-2x text-white"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <div class="fs-4 fw-bold text-gray-800">{{ count($reservations) }}</div>
+                                    <div class="fs-7 text-gray-500">{{ trans('sw.total_sessions') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light-success">
+                        <div class="card-body py-4">
+                            <div class="d-flex align-items-center">
+                                <div class="symbol symbol-50px me-4">
+                                    <span class="symbol-label bg-success">
+                                        <i class="ki-outline ki-people fs-2x text-white"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <div class="fs-4 fw-bold text-gray-800">{{ $pt_trainers->count() }}</div>
+                                    <div class="fs-7 text-gray-500">{{ trans('sw.pt_trainers') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light-info">
+                        <div class="card-body py-4">
+                            <div class="d-flex align-items-center">
+                                <div class="symbol symbol-50px me-4">
+                                    <span class="symbol-label bg-info">
+                                        <i class="ki-outline ki-abstract-26 fs-2x text-white"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <div class="fs-4 fw-bold text-gray-800">{{ $classes->count() }}</div>
+                                    <div class="fs-7 text-gray-500">{{ trans('sw.pt_classes') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 {{--        <div class="row">--}}
 
 {{--            <div class="col-md-4 col-xs-6 mg-t-20 mg-lg-t-0">--}}
@@ -148,63 +246,23 @@
 {{--            @endif--}}
 {{--        </div>--}}
 
-        <div style="clear: none;padding-bottom: 15px"></div>
-
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-striped table-bordered table-hover">
-                    <tbody>
-                    <tr>
-                        <th>{{ trans('admin.total_count')}}</th>
-                        <td>{{ count($reservations) }}</td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-
-        <!-- BEGIN PAGE CONTENT-->
-        <div class="row">
-            <div class="col-md-12">
-                <div class="portlet box green-meadow calendar">
-                    <div class="portlet-title">
-                        <div class="caption">
-                            <i class="fa fa-gift"></i> {{ trans('sw.calender')}}
-                        </div>
+        <!-- Calendar Section -->
+        <div class="col-12">
+            <div class="card card-flush">
+                <div class="card-header">
+                    <div class="card-title">
+                        <h3 class="fw-bold m-0">
+                            <i class="ki-outline ki-calendar fs-3 me-2"></i>
+                            {{ trans('sw.calender') }}
+                        </h3>
                     </div>
-                    <div><br/><br/></div>
-                    <div class="portlet-body">
-                        <div class="row">
-                            {{--                            <div class="col-md-3 col-sm-12">--}}
-                            {{--                                <!-- BEGIN DRAGGABLE EVENTS PORTLET-->--}}
-                            {{--                                <h3 class="event-form-title">Draggable Events</h3>--}}
-                            {{--                                <div id="external-events">--}}
-                            {{--                                    <form class="inline-form">--}}
-                            {{--                                        <input type="text" value="" class="form-control" placeholder="Event Title..." id="event_title"/><br/>--}}
-                            {{--                                        <a href="javascript:;" id="event_add" class="btn default">--}}
-                            {{--                                            Add Event </a>--}}
-                            {{--                                    </form>--}}
-                            {{--                                    <hr/>--}}
-                            {{--                                    <div id="event_box">--}}
-                            {{--                                    </div>--}}
-                            {{--                                    <label for="drop-remove">--}}
-                            {{--                                        <input type="checkbox" id="drop-remove"/>remove after drop </label>--}}
-                            {{--                                    <hr class="visible-xs"/>--}}
-                            {{--                                </div>--}}
-                            {{--                                <!-- END DRAGGABLE EVENTS PORTLET-->--}}
-                            {{--                            </div>--}}
-                            <div class="col-md-12 col-sm-12">
-                                <div id="calendar" class="has-toolbar">
-                                </div>
-                            </div>
-                        </div>
-                        <!-- END CALENDAR PORTLET-->
-                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="calendar" class="has-toolbar"></div>
                 </div>
             </div>
         </div>
-        <!-- END PAGE CONTENT-->
+        <!-- END Calendar Section -->
 
     </div>
 
@@ -212,53 +270,40 @@
 
 
 
-    <!-- start model pay -->
-    <div class="modal" id="modalMembersTable">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content modal-content-demo">
+    <!-- Members Modal -->
+    <div class="modal fade" id="modalMembersTable" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h6 class="modal-title">{{ trans('sw.pt_members')}}</h6>
-                    <button aria-label="Close" class="close" data-dismiss="modal" type="button"><span
-                            aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title fw-bold">
+                        <i class="ki-outline ki-people fs-3 me-2 text-primary"></i>
+                        {{ trans('sw.pt_members') }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-12 col-sm-12">
-                            <div class="portlet grey-cascade box">
-                                <div class="portlet-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover table-bordered table-striped" id="cart_table">
-                                            <thead>
-                                            <tr>
-                                                <th>
-                                                    #
-                                                </th>
-                                                <th>
-                                                    {{ trans('sw.name')}}
-                                                </th>
-                                                <th>
-                                                    {{ trans('sw.pt_class')}}
-                                                </th>
-
-                                                {{--                                                <th>--}}
-                                                {{--                                                    {{ trans('sw.status')}}--}}
-                                                {{--                                                </th>--}}
-                                            </tr>
-                                            </thead>
-                                            <tbody id="cart_result" @if($lang == 'ar') class="text-right" @endif>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-row-bordered table-row-gray-200 align-middle gs-0 gy-4" id="cart_table">
+                            <thead>
+                                <tr class="fw-bold text-muted bg-light">
+                                    <th class="ps-4 rounded-start">#</th>
+                                    <th>{{ trans('sw.name') }}</th>
+                                    <th>{{ trans('sw.pt_class') }}</th>
+                                    <th class="rounded-end">{{ trans('sw.status') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cart_result" @if($lang == 'ar') class="text-end" @endif>
+                            </tbody>
+                        </table>
                     </div>
-
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('admin.close') }}</button>
                 </div>
             </div>
         </div>
     </div>
-    <!-- End model pay -->
+    <!-- End Members Modal -->
 @endsection
 
 @section('scripts')
@@ -279,6 +324,15 @@
 
     <script src='{{asset('resources/assets/new_front/global/plugins/fullcalendar/lang-all.js')}}'></script>
     <script>
+        // Month selector function
+        function selectMonth(value) {
+            if (!value) return;
+            const parts = value.split('|');
+            if (parts.length === 2) {
+                document.getElementById('filter_from').value = parts[0];
+                document.getElementById('filter_to').value = parts[1];
+            }
+        }
 
         $(document).ready(function() {
 
@@ -287,7 +341,11 @@
             var currentLangCode = '{{$lang == 'ar' ? 'ar-sa' : 'en'}}';
             var currentTimezone = 'UTC';
 
-
+            // Initialize select2
+            $('.select2').select2({
+                allowClear: true,
+                width: '100%'
+            });
 
             function renderCalendar() {
                 $('#calendar').fullCalendar({
@@ -299,53 +357,83 @@
                     defaultDate: '{{\Carbon\Carbon::now()->toDateString()}}',
                     timezone: currentTimezone,
                     lang: currentLangCode,
-                    buttonIcons: false, // show the prev/next text
+                    buttonIcons: false,
                     weekNumbers: true,
                     editable: false,
-                    eventLimit: true, // allow "more" link when too many events
-                    // Delete event
+                    eventLimit: true,
                     eventClick: function (arg) {
-                        let url  = "{{route('sw.listPTMemberInClassCalendar', ['pt_class_id' => '@@pt_class_id', 'pt_trainer_id' => '@@pt_trainer_id'])}}";
+                        let url = "{{route('sw.listPTMemberInClassCalendar', ['pt_class_id' => '@@pt_class_id', 'pt_trainer_id' => '@@pt_trainer_id'])}}";
                         url = url.replace('@@pt_class_id', arg.pt_class_id ?? '');
                         url = url.replace('@@pt_trainer_id', arg.pt_trainer_id ?? '');
                         $.ajax({
                             url: url,
                             cache: false,
                             type: 'GET',
-                            dataType: 'text',
+                            dataType: 'json',
                             data: {},
-                            success: function (response) {
-                                // $('#trainer_confirm').modal('toggle');
-                                // $('#tr_trainer_member_'+id).remove();
+                            success: function (response_data) {
                                 let result = '';
-                                let date_status = '';
-                                let response_data = $.parseJSON(response);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+
                                 if(response_data.result && response_data.result.length > 0){
                                     for (let i = 0; i < response_data.result.length; i++){
-                                        var item = response_data.result[i];
-                                        var memberName = item.member && item.member.name ? item.member.name : '';
-                                        result+= '<tr>';
-                                        result+= '<td>' + (i+1) + '</td>';
-                                        result+= '<td><i class="fa fa-user text-muted"></i> ' + memberName + '</td>';
-                                        result+= '<td>' + arg.title + '</td>';
-                                        result+= '</tr>';
-                                    }
-                                }else{
-                                    result = '<tr id="empty_cart"><td colspan="3" class="text-center">{{ trans('sw.no_record_found')}}</td></tr>';
+                                        const item = response_data.result[i];
+                                        const memberName = item.member && item.member.name ? item.member.name : '';
+                                        const memberCode = item.member && item.member.code ? item.member.code : '';
 
+                                        // Determine status based on dates
+                                        let startDate = item.start_date || item.joining_date;
+                                        let endDate = item.end_date || item.expire_date;
+                                        let sessionsRemaining = item.sessions_remaining ?? item.remaining_sessions ?? 0;
+                                        let isActive = false;
+
+                                        if (startDate && endDate) {
+                                            const start = new Date(startDate);
+                                            const end = new Date(endDate);
+                                            start.setHours(0, 0, 0, 0);
+                                            end.setHours(0, 0, 0, 0);
+                                            isActive = (today >= start && today <= end && sessionsRemaining > 0);
+                                        } else if (sessionsRemaining > 0) {
+                                            isActive = true;
+                                        }
+
+                                        const statusBadge = isActive
+                                            ? '<span class="badge badge-light-success">{{ trans('sw.active') }}</span>'
+                                            : '<span class="badge badge-light-danger">{{ trans('sw.expire') }}</span>';
+
+                                        result += '<tr>';
+                                        result += '<td class="ps-4">' + (i+1) + '</td>';
+                                        result += '<td>';
+                                        result += '<div class="d-flex align-items-center">';
+                                        result += '<div class="symbol symbol-35px symbol-circle me-3">';
+                                        result += '<span class="symbol-label bg-light-primary text-primary fw-bold">' + (memberName.charAt(0) || '?') + '</span>';
+                                        result += '</div>';
+                                        result += '<div class="d-flex flex-column">';
+                                        result += '<span class="fw-bold">' + memberName + '</span>';
+                                        result += '<span class="text-muted fs-7">' + memberCode + '</span>';
+                                        result += '</div>';
+                                        result += '</div>';
+                                        result += '</td>';
+                                        result += '<td>' + arg.title + '</td>';
+                                        result += '<td>' + statusBadge + '</td>';
+                                        result += '</tr>';
+                                    }
+                                } else {
+                                    result = '<tr id="empty_cart"><td colspan="4" class="text-center py-10">';
+                                    result += '<i class="ki-outline ki-information-5 fs-2x text-muted mb-3"></i>';
+                                    result += '<div class="text-muted fs-6">{{ trans('sw.no_record_found') }}</div>';
+                                    result += '</td></tr>';
                                 }
                                 $('#modalMembersTable').modal('show');
                                 $('#cart_result').html(result);
                             },
                             error: function (request, error) {
-                                swal("Operation failed", "Something went wrong.", "error");
+                                swal("{{ trans('sw.operation_failed') }}", "{{ trans('sw.something_went_wrong') }}", "error");
                                 console.error("Request: " + JSON.stringify(request));
                                 console.error("Error: " + JSON.stringify(error));
                             }
                         });
-
-
-
                     },
                     events: [
                         @foreach($reservations as $reservation)
@@ -359,14 +447,6 @@
                             backgroundColor: '{{$reservation['background_color']}}',
                         },
                         @endforeach
-
-                        // {
-                        //     title: 'Click for Google',
-                        //     url: 'http://google.com/',
-                        //     start: '2024-03-05',
-                        //     backgroundColor: Metronic.getBrandColor('red'),
-                        //     allDay: false,
-                        // }
                     ]
                 });
             }
@@ -374,30 +454,6 @@
             renderCalendar();
 
         });
-
-        $('#subscription').change(function (){
-            $("#class_id option").hide();
-            $("#class_id  option[value=all" + "]").show();
-            var get_classes = $(this).find(":selected").attr('classes');
-            var classes = get_classes.split(",");
-
-            for (let i = 0; i < classes.length; i++ ){
-                $("#class_id option[value=" + classes[i] + "]").show();
-            }
-
-        });
-        function pt_subscription(){
-            $("#class_id option").hide();
-            $("#class_id  option[value=all" + "]").show();
-            var get_classes = $('#subscription').find(":selected").attr('classes');
-            var classes = get_classes.split(",");
-
-            for (let i = 0; i < classes.length; i++ ){
-                $("#class_id option[value=" + classes[i] + "]").show();
-            }
-
-        }
-        pt_subscription();
     </script>
 
 
