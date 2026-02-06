@@ -990,17 +990,19 @@ class GymPTMemberFrontController extends GymGenericFrontController
             $newTodayCount = GymPTMemberAttendee::where('pt_member_id', $member->id)
                 ->whereBetween('session_date', [$windowStart, $windowEnd])
                 ->count();
-            
+
             // Only update remaining_sessions if a new attendee was actually created
             if ($newTodayCount > $existingTodayCount) {
                 // The adjustRemainingSessions was already called in recordMemberAttendance
                 // Just refresh to ensure we have latest data
                 $member->refresh();
             }
-            
-            $totalSessions = $member->sessions_total ?? $member->total_sessions ?? $member->classes ?? 0;
-            $usedSessions = $member->sessions_used ?? ($totalSessions - ($member->remaining_sessions ?? 0));
-            return $member->pt_subscription->name.' ('.$usedSessions.' / '.$totalSessions.') ';
+
+            $member['expire_date'] = Carbon::parse($member->expire_date)->format('d-m-Y');
+            $sessionsRemaining = $member->remaining_sessions ?? ($member->classes - $member->visits);
+            $member['remain_workouts'] = $sessionsRemaining;
+            $member['amount_remaining'] = number_format($member->amount_remaining, 2);
+            return Response::json(['msg' => '', 'member' => $member, 'status' => true], 200);
         }
         return '';
     }

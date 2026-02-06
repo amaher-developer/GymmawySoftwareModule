@@ -117,6 +117,7 @@
             border-radius: 5px;
             font-size: 12px;
             color: #333;
+            margin: 0 10px;
         }
         .footer {
             text-align: center;
@@ -148,7 +149,7 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="text-align:center;direction:rtl;">
         <div class="header">
             @if($gym_logo)
                 <img src="{{ asset($gym_logo) }}" alt="{{ $gym_name }}" class="logo">
@@ -171,7 +172,7 @@
                     <span class="detail-value">{{ $subscription_name }}</span>
                 </div>
                 <div class="detail-row amount-row">
-                    <span class="detail-label">{{ $is_arabic ? 'المبلغ المتبقي' : 'Remaining Amount' }}</span>
+                    <span class="detail-label">{{ $is_arabic ? 'المبلغ المدفوع' : 'Paid Amount' }}:  </span>
                     <span class="detail-value">{{ $amount }} {{ $currency }}</span>
                 </div>
             </div>
@@ -193,7 +194,7 @@
                 @php
                     $installmentAmount = number_format(floatval(str_replace(',', '', $amount)) / 4, 2);
                 @endphp
-                <div class="installments">
+                <div class="installments" >
                     <span class="installment-box">{{ $is_arabic ? 'اليوم' : 'Today' }}: {{ $installmentAmount }} {{ $currency }}</span>
                     <span class="installment-box">{{ $is_arabic ? 'شهر 1' : 'Month 1' }}: {{ $installmentAmount }} {{ $currency }}</span>
                     <span class="installment-box">{{ $is_arabic ? 'شهر 2' : 'Month 2' }}: {{ $installmentAmount }} {{ $currency }}</span>
