@@ -1473,6 +1473,44 @@ class GymMemberFrontController extends GymGenericFrontController
         // update status of member
         $this->updateSubscriptionsStatus([$member_subscription->member_id]);
 
+        // Send Tabby payment link if checkbox is checked and member has paid amount difference > 0
+        if (!empty(env('TABBY_MERCHANT_CODE')) && $request->input('send_tabby_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $tabbyService = new TabbyPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member) {
+                    $tabbyResult = $tabbyService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tabbyResult['success']) {
+                        Log::info('Tabby payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $tabbyResult['payment_url'],
+                            'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
+                            'sent_sms' => $tabbyResult['sent_sms'],
+                            'sent_email' => $tabbyResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tabby payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_edited'),
@@ -2600,7 +2638,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         $member,
                         $member_subscription->id,
                         $subscription,
-                        $amount_remaining,
+                        $amount_paid,
                         $this->mainSettings,
                         @$this->user_sw->branch_setting_id
                     );
@@ -2609,7 +2647,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         Log::info('Tabby payment link sent for membership renewal', [
                             'member_id' => $member->id,
                             'subscription_id' => $member_subscription,
-                            'amount_remaining' => $amount_remaining,
+                            'amount_paid' => $amount_paid,
                             'payment_url' => $tabbyResult['payment_url'],
                             'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
                             'sent_sms' => $tabbyResult['sent_sms'],

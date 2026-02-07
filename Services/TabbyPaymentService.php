@@ -351,12 +351,12 @@ class TabbyPaymentService
      * @return array
      */
     public function processRenewalPayment(
-        GymMember $member,
-        int $memberSubscriptionId,
-        GymSubscription $subscription,
-        float $amountPaid,
+        $member,
+        $memberSubscriptionId,
+        $subscription,
+        $amountPaid,
         $mainSettings,
-        ?int $branchSettingId = null
+        $branchSettingId
     ): array {
         // Same logic as new member, just with different context
         return $this->processNewMemberPayment(
@@ -398,7 +398,7 @@ class TabbyPaymentService
             return "مرحباً {$memberName}،\n\n"
                 . "شكراً لاشتراكك في {$gymName}.\n"
                 . "الاشتراك: {$subscriptionName}\n"
-                . "المبلغ المتبقي: {$amount} {$currency}\n\n"
+                . "المبلغ المدفوع: {$amount} {$currency}\n\n"
                 . "يمكنك إتمام الدفع عبر تابي (قسّطها على 4 دفعات بدون فوائد):\n"
                 . "{$paymentUrl}\n\n"
                 . "شكراً لك!";
@@ -407,7 +407,7 @@ class TabbyPaymentService
         return "Hello {$memberName},\n\n"
             . "Thank you for subscribing at {$gymName}.\n"
             . "Subscription: {$subscriptionName}\n"
-            . "Remaining Amount: {$amount} {$currency}\n\n"
+            . "Paid Amount: {$amount} {$currency}\n\n"
             . "Complete your payment with Tabby (Split into 4 interest-free payments):\n"
             . "{$paymentUrl}\n\n"
             . "Thank you!";

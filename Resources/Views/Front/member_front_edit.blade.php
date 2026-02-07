@@ -755,6 +755,23 @@
                     </div>
                     <!--end::Payment Type-->
 
+                    <!--begin::Tabby Payment Option-->
+                    @if(env('TABBY_MERCHANT_CODE'))
+                    <div class="row mb-5" id="edit_tabby_payment_row" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.tabby_payment')}}</label>
+                            <div class="form-check form-switch form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="send_tabby_link" id="edit_send_tabby_link" value="1"/>
+                                <label class="form-check-label" for="edit_send_tabby_link">
+                                    {{ trans('sw.send_tabby_payment_link')}}
+                                </label>
+                            </div>
+                            <div class="text-muted fs-7 mt-1">{{ trans('sw.tabby_payment_description')}}</div>
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Tabby Payment Option-->
+
                 </div>
                 <!--end::Modal body-->
 
@@ -1050,6 +1067,7 @@
          'amount_paid': $('#create_amount_paid').val(),
          'notes': $('#EditMembershipNotes').val(),
          'payment_type': $('#edit_payment_type').val(),
+         'send_tabby_link': $('#edit_send_tabby_link').is(':checked') ? 1 : 0,
          "_token": "{{ csrf_token() }}"
         }
 
@@ -1107,6 +1125,13 @@
             $('#payment_type_row').show();
         } else {
             $('#payment_type_row').hide();
+        }
+        // Show Tabby option only when diff amount paid > 0
+        if (diffAmount > 0) {
+            $('#edit_tabby_payment_row').show();
+        } else {
+            $('#edit_tabby_payment_row').hide();
+            $('#edit_send_tabby_link').prop('checked', false);
         }
     }
 
