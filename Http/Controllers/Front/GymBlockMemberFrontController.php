@@ -83,7 +83,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_block_members');
         $this->userLog($notes, TypeConstants::ExportBlockMemberExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

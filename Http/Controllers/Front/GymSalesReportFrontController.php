@@ -240,7 +240,7 @@ class GymSalesReportFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportSalesReportExcel);
 
         return \Maatwebsite\Excel\Facades\Excel::download(
-            new SalesReportExport(['data' => $data, 'lang' => $this->lang]),
+            new SalesReportExport(['data' => $data, 'lang' => $this->lang, 'settings' => $this->mainSettings]),
             $this->fileName . '.xlsx'
         );
     }

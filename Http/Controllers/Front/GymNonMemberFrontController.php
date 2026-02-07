@@ -220,7 +220,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_non_members');
         $this->userLog($notes, TypeConstants::ExportNonMemberExcel);
 
-        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone', 'activities', 'price', 'date'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone', 'activities', 'price', 'date'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

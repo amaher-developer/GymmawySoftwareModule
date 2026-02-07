@@ -415,7 +415,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportMemberExcel);
 
         return Excel::download(new MembersExport(['records' => $records, 'keys' => ['barcode', 'name', 'phone', 'address', 'membership', 'workouts', 'number_of_visits', 'amount_remaining', 'store_balance', 'national_id', 'dob'
-            , 'joining_date', 'expire_date', 'status', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

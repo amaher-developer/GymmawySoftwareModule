@@ -8,6 +8,7 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Modules\Software\Exports\Traits\HasReportHeader;
 
 /**
  * Sales Report Export
@@ -17,13 +18,17 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class SalesReportExport implements FromArray, WithStyles, WithEvents, WithTitle
 {
+    use HasReportHeader;
+
     private $lang;
     private $data;
+    private $settings;
 
     public function __construct($params)
     {
         $this->lang = $params['lang'];
         $this->data = $params['data'];
+        $this->settings = $params['settings'] ?? null;
     }
 
     public function array(): array
@@ -89,6 +94,10 @@ class SalesReportExport implements FromArray, WithStyles, WithEvents, WithTitle
                 // Auto-size columns
                 $event->sheet->getDelegate()->getColumnDimension('A')->setAutoSize(true);
                 $event->sheet->getDelegate()->getColumnDimension('B')->setAutoSize(true);
+
+                if ($this->settings) {
+                    $this->applyReportHeader($event, 2);
+                }
             }
         ];
     }

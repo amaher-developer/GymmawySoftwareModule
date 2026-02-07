@@ -92,7 +92,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_subscription');
         $this->userLog($notes, TypeConstants::ExportSubscriptionExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price', 'period', 'workouts', 'freeze_limit', 'number_times_freeze'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price', 'period', 'workouts', 'freeze_limit', 'number_times_freeze'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

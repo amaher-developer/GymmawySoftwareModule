@@ -78,7 +78,7 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_subscription_categories');
         $this->userLog($notes, TypeConstants::ExportSubscriptionCategoryExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
     }
 
     function exportPDF(){

@@ -90,7 +90,7 @@ class GymTrainingTrackFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_training_tracks');
         $this->userLog($notes, TypeConstants::ExportTrainingTrackExcel);
 
-        return Excel::download(new TrainingTrackExport(['records' => $records, 'keys' => ['barcode', 'name', 'height', 'weight', 'notes'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new TrainingTrackExport(['records' => $records, 'keys' => ['barcode', 'name', 'height', 'weight', 'notes'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

@@ -1106,5 +1106,43 @@ class GymHomeFrontController extends GymGenericFrontController
         return implode(',', $recordArr);
     }
 
+    /**
+     * Admin page: Generate and download QR code for smart app link.
+     */
+    public function appQrCode()
+    {
+        $title = trans('sw.app_qr_code');
+        $smartLinkUrl = route('sw.appSmartLink');
+        return view('software::Front.app_qr_code', compact('title', 'smartLinkUrl'));
+    }
+
+    /**
+     * Public smart redirect: detects device and redirects to appropriate app store or website.
+     */
+    public function appSmartLink()
+    {
+        $settings = $this->mainSettings;
+        $userAgent = request()->header('User-Agent', '');
+
+        // Detect iOS
+        if (preg_match('/iPhone|iPad|iPod/i', $userAgent)) {
+            $iosUrl = $settings->ios_app ?? null;
+            if ($iosUrl) {
+                return redirect()->away($iosUrl);
+            }
+        }
+
+        // Detect Android
+        if (preg_match('/Android/i', $userAgent)) {
+            $androidUrl = $settings->android_app ?? null;
+            if ($androidUrl) {
+                return redirect()->away($androidUrl);
+            }
+        }
+
+        // Fallback: redirect to website root
+        return redirect('/');
+    }
+
 }
 

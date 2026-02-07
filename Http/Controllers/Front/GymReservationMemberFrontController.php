@@ -179,7 +179,7 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_reservation_members');
         $this->userLog($notes, TypeConstants::ExportReservationMemberExcel);
 
-        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
     }
 

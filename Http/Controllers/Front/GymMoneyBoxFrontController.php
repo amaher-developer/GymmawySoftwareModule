@@ -254,7 +254,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_moneybox');
         $this->userLog($notes, TypeConstants::ExportMoneyboxExcel);
 
-        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'amount', 'total_amount_before', 'total_amount_after', 'operation', 'payment_type_name', 'notes', 'date', 'by'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'amount', 'total_amount_before', 'total_amount_after', 'operation', 'payment_type_name', 'notes', 'date', 'by'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 
 //        \Maatwebsite\Excel\Facades\Excel::create($this->fileName, function($excel) use ($records, $title) {

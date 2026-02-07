@@ -286,7 +286,7 @@ class GymCustomerBalancesReportFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportCustomerBalancesExcel);
 
         return \Maatwebsite\Excel\Facades\Excel::download(
-            new CustomerBalancesExport(['data' => $data, 'lang' => $this->lang]),
+            new CustomerBalancesExport(['data' => $data, 'lang' => $this->lang, 'settings' => $this->mainSettings]),
             $this->fileName . '.xlsx'
         );
     }

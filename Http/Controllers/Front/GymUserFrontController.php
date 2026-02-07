@@ -108,7 +108,7 @@ class GymUserFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_users');
         $this->userLog($notes, TypeConstants::ExportUserExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'email', 'phone', 'start_time_work', 'end_time_work'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'email', 'phone', 'start_time_work', 'end_time_work'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

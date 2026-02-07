@@ -128,7 +128,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportRenewMemberExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'notes', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'notes', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
@@ -284,7 +284,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportExpireMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'barcode', 'name', 'phone', 'subscription', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
@@ -453,13 +453,13 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportSubscriptionMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [  'barcode', 'name', 'phone', 'subscription', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportSubscriptionMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 100;
         $records = $this->reportSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -620,7 +620,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [  'barcode', 'name', 'phone', 'pt_subscription'
-            ], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            ], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
@@ -806,7 +806,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportTodayMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
@@ -1100,7 +1100,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportTodayPTMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'created_at', 'barcode', 'name', 'phone', 'pt_membership', 'pt_classes', 'pt_sessions_used', 'pt_amount_remaining'
-            , 'pt_joining_date', 'pt_expire_date'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'pt_joining_date', 'pt_expire_date'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
@@ -1252,7 +1252,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportTodayNonMemberExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'non_created_at',  'non_name', 'non_phone', 'non_membership'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'non_created_at',  'non_name', 'non_phone', 'non_membership'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
@@ -1388,7 +1388,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportUserAttendeesExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'title', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'title', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportUserAttendeesPDF()
@@ -1723,7 +1723,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportStoreExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['id', 'member.name', 'member.phone', 'amount_paid', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['id', 'member.name', 'member.phone', 'amount_paid', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportStorePDF()
@@ -2086,7 +2086,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_moneybox');
         $this->userLog($notes, TypeConstants::ExportMoneyboxExcel);
 
-        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'invoice_total', 'vat_total', 'invoice_total_required', 'notes', 'date', 'by'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'invoice_total', 'vat_total', 'invoice_total_required', 'notes', 'date', 'by'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
     }
     private function prepareForExport($data)
     {
@@ -2393,7 +2393,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportOnlinePaymentExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportOnlinePaymentPDF()
@@ -2736,7 +2736,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportMemberExcel);
 
         $keys = ['barcode', 'name', 'phone', 'membership', 'start_freeze_date', 'end_freeze_date', 'freeze_status', 'days_remaining', 'duration_days', 'reason', 'admin_note', 'joining_date', 'expire_date'];
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => $keys, 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => $keys, 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportFreezeMemberPDF()

@@ -98,7 +98,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_store_orders');
         $this->userLog($notes, TypeConstants::ExportStoreOrderExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'],'lang' => $this->lang]), $fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

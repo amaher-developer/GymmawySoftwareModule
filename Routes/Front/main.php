@@ -4,11 +4,19 @@
 Route::name('sw.fingerprintAttendees')
     ->any('home-fingerprint-store', 'Front\GymHomeFrontController@fingerprintAttendees');
 
+// Public smart link - redirects to iOS app, Android app, or website based on device
+Route::name('sw.appSmartLink')
+    ->get('go', 'Front\GymHomeFrontController@appSmartLink');
+
 Route::prefix('/')
     ->middleware(['auth:sw', 'sw_permission'])
     ->group(function () {
 
         Route::name('sw.backupDB')->get('db-backup', 'Front\GymDBFrontController@backupDb');
+
+        // App QR Code generator page
+        Route::name('sw.appQrCode')
+            ->get('app-qr-code', 'Front\GymHomeFrontController@appQrCode');
 
         Route::name('sw.dashboard')
             ->get('', 'Front\GymHomeFrontController@home');

@@ -80,10 +80,9 @@
 </head>
 <body>
 
-<div class="header">
-    <div class="date"><b>{{date('d/m/Y')}}</b></div>
-    <div class="title"><b>{{$title}}</b></div>
-</div>
+@include('software::Front.partials._report_header')
+
+<div class="title"><b>{{$title}}</b></div>
 
 @if(count($records) > 0)
     <table>

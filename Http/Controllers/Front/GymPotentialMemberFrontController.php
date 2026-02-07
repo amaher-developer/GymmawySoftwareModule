@@ -196,7 +196,7 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_potential_members');
         $this->userLog($notes, TypeConstants::ExportPotentialMemberExcel);
 
-        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
     }
 

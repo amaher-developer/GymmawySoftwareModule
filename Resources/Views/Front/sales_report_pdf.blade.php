@@ -79,8 +79,10 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>{{ $title }}</h1>
+    @include('software::Front.partials._report_header')
+
+    <div style="text-align: center; margin-bottom: 15px; padding-bottom: 10px;">
+        <h1 style="margin: 0; color: #333;">{{ $title }}</h1>
         <p class="date-range">{{ trans('sw.from') }}: {{ $data['from'] }} - {{ trans('sw.to') }}: {{ $data['to'] }}</p>
     </div>
 
