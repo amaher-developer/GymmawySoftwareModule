@@ -367,9 +367,9 @@
                                     <td class="text-end actions-column">
                                         <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
                                             @if(in_array('editPaymentTypeOrderMoneybox', (array)$swUser->permissions) || $swUser->is_super_user)
-                                                <a data-target="#modalEdit" data-toggle="modal" href="#"
+                                                <a data-bs-target="#modalEdit" data-bs-toggle="modal" href="#"
                                                    id="{{@$order->id}}" payment_type="{{@$order->payment_type}}" style="cursor: pointer;"
-                                                   class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
+                                                   class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm btn-edit-payment"
                                                    title="{{ trans('sw.edit')}}">
                                                     <i class="ki-outline ki-pencil fs-2"></i>
                                                 </a>
@@ -570,8 +570,7 @@
             <div class="modal-content modal-content-demo">
                 <div class="modal-header">
                     <h6 class="modal-title">{{ trans('sw.payment_type')}}</h6>
-                    <button aria-label="Close" class="close" data-dismiss="modal" type="button"><span
-                            aria-hidden="true">&times;</span></button>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
                 </div>
                 <div class="modal-body">
                     <div id="modalEditResult"></div>
@@ -658,7 +657,7 @@
         });
 
 
-        $('.btn-indigo').off('click').on('click', function (e) {
+        $('.btn-edit-payment').off('click').on('click', function (e) {
             var that = $(this);
             var attr_id = that.attr('id');
             var payment_type = that.attr('payment_type');
