@@ -115,7 +115,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportRenewMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportRenewMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -134,7 +134,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportRenewMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportRenewMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -270,7 +270,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportExpireMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportExpireMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -290,7 +290,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportExpireMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportExpireMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -439,7 +439,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
     function exportSubscriptionMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -605,7 +605,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportPTSubscriptionMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportPTSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -626,7 +626,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportPTSubscriptionMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportPTSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -792,7 +792,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportTodayMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -812,7 +812,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportTodayMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1086,7 +1086,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
     function exportTodayPTMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportTodayPTMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1106,7 +1106,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportTodayPTMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportTodayPTMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1239,7 +1239,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
     function exportTodayNonMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportTodayNonMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1258,7 +1258,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportTodayNonMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->reportTodayNonMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1367,7 +1367,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportUserAttendeesExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $search_query = request()->query();
         $this->request_array = ['search', 'date'];
         $request_array = $this->request_array;
@@ -1393,7 +1393,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportUserAttendeesPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $search_query = request()->query();
         $this->request_array = ['search', 'date'];
         $request_array = $this->request_array;
@@ -1668,7 +1668,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportStoreExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $from = request('from');
         $to = request('to');
         $search = request('search');
@@ -1728,7 +1728,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportStorePDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $from = request('from');
         $to = request('to');
         $search = request('search');
@@ -2365,7 +2365,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportOnlinePaymentExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $this->request_array = ['search', 'from', 'to', 'transaction'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -2398,7 +2398,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportOnlinePaymentPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $this->request_array = ['search', 'from', 'to', 'transaction'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -2612,7 +2612,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportFreezeMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $this->request_array = ['search', 'subscription', 'status', 'from', 'to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -2741,7 +2741,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportFreezeMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $this->request_array = ['search', 'subscription', 'status', 'from', 'to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;

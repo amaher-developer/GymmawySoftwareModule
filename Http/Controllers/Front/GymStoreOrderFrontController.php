@@ -100,7 +100,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
 
     function exportStoreOrderExcel(){
-        //$this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
 
@@ -146,7 +146,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 //        $records = $this->StoreOrderRepository->get();
 //        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
 
-        //$this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
         $fileName = 'store-orders-' . Carbon::now()->toDateTimeString();

@@ -89,7 +89,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
 
 
     function exportStoreOrderVendorExcel(){
-        //$this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
 
@@ -132,7 +132,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
 //        return $result;
 //    }
     function exportStoreOrderVendorPDF(){
-        //$this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
         $fileName = 'store-vendor-orders-' . Carbon::now()->toDateTimeString();

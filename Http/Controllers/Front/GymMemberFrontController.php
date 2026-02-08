@@ -401,7 +401,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     function exportExcel()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->members;
 
@@ -466,7 +466,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     function exportPDF()
     {
-        $this->limit = null;
+        $this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->members;
 
