@@ -26,8 +26,10 @@ class MemberResource extends JsonResource
             $img = $d->getBarcodePNGPath($this->code, TypeConstants::BarcodeType);
             $qrcodes_path = (asset($img));
         }
+        
+        $is_freeze = $this->SettingRepository->select('is_freeze')->first()->is_freeze;
         $freeze_check = 0;
-        if((@$this->member_subscription_info->number_times_freeze > 0) && (@$this->member_subscription_info->status == TypeConstants::Active)){
+        if(@$is_freeze && (@$this->member_subscription_info->number_times_freeze > 0) && (@$this->member_subscription_info->status == TypeConstants::Active)){
             $freeze_check = 1;
         }
 
