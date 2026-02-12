@@ -173,6 +173,26 @@ class GymSalesReportFrontController extends GymGenericFrontController
         ];
         $storeSales = $sales->whereIn('type', $storeTypes)->sum('amount');
 
+        // Moneybox operations (separate query - these are NOT sales)
+        $moneyboxQuery = GymMoneyBox::branch()
+            ->whereIn('type', [
+                TypeConstants::CreateMoneyBoxAdd,
+                TypeConstants::CreateMoneyBoxWithdraw,
+                TypeConstants::CreateMoneyBoxWithdrawEarnings,
+            ])
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to);
+
+        if (!empty($user)) {
+            $moneyboxQuery->where('user_id', (int)$user);
+        }
+
+        $moneyboxRecords = $moneyboxQuery->get();
+        $moneyboxAdd = $moneyboxRecords->where('type', TypeConstants::CreateMoneyBoxAdd)->sum('amount');
+        $moneyboxWithdraw = $moneyboxRecords->where('type', TypeConstants::CreateMoneyBoxWithdraw)->sum('amount');
+        $moneyboxWithdrawEarnings = $moneyboxRecords->where('type', TypeConstants::CreateMoneyBoxWithdrawEarnings)->sum('amount');
+        $netTotal = $totalSales + $moneyboxAdd - $moneyboxWithdraw - $moneyboxWithdrawEarnings;
+
         $search_query = request()->query();
 
         return view('software::Front.sales_report_front_list', compact(
@@ -192,6 +212,10 @@ class GymSalesReportFrontController extends GymGenericFrontController
             'ptSales',
             'activitySales',
             'storeSales',
+            'moneyboxAdd',
+            'moneyboxWithdraw',
+            'moneyboxWithdrawEarnings',
+            'netTotal',
             'search_query'
         ));
     }
@@ -233,6 +257,7 @@ class GymSalesReportFrontController extends GymGenericFrontController
         $data = $this->calculateSummaryData($sales, $payment_types);
         $data['from'] = $from;
         $data['to'] = $to;
+        $data = array_merge($data, $this->getMoneyboxData($from, $to, $user, $data['totalSales']));
 
         $this->fileName = 'sales-report-' . Carbon::now()->toDateTimeString();
 
@@ -280,6 +305,7 @@ class GymSalesReportFrontController extends GymGenericFrontController
         $data = $this->calculateSummaryData($sales, $payment_types);
         $data['from'] = $from;
         $data['to'] = $to;
+        $data = array_merge($data, $this->getMoneyboxData($from, $to, $user, $data['totalSales']));
 
         $this->fileName = 'sales-report-' . Carbon::now()->toDateTimeString();
         $title = trans('sw.sales_report');
@@ -388,5 +414,37 @@ class GymSalesReportFrontController extends GymGenericFrontController
         $data['storeSales'] = $sales->whereIn('type', $storeTypes)->sum('amount');
 
         return $data;
+    }
+
+    /**
+     * Query moneybox operations for the given date range and user filter
+     */
+    private function getMoneyboxData($from, $to, $user = null, $totalSales = 0)
+    {
+        $moneyboxQuery = GymMoneyBox::branch()
+            ->whereIn('type', [
+                TypeConstants::CreateMoneyBoxAdd,
+                TypeConstants::CreateMoneyBoxWithdraw,
+                TypeConstants::CreateMoneyBoxWithdrawEarnings,
+            ])
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to);
+
+        if (!empty($user)) {
+            $moneyboxQuery->where('user_id', (int)$user);
+        }
+
+        $moneyboxRecords = $moneyboxQuery->get();
+
+        $add = $moneyboxRecords->where('type', TypeConstants::CreateMoneyBoxAdd)->sum('amount');
+        $withdraw = $moneyboxRecords->where('type', TypeConstants::CreateMoneyBoxWithdraw)->sum('amount');
+        $withdrawEarnings = $moneyboxRecords->where('type', TypeConstants::CreateMoneyBoxWithdrawEarnings)->sum('amount');
+
+        return [
+            'moneyboxAdd' => $add,
+            'moneyboxWithdraw' => $withdraw,
+            'moneyboxWithdrawEarnings' => $withdrawEarnings,
+            'netTotal' => $totalSales + $add - $withdraw - $withdrawEarnings,
+        ];
     }
 }

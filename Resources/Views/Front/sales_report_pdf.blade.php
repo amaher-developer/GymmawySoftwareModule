@@ -36,11 +36,11 @@
             margin-bottom: 10px;
         }
         .total-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #667eea;
             color: white;
             padding: 20px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 0;
         }
         .total-box h2 {
             margin: 0;
@@ -48,7 +48,7 @@
         }
         .total-box p {
             margin: 5px 0 0 0;
-            opacity: 0.8;
+            color: #ddd;
         }
         table {
             width: 100%;
@@ -86,10 +86,22 @@
         <p class="date-range">{{ trans('sw.from') }}: {{ $data['from'] }} - {{ trans('sw.to') }}: {{ $data['to'] }}</p>
     </div>
 
-    <div class="total-box">
-        <h2>{{ number_format($data['totalSales'], 2) }}</h2>
-        <p>{{ trans('sw.total_sales') }}</p>
-    </div>
+    <table width="100%" cellspacing="8" style="border: none; margin-bottom: 20px;">
+        <tr>
+            <td width="50%" style="border: none; padding: 0; background-color: #667eea; color: #ffffff; text-align: center;">
+                <div style="padding: 20px;">
+                    <h2 style="margin: 0; font-size: 28px; color: #ffffff;">{{ number_format($data['totalSales'], 2) }}</h2>
+                    <p style="margin: 5px 0 0 0; color: #ddd;">{{ trans('sw.total_sales') }}</p>
+                </div>
+            </td>
+            <td width="50%" style="border: none; padding: 0; background-color: #11998e; color: #ffffff; text-align: center;">
+                <div style="padding: 20px;">
+                    <h2 style="margin: 0; font-size: 28px; color: #ffffff;">{{ number_format($data['netTotal'] ?? 0, 2) }}</h2>
+                    <p style="margin: 5px 0 0 0; color: #ddd;">{{ trans('sw.net_total') }}</p>
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <div class="section">
         <div class="section-title">{{ trans('sw.sales_by_payment_method') }}</div>
@@ -140,6 +152,32 @@
                 <tr>
                     <td>{{ trans('sw.store_sales') }}</td>
                     <td class="amount">{{ number_format($data['storeSales'], 2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">{{ trans('sw.moneybox') }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>{{ trans('sw.description') }}</th>
+                    <th>{{ trans('sw.amount') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ trans('sw.add_to_money_box') }}</td>
+                    <td class="amount">{{ number_format($data['moneyboxAdd'] ?? 0, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>{{ trans('sw.withdraw_from_money_box') }}</td>
+                    <td class="amount" style="color: #dc3545;">{{ number_format($data['moneyboxWithdraw'] ?? 0, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>{{ trans('sw.withdraw_earning') }}</td>
+                    <td class="amount" style="color: #ffc107;">{{ number_format($data['moneyboxWithdrawEarnings'] ?? 0, 2) }}</td>
                 </tr>
             </tbody>
         </table>

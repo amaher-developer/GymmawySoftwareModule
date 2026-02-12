@@ -40,8 +40,9 @@ class SalesReportExport implements FromArray, WithStyles, WithEvents, WithTitle
         $rows[] = [trans('sw.from') . ': ' . $this->data['from'] . ' - ' . trans('sw.to') . ': ' . $this->data['to']];
         $rows[] = []; // Empty row
 
-        // Total Sales
+        // Total Sales & Net Total
         $rows[] = [trans('sw.total_sales'), number_format($this->data['totalSales'], 2)];
+        $rows[] = [trans('sw.net_total'), number_format($this->data['netTotal'] ?? 0, 2)];
         $rows[] = []; // Empty row
 
         // Sales by Payment Method
@@ -60,6 +61,14 @@ class SalesReportExport implements FromArray, WithStyles, WithEvents, WithTitle
         $rows[] = [trans('sw.pt_sales'), number_format($this->data['ptSales'], 2)];
         $rows[] = [trans('sw.activity_sales'), number_format($this->data['activitySales'], 2)];
         $rows[] = [trans('sw.store_sales'), number_format($this->data['storeSales'], 2)];
+        $rows[] = []; // Empty row
+
+        // Moneybox Operations
+        $rows[] = [trans('sw.moneybox')];
+        $rows[] = [trans('sw.description'), trans('sw.amount')];
+        $rows[] = [trans('sw.add_to_money_box'), number_format($this->data['moneyboxAdd'] ?? 0, 2)];
+        $rows[] = [trans('sw.withdraw_from_money_box'), number_format($this->data['moneyboxWithdraw'] ?? 0, 2)];
+        $rows[] = [trans('sw.withdraw_earning'), number_format($this->data['moneyboxWithdrawEarnings'] ?? 0, 2)];
 
         return $rows;
     }

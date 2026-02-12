@@ -31,6 +31,9 @@
         .total-sales-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+        .net-total-card {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
         @if($lang == 'ar')
             .static-info.align-reverse .name, .static-info.align-reverse .value {
                 text-align: right;
@@ -141,10 +144,10 @@
             </div>
             <!--end::Info Notice-->
 
-            <!--begin::Total Sales Card-->
-            <div class="row mb-5">
-                <div class="col-12">
-                    <div class="card total-sales-card summary-card">
+            <!--begin::Total Sales & Net Total Cards-->
+            <div class="row mb-5 g-4">
+                <div class="col-md-6">
+                    <div class="card total-sales-card summary-card h-100">
                         <div class="card-body p-6">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
@@ -166,8 +169,31 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-6">
+                    <div class="card net-total-card summary-card h-100">
+                        <div class="card-body p-6">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    <div class="symbol symbol-70px me-5">
+                                        <div class="symbol-label bg-white bg-opacity-20">
+                                            <i class="ki-outline ki-wallet fs-2x text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-column">
+                                        <span class="fs-4 fw-semibold text-white opacity-75">{{ trans('sw.net_total')}}</span>
+                                        <span class="fs-1 fw-bold text-white">{{ number_format($netTotal, 2) }}</span>
+                                        <span class="fs-7 text-white opacity-75">{{ trans('sw.total_sales')}} + {{ trans('sw.moneybox')}}</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column align-items-end">
+                                    <i class="ki-outline ki-chart-line-up fs-3x text-white opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <!--end::Total Sales Card-->
+            <!--end::Total Sales & Net Total Cards-->
 
             <!--begin::Sales Breakdown by Payment Method-->
             <div class="row g-4 mb-5">
@@ -303,6 +329,68 @@
                 </div>
             </div>
             <!--end::Sales Breakdown by Category-->
+
+            <!--begin::Moneybox Operations-->
+            <div class="row g-4 mb-5">
+                <div class="col-12">
+                    <h4 class="fw-bold text-gray-900 mb-4">
+                        <i class="ki-outline ki-wallet fs-4 me-2"></i>
+                        {{ trans('sw.moneybox')}}
+                    </h4>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light-success summary-card">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="symbol symbol-50px me-4">
+                                    <div class="symbol-label bg-success">
+                                        <i class="ki-outline ki-plus-circle fs-2x text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column">
+                                    <span class="fs-6 fw-semibold text-gray-900">{{ trans('sw.add_to_money_box')}}</span>
+                                    <span class="fs-2 fw-bold text-success">{{ number_format($moneyboxAdd, 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light-danger summary-card">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="symbol symbol-50px me-4">
+                                    <div class="symbol-label bg-danger">
+                                        <i class="ki-outline ki-minus-circle fs-2x text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column">
+                                    <span class="fs-6 fw-semibold text-gray-900">{{ trans('sw.withdraw_from_money_box')}}</span>
+                                    <span class="fs-2 fw-bold text-danger">{{ number_format($moneyboxWithdraw, 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light-warning summary-card">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="symbol symbol-50px me-4">
+                                    <div class="symbol-label bg-warning">
+                                        <i class="ki-outline ki-arrow-up-right fs-2x text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column">
+                                    <span class="fs-6 fw-semibold text-gray-900">{{ trans('sw.withdraw_earning')}}</span>
+                                    <span class="fs-2 fw-bold text-warning">{{ number_format($moneyboxWithdrawEarnings, 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--end::Moneybox Operations-->
 
             <!--begin::Important Note-->
             <div class="alert alert-warning d-flex align-items-center">

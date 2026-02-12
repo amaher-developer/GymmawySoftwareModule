@@ -776,58 +776,6 @@ if(!isset($permission_group->permissions)){
                                             </div>
 
                                         </div>
-
-                                        {{-- Sales Report --}}
-                                        <hr class="perm-hr"/>
-                                        <div class="perm-section-title">
-                                            <i class="ki-outline ki-chart-simple-2"></i> {{ trans('sw.sales_report') }}
-                                        </div>
-                                        <div class="row pt-2 pb-2">
-                                            <div class="col-lg-2 ">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="salesReport"
-                                                                            @if(@in_array('salesReport', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.sales_report')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportSalesReportExcel"
-                                                                            @if(@in_array('exportSalesReportExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_export')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportSalesReportPDF"
-                                                                            @if(@in_array('exportSalesReportPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_export')}}</span></label>
-                                            </div>
-                                        </div>
-
-                                        {{-- Customer Balances Report --}}
-                                        <hr class="perm-hr"/>
-                                        <div class="perm-section-title">
-                                            <i class="ki-outline ki-wallet"></i> {{ trans('sw.customer_balances_report') }}
-                                        </div>
-                                        <div class="row pt-2 pb-2">
-                                            <div class="col-lg-2 ">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="customerBalancesReport"
-                                                                            @if(@in_array('customerBalancesReport', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.customer_balances_report')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportCustomerBalancesExcel"
-                                                                            @if(@in_array('exportCustomerBalancesExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.excel_export')}}</span></label>
-                                            </div>
-                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportCustomerBalancesPDF"
-                                                                            @if(@in_array('exportCustomerBalancesPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.pdf_export')}}</span></label>
-                                            </div>
-                                        </div>
                                     </div>
 
 
@@ -1723,198 +1671,254 @@ if(!isset($permission_group->permissions)){
                                         </div>
                                     </div>
                                     <div class="tab-pane " id="reports">
+
+                                        {{-- Moneybox Reports --}}
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">
-                                            <i class="ki-outline ki-graph-up"></i> {{ trans('sw.reports') }}
+                                            <i class="ki-outline ki-wallet"></i> {{ trans('sw.moneybox') }}
                                         </div>
                                         <div class="row pt-2 pb-2">
-                                            <div class="col-lg-3 ">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="listMoneyBox"
-                                                                            @if(@in_array('listMoneyBox', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.money_report') }}</span></label>
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]" value="listMoneyBox"
+                                                    @if(@in_array('listMoneyBox', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.money_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportMoneyboxTax"
-                                                                            @if(@in_array('reportMoneyboxTax', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.moneybox_tax') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="listMoneyBoxDaily"
+                                                    @if(@in_array('listMoneyBoxDaily', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.money_daily_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="reportMoneyboxTax"
+                                                    @if(@in_array('reportMoneyboxTax', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.moneybox_tax') }}</span></label>
                                             </div>
                                             @if(config('sw_billing.zatca_enabled'))
-                                                <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                    <label class="ckbox"><input name="permissions[]"
-                                                                                value="reportZatcaInvoices"
-                                                                                @if(@in_array('reportZatcaInvoices', $permission_group->permissions)) checked @endif
-                                                                                type="checkbox"> <span>{{ trans('sw.zatca_invoices_report') }}</span></label>
-                                                </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="reportZatcaInvoices"
+                                                    @if(@in_array('reportZatcaInvoices', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.zatca_invoices_report') }}</span></label>
+                                            </div>
                                             @endif
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportRenewMemberList"
-                                                                            @if(@in_array('reportRenewMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.memberships_renewal_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="reportOnlinePaymentTransactionList"
+                                                    @if(@in_array('reportOnlinePaymentTransactionList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.online_transaction_report') }}</span></label>
+                                            </div>
+                                        </div>
+
+                                        {{-- Sales Report --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-chart-simple-2"></i> {{ trans('sw.sales_report') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]" value="salesReport"
+                                                    @if(@in_array('salesReport', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.sales_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportRenewMemberExcel"
-                                                                            @if(@in_array('exportRenewMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_renew_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportSalesReportExcel"
+                                                    @if(@in_array('exportSalesReportExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.excel_export') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportRenewMemberPDF"
-                                                                            @if(@in_array('exportRenewMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_renew_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportSalesReportPDF"
+                                                    @if(@in_array('exportSalesReportPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.pdf_export') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportExpireMemberList"
-                                                                            @if(@in_array('reportExpireMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.memberships_expire_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="createMoneyBoxAdd"
+                                                    @if(@in_array('createMoneyBoxAdd', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.add_to_money_box') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportExpireMemberExcel"
-                                                                            @if(@in_array('exportExpireMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_expire_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="createMoneyBoxWithdraw"
+                                                    @if(@in_array('createMoneyBoxWithdraw', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.withdraw_from_money_box') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportExpireMemberPDF"
-                                                                            @if(@in_array('exportExpireMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_expire_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="createMoneyBoxWithdrawEarnings"
+                                                    @if(@in_array('createMoneyBoxWithdrawEarnings', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.withdraw_earning') }}</span></label>
+                                            </div>
+                                        </div>
+
+                                        {{-- Customer Balances Report --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-two-credit-cart"></i> {{ trans('sw.customer_balances_report') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]" value="customerBalancesReport"
+                                                    @if(@in_array('customerBalancesReport', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.customer_balances_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportDetailMemberList"
-                                                                            @if(@in_array('reportDetailMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.memberships_detail_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportCustomerBalancesExcel"
+                                                    @if(@in_array('exportCustomerBalancesExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.excel_export') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportSubscriptionMemberList"
-                                                                            @if(@in_array('reportSubscriptionMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.report_subscriptions') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportCustomerBalancesPDF"
+                                                    @if(@in_array('exportCustomerBalancesPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.pdf_export') }}</span></label>
+                                            </div>
+                                        </div>
+
+                                        {{-- Membership Reports --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-profile-user"></i> {{ trans('sw.memberships') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]" value="reportRenewMemberList"
+                                                    @if(@in_array('reportRenewMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.memberships_renewal_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportSubscriptionMemberExcel"
-                                                                            @if(@in_array('exportSubscriptionMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_subscription_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportRenewMemberExcel"
+                                                    @if(@in_array('exportRenewMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_renew_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportSubscriptionMemberPDF"
-                                                                            @if(@in_array('exportSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_subscription_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportRenewMemberPDF"
+                                                    @if(@in_array('exportRenewMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_renew_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportPTSubscriptionMemberList"
-                                                                            @if(@in_array('reportPTSubscriptionMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.report_pt_subscriptions') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="reportExpireMemberList"
+                                                    @if(@in_array('reportExpireMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.memberships_expire_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportPTSubscriptionMemberExcel"
-                                                                            @if(@in_array('exportPTSubscriptionMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_pt_subscription_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportExpireMemberExcel"
+                                                    @if(@in_array('exportExpireMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_expire_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportPTSubscriptionMemberPDF"
-                                                                            @if(@in_array('exportPTSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_pt_subscription_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportExpireMemberPDF"
+                                                    @if(@in_array('exportExpireMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_expire_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportTodayMemberList"
-                                                                            @if(@in_array('reportTodayMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.client_attendees_today') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="reportDetailMemberList"
+                                                    @if(@in_array('reportDetailMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.memberships_detail_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportTodayMemberExcel"
-                                                                            @if(@in_array('exportTodayMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_today_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="reportSubscriptionMemberList"
+                                                    @if(@in_array('reportSubscriptionMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.report_subscriptions') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportTodayMemberPDF"
-                                                                            @if(@in_array('exportTodayMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_today_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportSubscriptionMemberExcel"
+                                                    @if(@in_array('exportSubscriptionMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_subscription_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportTodayPTMemberList"
-                                                                            @if(@in_array('reportTodayPTMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.client_pt_attendees_today') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportSubscriptionMemberPDF"
+                                                    @if(@in_array('exportSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_subscription_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportTodayPTMemberExcel"
-                                                                            @if(@in_array('exportTodayPTMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_today_pt_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="reportPTSubscriptionMemberList"
+                                                    @if(@in_array('reportPTSubscriptionMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.report_pt_subscriptions') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportTodayPTMemberPDF"
-                                                                            @if(@in_array('exportTodayPTMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_today_pt_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportPTSubscriptionMemberExcel"
+                                                    @if(@in_array('exportPTSubscriptionMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_pt_subscription_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportTodayNonMemberList"
-                                                                            @if(@in_array('reportTodayNonMemberList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.non_client_attendees_today') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportPTSubscriptionMemberPDF"
+                                                    @if(@in_array('exportPTSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_pt_subscription_member_report') }}</span></label>
+                                            </div>
+                                        </div>
+
+                                        {{-- Attendance Reports --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-calendar-tick"></i> {{ trans('sw.client_attendees_today') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]" value="reportTodayMemberList"
+                                                    @if(@in_array('reportTodayMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.client_attendees_today') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportTodayNonMemberExcel"
-                                                                            @if(@in_array('exportTodayNonMemberExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_today_non_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportTodayMemberExcel"
+                                                    @if(@in_array('exportTodayMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_today_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportTodayNonMemberPDF"
-                                                                            @if(@in_array('exportTodayNonMemberPDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_today_non_member_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportTodayMemberPDF"
+                                                    @if(@in_array('exportTodayMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_today_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportUserAttendeesList"
-                                                                            @if(@in_array('reportUserAttendeesList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.attendees_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="reportTodayPTMemberList"
+                                                    @if(@in_array('reportTodayPTMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.client_pt_attendees_today') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportStoreList"
-                                                                            @if(@in_array('reportStoreList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.store_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportTodayPTMemberExcel"
+                                                    @if(@in_array('exportTodayPTMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_today_pt_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportStoreExcel"
-                                                                            @if(@in_array('exportStoreExcel', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_excel_store_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportTodayPTMemberPDF"
+                                                    @if(@in_array('exportTodayPTMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_today_pt_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="exportStorePDF"
-                                                                            @if(@in_array('exportStorePDF', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.export_pdf_store_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="reportTodayNonMemberList"
+                                                    @if(@in_array('reportTodayNonMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.non_client_attendees_today') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="reportOnlinePaymentTransactionList"
-                                                                            @if(@in_array('reportOnlinePaymentTransactionList', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.online_transaction_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportTodayNonMemberExcel"
+                                                    @if(@in_array('exportTodayNonMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_today_non_member_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
-                                                <label class="ckbox"><input name="permissions[]"
-                                                                            value="listMoneyBoxDaily"
-                                                                            @if(@in_array('listMoneyBoxDaily', $permission_group->permissions)) checked @endif
-                                                                            type="checkbox"> <span>{{ trans('sw.money_daily_report') }}</span></label>
+                                                <label class="ckbox"><input name="permissions[]" value="exportTodayNonMemberPDF"
+                                                    @if(@in_array('exportTodayNonMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_today_non_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="reportUserAttendeesList"
+                                                    @if(@in_array('reportUserAttendeesList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.attendees_report') }}</span></label>
+                                            </div>
+                                        </div>
+
+                                        {{-- Store Reports --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-shop"></i> {{ trans('sw.store') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]" value="reportStoreList"
+                                                    @if(@in_array('reportStoreList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.store_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportStoreExcel"
+                                                    @if(@in_array('exportStoreExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_store_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportStorePDF"
+                                                    @if(@in_array('exportStorePDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_store_report') }}</span></label>
                                             </div>
                                         </div>
                                     </div>
