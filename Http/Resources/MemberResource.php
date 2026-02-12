@@ -5,6 +5,7 @@ namespace Modules\Software\Http\Resources;
 use Modules\Software\Classes\TypeConstants;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Milon\Barcode\DNS1D;
+use Modules\Generic\Models\Setting;
 
 class MemberResource extends JsonResource
 {
@@ -14,6 +15,7 @@ class MemberResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array
      */
+    
     public function toArray($request)
     {
         $qrcodes_folder = base_path('uploads/barcodes/'.$this->code.'.png');
@@ -27,7 +29,7 @@ class MemberResource extends JsonResource
             $qrcodes_path = (asset($img));
         }
         
-        $is_freeze = $this->SettingRepository->select('is_freeze')->first()->is_freeze;
+        $is_freeze = Setting::select('is_freeze')->first()->is_freeze;
         $freeze_check = 0;
         if(@$is_freeze && (@$this->member_subscription_info->number_times_freeze > 0) && (@$this->member_subscription_info->status == TypeConstants::Active)){
             $freeze_check = 1;
