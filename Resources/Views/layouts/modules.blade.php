@@ -187,6 +187,20 @@
                     <div class="text-muted fs-7 mt-1">{{trans('sw.tabby_payment_description')}}</div>
                 </div>
                 @endif
+
+                <!-- Paymob Payment Option -->
+                @if(env('PAYMOB_API_KEY'))
+                <div class="mb-4" id="renew_paymob_payment_option">
+                    <label class="form-label">{{trans('sw.paymob_payment')}}</label>
+                    <div class="form-check form-switch form-check-custom form-check-solid">
+                        <input class="form-check-input" type="checkbox" name="send_paymob_link" id="renew_send_paymob_link" value="1"/>
+                        <label class="form-check-label" for="renew_send_paymob_link">
+                            {{trans('sw.send_paymob_payment_link')}}
+                        </label>
+                    </div>
+                    <div class="text-muted fs-7 mt-1">{{trans('sw.paymob_payment_description')}}</div>
+                </div>
+                @endif
             </div>
 
             @if(@$mainSettings->active_loyalty)

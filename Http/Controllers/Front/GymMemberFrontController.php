@@ -9,6 +9,7 @@ use Modules\Software\Imports\MembersSubscriptionsImport;
 use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Classes\SMSFactory;
 use Modules\Software\Services\TabbyPaymentService;
+use Modules\Software\Services\PaymobPaymentService;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
 use Modules\Software\Classes\WAUltramsg;
@@ -939,6 +940,37 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
+            // Send Paymob payment link if checkbox is checked and member has remaining amount
+            if (!empty(env('PAYMOB_API_KEY')) && $request->input('send_paymob_link')) {
+                try {
+                    $paymobService = new PaymobPaymentService();
+                    $paymobResult = $paymobService->processNewMemberPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $sub['amount_paid'],
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paymobResult['success']) {
+                        Log::info('Paymob payment link sent for new member', [
+                            'member_id' => $member->id,
+                            'amount_paid' => $sub['amount_paid'],
+                            'payment_url' => $paymobResult['payment_url'],
+                            'sent_whatsapp' => $paymobResult['sent_whatsapp'],
+                            'sent_sms' => $paymobResult['sent_sms'],
+                            'sent_email' => $paymobResult['sent_email'] ?? false,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process Paymob payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_added'),
@@ -1504,6 +1536,44 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to process Tabby payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send Paymob payment link if checkbox is checked and member has paid amount difference > 0
+        if (!empty(env('PAYMOB_API_KEY')) && $request->input('send_paymob_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $paymobService = new PaymobPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member) {
+                    $paymobResult = $paymobService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paymobResult['success']) {
+                        Log::info('Paymob payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $paymobResult['payment_url'],
+                            'sent_whatsapp' => $paymobResult['sent_whatsapp'],
+                            'sent_sms' => $paymobResult['sent_sms'],
+                            'sent_email' => $paymobResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Paymob payment for membership edit', [
                     'member_id' => $member_subscription->member_id,
                     'subscription_id' => $member_subscription->id,
                     'error' => $e->getMessage(),
@@ -2375,6 +2445,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $this->userLog($note, TypeConstants::ScanMember);
             // Reload member with updated subscription data
             $member->load('member_subscription_info_has_active');
+            $status = true;
             return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
 
         }
@@ -2663,6 +2734,42 @@ class GymMemberFrontController extends GymGenericFrontController
             }
         }
 
+        // Send Paymob payment link if checkbox is checked and member has remaining amount
+        if (!empty(env('PAYMOB_API_KEY')) && $request->input('send_paymob_link')) {
+            try {
+                $paymobService = new PaymobPaymentService();
+                $memberSubObj = GymMemberSubscription::find($member_subscription);
+
+                if ($memberSubObj) {
+                    $paymobResult = $paymobService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paymobResult['success']) {
+                        Log::info('Paymob payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $paymobResult['payment_url'],
+                            'sent_whatsapp' => $paymobResult['sent_whatsapp'],
+                            'sent_sms' => $paymobResult['sent_sms'],
+                            'sent_email' => $paymobResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Paymob payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // update status of member
         $this->updateSubscriptionsStatus([$member->id]);
 
@@ -2886,7 +2993,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if (!File::exists($cards_folder)) {
             File::makeDirectory($cards_folder, 0755, true, true);
         }
-        if ($code) {
+        if ($code && $member) {
             $setting = Setting::branch()->first();
             $d = new DNS1D();
             $d->setStorPath($qrcodes_folder);
@@ -2923,7 +3030,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 $img->place($barcodePath, 'top-left', $barcodeX, $barcodeY);
             }
             // member code under barcode (left side)
-            $img->text(($code), 200, 300, function ($font) {
+            $img->text((string) $code, 200, 300, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
@@ -2933,10 +3040,10 @@ class GymMemberFrontController extends GymGenericFrontController
             });
 
             $Arabic = new Arabic();
-            $name = $Arabic->utf8Glyphs($member->name);
+            $name = $Arabic->utf8Glyphs($member->name ?? '');
 
             // add member name on image (right band, below logo)
-            $img->text($name, 200, 120, function ($font) {
+            $img->text((string) $name, 200, 120, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#000');
@@ -2945,13 +3052,13 @@ class GymMemberFrontController extends GymGenericFrontController
                 $font->angle(0);
             });
             // add gym phone on image
-            $img->text($setting->phone, ($canvasWidth - 350), 220, function ($font) {
+            $img->text((string) ($setting->phone ?? ''), ($canvasWidth - 350), 220, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
             // add gym email on image
-            $img->text($setting->support_email, ($canvasWidth - 350), 300, function ($font) {
+            $img->text((string) ($setting->support_email ?? ''), ($canvasWidth - 350), 300, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
@@ -2973,7 +3080,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if (!File::exists($cards_folder)) {
             File::makeDirectory($cards_folder, 0755, true, true);
         }
-        if ($code) {
+        if ($code && $member) {
             $setting = Setting::branch()->first();
             $d = new DNS1D();
             $d->setStorPath($qrcodes_folder);
@@ -2997,7 +3104,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $img->place(base_path($setting->logo_thumb), 'top-left', 30, 40);
             // add barcode on image
             $img->place(base_path('uploads/barcodes/' . $code . '.png'), 'bottom-left', 100, 200);
-            $img->text(($code), 200, 320, function ($font) {
+            $img->text((string) $code, 200, 320, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
@@ -3007,10 +3114,10 @@ class GymMemberFrontController extends GymGenericFrontController
             });
 
             $Arabic = new Arabic();
-            $name = $Arabic->utf8Glyphs($member->name);
+            $name = $Arabic->utf8Glyphs($member->name ?? '');
 
             // add member name on image
-            $img->text($name, 650, 105, function ($font) {
+            $img->text((string) $name, 650, 105, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
@@ -3019,13 +3126,13 @@ class GymMemberFrontController extends GymGenericFrontController
                 $font->angle(0);
             });
             // add gym phone on image
-            $img->text($setting->phone, 500, 220, function ($font) {
+            $img->text((string) ($setting->phone ?? ''), 500, 220, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
             // add gym email on image
-            $img->text($setting->support_email, 500, 300, function ($font) {
+            $img->text((string) ($setting->support_email ?? ''), 500, 300, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');

@@ -426,6 +426,7 @@ class TypeConstants {
     const PAYPAL_TRANSACTION_FEES = 2;
     const PAYMOB_TRANSACTION_FEES = 3;
     const TABBY_TRANSACTION = 4;
+    const PAYMOB_TRANSACTION = 5;
     const PENDING = 0;
     const SUCCESS = 1;
     const FAILURE = 2;

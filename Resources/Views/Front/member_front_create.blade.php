@@ -386,6 +386,20 @@
                             </div>
                             @endif
 
+                            <!-- Paymob Payment Option -->
+                            @if(env('PAYMOB_API_KEY'))
+                            <div class="col-md-6" id="paymob_payment_option">
+                                <label class="form-label">{{ trans('sw.paymob_payment')}}</label>
+                                <div class="form-check form-switch form-check-custom form-check-solid">
+                                    <input class="form-check-input" type="checkbox" name="send_paymob_link" id="send_paymob_link" value="1"/>
+                                    <label class="form-check-label" for="send_paymob_link">
+                                        {{ trans('sw.send_paymob_payment_link')}}
+                                    </label>
+                                </div>
+                                <div class="text-muted fs-7 mt-1">{{ trans('sw.paymob_payment_description')}}</div>
+                            </div>
+                            @endif
+
                             <!-- Notes -->
                             <div class="col-md-12">
                                 <label class="form-label">{{ trans('sw.notes')}}</label>

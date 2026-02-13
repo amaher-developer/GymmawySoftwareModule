@@ -21,6 +21,32 @@
 @endsection
 @section('styles')
     <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
+    <style>
+        @media print {
+            /* Hide non-content elements */
+            #kt_aside, #kt_header, #kt_toolbar, .card-header,
+            .breadcrumb, .pagination, .modal, .collapse:not(.show),
+            .btn, form, .d-flex.flex-stack.flex-wrap,
+            .d-flex.align-items-center.position-relative { display: none !important; }
+            /* Reset layout */
+            body, .wrapper, .content, .container-fluid,
+            .card, .card-body { margin: 0 !important; padding: 5px !important; }
+            .card { border: none !important; box-shadow: none !important; }
+            .card-body { width: 100% !important; }
+            /* Table styling */
+            .table { font-size: 11px; }
+            .table th, .table td { padding: 4px 6px !important; }
+            /* Summary cards */
+            .card-body .row { page-break-inside: avoid; }
+            .card-body .card { border: 1px solid #ddd !important; margin-bottom: 5px !important; }
+            .card-body .card .card-body { padding: 8px !important; }
+            .card-body .card .card-header { display: block !important; padding: 5px 8px !important; }
+            .symbol { display: none !important; }
+            /* Show summary buttons area but hide action buttons */
+            .actions-column .btn { display: none !important; }
+            .badge { border: 1px solid #ddd; padding: 2px 6px !important; }
+        }
+    </style>
 @endsection
 @section('page_body')
 <!--begin::Card-->
@@ -38,6 +64,7 @@
         <!--begin::Card toolbar-->
         <div class="card-toolbar">
              <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
+
                 @if(!request('date'))
                 <!--begin::Filter-->
                 <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_moneybox_daily_filter_collapse">
@@ -75,6 +102,14 @@
                     </div>
                 @endif
                 <!--end::Export-->
+
+                                <!--begin::Print-->
+                                <button type="button" class="btn btn-sm btn-flex btn-light-primary" onclick="printPageContent()">
+                    <i class="ki-outline ki-printer fs-6"></i>
+                    {{ trans('sw.print')}}
+                </button>
+                <!--end::Print-->
+
             </div>
         </div>
         <!--end::Card toolbar-->
@@ -601,6 +636,10 @@
             type="text/javascript"></script>
     @parent
     <script>
+
+        function printPageContent() {
+            window.print();
+        }
 
         $(document).on('click', '#export', function (event) {
             event.preventDefault();
