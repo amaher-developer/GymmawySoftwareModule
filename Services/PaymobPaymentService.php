@@ -83,6 +83,7 @@ class PaymobPaymentService
                 'transaction_id' => null,
                 'status' => TypeConstants::PENDING,
                 'payment_method' => TypeConstants::PAYMOB_TRANSACTION,
+                'payment_channel' => TypeConstants::CHANNEL_SYSTEM,
                 'amount' => $amountPaid,
                 'name' => $member->name,
                 'phone' => $member->phone,

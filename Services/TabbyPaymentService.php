@@ -127,6 +127,7 @@ class TabbyPaymentService
                     'transaction_id' => null,
                     'status' => TypeConstants::PENDING,
                     'payment_method' => TypeConstants::TABBY_TRANSACTION,
+                    'payment_channel' => TypeConstants::CHANNEL_SYSTEM,
                     'amount' => $amountPaid,
                     'name' => $member->name,
                     'phone' => $member->phone,

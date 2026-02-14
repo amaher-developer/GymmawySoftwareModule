@@ -3,6 +3,7 @@
 namespace Modules\Software\Models;
 
 use Modules\Generic\Models\GenericModel;
+use Modules\Software\Classes\TypeConstants;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GymOnlinePaymentInvoice extends GenericModel
@@ -12,7 +13,7 @@ class GymOnlinePaymentInvoice extends GenericModel
 
     protected $table = 'sw_gym_online_payment_invoices';
     protected $guarded = ['id'];
-    protected $appends = ['image'];
+    protected $appends = ['image', 'payment_gateway_name', 'payment_channel_name'];
     public static $uploads_path='uploads/subscriptions/';
     public static $thumbnails_uploads_path='uploads/subscriptions/thumbnails/';
 
@@ -33,8 +34,29 @@ class GymOnlinePaymentInvoice extends GenericModel
         return $this->belongsTo(GymSubscription::class, 'subscription_id');
     }
 
+    public function getPaymentGatewayNameAttribute()
+    {
+        $gateways = [
+            TypeConstants::TABBY_TRANSACTION => 'Tabby',
+            TypeConstants::PAYMOB_TRANSACTION => 'Paymob',
+            TypeConstants::TAMARA_TRANSACTION => 'Tamara',
+            TypeConstants::PAYTABS_TRANSACTION => 'PayTabs',
+            TypeConstants::PAYPAL_TRANSACTION_FEES => 'PayPal',
+        ];
 
+        return $gateways[$this->payment_method] ?? trans('sw.unknown');
+    }
 
+    public function getPaymentChannelNameAttribute()
+    {
+        $channels = [
+            TypeConstants::CHANNEL_SYSTEM => trans('sw.channel_system'),
+            TypeConstants::CHANNEL_WEBSITE => trans('sw.channel_website'),
+            TypeConstants::CHANNEL_MOBILE_APP => trans('sw.channel_mobile_app'),
+        ];
+
+        return $channels[$this->payment_channel] ?? trans('sw.unknown');
+    }
 
     public function toArray()
     {

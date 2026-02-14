@@ -427,6 +427,14 @@ class TypeConstants {
     const PAYMOB_TRANSACTION_FEES = 3;
     const TABBY_TRANSACTION = 4;
     const PAYMOB_TRANSACTION = 5;
+    const TAMARA_TRANSACTION = 6;
+    const PAYTABS_TRANSACTION = 7;
+
+    // Payment Channels
+    const CHANNEL_SYSTEM = 1;
+    const CHANNEL_WEBSITE = 2;
+    const CHANNEL_MOBILE_APP = 3;
+
     const PENDING = 0;
     const SUCCESS = 1;
     const FAILURE = 2;

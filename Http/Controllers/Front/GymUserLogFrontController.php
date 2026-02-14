@@ -2334,9 +2334,16 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
+        $show_all = request()->has('show_all') ? request()->show_all : false;
+
         $orders = GymOnlinePaymentInvoice::branch()->with(['member', 'subscription' => function($q){
             $q->withTrashed();
         }])->orderBy('id', 'DESC');
+
+        // By default show only successful transactions
+        if (!$show_all) {
+            $orders->where('status', TypeConstants::SUCCESS);
+        }
 
         //apply filters
         $orders->when(($from), function ($query) use ($from) {
@@ -2359,7 +2366,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-      return view('software::Front.report_online_payment_transactions_front_list', compact( 'orders', 'title', 'total', 'search_query'));
+      return view('software::Front.report_online_payment_transactions_front_list', compact( 'orders', 'title', 'total', 'search_query', 'show_all'));
 
     }
 
@@ -2393,7 +2400,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportOnlinePaymentExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'payment_gateway_name', 'payment_channel_name', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportOnlinePaymentPDF()
@@ -2421,7 +2428,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         $records = $orders->limit(300)->get();
 
-        $keys = ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'];
+        $keys = ['name', 'phone', 'subscription.name', 'amount', 'status', 'payment_gateway_name', 'payment_channel_name', 'created_at'];
         if ($this->lang == 'ar') $keys = array_reverse($keys);
 
         $this->fileName = 'online-payment-transactions-' . Carbon::now()->toDateTimeString();
@@ -2431,6 +2438,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $records[$key]['subscription.name'] = $record->subscription->name ?? trans('sw.not_specified');
             $records[$key]['amount'] = $record['amount'];
             $records[$key]['status'] = $record['status'] == 1 ? trans('sw.successful') : trans('sw.declined');
+            $records[$key]['payment_gateway_name'] = $record->payment_gateway_name;
+            $records[$key]['payment_channel_name'] = $record->payment_channel_name;
             $records[$key]['created_at'] = $record['created_at'];
         }
 

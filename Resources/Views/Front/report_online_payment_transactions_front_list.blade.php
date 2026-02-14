@@ -150,6 +150,20 @@
         </div>
         <div class="card-toolbar">
             <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
+                <!--begin::Show All Toggle-->
+                @if($show_all)
+                    <a href="{{ route('sw.reportOnlinePaymentTransactionList', array_diff_key(request()->query(), ['show_all' => ''])) }}" class="btn btn-sm btn-flex btn-light-success">
+                        <i class="ki-outline ki-check-circle fs-6"></i>
+                        {{ trans('sw.show_successful_only')}}
+                    </a>
+                @else
+                    <a href="{{ route('sw.reportOnlinePaymentTransactionList', array_merge(request()->query(), ['show_all' => 1])) }}" class="btn btn-sm btn-flex btn-light-warning">
+                        <i class="ki-outline ki-eye fs-6"></i>
+                        {{ trans('sw.show_all_transactions')}}
+                    </a>
+                @endif
+                <!--end::Show All Toggle-->
+
                 <!--begin::Filter-->
                 <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_online_payment_transactions_filter_collapse">
                     <i class="ki-outline ki-filter fs-6"></i>
@@ -265,6 +279,12 @@
                             <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-status fs-6 me-2"></i>{{ trans('sw.status')}}
                             </th>
+                            <th class="min-w-120px text-nowrap">
+                                <i class="ki-outline ki-wallet fs-6 me-2"></i>{{ trans('sw.payment_gateway')}}
+                            </th>
+                            <th class="min-w-120px text-nowrap">
+                                <i class="ki-outline ki-abstract-26 fs-6 me-2"></i>{{ trans('sw.payment_channel')}}
+                            </th>
                             <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.date')}}
                             </th>
@@ -299,6 +319,12 @@
                                     @else
                                         <span class="badge badge-danger">{{ trans('sw.declined')}}</span>
                                     @endif
+                                </td>
+                                <td>
+                                    <span class="badge badge-light-primary">{{ $order->payment_gateway_name }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-light-info">{{ $order->payment_channel_name }}</span>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column">
