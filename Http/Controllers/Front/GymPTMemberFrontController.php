@@ -1039,6 +1039,9 @@ class GymPTMemberFrontController extends GymGenericFrontController
             ->when(@$enquiry && (strlen(intval($code)) >= 5), function ($q) use ($code){
                 $q->orWhereHas('member', function ($q) use ($code){ $q->where('phone', 'like', '%' . $code . '%');});
             });
+        if($idToUse){
+            $member = $member->where('id', $idToUse);
+        }
         // Apply branch restriction:
         // 1. If allow_member_in_branches is false, always apply for all users
         // 2. If allow_member_in_branches is true but user is not super user, apply branch restriction
