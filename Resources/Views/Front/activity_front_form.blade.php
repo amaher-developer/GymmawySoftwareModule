@@ -254,7 +254,7 @@
                         <!--end::Textarea-->
                     </div>
                     <!--end::Input group-->
-                    
+                    @endif
                     <!--begin::Input group - Visibility-->
                     <div class="mb-10 fv-row">
                         <!--begin::Label-->
@@ -300,7 +300,7 @@
                         <!--end::Checkbox group-->
                     </div>
                     <!--end::Input group-->
-                    @endif
+                    
 
                 </div>
                 <!--end::Card body-->
