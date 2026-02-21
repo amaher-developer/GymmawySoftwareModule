@@ -39,6 +39,11 @@
                         <i class="ki-outline ki-setting-2 fs-2 me-2"></i>{{ trans('sw.app_config') }}
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link text-active-primary d-flex align-items-center pb-5" data-bs-toggle="tab" href="#tab-ai">
+                        <i class="ki-outline ki-abstract-26 fs-2 me-2"></i>{{ trans('sw.ai_settings') }}
+                    </a>
+                </li>
             </ul>
             <!--end:::Tabs-->
 
@@ -506,6 +511,154 @@
                     </div>
                 </div>
                 {{-- end tab-appconfig --}}
+
+                {{-- ===================== AI REPORTS TAB ===================== --}}
+                <div class="tab-pane fade" id="tab-ai" role="tabpanel">
+                    <div class="mb-10">
+                        <h4 class="text-dark fw-bold mb-2">
+                            <i class="ki-outline ki-abstract-26 fs-2 me-2 text-primary"></i>{{ trans('sw.ai_settings') }}
+                        </h4>
+                        <p class="text-muted fs-6">{{ trans('sw.ai_settings_description') }}</p>
+                    </div>
+
+                    {{-- OPENAI --}}
+                    <div class="card card-bordered mb-8">
+                        <div class="card-header min-h-50px">
+                            <h3 class="card-title fw-bold text-dark">
+                                <i class="ki-outline ki-technology-4 fs-2 me-2 text-primary"></i>OpenAI / ChatGPT
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-5">
+                                <div class="col-md-8 fv-row">
+                                    <label class="form-label required">{{ trans('sw.openai_key') }}</label>
+                                    <input type="password" class="form-control form-control-solid"
+                                           name="integrations_extra[ai][openai_key]"
+                                           value="{{ $integrationsSettings['ai']['openai_key'] ?? '' }}"
+                                           placeholder="sk-...">
+                                    <div class="form-text text-muted">{{ trans('sw.openai_key_hint') }}</div>
+                                </div>
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.openai_model') }}</label>
+                                    <select class="form-select form-select-solid" name="integrations_extra[ai][openai_model]">
+                                        @foreach(['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'] as $model)
+                                            <option value="{{ $model }}"
+                                                {{ ($integrationsSettings['ai']['openai_model'] ?? 'gpt-4o') === $model ? 'selected' : '' }}>
+                                                {{ $model }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text text-muted">{{ trans('sw.openai_model_hint') }}</div>
+                                </div>
+                            </div>
+
+                            {{-- Notify Emails --}}
+                            <div class="separator separator-dashed my-6"></div>
+                            <h5 class="fw-bold text-dark mb-1">
+                                <i class="ki-outline ki-sms fs-4 me-2 text-primary"></i>
+                                {{ trans('sw.notify_emails') }}
+                            </h5>
+                            <p class="text-muted fs-7 mb-4">{{ trans('sw.notify_emails_hint') }}</p>
+                            <div id="ai-emails-list">
+                                @php $savedEmails = $integrationsSettings['ai']['notify_emails'] ?? []; @endphp
+                                @foreach($savedEmails as $email)
+                                    <div class="d-flex align-items-center gap-2 mb-2 ai-email-row">
+                                        <input type="email" name="integrations_extra[ai][notify_emails][]"
+                                               class="form-control form-control-solid"
+                                               value="{{ $email }}"
+                                               placeholder="email@example.com">
+                                        <button type="button" class="btn btn-icon btn-light-danger btn-sm flex-shrink-0"
+                                                onclick="this.closest('.ai-email-row').remove()">
+                                            <i class="ki-outline ki-cross fs-6"></i>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <button type="button" class="btn btn-light-primary btn-sm mt-2" onclick="addAiEmail()">
+                                <i class="ki-outline ki-plus fs-6"></i>
+                                {{ trans('sw.add_email') }}
+                            </button>
+
+                            {{-- Notify Phones --}}
+                            <div class="separator separator-dashed my-6"></div>
+                            <h5 class="fw-bold text-dark mb-1">
+                                <i class="ki-outline ki-phone fs-4 me-2 text-success"></i>
+                                {{ trans('sw.notify_phones') }}
+                            </h5>
+                            <p class="text-muted fs-7 mb-4">{{ trans('sw.notify_phones_hint') }}</p>
+                            <div id="ai-phones-list">
+                                @php $savedPhones = $integrationsSettings['ai']['notify_phones'] ?? []; @endphp
+                                @foreach($savedPhones as $phone)
+                                    <div class="d-flex align-items-center gap-2 mb-2 ai-phone-row">
+                                        <input type="tel" name="integrations_extra[ai][notify_phones][]"
+                                               class="form-control form-control-solid"
+                                               value="{{ $phone }}"
+                                               placeholder="+966XXXXXXXXX">
+                                        <button type="button" class="btn btn-icon btn-light-danger btn-sm flex-shrink-0"
+                                                onclick="this.closest('.ai-phone-row').remove()">
+                                            <i class="ki-outline ki-cross fs-6"></i>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <button type="button" class="btn btn-light-success btn-sm mt-2" onclick="addAiPhone()">
+                                <i class="ki-outline ki-plus fs-6"></i>
+                                {{ trans('sw.add_phone') }}
+                            </button>
+
+                            {{-- API endpoint info --}}
+                            <div class="notice d-flex bg-light-primary rounded border-primary border border-dashed p-4 mt-6">
+                                <i class="ki-outline ki-information-5 fs-2tx text-primary me-4"></i>
+                                <div>
+                                    <h5 class="mb-1 text-primary fw-bold">{{ trans('sw.ai_api_endpoints') }}</h5>
+                                    <p class="mb-1 fs-7 text-gray-700">
+                                        <strong>GETTER</strong> &mdash; Collect gym KPI data &rarr; ChatGPT &rarr; JSON report:<br>
+                                        <code>POST {{ url('api/ai-reports/executive/getter') }}</code>
+                                        &nbsp;&nbsp;Body: <code>{ "from": "Y-m-d", "to": "Y-m-d" }</code>
+                                    </p>
+                                    <p class="mb-0 fs-7 text-gray-700">
+                                        <strong>SETTER</strong> &mdash; Receive report &rarr; send email / SMS to client:<br>
+                                        <code>POST {{ url('api/ai-reports/executive/setter') }}</code>
+                                        &nbsp;&nbsp;Body: <code>{ "report_id": 1, "email": "...", "phone": "..." }</code>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{-- end tab-ai --}}
+
+                <script>
+                    function addAiEmail() {
+                        const row = document.createElement('div');
+                        row.className = 'd-flex align-items-center gap-2 mb-2 ai-email-row';
+                        row.innerHTML = `
+                            <input type="email" name="integrations_extra[ai][notify_emails][]"
+                                   class="form-control form-control-solid"
+                                   placeholder="email@example.com">
+                            <button type="button" class="btn btn-icon btn-light-danger btn-sm flex-shrink-0"
+                                    onclick="this.closest('.ai-email-row').remove()">
+                                <i class="ki-outline ki-cross fs-6"></i>
+                            </button>
+                        `;
+                        document.getElementById('ai-emails-list').appendChild(row);
+                    }
+
+                    function addAiPhone() {
+                        const row = document.createElement('div');
+                        row.className = 'd-flex align-items-center gap-2 mb-2 ai-phone-row';
+                        row.innerHTML = `
+                            <input type="tel" name="integrations_extra[ai][notify_phones][]"
+                                   class="form-control form-control-solid"
+                                   placeholder="+966XXXXXXXXX">
+                            <button type="button" class="btn btn-icon btn-light-danger btn-sm flex-shrink-0"
+                                    onclick="this.closest('.ai-phone-row').remove()">
+                                <i class="ki-outline ki-cross fs-6"></i>
+                            </button>
+                        `;
+                        document.getElementById('ai-phones-list').appendChild(row);
+                    }
+                </script>
 
             </div>
             {{-- end tab-content --}}

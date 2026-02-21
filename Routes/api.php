@@ -38,6 +38,28 @@ Route::name('sw.successfulPayment')->get('/sw-payment/s', 'Api\GymSwPaymentApiCo
 Route::name('sw.migration')->get('/gym-migrate', 'Api\GymSettingApiController@migrate')->middleware(['api']);
 Route::name('sw.lastMigration')->get('/gym-last-migrate', 'Api\GymSettingApiController@lastMigrate')->middleware(['api']);
 
+// ── AI Reports ────────────────────────────────────────────────────────────────
+// Prefix:  /api/ai-reports/{report-type}/getter|setter
+// Future:  /api/ai-reports/members/...  /api/ai-reports/attendance/...  etc.
+Route::prefix('ai-reports')->middleware(['api'])->group(function () {
+
+    // ── Executive Performance Report (revenue + members + packages + attendance)
+    Route::prefix('executive')->group(function () {
+        // GETTER: collect KPI data → ChatGPT → save to DB → return { id, report }
+        Route::name('sw.aiReports.executive.getter')
+            ->post('getter', 'Api\GymAiReportApiController@getter');
+
+        // SETTER: load from DB by ID → send email + SMS → update delivery status
+        Route::name('sw.aiReports.executive.setter')
+            ->post('setter', 'Api\GymAiReportApiController@setter');
+
+        // HISTORY: paginated list of past reports
+        Route::name('sw.aiReports.executive.history')
+            ->get('history', 'Api\GymAiReportApiController@history');
+    });
+
+});
+
 Route::prefix('zk')
     ->group(function () {
         Route::get('login',  'Front\GymZKFrontController@login');

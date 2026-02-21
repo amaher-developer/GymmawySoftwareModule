@@ -10,6 +10,7 @@ use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
 use Modules\Software\Classes\WAUltramsg;
 use Modules\Software\Models\GymEventNotification;
+use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberSubscription;
 
 class NotificationService
@@ -295,6 +296,75 @@ class NotificationService
         }
 
         return $query->get();
+    }
+
+    /**
+     * Send birthday notifications to members whose dob matches today
+     */
+    public function sendBirthdayNotifications(?int $branchSettingId = null): array
+    {
+        $today = Carbon::now();
+
+        // Load optional birthday event notification for the custom message template
+        $eventQuery = GymEventNotification::where('event_code', 'birthday_member')->where('status', 1);
+        if ($branchSettingId) {
+            $eventQuery->where('branch_setting_id', $branchSettingId);
+        }
+        $eventNotification = $eventQuery->first();
+
+        // Query members whose birthday is today
+        $memberQuery = GymMember::select('id', 'name', 'phone')
+            ->whereMonth('dob', $today->month)
+            ->whereDay('dob', $today->day)
+            ->whereNotNull('phone');
+        if ($branchSettingId) {
+            $memberQuery->where('branch_setting_id', $branchSettingId);
+        }
+        $members = $memberQuery->get();
+
+        $results = [
+            'total'   => $members->count(),
+            'success' => 0,
+            'failed'  => 0,
+            'details' => [],
+        ];
+
+        foreach ($members as $member) {
+            // Build message: use event notification template if available, else default
+            if ($eventNotification && $eventNotification->message) {
+                $msg = str_replace('#member_name', $member->name ?? '', $eventNotification->message);
+            } else {
+                $gymName = $this->mainSettings->name ?? '';
+                $msg = "Happy Birthday {$member->name}! 🎂 Wishing you a great day. – {$gymName}";
+            }
+
+            $phone = trim($member->phone);
+            $sent  = false;
+
+            if ($this->mainSettings->active_sms && env('SMS_GATEWAY')) {
+                $sent = $this->sendSMS($phone, $msg, $member->id) || $sent;
+            }
+            if ($this->mainSettings->active_wa && env('WA_GATEWAY') == 'ULTRA') {
+                $sent = $this->sendWhatsAppUltra($phone, $msg, $member->id) || $sent;
+            }
+            if ($this->mainSettings->active_wa && env('WA_USER_TOKEN')) {
+                $sent = $this->sendWhatsAppToken($phone, $msg, $member->id) || $sent;
+            }
+
+            if ($sent) {
+                $results['success']++;
+            } else {
+                $results['failed']++;
+            }
+
+            $results['details'][] = [
+                'member_id'   => $member->id,
+                'member_name' => $member->name,
+                'success'     => $sent,
+            ];
+        }
+
+        return $results;
     }
 
     /**

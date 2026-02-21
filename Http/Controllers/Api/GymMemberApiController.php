@@ -29,30 +29,50 @@ class GymMemberApiController extends GenericApiController
     public function sendMemberToGymmawy(){
         \Artisan::call('command:swmembers');
     }
-    // for send expire, before expire and unfreeze membership notifications
+    // for send expire, before expire, unfreeze, and birthday notifications
+    // also auto-generates the monthly AI executive report on the 1st of each month
     public function sendSwMyAppNotifications(){
         try {
             $notificationService = new NotificationService();
 
             $results = [
                 'expiring' => $notificationService->sendExpiringNotifications(3), // 3 days before
-                'expired' => $notificationService->sendExpiredNotifications(),
+                'expired'  => $notificationService->sendExpiredNotifications(),
                 'unfreeze' => $notificationService->sendUnfreezeNotifications(),
+                'birthday' => $notificationService->sendBirthdayNotifications(),
             ];
+
+            // Auto-generate AI executive report on the first day of each month
+            $aiReportId = null;
+            if (Carbon::now()->day === 1) {
+                try {
+                    $aiResult  = (new \Modules\Software\Classes\GymAiReport())->getter(
+                        Carbon::now()->subMonth()->startOfMonth()->format('Y-m-d'),
+                        Carbon::now()->subMonth()->endOfMonth()->format('Y-m-d')
+                    );
+                    $aiReportId = $aiResult['id'] ?? null;
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Monthly AI report generation failed: ' . $e->getMessage());
+                }
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Notifications processed successfully',
                 'data' => [
-                    'expiring_total' => $results['expiring']['total'],
+                    'expiring_total'   => $results['expiring']['total'],
                     'expiring_success' => $results['expiring']['success'],
-                    'expiring_failed' => $results['expiring']['failed'],
-                    'expired_total' => $results['expired']['total'],
-                    'expired_success' => $results['expired']['success'],
-                    'expired_failed' => $results['expired']['failed'],
-                    'unfreeze_total' => $results['unfreeze']['total'],
+                    'expiring_failed'  => $results['expiring']['failed'],
+                    'expired_total'    => $results['expired']['total'],
+                    'expired_success'  => $results['expired']['success'],
+                    'expired_failed'   => $results['expired']['failed'],
+                    'unfreeze_total'   => $results['unfreeze']['total'],
                     'unfreeze_success' => $results['unfreeze']['success'],
-                    'unfreeze_failed' => $results['unfreeze']['failed'],
+                    'unfreeze_failed'  => $results['unfreeze']['failed'],
+                    'birthday_total'   => $results['birthday']['total'],
+                    'birthday_success' => $results['birthday']['success'],
+                    'birthday_failed'  => $results['birthday']['failed'],
+                    'ai_report_id'     => $aiReportId,
                 ]
             ]);
         } catch (\Exception $e){
