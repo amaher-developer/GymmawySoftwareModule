@@ -10,6 +10,10 @@ Route::prefix('setting')
             ->get('', 'Front\GymSettingFrontController@edit');
         Route::name('sw.editSetting')
             ->post('', 'Front\GymSettingFrontController@update');
+        Route::name('sw.editIntegrations')
+            ->get('integrations', 'Front\GymSettingFrontController@editIntegrations');
+        Route::name('sw.editIntegrations')
+            ->post('integrations', 'Front\GymSettingFrontController@updateIntegrations');
         });
         
     Route::name('sw.editSettingUploadImage')

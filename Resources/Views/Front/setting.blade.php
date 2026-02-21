@@ -719,6 +719,8 @@
                     <!--end::Row-->
                                 </div>
 				<!--end:::Tab pane-->
+
+
                                             </div>
 			<!--end:::Tab content-->
             <!--begin::Form Actions-->

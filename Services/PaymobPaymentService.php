@@ -3,6 +3,7 @@
 namespace Modules\Software\Services;
 
 use Modules\Generic\Http\Controllers\Front\PaymobFrontController;
+use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberSubscription;
@@ -19,11 +20,14 @@ class PaymobPaymentService
     protected $paymobController;
     protected $isEnabled;
     protected $currency;
+    protected $settings;
 
     public function __construct()
     {
+        $this->settings = Setting::branch()->first();
         $this->isEnabled = $this->isPaymobConfigured();
-        $this->currency = env('PAYMOB_CURRENCY', 'EGP');
+        $paymob = $this->settings ? ($this->settings->payments['paymob'] ?? []) : [];
+        $this->currency = $paymob['currency'] ?? 'EGP';
 
         if ($this->isEnabled) {
             $this->paymobController = new PaymobFrontController();
@@ -35,9 +39,10 @@ class PaymobPaymentService
      */
     public function isPaymobConfigured(): bool
     {
-        return !empty(env('PAYMOB_API_KEY'))
-            && !empty(env('PAYMOB_INTEGRATION_ID'))
-            && !empty(env('PAYMOB_IFRAME_ID'));
+        $paymob = $this->settings ? ($this->settings->payments['paymob'] ?? []) : [];
+        return !empty($paymob['api_key'])
+            && !empty($paymob['integration_id'])
+            && !empty($paymob['iframe_id']);
     }
 
     /**
@@ -49,7 +54,8 @@ class PaymobPaymentService
             return false;
         }
 
-        $minimumAmount = (float) env('PAYMOB_MINIMUM_AMOUNT', 1);
+        $paymob = $this->settings ? ($this->settings->payments['paymob'] ?? []) : [];
+        $minimumAmount = (float) ($paymob['minimum_amount'] ?? 1);
 
         return $amountPaid >= $minimumAmount;
     }
@@ -208,7 +214,7 @@ class PaymobPaymentService
 
                 Mail::send('software::emails.paymob_payment', $emailData, function ($mail) use ($member, $mainSettings, $emailData) {
                     $mail->from(
-                        $mainSettings->email ?? env('MAIL_FROM_ADDRESS', 'noreply@gymmawy.com'),
+                        $mainSettings->email ?? 'noreply@gymmawy.com',
                         $mainSettings->name_en ?? $mainSettings->name_ar ?? 'Gym'
                     );
                     $mail->to($member->email, $member->name);
@@ -319,8 +325,8 @@ class PaymobPaymentService
             : ($mainSettings->name_en ?? $mainSettings->name_ar ?? 'Gym');
 
         $currency = app()->getLocale() === 'ar'
-            ? ($mainSettings->currency_ar ?? env('APP_CURRENCY_AR', 'ج.م'))
-            : ($mainSettings->currency_en ?? env('APP_CURRENCY_EN', 'EGP'));
+            ? ($mainSettings->currency_ar ?? 'ج.م')
+            : ($mainSettings->currency_en ?? 'EGP');
 
         if (app()->getLocale() === 'ar') {
             return "مرحباً {$memberName}،\n\n"
@@ -358,8 +364,8 @@ class PaymobPaymentService
             : ($mainSettings->name_en ?? $mainSettings->name_ar ?? 'Gym');
 
         $currency = $isArabic
-            ? ($mainSettings->currency_ar ?? env('APP_CURRENCY_AR', 'ج.م'))
-            : ($mainSettings->currency_en ?? env('APP_CURRENCY_EN', 'EGP'));
+            ? ($mainSettings->currency_ar ?? 'ج.م')
+            : ($mainSettings->currency_en ?? 'EGP');
 
         $subject = $isArabic
             ? "إتمام الدفع - {$gymName}"

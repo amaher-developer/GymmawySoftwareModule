@@ -9,6 +9,7 @@ use Modules\Software\Imports\MembersSubscriptionsImport;
 use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Classes\SMSFactory;
 use Modules\Software\Services\TabbyPaymentService;
+use Modules\Software\Services\TamaraPaymentService;
 use Modules\Software\Services\PaymobPaymentService;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
@@ -910,27 +911,29 @@ class GymMemberFrontController extends GymGenericFrontController
             }
 
             // Send Tabby payment link if checkbox is checked and member has remaining amount
-            if (!empty(env('TABBY_MERCHANT_CODE')) && $request->input('send_tabby_link')) {
+            if ($request->input('send_tabby_link')) {
                 try {
                     $tabbyService = new TabbyPaymentService();
-                    $tabbyResult = $tabbyService->processNewMemberPayment(
-                        $member,
-                        $member_subscription->id,
-                        $subscription,
-                        $sub['amount_paid'],
-                        $this->mainSettings,
-                        @$this->user_sw->branch_setting_id
-                    );
+                    if ($tabbyService->isTabbyConfigured()) {
+                        $tabbyResult = $tabbyService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
 
-                    if ($tabbyResult['success']) {
-                        Log::info('Tabby payment link sent for new member', [
-                            'member_id' => $member->id,
-                            'amount_paid' => $sub['amount_paid'],
-                            'payment_url' => $tabbyResult['payment_url'],
-                            'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
-                            'sent_sms' => $tabbyResult['sent_sms'],
-                            'sent_email' => $tabbyResult['sent_email'] ?? false,
-                        ]);
+                        if ($tabbyResult['success']) {
+                            Log::info('Tabby payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $tabbyResult['payment_url'],
+                                'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
+                                'sent_sms' => $tabbyResult['sent_sms'],
+                                'sent_email' => $tabbyResult['sent_email'] ?? false,
+                            ]);
+                        }
                     }
                 } catch (\Exception $e) {
                     Log::error('Failed to process Tabby payment for new member', [
@@ -940,28 +943,63 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
+            // Send Tamara payment link if checkbox is checked and member has remaining amount
+            if ($request->input('send_tamara_link')) {
+                try {
+                    $tamaraService = new TamaraPaymentService();
+                    if ($tamaraService->isTamaraConfigured()) {
+                        $tamaraResult = $tamaraService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
+
+                        if ($tamaraResult['success']) {
+                            Log::info('Tamara payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $tamaraResult['payment_url'],
+                                'sent_whatsapp' => $tamaraResult['sent_whatsapp'],
+                                'sent_sms' => $tamaraResult['sent_sms'],
+                                'sent_email' => $tamaraResult['sent_email'] ?? false,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process Tamara payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             // Send Paymob payment link if checkbox is checked and member has remaining amount
-            if (!empty(env('PAYMOB_API_KEY')) && $request->input('send_paymob_link')) {
+            if ($request->input('send_paymob_link')) {
                 try {
                     $paymobService = new PaymobPaymentService();
-                    $paymobResult = $paymobService->processNewMemberPayment(
-                        $member,
-                        $member_subscription->id,
-                        $subscription,
-                        $sub['amount_paid'],
-                        $this->mainSettings,
-                        @$this->user_sw->branch_setting_id
-                    );
+                    if ($paymobService->isPaymobConfigured()) {
+                        $paymobResult = $paymobService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
 
-                    if ($paymobResult['success']) {
-                        Log::info('Paymob payment link sent for new member', [
-                            'member_id' => $member->id,
-                            'amount_paid' => $sub['amount_paid'],
-                            'payment_url' => $paymobResult['payment_url'],
-                            'sent_whatsapp' => $paymobResult['sent_whatsapp'],
-                            'sent_sms' => $paymobResult['sent_sms'],
-                            'sent_email' => $paymobResult['sent_email'] ?? false,
-                        ]);
+                        if ($paymobResult['success']) {
+                            Log::info('Paymob payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $paymobResult['payment_url'],
+                                'sent_whatsapp' => $paymobResult['sent_whatsapp'],
+                                'sent_sms' => $paymobResult['sent_sms'],
+                                'sent_email' => $paymobResult['sent_email'] ?? false,
+                            ]);
+                        }
                     }
                 } catch (\Exception $e) {
                     Log::error('Failed to process Paymob payment for new member', [
@@ -1506,12 +1544,12 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->updateSubscriptionsStatus([$member_subscription->member_id]);
 
         // Send Tabby payment link if checkbox is checked and member has paid amount difference > 0
-        if (!empty(env('TABBY_MERCHANT_CODE')) && $request->input('send_tabby_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+        if ($request->input('send_tabby_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
             try {
                 $tabbyService = new TabbyPaymentService();
                 $member = GymMember::find($member_subscription->member_id);
 
-                if ($member) {
+                if ($member && $tabbyService->isTabbyConfigured()) {
                     $tabbyResult = $tabbyService->processRenewalPayment(
                         $member,
                         $member_subscription->id,
@@ -1543,13 +1581,51 @@ class GymMemberFrontController extends GymGenericFrontController
             }
         }
 
+        // Send Tamara payment link if checkbox is checked and member has paid amount difference > 0
+        if ($request->input('send_tamara_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $tamaraService = new TamaraPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member && $tamaraService->isTamaraConfigured()) {
+                    $tamaraResult = $tamaraService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tamaraResult['success']) {
+                        Log::info('Tamara payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $tamaraResult['payment_url'],
+                            'sent_whatsapp' => $tamaraResult['sent_whatsapp'],
+                            'sent_sms' => $tamaraResult['sent_sms'],
+                            'sent_email' => $tamaraResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tamara payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Send Paymob payment link if checkbox is checked and member has paid amount difference > 0
-        if (!empty(env('PAYMOB_API_KEY')) && $request->input('send_paymob_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+        if ($request->input('send_paymob_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
             try {
                 $paymobService = new PaymobPaymentService();
                 $member = GymMember::find($member_subscription->member_id);
 
-                if ($member) {
+                if ($member && $paymobService->isPaymobConfigured()) {
                     $paymobResult = $paymobService->processRenewalPayment(
                         $member,
                         $member_subscription->id,
@@ -2699,12 +2775,12 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
         // Send Tabby payment link if checkbox is checked and member has remaining amount
-        if (!empty(env('TABBY_MERCHANT_CODE')) && $request->input('send_tabby_link')) {
+        if ($request->input('send_tabby_link')) {
             try {
                 $tabbyService = new TabbyPaymentService();
                 $memberSubObj = GymMemberSubscription::find($member_subscription);
 
-                if ($memberSubObj) {
+                if ($memberSubObj && $tabbyService->isTabbyConfigured()) {
                     $tabbyResult = $tabbyService->processRenewalPayment(
                         $member,
                         $member_subscription->id,
@@ -2734,13 +2810,49 @@ class GymMemberFrontController extends GymGenericFrontController
             }
         }
 
+        // Send Tamara payment link if checkbox is checked and member has remaining amount
+        if ($request->input('send_tamara_link')) {
+            try {
+                $tamaraService = new TamaraPaymentService();
+                $memberSubObj = GymMemberSubscription::find($member_subscription);
+
+                if ($memberSubObj && $tamaraService->isTamaraConfigured()) {
+                    $tamaraResult = $tamaraService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tamaraResult['success']) {
+                        Log::info('Tamara payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $tamaraResult['payment_url'],
+                            'sent_whatsapp' => $tamaraResult['sent_whatsapp'],
+                            'sent_sms' => $tamaraResult['sent_sms'],
+                            'sent_email' => $tamaraResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tamara payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Send Paymob payment link if checkbox is checked and member has remaining amount
-        if (!empty(env('PAYMOB_API_KEY')) && $request->input('send_paymob_link')) {
+        if ($request->input('send_paymob_link')) {
             try {
                 $paymobService = new PaymobPaymentService();
                 $memberSubObj = GymMemberSubscription::find($member_subscription);
 
-                if ($memberSubObj) {
+                if ($memberSubObj && $paymobService->isPaymobConfigured()) {
                     $paymobResult = $paymobService->processRenewalPayment(
                         $member,
                         $member_subscription->id,

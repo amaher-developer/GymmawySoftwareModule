@@ -756,7 +756,7 @@
                     <!--end::Payment Type-->
 
                     <!--begin::Tabby Payment Option-->
-                    @if(env('TABBY_MERCHANT_CODE'))
+                    @if(!empty($mainSettings->payments['tabby']['merchant_code'] ?? null))
                     <div class="row mb-5" id="edit_tabby_payment_row" style="display: none;">
                         <div class="col-md-12">
                             <label class="form-label">{{ trans('sw.tabby_payment')}}</label>
@@ -772,8 +772,25 @@
                     @endif
                     <!--end::Tabby Payment Option-->
 
+                    <!--begin::Tamara Payment Option-->
+                    @if(!empty($mainSettings->payments['tamara']['token'] ?? null))
+                    <div class="row mb-5" id="edit_tamara_payment_row" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.tamara_payment')}}</label>
+                            <div class="form-check form-switch form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="send_tamara_link" id="edit_send_tamara_link" value="1"/>
+                                <label class="form-check-label" for="edit_send_tamara_link">
+                                    {{ trans('sw.send_tamara_payment_link')}}
+                                </label>
+                            </div>
+                            <div class="text-muted fs-7 mt-1">{{ trans('sw.tamara_payment_description')}}</div>
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Tamara Payment Option-->
+
                     <!--begin::Paymob Payment Option-->
-                    @if(env('PAYMOB_API_KEY'))
+                    @if(!empty($mainSettings->payments['paymob']['api_key'] ?? null))
                     <div class="row mb-5" id="edit_paymob_payment_row" style="display: none;">
                         <div class="col-md-12">
                             <label class="form-label">{{ trans('sw.paymob_payment')}}</label>
@@ -1085,6 +1102,7 @@
          'notes': $('#EditMembershipNotes').val(),
          'payment_type': $('#edit_payment_type').val(),
          'send_tabby_link': $('#edit_send_tabby_link').is(':checked') ? 1 : 0,
+         'send_tamara_link': $('#edit_send_tamara_link').is(':checked') ? 1 : 0,
          'send_paymob_link': $('#edit_send_paymob_link').is(':checked') ? 1 : 0,
          "_token": "{{ csrf_token() }}"
         }
@@ -1150,6 +1168,13 @@
         } else {
             $('#edit_tabby_payment_row').hide();
             $('#edit_send_tabby_link').prop('checked', false);
+        }
+        // Show Tamara option only when diff amount paid > 0
+        if (diffAmount > 0) {
+            $('#edit_tamara_payment_row').show();
+        } else {
+            $('#edit_tamara_payment_row').hide();
+            $('#edit_send_tamara_link').prop('checked', false);
         }
         // Show Paymob option only when diff amount paid > 0
         if (diffAmount > 0) {

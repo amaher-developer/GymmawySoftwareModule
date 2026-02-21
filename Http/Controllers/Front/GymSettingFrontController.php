@@ -62,6 +62,9 @@ class GymSettingFrontController extends GymGenericFrontController
             'mainSettings' => $mainSettings,
             'billingSettings' => $mainSettings->billing ?? [],
             'imagePath' => asset(Setting::$uploads_path.'gyms/'),
+            'paymentsSettings' => $mainSettings->payments ?? [],
+            'appConfig' => $mainSettings->app_config ?? [],
+            'integrationsSettings' => $mainSettings->integrations ?? [],
         ]);
     }
 
@@ -107,7 +110,23 @@ class GymSettingFrontController extends GymGenericFrontController
         if (!empty($socialMediaData)) {
             $setting_inputs['social_media'] = $socialMediaData;
         }
-        
+
+        // Payment gateway credentials
+        if ($request->has('payments')) {
+            $setting_inputs['payments'] = $request->input('payments');
+        }
+
+        // App-level configuration
+        if ($request->has('app_config')) {
+            $setting_inputs['app_config'] = $request->input('app_config');
+        }
+
+        // Extended integrations (Telegram, Firebase, Pusher, Facebook, Google, WA)
+        if ($request->has('integrations_extra')) {
+            $existingIntegrations = $setting->integrations ?? [];
+            $setting_inputs['integrations'] = array_merge($existingIntegrations, $request->input('integrations_extra'));
+        }
+
         // Update settings
         $setting->update($setting_inputs);
 
@@ -124,6 +143,54 @@ class GymSettingFrontController extends GymGenericFrontController
         ]);
         
         return redirect(route('sw.editSetting',1));
+    }
+
+    public function editIntegrations()
+    {
+        $mainSettings = Setting::branch()->first();
+
+        return view('software::Front.integrations', [
+            'title' => trans('sw.integrations_page') ?? 'Integrations',
+            'mainSettings' => $mainSettings,
+            'paymentsSettings' => $mainSettings->payments ?? [],
+            'appConfig' => $mainSettings->app_config ?? [],
+            'integrationsSettings' => $mainSettings->integrations ?? [],
+        ]);
+    }
+
+    public function updateIntegrations(\Illuminate\Http\Request $request)
+    {
+        $setting = Setting::branch()->first();
+        $inputs = [];
+
+        // Payment gateway credentials
+        if ($request->has('payments')) {
+            $inputs['payments'] = $request->input('payments');
+        }
+
+        // App-level configuration
+        if ($request->has('app_config')) {
+            $inputs['app_config'] = $request->input('app_config');
+        }
+
+        // Extended integrations (Telegram, Firebase, Pusher, Facebook, Google, WA)
+        if ($request->has('integrations_extra')) {
+            $existingIntegrations = $setting->integrations ?? [];
+            $inputs['integrations'] = array_merge($existingIntegrations, $request->input('integrations_extra'));
+        }
+
+        $setting->update($inputs);
+
+        SwBillingService::flushSettingsCache();
+        Cache::flush();
+
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_edited'),
+            'type' => 'success'
+        ]);
+
+        return redirect(route('sw.editIntegrations'));
     }
 
     private function prepare_inputs_addons($inputs){

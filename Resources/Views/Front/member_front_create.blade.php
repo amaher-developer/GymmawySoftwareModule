@@ -373,7 +373,7 @@
                             </div>
 
                             <!-- Tabby Payment Option -->
-                            @if(env('TABBY_MERCHANT_CODE'))
+                            @if(!empty($mainSettings->payments['tabby']['merchant_code'] ?? null))
                             <div class="col-md-6" id="tabby_payment_option">
                                 <label class="form-label">{{ trans('sw.tabby_payment')}}</label>
                                 <div class="form-check form-switch form-check-custom form-check-solid">
@@ -386,8 +386,22 @@
                             </div>
                             @endif
 
+                            <!-- Tamara Payment Option -->
+                            @if(!empty($mainSettings->payments['tamara']['token'] ?? null))
+                            <div class="col-md-6" id="tamara_payment_option">
+                                <label class="form-label">{{ trans('sw.tamara_payment')}}</label>
+                                <div class="form-check form-switch form-check-custom form-check-solid">
+                                    <input class="form-check-input" type="checkbox" name="send_tamara_link" id="send_tamara_link" value="1"/>
+                                    <label class="form-check-label" for="send_tamara_link">
+                                        {{ trans('sw.send_tamara_payment_link')}}
+                                    </label>
+                                </div>
+                                <div class="text-muted fs-7 mt-1">{{ trans('sw.tamara_payment_description')}}</div>
+                            </div>
+                            @endif
+
                             <!-- Paymob Payment Option -->
-                            @if(env('PAYMOB_API_KEY'))
+                            @if(!empty($mainSettings->payments['paymob']['api_key'] ?? null))
                             <div class="col-md-6" id="paymob_payment_option">
                                 <label class="form-label">{{ trans('sw.paymob_payment')}}</label>
                                 <div class="form-check form-switch form-check-custom form-check-solid">
