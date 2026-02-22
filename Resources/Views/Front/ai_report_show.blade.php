@@ -448,7 +448,7 @@
                     </div>
 
                     {{-- Saved phones from settings --}}
-                    <div class="mb-6">
+                    <!-- <div class="mb-6">
                         <label class="form-label fw-semibold d-block" style="text-align:{{ $align }}">
                             <i class="ki-outline ki-phone fs-5 text-success {{ $isAr ? 'ms-1' : 'me-1' }}"></i>
                             {{ trans('sw.notify_phones') }}
@@ -467,7 +467,7 @@
                         <button type="button" class="btn btn-light-success btn-sm mt-2" onclick="addPhone()">
                             <i class="ki-outline ki-plus fs-6"></i> {{ trans('sw.add_phone') }}
                         </button>
-                    </div>
+                    </div> -->
 
                     {{-- Warning if no defaults --}}
                     @if(empty($notifyEmails) && empty($notifyPhones))
