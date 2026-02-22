@@ -565,7 +565,7 @@ PROMPT;
                 $cardColor = str_contains($k, 'churn')
                     ? $D
                     : (str_contains($k, 'renewal') || str_contains($k, 'revenue') || str_contains($k, 'value') ? $S : $P);
-                $cells[] = "<td style='padding:0 5px 10px'>
+                $cells[] = "<td class='colkpi' style='padding:0 5px 10px'>
                     <div style='background:#fff;border:1px solid #dde3eb;border-top:3px solid {$cardColor};border-radius:5px;padding:13px 12px;text-align:center'>
                       <p style='margin:0 0 6px;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.6px'>{$label}</p>
                       <p style='margin:0;font-size:17px;font-weight:700;color:{$cardColor}'>" . e((string)$v) . "</p>
@@ -575,11 +575,11 @@ PROMPT;
             $kpiHtml = '';
             foreach (array_chunk($cells, 2) as $row) {
                 if (count($row) < 2) {
-                    $row[] = '<td style="padding:0 5px 10px"></td>';
+                    $row[] = '<td class="colkpi" style="padding:0 5px 10px"></td>';
                 }
                 $kpiHtml .= '<tr>' . implode('', $row) . '</tr>';
             }
-            $kpiCards = "<table width='100%' cellpadding='0' cellspacing='0' style='margin:-5px'>{$kpiHtml}</table>";
+            $kpiCards = "<table class='kpitable' width='100%' cellpadding='0' cellspacing='0' style='margin:-5px'>{$kpiHtml}</table>";
         }
 
         // ── Attendance table (alternating rows) ────────────────────────────
@@ -647,7 +647,7 @@ PROMPT;
 
         $body .= "<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:18px'>
           <tr valign='top'>
-            <td width='50%' style='padding-right:8px'>
+            <td class='col2' width='50%' style='padding-right:8px'>
               <div style='border:1px solid #dde3eb;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)'>
                 <div style='background:{$S};padding:10px 16px;text-align:{$align}'>
                   <span style='color:#fff;font-size:13px;font-weight:700'>🏆&nbsp;{$lbl['top_packages']}</span>
@@ -655,7 +655,7 @@ PROMPT;
                 <div style='padding:16px;background:#fff;direction:{$dir}'>{$topHtml}</div>
               </div>
             </td>
-            <td width='50%' style='padding-left:8px'>
+            <td class='col2' width='50%' style='padding-left:8px'>
               <div style='border:1px solid #dde3eb;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)'>
                 <div style='background:{$D};padding:10px 16px;text-align:{$align}'>
                   <span style='color:#fff;font-size:13px;font-weight:700'>⚠️&nbsp;{$lbl['weak_packages']}</span>
@@ -693,29 +693,49 @@ PROMPT;
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{$lbl['subject']}</title>
+<style>
+@media only screen and (max-width:600px){
+  .w640  { width:100%!important; }
+  .hpad  { padding-left:16px!important; padding-right:16px!important; }
+  .h1    { font-size:20px!important; }
+  .kpitable { margin:0!important; }
+  .colkpi{
+    width:100%!important;
+    display:block!important;
+    box-sizing:border-box!important;
+    padding:0 0 10px!important;
+  }
+  .col2{
+    width:100%!important;
+    display:block!important;
+    box-sizing:border-box!important;
+    padding:0 0 12px!important;
+  }
+}
+</style>
 </head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:{$font}">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px">
     <tr>
       <td align="center">
-        <table width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%">
+        <table class="w640" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%">
 
           <tr>
-            <td style="background:{$P};padding:28px 32px;border-radius:8px 8px 0 0;text-align:{$align}">
+            <td class="hpad" style="background:{$P};padding:28px 32px;border-radius:8px 8px 0 0;text-align:{$align}">
               <p style="margin:0;color:#7fafd0;font-size:11px;text-transform:uppercase;letter-spacing:1.5px">{$lbl['report_subtitle']}</p>
-              <h1 style="margin:8px 0 4px;color:#fff;font-size:24px;font-weight:700">{$gymName}</h1>
+              <h1 class="h1" style="margin:8px 0 4px;color:#fff;font-size:24px;font-weight:700">{$gymName}</h1>
               <p style="margin:0;color:#a0c4e0;font-size:12px">{$date}</p>
             </td>
           </tr>
 
           <tr>
-            <td style="background:#f4f7fb;padding:24px 28px;direction:{$dir}">
+            <td class="hpad" style="background:#f4f7fb;padding:24px 28px;direction:{$dir}">
               {$body}
             </td>
           </tr>
 
           <tr>
-            <td style="background:#e8ecf1;padding:14px 32px;border-radius:0 0 8px 8px;text-align:center">
+            <td style="background:#e8ecf1;padding:14px 20px;border-radius:0 0 8px 8px;text-align:center">
               <p style="margin:0;color:#999;font-size:11px">{$lbl['footer']} &bull; {$date}</p>
             </td>
           </tr>
