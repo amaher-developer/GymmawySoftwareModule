@@ -630,7 +630,10 @@ PROMPT;
                    . "</td></tr></table>";
         }
 
-        // ── 2. KPI — 2-column dark cards ──────────────────────────────
+        // ── 2. KPI — 2-column white cards, colored top accent ─────────
+        // Each metric gets its own accent color so they feel data-driven, not monochrome
+        $kpiAccents = ['#1A3A5C', '#1e8449', '#c0392b', '#1a5276', '#e67e22'];
+
         if (!empty($r['kpi_analysis']) && is_array($r['kpi_analysis'])) {
             $items = [];
             foreach ($r['kpi_analysis'] as $k => $v) {
@@ -638,40 +641,39 @@ PROMPT;
             }
 
             $kpiGrid = '';
+            $aIdx    = 0;
             foreach (array_chunk($items, 2) as $pair) {
                 $kpiGrid .= '<tr>';
-                foreach ($pair as $idx => $item) {
-                    $cardBgKpi = $idx === 0 ? '#122240' : '#1e4d78';
-                    $kpiGrid  .= "<td width='49%' valign='top' bgcolor='{$cardBgKpi}'"
-                               . " style='border-radius:8px;padding:20px 22px;"
-                               . "border-bottom:3px solid {$Pmut}'>"
-                               . "<p style='margin:0 0 6px;color:{$Pmut};font-family:{$font};"
-                               . "font-size:10px;font-weight:700;letter-spacing:1.5px;"
-                               . "text-transform:uppercase;text-align:{$align}'>"
-                               . e($item['label']) . "</p>"
-                               . "<p style='margin:0;color:{$W};font-family:{$font};font-size:22px;"
-                               . "font-weight:800;line-height:1.2;text-align:{$align};"
-                               . "word-break:break-word'>" . e($item['value']) . "</p>"
-                               . "</td>";
-                    if ($idx === 0) {
+                foreach ($pair as $item) {
+                    $accent   = $kpiAccents[$aIdx % count($kpiAccents)];
+                    $kpiGrid .= "<td width='49%' valign='top' bgcolor='{$W}'"
+                              . " style='border-radius:8px;padding:22px 24px;"
+                              . "border-top:4px solid {$accent};"
+                              . "box-shadow:0 2px 8px rgba(0,0,0,0.07)'>"
+                              . "<p style='margin:0 0 8px;color:{$text2};font-family:{$font};"
+                              . "font-size:11px;font-weight:700;letter-spacing:1.5px;"
+                              . "text-transform:uppercase;text-align:{$align}'>"
+                              . e($item['label']) . "</p>"
+                              . "<p style='margin:0;color:{$accent};font-family:{$font};font-size:26px;"
+                              . "font-weight:800;line-height:1.1;text-align:{$align};"
+                              . "word-break:break-word'>" . e($item['value']) . "</p>"
+                              . "</td>";
+                    if ($aIdx % 2 === 0 && count($pair) > 1) {
                         $kpiGrid .= "<td width='2%' style='font-size:0;line-height:0'>&nbsp;</td>";
                     }
+                    $aIdx++;
                 }
-                // pad row if odd count
                 if (count($pair) === 1) {
                     $kpiGrid .= "<td width='49%'>&nbsp;</td>";
                 }
-                $kpiGrid .= "</tr><tr><td colspan='3' height='12'"
+                $kpiGrid .= "</tr><tr><td colspan='3' height='14'"
                           . " style='font-size:0;line-height:0'>&nbsp;</td></tr>";
             }
 
-            $body .= "<table width='100%' cellpadding='0' cellspacing='0'"
-                   . " style='margin-bottom:20px;border-radius:6px;"
-                   . "box-shadow:0 2px 10px rgba(0,0,0,0.08)'>"
-                   . "<tr><td>" . $mkHdr('📊', $lbl['kpi_analysis'], $P) . "</td></tr>"
-                   . "<tr><td bgcolor='{$P}' style='padding:20px 22px;border-radius:0 0 6px 6px'>"
-                   . "<table width='100%' cellpadding='0' cellspacing='0'>{$kpiGrid}</table>"
-                   . "</td></tr></table>";
+            $body .= $mkCard(
+                $mkHdr('📊', $lbl['kpi_analysis'], $P),
+                "<table width='100%' cellpadding='0' cellspacing='0'>{$kpiGrid}</table>"
+            );
         }
 
         // ── 3. Attendance — striped label/value table ──────────────────
