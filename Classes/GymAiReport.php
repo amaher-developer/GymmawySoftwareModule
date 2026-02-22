@@ -553,22 +553,22 @@ PROMPT;
             ? "'Tahoma', 'Arabic Typesetting', 'Segoe UI', Arial, sans-serif"
             : "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
 
-        // ── Premium palette ────────────────────────────────────────────
-        $navy    = '#0B1E37';
-        $navyMid = '#112240';
-        $navyAlt = '#162B48';
-        $gold    = '#C9A84C';
+        // ── Color palette (original blue scheme) ──────────────────────
+        $navy    = '#1A3A5C';
+        $navyMid = '#1e4d78';
+        $navyAlt = '#215480';
+        $gold    = '#7fafd0';
         $white   = '#FFFFFF';
-        $bodyBg  = '#E8EDF4';
+        $bodyBg  = '#f0f4f8';
         $cardBg  = '#FFFFFF';
-        $altRow  = '#F4F8FC';
-        $text1   = '#1A2B3C';
-        $text2   = '#5B7A99';
-        $blueMut = '#7A9FBE';
-        $success = '#1B6B43';
-        $danger  = '#A62828';
-        $info    = '#1B4F8A';
-        $orange  = '#B86A1A';
+        $altRow  = '#e8f0f7';
+        $text1   = '#333333';
+        $text2   = '#555555';
+        $blueMut = '#a0c4e0';
+        $success = '#1e8449';
+        $danger  = '#c0392b';
+        $info    = '#1a5276';
+        $orange  = '#e67e22';
 
         // ── Pill badge (section header) ───────────────────────────────
         $mkPill = function (string $icon, string $title, string $bg) use ($font, $white): string {
@@ -776,7 +776,7 @@ PROMPT;
         <table cellpadding="0" cellspacing="0" style="margin-bottom:22px">
           <tr>
             <td bgcolor="{$gold}" style="border-radius:4px;padding:6px 18px">
-              <span style="color:{$navy};font-family:{$font};font-size:10px;font-weight:800;
+              <span style="color:{$white};font-family:{$font};font-size:10px;font-weight:800;
                            letter-spacing:2.5px;text-transform:uppercase">{$badgeText}</span>
             </td>
           </tr>
