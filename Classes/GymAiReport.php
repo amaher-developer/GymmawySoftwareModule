@@ -631,7 +631,9 @@ PROMPT;
         }
 
         // ── 2. KPI — 2-column white cards, colored top accent ─────────
-        // Each metric gets its own accent color so they feel data-driven, not monochrome
+        // Each metric gets its own accent color. Cards use nested <table> so
+        // border-radius + box-shadow apply properly in all email clients.
+        // Responsive classes (kpi-row / kcard / kspc) wire up the media query.
         $kpiAccents = ['#1A3A5C', '#1e8449', '#c0392b', '#1a5276', '#e67e22'];
 
         if (!empty($r['kpi_analysis']) && is_array($r['kpi_analysis'])) {
@@ -643,36 +645,43 @@ PROMPT;
             $kpiGrid = '';
             $aIdx    = 0;
             foreach (array_chunk($items, 2) as $pair) {
-                $kpiGrid .= '<tr>';
+                $kpiGrid .= "<tr class='kpi-row'>";
                 foreach ($pair as $item) {
                     $accent   = $kpiAccents[$aIdx % count($kpiAccents)];
-                    $kpiGrid .= "<td width='49%' valign='top' bgcolor='{$W}'"
-                              . " style='border-radius:8px;padding:22px 24px;"
-                              . "border-top:4px solid {$accent};"
+                    // Each metric: outer <td class="kcard"> + inner <table> for reliable styling
+                    $kpiGrid .= "<td class='kcard' width='49%' valign='top'>"
+                              . "<table width='100%' cellpadding='0' cellspacing='0' bgcolor='{$W}'"
+                              . " style='border-radius:8px;border-top:4px solid {$accent};"
                               . "box-shadow:0 2px 8px rgba(0,0,0,0.07)'>"
+                              . "<tr><td style='padding:20px 22px'>"
                               . "<p style='margin:0 0 8px;color:{$text2};font-family:{$font};"
                               . "font-size:11px;font-weight:700;letter-spacing:1.5px;"
-                              . "text-transform:uppercase;text-align:{$align}'>"
+                              . "text-transform:uppercase;text-align:{$align};"
+                              . "word-break:break-word'>"
                               . e($item['label']) . "</p>"
                               . "<p style='margin:0;color:{$accent};font-family:{$font};font-size:26px;"
                               . "font-weight:800;line-height:1.1;text-align:{$align};"
                               . "word-break:break-word'>" . e($item['value']) . "</p>"
+                              . "</td></tr></table>"
                               . "</td>";
                     if ($aIdx % 2 === 0 && count($pair) > 1) {
-                        $kpiGrid .= "<td width='2%' style='font-size:0;line-height:0'>&nbsp;</td>";
+                        $kpiGrid .= "<td class='kspc' width='2%' style='font-size:0;line-height:0'>&nbsp;</td>";
                     }
                     $aIdx++;
                 }
                 if (count($pair) === 1) {
-                    $kpiGrid .= "<td width='49%'>&nbsp;</td>";
+                    // pad odd row so colspan=3 spacer row stays consistent
+                    $kpiGrid .= "<td class='kspc' width='2%' style='font-size:0'>&nbsp;</td>"
+                              . "<td class='kcard' width='49%'>&nbsp;</td>";
                 }
-                $kpiGrid .= "</tr><tr><td colspan='3' height='14'"
+                $kpiGrid .= "</tr>"
+                          . "<tr><td colspan='3' height='14'"
                           . " style='font-size:0;line-height:0'>&nbsp;</td></tr>";
             }
 
             $body .= $mkCard(
                 $mkHdr('📊', $lbl['kpi_analysis'], $P),
-                "<table width='100%' cellpadding='0' cellspacing='0'>{$kpiGrid}</table>"
+                "<table width='100%' cellpadding='0' cellspacing='0' border='0'>{$kpiGrid}</table>"
             );
         }
 
@@ -701,6 +710,7 @@ PROMPT;
         }
 
         // ── 4. Packages — top & weak side-by-side ─────────────────────
+        // Responsive classes (pkg-row / pkg-col / pkg-spc) wire up the media query.
         $topItems  = !empty($r['top_packages'])  ? (array) $r['top_packages']  : [];
         $weakItems = !empty($r['weak_packages']) ? (array) $r['weak_packages'] : [];
 
@@ -714,10 +724,11 @@ PROMPT;
         $topCard  = $mkCard($mkHdr('🏆', $lbl['top_packages'],  $S), $topList);
         $weakCard = $mkCard($mkHdr('⚠️', $lbl['weak_packages'], $D), $weakList);
 
-        $body .= "<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:0'><tr>"
-               . "<td width='49%' valign='top'>{$topCard}</td>"
-               . "<td width='2%'>&nbsp;</td>"
-               . "<td width='49%' valign='top'>{$weakCard}</td>"
+        $body .= "<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:0'>"
+               . "<tr class='pkg-row'>"
+               . "<td class='pkg-col' width='49%' valign='top'>{$topCard}</td>"
+               . "<td class='pkg-spc' width='2%' style='font-size:0;line-height:0'>&nbsp;</td>"
+               . "<td class='pkg-col' width='49%' valign='top'>{$weakCard}</td>"
                . "</tr></table>";
 
         // ── 5. Sales Insights ──────────────────────────────────────────
@@ -781,14 +792,20 @@ PROMPT;
 <title>{$lbl['subject']}</title>
 <style>
   @media only screen and (max-width:600px) {
-    .pkg-row td        { display:block !important; width:100% !important; }
-    .pkg-row td.spacer { display:none  !important; }
-    .kpi-row td.kcard  { display:block !important; width:100% !important;
-                         margin-bottom:10px !important; }
-    .kpi-row td.kspc   { display:none  !important; }
-    .hd                { padding:24px 18px 20px !important; }
-    .bd                { padding:20px 14px !important; }
-    .ft                { padding:14px 18px !important; }
+    /* Stack KPI cards vertically */
+    .kcard { display:block   !important; width:100% !important;
+             box-sizing:border-box !important; margin-bottom:12px !important; }
+    .kspc  { display:none    !important; }
+    /* Stack Package cards vertically */
+    .pkg-col { display:block !important; width:100% !important;
+               box-sizing:border-box !important; }
+    .pkg-spc { display:none  !important; }
+    /* Reduce outer padding on small screens */
+    .hd { padding:22px 16px 18px !important; }
+    .bd { padding:18px 12px      !important; }
+    .ft { padding:12px 16px      !important; }
+    /* Prevent oversized headings */
+    h1  { font-size:22px !important; }
   }
 </style>
 </head>
