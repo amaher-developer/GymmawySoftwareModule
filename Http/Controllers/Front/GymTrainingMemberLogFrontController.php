@@ -11,6 +11,7 @@ use Modules\Software\Models\GymTrainingMedicine;
 use Modules\Software\Models\GymTrainingFile;
 use Modules\Software\Models\GymTrainingTrack;
 use Modules\Software\Models\GymAiRecommendation;
+use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Http\Controllers\Front\GymMoneyBoxFrontController;
@@ -19,6 +20,9 @@ use Modules\Software\Repositories\GymTrainingAssessmentRepository;
 use Modules\Software\Http\Requests\GymTrainingAssessmentRequest;
 use Illuminate\Container\Container as Application;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Mpdf\Mpdf;
@@ -629,7 +633,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     }
 
     /**
-     * Generate AI recommendation
+     * Generate AI recommendation (form-based, redirect flow)
      */
     public function generateAi(Request $request, $memberId)
     {
@@ -638,40 +642,42 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
             'goal' => 'nullable|string',
         ]);
 
-        // Get member assessment
-        $assessment = GymTrainingAssessment::where('member_id', $memberId)->latest()->first();
+        $language   = env('DEFAULT_LANG', 'ar');
+        $planTypeInt = $request->type === 'training' ? 1 : 2;
 
-        $context = [
-            'assessment' => $assessment ? $assessment->answers : null,
-            'goal' => $request->goal,
-        ];
+        $context = $this->buildMemberAiContext((int)$memberId, $language);
+        $context['plan_type']    = $planTypeInt;
+        $context['language']     = $language;
+        $context['focus']        = $request->goal;
+        $context['custom_notes'] = $request->goal;
 
-        // Placeholder AI response (replace with actual AI integration)
-        $aiResponse = json_encode([
-            'plan_type' => $request->type,
-            'summary' => 'AI-generated ' . $request->type . ' plan based on member data',
-            'recommendations' => [
-                'Replace this with actual AI API integration (OpenAI, etc.)',
-                'Use member assessment data to generate personalized recommendations',
-            ],
-        ], JSON_UNESCAPED_UNICODE);
+        try {
+            $aiPlan = $this->callChatGptForPlan($planTypeInt, $context);
+        } catch (\Exception $e) {
+            Log::error('[GymAiRecommendation] ChatGPT error: ' . $e->getMessage());
+            session()->flash('sweet_flash_message', [
+                'title'   => trans('admin.error'),
+                'message' => $e->getMessage(),
+                'type'    => 'error',
+            ]);
+            return redirect()->back();
+        }
 
         $recommendation = GymAiRecommendation::create([
-            'member_id' => $memberId,
-            'trainer_id' => $this->user_sw->id,
-            'type' => $request->type,
+            'member_id'    => $memberId,
+            'trainer_id'   => $this->user_sw->id,
+            'type'         => $request->type,
             'context_data' => $context,
-            'ai_response' => $aiResponse,
-            'status' => 'pending',
+            'ai_response'  => $aiPlan,
+            'status'       => 'pending',
         ]);
 
-        // Log the action
         $this->logMemberAction($memberId, 'ai_plan', 'generated', trans('sw.ai_recommendation_generated_log'), ['ai_id' => $recommendation->id]);
 
         session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
+            'title'   => trans('admin.done'),
             'message' => trans('sw.ai_recommendation_generated'),
-            'type' => 'success'
+            'type'    => 'success',
         ]);
 
         return redirect()->back();
@@ -1065,292 +1071,296 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     }
 
     /**
-     * Generate AI plan based on member assessment
+     * Generate AI plan based on full member data (AJAX, returns JSON)
      */
     public function generateAiPlan(Request $request, $memberId)
     {
         $request->validate([
-            'type' => 'required|in:1,2',
-            'focus' => 'nullable|string',
-            'language' => 'required|in:ar,en',
+            'type'         => 'required|in:1,2',
+            'focus'        => 'nullable|string',
+            'language'     => 'required|in:ar,en',
             'custom_notes' => 'nullable|string',
-            'include_assessment' => 'nullable|boolean',
-            'include_tracks' => 'nullable|boolean',
-            'include_medicines' => 'nullable|boolean',
-            'include_previous_plans' => 'nullable|boolean',
         ]);
 
-        // Get member
-        $member = GymMember::findOrFail($memberId);
+        // Always build full member context — no optional flags
+        $context = $this->buildMemberAiContext((int)$memberId, $request->language);
+        $context['plan_type']    = (int)$request->type;
+        $context['language']     = $request->language;
+        $context['focus']        = $request->focus;
+        $context['custom_notes'] = $request->custom_notes;
 
-        // Build comprehensive AI context
-        $context = [
-            'language' => $request->language,
-            'plan_type' => $request->type, // 1 = Training, 2 = Diet
-            'focus' => $request->focus,
-            'custom_notes' => $request->custom_notes,
-            'member' => [
-                'id' => $member->id,
-                'name' => $member->name,
-                'phone' => $member->phone ?? null,
-                'email' => $member->email ?? null,
-                'birth_date' => $member->birth_date ?? null,
-                'gender' => $member->gender ?? null,
-            ],
-        ];
-
-        // Include assessment if requested
-        if ($request->include_assessment) {
-            $assessment = GymTrainingAssessment::where('member_id', $memberId)
-                ->latest()
-                ->first();
-            
-            if ($assessment) {
-                $context['assessment'] = [
-                    'date' => $assessment->created_at->format('Y-m-d'),
-                    'data' => $assessment->answers,
-                ];
-            }
+        try {
+            $generatedPlan = $this->callChatGptForPlan((int)$request->type, $context);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            Log::error('[GymAiPlan] Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => trans('sw.ai_generation_failed')], 500);
         }
-
-        // Include tracking history if requested
-        if ($request->include_tracks) {
-            // Check which columns exist in sw_gym_training_tracks
-            $trackColumns = \Schema::getColumnListing('sw_gym_training_tracks');
-            $desiredColumns = ['weight', 'height', 'fat_percentage', 'muscle_mass', 'bmi', 'neck_circumference', 'chest_circumference', 'arm_circumference', 'abdominal_circumference', 'pelvic_circumference', 'thigh_circumference', 'notes', 'created_at'];
-            $selectColumns = array_intersect($desiredColumns, $trackColumns);
-            
-            if (empty($selectColumns)) {
-                $selectColumns = ['*']; // Fallback to all columns
-            }
-            
-            $tracks = GymTrainingTrack::where('member_id', $memberId)
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get($selectColumns);
-            
-            if ($tracks->count() > 0) {
-                $context['tracking_history'] = $tracks->map(function($track) use ($trackColumns) {
-                    $data = [
-                        'date' => $track->created_at->format('Y-m-d'),
-                    ];
-                    
-                    // Only include columns that exist
-                    if (in_array('weight', $trackColumns)) $data['weight'] = $track->weight;
-                    if (in_array('height', $trackColumns)) $data['height'] = $track->height;
-                    if (in_array('bmi', $trackColumns)) $data['bmi'] = $track->bmi;
-                    if (in_array('fat_percentage', $trackColumns)) $data['fat_percentage'] = $track->fat_percentage;
-                    if (in_array('muscle_mass', $trackColumns)) $data['muscle_mass'] = $track->muscle_mass;
-                    if (in_array('notes', $trackColumns)) $data['notes'] = $track->notes;
-                    
-                    // Measurements
-                    $measurements = [];
-                    if (in_array('neck_circumference', $trackColumns)) $measurements['neck'] = $track->neck_circumference;
-                    if (in_array('chest_circumference', $trackColumns)) $measurements['chest'] = $track->chest_circumference;
-                    if (in_array('arm_circumference', $trackColumns)) $measurements['arm'] = $track->arm_circumference;
-                    if (in_array('abdominal_circumference', $trackColumns)) $measurements['abdominal'] = $track->abdominal_circumference;
-                    if (in_array('pelvic_circumference', $trackColumns)) $measurements['pelvic'] = $track->pelvic_circumference;
-                    if (in_array('thigh_circumference', $trackColumns)) $measurements['thigh'] = $track->thigh_circumference;
-                    
-                    if (!empty($measurements)) {
-                        $data['measurements'] = $measurements;
-                    }
-                    
-                    return $data;
-                })->toArray();
-                
-                // Add latest measurements summary
-                $latestTrack = $tracks->first();
-                $currentStats = [];
-                if (in_array('weight', $trackColumns)) $currentStats['weight'] = $latestTrack->weight;
-                if (in_array('height', $trackColumns)) $currentStats['height'] = $latestTrack->height;
-                if (in_array('bmi', $trackColumns)) $currentStats['bmi'] = $latestTrack->bmi;
-                if (in_array('fat_percentage', $trackColumns)) $currentStats['fat_percentage'] = $latestTrack->fat_percentage;
-                if (in_array('muscle_mass', $trackColumns)) $currentStats['muscle_mass'] = $latestTrack->muscle_mass;
-                
-                if (!empty($currentStats)) {
-                    $context['current_stats'] = $currentStats;
-                }
-            }
-        }
-
-        // Include medicines if requested
-        if ($request->include_medicines) {
-            $medicineLogs = GymTrainingMemberLog::where('member_id', $memberId)
-                ->where('training_type', 'medicine')
-                ->with('medicine')
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
-            
-            if ($medicineLogs->count() > 0) {
-                $context['current_medicines'] = $medicineLogs->map(function($log) use ($request) {
-                    $meta = is_string($log->meta) ? json_decode($log->meta, true) : $log->meta;
-                    return [
-                        'name' => $log->medicine ? ($log->medicine->{'name_' . $request->language} ?? $log->medicine->name_en) : 'Unknown',
-                        'dose' => $meta['dose'] ?? null,
-                        'notes' => $meta['notes'] ?? null,
-                        'started_date' => $log->created_at->format('Y-m-d'),
-                    ];
-                })->toArray();
-            }
-        }
-
-        // Include previous plans if requested
-        if ($request->include_previous_plans) {
-            $previousPlans = \DB::table('sw_gym_training_members')
-                ->where('member_id', $memberId)
-                ->whereNotNull('plan_id')
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get(['plan_id', 'title', 'type', 'plan_details', 'from_date', 'to_date', 'created_at']);
-            
-            if ($previousPlans->count() > 0) {
-                $context['previous_plans'] = $previousPlans->map(function($plan) {
-                    return [
-                        'title' => $plan->title,
-                        'type' => $plan->type == 1 ? 'Training' : 'Diet',
-                        'details' => strip_tags($plan->plan_details),
-                        'from_date' => $plan->from_date,
-                        'to_date' => $plan->to_date,
-                        'duration_days' => $plan->from_date && $plan->to_date ? 
-                            \Carbon\Carbon::parse($plan->from_date)->diffInDays(\Carbon\Carbon::parse($plan->to_date)) : null,
-                    ];
-                })->toArray();
-            }
-        }
-
-        // Generate plan using AI (placeholder - integrate with OpenAI/Claude API)
-        $generatedPlan = $this->mockAiPlanGeneration($request->type, $context);
 
         return response()->json([
             'success' => true,
-            'plan' => $generatedPlan,
+            'plan'    => $generatedPlan,
             'context_summary' => [
-                'language' => $request->language,
-                'has_assessment' => isset($context['assessment']),
-                'tracks_count' => isset($context['tracking_history']) ? count($context['tracking_history']) : 0,
-                'medicines_count' => isset($context['current_medicines']) ? count($context['current_medicines']) : 0,
-                'previous_plans_count' => isset($context['previous_plans']) ? count($context['previous_plans']) : 0,
-                'custom_notes' => !empty($request->custom_notes),
+                'language'             => $request->language,
+                'has_assessment'       => !empty($context['assessments']),
+                'tracks_count'         => count($context['body_tracking'] ?? []),
+                'medicines_count'      => count($context['medicines'] ?? []),
+                'previous_plans_count' => count($context['plans_history'] ?? []),
+                'has_subscription'     => !empty($context['current_subscription']),
+                'has_notes'            => !empty($context['trainer_notes']),
             ],
         ]);
     }
 
     /**
-     * Mock AI plan generation (replace with actual AI API)
+     * Build a comprehensive member context for AI — always includes every available
+     * data point: profile, subscription, all assessments, body tracking, medicines,
+     * all assigned plans, and trainer notes.
      */
-    private function mockAiPlanGeneration($type, $context)
+    private function buildMemberAiContext(int $memberId, string $language): array
     {
-        $focus = $context['focus'] ?? 'general';
-        $isTraining = ($type == 1);
+        $member = GymMember::findOrFail($memberId);
 
-        if ($isTraining) {
-            return [
-                'title' => $this->getTrainingPlanTitle($focus),
-                'description' => 'AI-generated training plan based on member assessment',
-                'duration' => 30,
-                'type' => 1,
-                'tasks' => $this->generateTrainingTasks($focus),
-            ];
-        } else {
-            return [
-                'title' => $this->getDietPlanTitle($focus),
-                'description' => 'AI-generated diet plan based on member assessment',
-                'duration' => 30,
-                'type' => 2,
-                'tasks' => $this->generateDietTasks($focus),
-            ];
+        $context = [
+            'member' => array_filter([
+                'name'            => $member->name,
+                'gender'          => $member->gender ? ($member->gender == 1 ? 'Male' : 'Female') : null,
+                'date_of_birth'   => $member->dob,
+                'address'         => $member->address,
+                'additional_info' => $member->additional_info,
+                'on_app'          => (bool) $member->on_app,
+                'joined'          => $member->created_at?->format('Y-m-d'),
+            ], fn($v) => !is_null($v) && $v !== ''),
+        ];
+
+        // ── Active subscription ──────────────────────────────────────────────
+        $activeSub = GymMemberSubscription::with('subscription')
+            ->where('member_id', $memberId)
+            ->where('status', TypeConstants::Active)
+            ->latest()
+            ->first();
+        if ($activeSub) {
+            $context['current_subscription'] = array_filter([
+                'package'     => $activeSub->subscription?->{'name_' . $language}
+                                  ?? $activeSub->subscription?->name_en
+                                  ?? $activeSub->subscription?->name_ar,
+                'expire_date' => $activeSub->expire_date,
+                'status'      => 'active',
+                'workouts'    => $activeSub->workouts,
+                'visits'      => $activeSub->visits,
+                'notes'       => $activeSub->notes,
+            ], fn($v) => !is_null($v) && $v !== '');
         }
+
+        // ── All assessments (last 3, newest first) ───────────────────────────
+        $assessments = GymTrainingAssessment::where('member_id', $memberId)
+            ->latest()
+            ->limit(3)
+            ->get();
+        if ($assessments->count() > 0) {
+            $context['assessments'] = $assessments->map(fn($a) => array_filter([
+                'date'  => $a->created_at->format('Y-m-d'),
+                'data'  => is_array($a->answers) ? $a->answers : json_decode($a->answers, true),
+                'notes' => $a->notes,
+            ]))->toArray();
+            // Also expose the latest assessment flat at the root for quick AI access
+            $latest = $assessments->first();
+            $context['latest_assessment'] = is_array($latest->answers)
+                ? $latest->answers
+                : (json_decode($latest->answers, true) ?? []);
+        }
+
+        // ── Body tracking history (last 10) ──────────────────────────────────
+        $tracks = GymTrainingTrack::where('member_id', $memberId)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        if ($tracks->count() > 0) {
+            $context['body_tracking'] = $tracks->map(fn($t) => array_filter([
+                'date'      => $t->created_at->format('Y-m-d'),
+                'weight'    => $t->weight,
+                'height'    => $t->height,
+                'bmi'       => $t->bmi,
+                'neck'      => $t->neck_circumference,
+                'chest'     => $t->chest_circumference,
+                'arm'       => $t->arm_circumference,
+                'abdominal' => $t->abdominal_circumference,
+                'pelvic'    => $t->pelvic_circumference,
+                'thigh'     => $t->thigh_circumference,
+                'notes'     => $t->notes,
+            ], fn($v) => !is_null($v) && $v !== ''))->toArray();
+
+            $latest = $tracks->first();
+            $context['current_body_stats'] = array_filter([
+                'weight'    => $latest->weight,
+                'height'    => $latest->height,
+                'bmi'       => $latest->bmi,
+                'arm'       => $latest->arm_circumference,
+                'chest'     => $latest->chest_circumference,
+                'waist'     => $latest->abdominal_circumference,
+                'thigh'     => $latest->thigh_circumference,
+            ], fn($v) => !is_null($v));
+        }
+
+        // ── Prescribed medicines ──────────────────────────────────────────────
+        $medicineLogs = GymTrainingMemberLog::where('member_id', $memberId)
+            ->where('training_type', 'medicine')
+            ->with('medicine')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        if ($medicineLogs->count() > 0) {
+            $context['medicines'] = $medicineLogs->map(function ($log) use ($language) {
+                $meta = is_string($log->meta) ? json_decode($log->meta, true) : (array)($log->meta ?? []);
+                return array_filter([
+                    'name'  => $log->medicine
+                        ? ($log->medicine->{'name_' . $language} ?? $log->medicine->name_en ?? $log->medicine->name_ar)
+                        : ($meta['medicine_name'] ?? 'Unknown'),
+                    'dose'  => $log->medicine?->dose ?? $meta['dose'] ?? null,
+                    'notes' => $meta['notes'] ?? null,
+                    'since' => $log->created_at->format('Y-m-d'),
+                ]);
+            })->toArray();
+        }
+
+        // ── All assigned training / diet plans (last 5) ──────────────────────
+        $plans = \DB::table('sw_gym_training_members')
+            ->where('member_id', $memberId)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get(['title', 'type', 'from_date', 'to_date', 'status', 'notes',
+                   'diseases', 'plan_details', 'weight', 'height', 'created_at']);
+        if ($plans->count() > 0) {
+            $context['plans_history'] = $plans->map(fn($p) => array_filter([
+                'title'         => $p->title,
+                'type'          => $p->type == 1 ? 'training' : 'diet',
+                'from'          => $p->from_date,
+                'to'            => $p->to_date,
+                'status'        => $p->status,
+                'notes'         => $p->notes,
+                'diseases'      => $p->diseases,
+                'body_weight'   => $p->weight,
+                'body_height'   => $p->height,
+                'duration_days' => ($p->from_date && $p->to_date)
+                    ? \Carbon\Carbon::parse($p->from_date)->diffInDays(\Carbon\Carbon::parse($p->to_date))
+                    : null,
+            ]))->toArray();
+        }
+
+        // ── Trainer notes (last 5) ────────────────────────────────────────────
+        $notes = GymTrainingMemberLog::where('member_id', $memberId)
+            ->where('training_type', 'note')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get(['notes', 'created_at']);
+        if ($notes->count() > 0) {
+            $context['trainer_notes'] = $notes->map(fn($n) => [
+                'date' => $n->created_at->format('Y-m-d'),
+                'note' => $n->notes,
+            ])->toArray();
+        }
+
+        return $context;
     }
 
-    private function getTrainingPlanTitle($focus)
+    /**
+     * Call ChatGPT to generate a real training or diet plan.
+     */
+    private function callChatGptForPlan(int $type, array $context): array
     {
-        $titles = [
-            'general_fitness' => trans('sw.general_fitness') . ' ' . trans('sw.training_plan'),
-            'weight_loss' => trans('sw.weight_loss') . ' ' . trans('sw.training_plan'),
-            'muscle_building' => trans('sw.muscle_building') . ' ' . trans('sw.training_plan'),
-            'endurance' => trans('sw.endurance') . ' ' . trans('sw.training_plan'),
-            'flexibility' => trans('sw.flexibility') . ' ' . trans('sw.training_plan'),
-        ];
-        return $titles[$focus] ?? trans('sw.training_plan');
-    }
+        $integrations = $this->mainSettings->integrations ?? [];
+        $apiKey       = $integrations['ai']['openai_key'] ?? null;
+        $model        = $integrations['ai']['openai_model'] ?? 'gpt-4o';
+        $language     = $context['language'] ?? 'en';
+        $isTraining   = ($type === 1);
 
-    private function getDietPlanTitle($focus)
-    {
-        $titles = [
-            'balanced' => trans('sw.balanced_nutrition') . ' ' . trans('sw.diet_plan'),
-            'low_carb' => trans('sw.low_carb') . ' ' . trans('sw.diet_plan'),
-            'high_protein' => trans('sw.high_protein') . ' ' . trans('sw.diet_plan'),
-            'vegetarian' => trans('sw.vegetarian') . ' ' . trans('sw.diet_plan'),
-            'keto' => trans('sw.keto') . ' ' . trans('sw.diet_plan'),
-        ];
-        return $titles[$focus] ?? trans('sw.diet_plan');
-    }
+        if (!$apiKey) {
+            throw new \RuntimeException('OpenAI API key is not configured. Add it in Settings → Integrations → AI.');
+        }
 
-    private function generateTrainingTasks($focus)
-    {
-        // Sample training tasks
-        return [
-            [
-                'day_name' => trans('sw.day') . ' 1',
-                'title' => 'Warm-up & Cardio',
-                'description' => '10 minutes jogging, 5 minutes stretching',
-                't_group' => 3,
-                't_repeats' => 10,
-                't_rest' => '60s',
-            ],
-            [
-                'day_name' => trans('sw.day') . ' 1',
-                'title' => 'Push-ups',
-                'description' => 'Standard push-ups with proper form',
-                't_group' => 3,
-                't_repeats' => 15,
-                't_rest' => '60s',
-            ],
-            [
-                'day_name' => trans('sw.day') . ' 2',
-                'title' => 'Squats',
-                'description' => 'Bodyweight squats',
-                't_group' => 4,
-                't_repeats' => 20,
-                't_rest' => '45s',
-            ],
-        ];
-    }
+        $langInstruction = $language === 'ar'
+            ? 'مهم: اكتب جميع النصوص باللغة العربية الفصحى فقط.'
+            : 'Write all text values in English.';
 
-    private function generateDietTasks($focus)
+        $typeName   = $isTraining ? 'Training' : 'Diet / Nutrition';
+        $typeFields = $isTraining
+            ? '"t_group": <integer sets>, "t_repeats": <integer reps>, "t_rest": "<e.g. 60s>"'
+            : '"d_calories": "<number kcal>", "d_protein": "<Xg>", "d_carb": "<Xg>", "d_fats": "<Xg>"';
+
+        $contextJson = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        $prompt = <<<PROMPT
+{$langInstruction}
+
+Generate a personalized {$typeName} plan for the gym member described below.
+
+Return STRICT JSON using exactly this structure:
+{
+  "title": "<descriptive plan title>",
+  "description": "<2–3 sentence overview of the plan>",
+  "duration": <number of days as integer>,
+  "type": {$type},
+  "tasks": [
     {
-        // Sample diet tasks
-        return [
-            [
-                'day_name' => trans('sw.day') . ' 1',
-                'title' => 'Breakfast',
-                'description' => 'Oatmeal with fruits and nuts',
-                'd_calories' => '350',
-                'd_protein' => '12g',
-                'd_carb' => '55g',
-                'd_fats' => '10g',
-            ],
-            [
-                'day_name' => trans('sw.day') . ' 1',
-                'title' => 'Lunch',
-                'description' => 'Grilled chicken with brown rice and vegetables',
-                'd_calories' => '500',
-                'd_protein' => '40g',
-                'd_carb' => '50g',
-                'd_fats' => '15g',
-            ],
-            [
-                'day_name' => trans('sw.day') . ' 1',
-                'title' => 'Dinner',
-                'description' => 'Salmon with quinoa and salad',
-                'd_calories' => '450',
-                'd_protein' => '35g',
-                'd_carb' => '40g',
-                'd_fats' => '18g',
-            ],
-        ];
+      "day_name": "<e.g. Day 1 – Monday>",
+      "title": "<exercise or meal name>",
+      "description": "<detailed instructions or ingredients>",
+      {$typeFields}
+    }
+  ],
+  "recommendations": ["<practical tip 1>", "<tip 2>", "<tip 3>"]
+}
+
+Rules:
+- Generate at least 6 varied tasks across multiple days.
+- Be specific with values (sets/reps/rest for training; kcal/macros for diet).
+- Consider the member's goal, fitness level, injuries, and health conditions.
+- Recommendations must be actionable and motivating.
+- Return ONLY valid JSON — no markdown, no extra text.
+
+Member Context:
+{$contextJson}
+PROMPT;
+
+        $systemInstruction = $language === 'ar'
+            ? 'أنت مدرب لياقة بدنية وخبير تغذية معتمد. أجب دائماً بـ JSON صحيح فقط — بدون markdown وبدون نص إضافي. اكتب جميع قيم النصوص باللغة العربية الفصحى حصراً.'
+            : 'You are a certified personal trainer and nutrition specialist. Always respond with strict valid JSON only — no markdown, no extra text. Write all text values in English.';
+
+        $response = Http::withToken($apiKey)
+            ->withoutVerifying()
+            ->timeout(90)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model'           => $model,
+                'messages'        => [
+                    ['role' => 'system', 'content' => $systemInstruction],
+                    ['role' => 'user',   'content' => $prompt],
+                ],
+                'temperature'     => 0.4,
+                'max_tokens'      => 3000,
+                'response_format' => ['type' => 'json_object'],
+            ]);
+
+        if (!$response->successful()) {
+            Log::error('[GymAiPlan] ChatGPT error', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            throw new \RuntimeException('ChatGPT API error: HTTP ' . $response->status());
+        }
+
+        $content = $response->json('choices.0.message.content', '{}');
+        $parsed  = json_decode($content, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || empty($parsed)) {
+            throw new \RuntimeException('Failed to parse ChatGPT response.');
+        }
+
+        $parsed['type']     = $parsed['type']     ?? $type;
+        $parsed['duration'] = $parsed['duration'] ?? 30;
+        $parsed['tasks']    = $parsed['tasks']    ?? [];
+
+        return $parsed;
     }
 
     /**
