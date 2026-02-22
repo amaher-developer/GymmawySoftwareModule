@@ -542,127 +542,233 @@ PROMPT;
 
     private function buildEmailHtml(array $r): string
     {
-        $lbl     = $this->lbl();
-        $isAr    = $this->lang === 'ar';
-        $gymName = e($this->gymName());
-        $date    = now()->format('Y-m-d');
-        $dir     = $lbl['dir'];
-        $align   = $lbl['align'];
-        $border  = $lbl['border_side'];
-        $listPad = $lbl['list_padding'];
-        $olPad   = $lbl['ol_padding'];
+        $lbl      = $this->lbl();
+        $isAr     = $this->lang === 'ar';
+        $gymName  = e($this->gymName());
+        $date     = now()->format('Y-m-d');
+        $dir      = $lbl['dir'];
+        $align    = $lbl['align'];
+        $alignOpp = $isAr ? 'left' : 'right';
+        $font     = $isAr
+            ? "'Tahoma', 'Arabic Typesetting', 'Segoe UI', Arial, sans-serif"
+            : "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
 
-        $P = '#1A3A5C';
-        $D = '#c0392b';
-        $S = '#1e8449';
-        $I = '#1a5276';
+        // ── Palette (original blue scheme) ────────────────────────────
+        $P      = '#1A3A5C';   // primary — header, KPI bg
+        $D      = '#c0392b';   // danger  — risk/weak
+        $S      = '#1e8449';   // success — top packages / recommendations
+        $I      = '#1a5276';   // info    — attendance / sales
+        $O      = '#e67e22';   // orange  — action plan
+        $W      = '#FFFFFF';
+        $bodyBg = '#f0f4f8';
+        $cardBg = '#FFFFFF';
+        $altRow = '#edf3f8';
+        $text1  = '#222222';
+        $text2  = '#555555';
+        $Pmut   = '#7fafd0';   // muted primary (labels on dark bg)
 
-        // ── KPI table ──────────────────────────────────────────────────
-        $kpiRows = '';
-        if (!empty($r['kpi_analysis']) && is_array($r['kpi_analysis'])) {
-            foreach ($r['kpi_analysis'] as $k => $v) {
-                $label    = ucwords(str_replace('_', ' ', $k));
-                $kpiRows .= "<tr>
-                    <td style='padding:9px 14px;border-bottom:1px solid #e8ecf0;color:#555;font-size:13px;text-align:{$align}'><strong>{$label}</strong></td>
-                    <td style='padding:9px 14px;border-bottom:1px solid #e8ecf0;color:{$P};font-size:13px;font-weight:700;text-align:{$align}'>" . e((string)$v) . '</td>
-                </tr>';
-            }
-        }
+        // ══════════════════════════════════════════════════════════════
+        //  WIDGET HELPERS
+        // ══════════════════════════════════════════════════════════════
 
-        // ── Attendance table ────────────────────────────────────────────
-        $attRows = '';
-        if (!empty($r['attendance_analysis']) && is_array($r['attendance_analysis'])) {
-            foreach ($r['attendance_analysis'] as $k => $v) {
-                $label    = ucwords(str_replace('_', ' ', $k));
-                $attRows .= "<tr>
-                    <td style='padding:9px 14px;border-bottom:1px solid #e8ecf0;color:#555;font-size:13px;text-align:{$align}'><strong>{$label}</strong></td>
-                    <td style='padding:9px 14px;border-bottom:1px solid #e8ecf0;color:{$I};font-size:13px;text-align:{$align}'>" . e((string)$v) . '</td>
-                </tr>';
-            }
-        }
+        // Section header bar — full-width colored bar with icon + title
+        $mkHdr = fn(string $icon, string $title, string $color): string =>
+            "<table width='100%' cellpadding='0' cellspacing='0'>"
+            . "<tr><td bgcolor='{$color}' style='padding:11px 20px;border-radius:6px 6px 0 0'>"
+            . "<span style='color:{$W};font-family:{$font};font-size:13px;font-weight:700;"
+            . "letter-spacing:0.3px'>{$icon}&nbsp;&nbsp;{$title}</span>"
+            . "</td></tr></table>";
 
-        // ── List / OL builders ──────────────────────────────────────────
-        $ul = fn(array $items, string $color = '#444') =>
-            "<ul style='margin:0;{$listPad}'>"
-            . implode('', array_map(fn($i) => "<li style='color:{$color};font-size:13px;margin-bottom:5px;line-height:1.7'>" . e((string)$i) . '</li>', $items))
-            . '</ul>';
+        // Section card — header bar + white content area (table-only, no divs)
+        $mkCard = fn(string $hdr, string $content): string =>
+            "<table width='100%' cellpadding='0' cellspacing='0'"
+            . " style='margin-bottom:20px;border-radius:6px;"
+            . "box-shadow:0 2px 10px rgba(0,0,0,0.08)'>"
+            . "<tr><td>{$hdr}</td></tr>"
+            . "<tr><td bgcolor='{$cardBg}' style='padding:18px 22px;border-radius:0 0 6px 6px;"
+            . "direction:{$dir}'>{$content}</td></tr>"
+            . "</table>";
 
-        $ol = fn(array $items) =>
-            "<ol style='margin:0;{$olPad}'>"
-            . implode('', array_map(fn($i) => "<li style='color:#333;font-size:13px;margin-bottom:5px;line-height:1.7'>" . e((string)$i) . '</li>', $items))
-            . '</ol>';
+        // Bullet list item — colored dot + wrapped text
+        $mkLi = function (string $text, string $dot) use ($font, $text1, $align, $isAr): string {
+            $pl = $isAr ? '0' : '10';
+            $pr = $isAr ? '10' : '0';
+            return "<table cellpadding='0' cellspacing='0' style='margin-bottom:8px;width:100%'><tr>"
+                 . "<td width='16' valign='top' style='padding-top:7px'>"
+                 . "<table cellpadding='0' cellspacing='0'><tr>"
+                 . "<td bgcolor='{$dot}' style='width:8px;height:8px;border-radius:50%;"
+                 . "font-size:0;line-height:0'>&nbsp;</td>"
+                 . "</tr></table></td>"
+                 . "<td style='padding-left:{$pl}px;padding-right:{$pr}px'>"
+                 . "<span style='color:{$text1};font-family:{$font};font-size:14px;line-height:1.8;"
+                 . "display:block;text-align:{$align};word-break:break-word'>{$text}</span>"
+                 . "</td></tr></table>";
+        };
 
-        // ── Block builder ───────────────────────────────────────────────
-        $block = fn(string $icon, string $title, string $body, string $color) =>
-            "<div style='margin-bottom:20px;{$border}:4px solid {$color};border-radius:4px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06)'>
-              <div style='padding:10px 16px;background:{$color};border-radius:2px 2px 0 0;text-align:{$align}'>
-                <span style='color:#fff;font-size:14px;font-weight:700'>{$icon}&nbsp;{$title}</span>
-              </div>
-              <div style='padding:14px 16px;direction:{$dir}'>{$body}</div>
-            </div>";
+        $noData = "<p style='color:#AABCCE;font-family:{$font};font-size:13px;margin:4px 0'>"
+                . $lbl['no_data'] . "</p>";
 
-        $noData = "<p style='color:#aaa;font-size:12px;margin:0'>{$lbl['no_data']}</p>";
-        $body   = '';
+        // ══════════════════════════════════════════════════════════════
+        //  SECTION BUILDERS
+        // ══════════════════════════════════════════════════════════════
+        $body = '';
 
+        // ── 1. Executive Summary ───────────────────────────────────────
         if (!empty($r['executive_summary'])) {
-            $body .= $block('📋', $lbl['executive_summary'],
-                "<p style='margin:0;color:#333;font-size:13px;line-height:1.8'>" . e($r['executive_summary']) . '</p>',
-                $P);
+            $bSide = $isAr ? 'border-right' : 'border-left';
+            $text  = e((string) $r['executive_summary']);
+            $body .= "<table width='100%' cellpadding='0' cellspacing='0'"
+                   . " style='margin-bottom:20px;border-radius:6px;"
+                   . "box-shadow:0 2px 10px rgba(0,0,0,0.08)'><tr>"
+                   . "<td bgcolor='{$cardBg}' style='padding:20px 24px;border-radius:6px;"
+                   . "{$bSide}:5px solid {$P};direction:{$dir}'>"
+                   . "<p style='margin:0 0 10px;color:{$P};font-family:{$font};font-size:11px;"
+                   . "font-weight:700;letter-spacing:2px;text-transform:uppercase'>📋&nbsp;&nbsp;"
+                   . $lbl['executive_summary'] . "</p>"
+                   . "<p style='margin:0;color:{$text1};font-family:{$font};font-size:15px;"
+                   . "line-height:2;text-align:{$align};word-break:break-word'>{$text}</p>"
+                   . "</td></tr></table>";
         }
 
-        if ($kpiRows) {
-            $body .= $block('📊', $lbl['kpi_analysis'],
-                "<table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse'>{$kpiRows}</table>",
-                $P);
+        // ── 2. KPI — 2-column dark cards ──────────────────────────────
+        if (!empty($r['kpi_analysis']) && is_array($r['kpi_analysis'])) {
+            $items = [];
+            foreach ($r['kpi_analysis'] as $k => $v) {
+                $items[] = ['label' => ucwords(str_replace('_', ' ', $k)), 'value' => (string) $v];
+            }
+
+            $kpiGrid = '';
+            foreach (array_chunk($items, 2) as $pair) {
+                $kpiGrid .= '<tr>';
+                foreach ($pair as $idx => $item) {
+                    $cardBgKpi = $idx === 0 ? '#122240' : '#1e4d78';
+                    $kpiGrid  .= "<td width='49%' valign='top' bgcolor='{$cardBgKpi}'"
+                               . " style='border-radius:8px;padding:20px 22px;"
+                               . "border-bottom:3px solid {$Pmut}'>"
+                               . "<p style='margin:0 0 6px;color:{$Pmut};font-family:{$font};"
+                               . "font-size:10px;font-weight:700;letter-spacing:1.5px;"
+                               . "text-transform:uppercase;text-align:{$align}'>"
+                               . e($item['label']) . "</p>"
+                               . "<p style='margin:0;color:{$W};font-family:{$font};font-size:22px;"
+                               . "font-weight:800;line-height:1.2;text-align:{$align};"
+                               . "word-break:break-word'>" . e($item['value']) . "</p>"
+                               . "</td>";
+                    if ($idx === 0) {
+                        $kpiGrid .= "<td width='2%' style='font-size:0;line-height:0'>&nbsp;</td>";
+                    }
+                }
+                // pad row if odd count
+                if (count($pair) === 1) {
+                    $kpiGrid .= "<td width='49%'>&nbsp;</td>";
+                }
+                $kpiGrid .= "</tr><tr><td colspan='3' height='12'"
+                          . " style='font-size:0;line-height:0'>&nbsp;</td></tr>";
+            }
+
+            $body .= "<table width='100%' cellpadding='0' cellspacing='0'"
+                   . " style='margin-bottom:20px;border-radius:6px;"
+                   . "box-shadow:0 2px 10px rgba(0,0,0,0.08)'>"
+                   . "<tr><td>" . $mkHdr('📊', $lbl['kpi_analysis'], $P) . "</td></tr>"
+                   . "<tr><td bgcolor='{$P}' style='padding:20px 22px;border-radius:0 0 6px 6px'>"
+                   . "<table width='100%' cellpadding='0' cellspacing='0'>{$kpiGrid}</table>"
+                   . "</td></tr></table>";
         }
 
-        if ($attRows) {
-            $body .= $block('🏃', $lbl['attendance'],
-                "<table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse'>{$attRows}</table>",
-                $I);
+        // ── 3. Attendance — striped label/value table ──────────────────
+        if (!empty($r['attendance_analysis']) && is_array($r['attendance_analysis'])) {
+            $rows = '';
+            $i    = 0;
+            foreach ($r['attendance_analysis'] as $k => $v) {
+                $rowBg = $i % 2 === 0 ? $W : $altRow;
+                $rows .= "<tr>"
+                       . "<td bgcolor='{$rowBg}' style='padding:13px 18px;"
+                       . "border-bottom:1px solid #dde8f0;text-align:{$align};width:55%'>"
+                       . "<span style='color:{$text2};font-family:{$font};font-size:12px;"
+                       . "font-weight:700;text-transform:uppercase;letter-spacing:0.8px'>"
+                       . e(ucwords(str_replace('_', ' ', $k))) . "</span></td>"
+                       . "<td bgcolor='{$rowBg}' style='padding:13px 18px;"
+                       . "border-bottom:1px solid #dde8f0;text-align:{$alignOpp}'>"
+                       . "<span style='color:{$I};font-family:{$font};font-size:15px;font-weight:800;"
+                       . "word-break:break-word'>" . e((string) $v) . "</span></td>"
+                       . "</tr>";
+                $i++;
+            }
+            $attContent = "<table width='100%' cellpadding='0' cellspacing='0'"
+                        . " style='border-collapse:collapse'>{$rows}</table>";
+            $body .= $mkCard($mkHdr('🏃', $lbl['attendance'], $I), $attContent);
         }
 
-        $topHtml  = !empty($r['top_packages'])  ? $ul((array)$r['top_packages'],  $S) : $noData;
-        $weakHtml = !empty($r['weak_packages']) ? $ul((array)$r['weak_packages'], $D) : $noData;
+        // ── 4. Packages — top & weak side-by-side ─────────────────────
+        $topItems  = !empty($r['top_packages'])  ? (array) $r['top_packages']  : [];
+        $weakItems = !empty($r['weak_packages']) ? (array) $r['weak_packages'] : [];
 
-        $body .= "
-        <table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:20px'>
-          <tr>
-            <td width='49%' valign='top'>
-              <div style='{$border}:4px solid {$S};background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);border-radius:4px'>
-                <div style='padding:10px 16px;background:{$S};text-align:{$align}'><span style='color:#fff;font-size:14px;font-weight:700'>🏆 {$lbl['top_packages']}</span></div>
-                <div style='padding:14px 16px;direction:{$dir}'>{$topHtml}</div>
-              </div>
-            </td>
-            <td width='2%'></td>
-            <td width='49%' valign='top'>
-              <div style='{$border}:4px solid {$D};background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);border-radius:4px'>
-                <div style='padding:10px 16px;background:{$D};text-align:{$align}'><span style='color:#fff;font-size:14px;font-weight:700'>⚠️ {$lbl['weak_packages']}</span></div>
-                <div style='padding:14px 16px;direction:{$dir}'>{$weakHtml}</div>
-              </div>
-            </td>
-          </tr>
-        </table>";
+        $topList  = $topItems
+            ? implode('', array_map(fn ($i) => $mkLi(e((string) $i), $S), $topItems))
+            : $noData;
+        $weakList = $weakItems
+            ? implode('', array_map(fn ($i) => $mkLi(e((string) $i), $D), $weakItems))
+            : $noData;
 
+        $topCard  = $mkCard($mkHdr('🏆', $lbl['top_packages'],  $S), $topList);
+        $weakCard = $mkCard($mkHdr('⚠️', $lbl['weak_packages'], $D), $weakList);
+
+        $body .= "<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:0'><tr>"
+               . "<td width='49%' valign='top'>{$topCard}</td>"
+               . "<td width='2%'>&nbsp;</td>"
+               . "<td width='49%' valign='top'>{$weakCard}</td>"
+               . "</tr></table>";
+
+        // ── 5. Sales Insights ──────────────────────────────────────────
         if (!empty($r['sales_insights'])) {
-            $body .= $block('💡', $lbl['sales_insights'], $ul((array)$r['sales_insights']), $I);
+            $items = implode('', array_map(fn ($i) => $mkLi(e((string) $i), $I), (array) $r['sales_insights']));
+            $body .= $mkCard($mkHdr('💡', $lbl['sales_insights'], $I), $items);
         }
 
+        // ── 6. Risk Alerts ─────────────────────────────────────────────
         if (!empty($r['risk_alerts'])) {
-            $body .= $block('🚨', $lbl['risk_alerts'], $ul((array)$r['risk_alerts'], $D), $D);
+            $items = implode('', array_map(fn ($i) => $mkLi(e((string) $i), $D), (array) $r['risk_alerts']));
+            $body .= $mkCard($mkHdr('🚨', $lbl['risk_alerts'], $D), $items);
         }
 
+        // ── 7. Strategic Recommendations ──────────────────────────────
         if (!empty($r['strategic_recommendations'])) {
-            $body .= $block('🎯', $lbl['recommendations'], $ul((array)$r['strategic_recommendations'], $S), $S);
+            $items = implode('', array_map(fn ($i) => $mkLi(e((string) $i), $S), (array) $r['strategic_recommendations']));
+            $body .= $mkCard($mkHdr('🎯', $lbl['recommendations'], $S), $items);
         }
 
+        // ── 8. Action Plan — numbered orange circles ───────────────────
         if (!empty($r['next_month_action_plan'])) {
-            $body .= $block('📅', $lbl['action_plan'], $ol((array)$r['next_month_action_plan']), '#e67e22');
+            $pl   = $isAr ? '0' : '14';
+            $pr   = $isAr ? '14' : '0';
+            $nums = '';
+            $n    = 1;
+            foreach ((array) $r['next_month_action_plan'] as $item) {
+                $nums .= "<table cellpadding='0' cellspacing='0'"
+                       . " style='margin-bottom:12px;width:100%'><tr>"
+                       . "<td width='34' valign='top' style='padding-top:1px'>"
+                       . "<table cellpadding='0' cellspacing='0'><tr>"
+                       . "<td bgcolor='{$O}' style='width:28px;height:28px;border-radius:50%;"
+                       . "text-align:center;vertical-align:middle'>"
+                       . "<span style='color:{$W};font-family:{$font};font-size:12px;font-weight:800;"
+                       . "line-height:28px;display:block;text-align:center'>{$n}</span>"
+                       . "</td></tr></table></td>"
+                       . "<td valign='middle'"
+                       . " style='padding-left:{$pl}px;padding-right:{$pr}px'>"
+                       . "<span style='color:{$text1};font-family:{$font};font-size:14px;"
+                       . "line-height:1.8;display:block;text-align:{$align};"
+                       . "word-break:break-word'>" . e((string) $item) . "</span>"
+                       . "</td></tr></table>";
+                $n++;
+            }
+            $body .= $mkCard($mkHdr('📅', $lbl['action_plan'], $O), $nums);
         }
 
-        $font = $isAr
-            ? "'Segoe UI', Tahoma, Arial, sans-serif"
-            : "'Segoe UI', Arial, sans-serif";
+        // ══════════════════════════════════════════════════════════════
+        //  FULL-WIDTH HTML WRAPPER
+        // ══════════════════════════════════════════════════════════════
+        $poweredBy = $isAr
+            ? "بتقنية Gymmawy AI &nbsp;|&nbsp; {$date}"
+            : "Powered by Gymmawy AI &nbsp;|&nbsp; {$date}";
 
         return <<<HTML
 <!DOCTYPE html>
@@ -671,37 +777,71 @@ PROMPT;
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{$lbl['subject']}</title>
+<style>
+  @media only screen and (max-width:600px) {
+    .pkg-row td        { display:block !important; width:100% !important; }
+    .pkg-row td.spacer { display:none  !important; }
+    .kpi-row td.kcard  { display:block !important; width:100% !important;
+                         margin-bottom:10px !important; }
+    .kpi-row td.kspc   { display:none  !important; }
+    .hd                { padding:24px 18px 20px !important; }
+    .bd                { padding:20px 14px !important; }
+    .ft                { padding:14px 18px !important; }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background:#f0f4f8;font-family:{$font}">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px">
+<body style="margin:0;padding:0;background:{$bodyBg}">
+
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="{$bodyBg}">
+<tr><td>
+
+  <!-- ══ HEADER — full width ════════════════════════════════════════ -->
+  <table width="100%" cellpadding="0" cellspacing="0">
     <tr>
-      <td align="center">
-        <table width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%">
-
-          <tr>
-            <td style="background:{$P};padding:28px 32px;border-radius:8px 8px 0 0;text-align:{$align}">
-              <p style="margin:0;color:#7fafd0;font-size:12px;text-transform:uppercase;letter-spacing:1px">{$lbl['report_subtitle']}</p>
-              <h1 style="margin:6px 0 4px;color:#fff;font-size:24px;font-weight:700">{$gymName}</h1>
-              <p style="margin:0;color:#a0c4e0;font-size:13px">{$date}</p>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background:#f7f9fc;padding:24px 32px;direction:{$dir}">
-              {$body}
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background:#e8ecf1;padding:14px 32px;border-radius:0 0 8px 8px;text-align:center">
-              <p style="margin:0;color:#999;font-size:11px">{$lbl['footer']} &bull; {$date}</p>
-            </td>
-          </tr>
-
+      <td class="hd" bgcolor="{$P}"
+          style="padding:36px 48px 30px;direction:{$dir}">
+        <p style="margin:0 0 6px;color:{$Pmut};font-family:{$font};font-size:11px;
+                  font-weight:700;letter-spacing:2px;text-transform:uppercase;
+                  text-align:{$align}">{$lbl['report_subtitle']}</p>
+        <h1 style="margin:0 0 8px;color:{$W};font-family:{$font};font-size:30px;
+                   font-weight:800;line-height:1.2;text-align:{$align};
+                   word-break:break-word">{$gymName}</h1>
+        <p style="margin:0;color:#a0c4e0;font-family:{$font};font-size:14px;
+                  text-align:{$align}">{$poweredBy}</p>
+        <!-- Divider -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px">
+          <tr><td bgcolor="#a0c4e0" height="1"
+                  style="font-size:0;line-height:0">&nbsp;</td></tr>
         </table>
       </td>
     </tr>
   </table>
+
+  <!-- ══ BODY — full width ══════════════════════════════════════════ -->
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="bd" bgcolor="{$bodyBg}"
+          style="padding:28px 48px;direction:{$dir}">
+        {$body}
+      </td>
+    </tr>
+  </table>
+
+  <!-- ══ FOOTER — full width ════════════════════════════════════════ -->
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="ft" bgcolor="{$P}"
+          style="padding:18px 48px;text-align:center">
+        <p style="margin:0;color:{$Pmut};font-family:{$font};font-size:12px">
+          {$lbl['footer']} &bull; {$date}
+        </p>
+      </td>
+    </tr>
+  </table>
+
+</td></tr>
+</table>
+
 </body>
 </html>
 HTML;
