@@ -224,9 +224,9 @@
                                 <i class="ki-outline ki-calendar fs-6 {{ $isAr ? 'ms-1' : 'me-1' }}"></i>
                                 {{ $record->from_date }} → {{ $record->to_date }}
                                 &nbsp;&bull;&nbsp;
-                                <i class="ki-outline ki-abstract-26 fs-6 {{ $isAr ? 'ms-1' : 'me-1' }}"></i>
+                                <!-- <i class="ki-outline ki-abstract-26 fs-6 {{ $isAr ? 'ms-1' : 'me-1' }}"></i>
                                 {{ $record->model_used ?? '—' }}
-                                &nbsp;&bull;&nbsp;
+                                &nbsp;&bull;&nbsp; -->
                                 <i class="ki-outline ki-time fs-6 {{ $isAr ? 'ms-1' : 'me-1' }}"></i>
                                 {{ $record->created_at->format('Y-m-d H:i') }}
                             </div>

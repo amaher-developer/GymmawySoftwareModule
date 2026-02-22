@@ -53,7 +53,7 @@
                         <th class="min-w-100px">{{ trans('sw.ai_report_type') }}</th>
                         <th class="min-w-120px">{{ trans('sw.period') }}</th>
                         <th class="min-w-80px">{{ trans('sw.language') }}</th>
-                        <th class="min-w-80px">{{ trans('sw.model') }}</th>
+                        <!-- <th class="min-w-80px">{{ trans('sw.model') }}</th> -->
                         <th class="min-w-80px">{{ trans('sw.email') }}</th>
                         <th class="min-w-80px">{{ trans('sw.sms') }}</th>
                         <th class="min-w-100px">{{ trans('sw.created_at') }}</th>
@@ -79,9 +79,9 @@
                                     {{ strtoupper($report->lang) }}
                                 </span>
                             </td>
-                            <td>
+                            <!-- <td>
                                 <span class="text-gray-600 fs-7">{{ $report->model_used ?? '—' }}</span>
-                            </td>
+                            </td> -->
                             <td>
                                 @if($report->email_sent)
                                     <span class="badge badge-light-success">
