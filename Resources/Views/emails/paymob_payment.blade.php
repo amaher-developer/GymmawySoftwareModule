@@ -141,10 +141,10 @@
         <div class="content">
             @if($is_arabic)
                 <p class="greeting">مرحباً <strong>{{ $member_name }}</strong>،</p>
-                <p>شكراً لاشتراكك معنا! يمكنك إتمام دفع المبلغ المتبقي بسهولة عبر <strong>Paymob</strong>.</p>
+                <p>شكراً لاشتراكك معنا! يمكنك إتمام دفع المبلغ بسهولة عبر <strong>Paymob</strong>.</p>
             @else
                 <p class="greeting">Hello <strong>{{ $member_name }}</strong>,</p>
-                <p>Thank you for subscribing with us! You can easily complete your remaining payment through <strong>Paymob</strong>.</p>
+                <p>Thank you for subscribing with us! You can easily complete your payment through <strong>Paymob</strong>.</p>
             @endif
 
             <div class="payment-details">
