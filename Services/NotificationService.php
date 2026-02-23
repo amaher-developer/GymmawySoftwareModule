@@ -170,6 +170,7 @@ class NotificationService
             '#member_phone' => $membership->member->phone ?? '',
             '#membership_start_date' => $membership->joining_date ? Carbon::parse($membership->joining_date)->addHours(12)->toDateString() : '',
             '#membership_expire_date' => $membership->expire_date ? Carbon::parse($membership->expire_date)->toDateString() : '',
+            '#membership_resume_date' => $membership->end_freeze_date ? Carbon::parse($membership->end_freeze_date)->toDateString() : '',
             '#membership_amount_paid' => $membership->amount_paid ?? 0,
             '#membership_amount_remaining' => $membership->amount_remaining ?? 0,
             '#membership_name' => $membership->subscription->name ?? '',
