@@ -40,7 +40,7 @@ class TamaraPaymentService
     public function isTamaraConfigured(): bool
     {
         $tamara = $this->settings ? ($this->settings->payments['tamara'] ?? []) : [];
-        return !empty($tamara['token']) && !empty($tamara['merchant_url']);
+        return !empty($tamara['token']);
     }
 
     /**
