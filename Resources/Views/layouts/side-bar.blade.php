@@ -854,6 +854,7 @@
         isset($permissionsMap['reportOnlinePaymentTransactionList']) ||
         isset($permissionsMap['listMoneyBoxDaily']) ||
         isset($permissionsMap['listLoyaltyTransaction']) ||
+        isset($permissionsMap['viewAiReports']) ||
         (@$mainSettings->active_ai && (
             isset($permissionsMap['aiReportsDashboard']) ||
             isset($permissionsMap['aiReportsJobs']) ||
@@ -861,9 +862,9 @@
         )) ||
         $isSuperUser
     ))
-<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
     <!--begin:Menu link-->
-    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
         <span class="menu-icon">
             <i class="ki-outline ki-graph-up  fs-2"></i>
         </span>
@@ -1183,7 +1184,22 @@
         <!--end:Menu item-->
     @endif
 
-    @if (@$mainSettings->active_ai && $swUser && ($isSuperUser || 
+    <!--begin:Menu item - Executive AI Report-->
+    @if ($swUser && ($isSuperUser || isset($permissionsMap['viewAiReports'])))
+    <div class="menu-item">
+        <!--begin:Menu link-->
+        <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai-reports*')) active @endif" href="{{ route('sw.aiReports.index') }}">
+            <span class="menu-bullet">
+                <span class="bullet bullet-dot"></span>
+            </span>
+            <span class="menu-title">{{ trans('sw.ai_report_short') }}</span>
+        </a>
+        <!--end:Menu link-->
+    </div>
+    @endif
+    <!--end:Menu item-->
+
+    @if (@$mainSettings->active_ai && $swUser && ($isSuperUser ||
             isset($permissionsMap['aiReportsDashboard']) ||
             isset($permissionsMap['aiReportsJobs']) ||
             isset($permissionsMap['aiReportsInsights'])

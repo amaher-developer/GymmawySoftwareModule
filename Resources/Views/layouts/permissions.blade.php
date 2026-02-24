@@ -1921,6 +1921,20 @@ if(!isset($permission_group->permissions)){
                                                     type="checkbox"> <span>{{ trans('sw.export_pdf_store_report') }}</span></label>
                                             </div>
                                         </div>
+
+                                        {{-- AI Report --}}
+                                    <hr class="perm-hr"/>
+                                    <div class="perm-section-title">
+                                        <i class="ki-outline ki-chart-line-star fs-2"></i> {{ trans('sw.ai_report_short') }}
+                                    </div>
+                                    <div class="row pt-2 pb-2">
+                                        <div class="col-lg-3">
+                                            <label class="ckbox"><input name="permissions[]" value="viewAiReports"
+                                                @if(@in_array('viewAiReports', $permission_group->permissions)) checked @endif
+                                                type="checkbox"> <span>{{ trans('sw.ai_report_short') }}</span></label>
+                                        </div>
+                                    </div>
+
                                     </div>
                                     <!--begin::Messages Tab-->
                                     @if(@$mainSettings->active_sms || @$mainSettings->active_telegram || @$mainSettings->active_wa || @$mainSettings->active_notification || @$mainSettings->active_mobile)
