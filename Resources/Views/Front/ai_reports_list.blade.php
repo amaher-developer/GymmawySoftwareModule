@@ -20,13 +20,13 @@
                 <span class="fs-4 fw-semibold text-gray-900">{{ trans('sw.ai_reports') }}</span>
             </div>
         </div>
-        <div class="card-toolbar">
+        <!-- <div class="card-toolbar">
             {{-- Generate New Report --}}
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#generateModal">
                 <i class="ki-outline ki-abstract-26 fs-5 me-1"></i>
                 {{ trans('sw.ai_generate_report') }}
             </button>
-        </div>
+        </div> -->
     </div>
 
     {{-- Flash Messages --}}
