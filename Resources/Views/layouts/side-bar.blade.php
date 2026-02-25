@@ -1186,16 +1186,14 @@
 
     <!--begin:Menu item - Executive AI Report-->
     @if ($swUser && ($isSuperUser || isset($permissionsMap['viewAiReports'])))
-    <div class="menu-item">
-        <!--begin:Menu link-->
+    <!-- <div class="menu-item">
         <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai-reports*')) active @endif" href="{{ route('sw.aiReports.index') }}">
             <span class="menu-bullet">
                 <span class="bullet bullet-dot"></span>
             </span>
             <span class="menu-title">{{ trans('sw.ai_report_short') }}</span>
         </a>
-        <!--end:Menu link-->
-    </div>
+    </div> -->
     @endif
     <!--end:Menu item-->
 
