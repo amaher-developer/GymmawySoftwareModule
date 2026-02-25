@@ -150,7 +150,15 @@
                                 @endif
                             </td>
                             <td><span class="text-gray-800">{{ $transaction->source_type ? trans('sw.loyalty_source_' . $transaction->source_type) : '-' }}</span></td>
-                            <td><span class="text-gray-800">{{ $transaction->reason ?? '-' }}</span></td>
+                            <td>@php
+                                    $reasonText = $transaction->reason ?? '';
+                                    if (str_starts_with($reasonText, '__loyalty_reason_earned_campaign|')) {
+                                        $parts = explode('|', $reasonText, 3);
+                                        $reasonText = trans('sw.loyalty_reason_earned_campaign', ['campaign' => $parts[1] ?? '', 'multiplier' => $parts[2] ?? '']);
+                                    } elseif (str_starts_with($reasonText, '__')) {
+                                        $reasonText = trans('sw.' . ltrim($reasonText, '_'));
+                                    }
+                                @endphp<span class="text-gray-800">{{ $reasonText ?: '-' }}</span></td>
                             <td><span class="text-gray-800">{{ $transaction->created_at->format('Y-m-d H:i') }}</span></td>
                             <td>
                                 @if($transaction->expires_at)

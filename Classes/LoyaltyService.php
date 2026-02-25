@@ -81,9 +81,9 @@ class LoyaltyService
                 'amount_spent' => $amount,
                 'expires_at' => $expiresAt,
                 'is_expired' => false,
-                'reason' => $campaign 
-                    ? "Earned from {$sourceType} (Campaign: {$campaign->name} - {$campaign->multiplier}x)"
-                    : "Earned from {$sourceType}",
+                'reason' => $campaign
+                    ? "__loyalty_reason_earned_campaign|{$campaign->name}|{$campaign->multiplier}"
+                    : "__loyalty_reason_earned",
             ]);
 
             // Update member balance
@@ -160,7 +160,7 @@ class LoyaltyService
                 'type' => LoyaltyTransaction::TYPE_REDEEM,
                 'source_type' => $sourceType,
                 'source_id' => $sourceId,
-                'reason' => $reason ?? "Redeemed for discount",
+                'reason' => $reason ?? "__loyalty_reason_redeemed",
                 'amount_spent' => null,
                 'expires_at' => null,
                 'is_expired' => false,
@@ -228,7 +228,7 @@ class LoyaltyService
                 'type' => LoyaltyTransaction::TYPE_MANUAL,
                 'source_type' => 'manual',
                 'source_id' => null,
-                'reason' => $reason ?? ($points > 0 ? 'Manual points addition' : 'Manual points deduction'),
+                'reason' => $reason ?? ($points > 0 ? '__loyalty_reason_manual_addition' : '__loyalty_reason_manual_deduction'),
                 'amount_spent' => null,
                 'expires_at' => null, // Manual points don't expire by default
                 'is_expired' => false,
