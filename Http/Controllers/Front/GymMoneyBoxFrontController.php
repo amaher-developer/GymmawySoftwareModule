@@ -883,7 +883,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     {
 
         $title = trans('sw.moneybox_daily');
-        $this->request_array = ['search', 'payment_type', 'moneybox_type', 'user', 'is_store_balance', 'subscription'];
+        $this->request_array = ['search', 'payment_type', 'moneybox_type', 'user', 'is_store_balance', 'subscription', 'filter_date'];
         $users = GymUser::branch()->where('is_test', 0)->get();
 
         $request_array = $this->request_array;
@@ -892,7 +892,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $orders = GymMoneyBox::branch()->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC');
 
         //apply filters
-        $orders = $orders->whereDate('created_at', Carbon::now()->toDateString());
+        $filterDate = request('filter_date') === 'yesterday' ? Carbon::yesterday()->toDateString() : Carbon::now()->toDateString();
+        $orders = $orders->whereDate('created_at', $filterDate);
         $orders = $orders->when(((isset($_GET['payment_type'])) &&(!is_null($payment_type))), function ($query) use ($payment_type) {
             $query->where('payment_type', '=', (int)@$payment_type);
         })->when(((isset($_GET['subscription'])) &&(!is_null($subscription))), function ($query) use ($subscription) {

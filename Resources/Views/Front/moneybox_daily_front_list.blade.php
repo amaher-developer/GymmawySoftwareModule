@@ -66,6 +66,20 @@
              <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
 
                 @if(!request('date'))
+                <!--begin::Date Quick Filter-->
+                <div class="btn-group" role="group">
+                    <a href="{{ route('sw.listMoneyBoxDaily', array_merge(request()->except(['filter_date', 'page']), ['filter_date' => 'today'])) }}"
+                       class="btn btn-sm {{ request('filter_date', 'today') !== 'yesterday' ? 'btn-primary' : 'btn-light-primary' }}">
+                        <i class="ki-outline ki-calendar fs-6"></i>
+                        {{ trans('sw.today') }}
+                    </a>
+                    <a href="{{ route('sw.listMoneyBoxDaily', array_merge(request()->except(['filter_date', 'page']), ['filter_date' => 'yesterday'])) }}"
+                       class="btn btn-sm {{ request('filter_date') === 'yesterday' ? 'btn-primary' : 'btn-light-primary' }}">
+                        <i class="ki-outline ki-calendar fs-6"></i>
+                        {{ trans('sw.yesterday') }}
+                    </a>
+                </div>
+                <!--end::Date Quick Filter-->
                 <!--begin::Filter-->
                 <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_moneybox_daily_filter_collapse">
                     <i class="ki-outline ki-filter fs-6"></i>
@@ -244,6 +258,9 @@
             <div class="collapse" id="kt_moneybox_daily_filter_collapse">
                  <div class="card card-body mb-5">
                     <form id="form_filter" action="" method="get">
+                        @if(request('filter_date'))
+                            <input type="hidden" name="filter_date" value="{{ request('filter_date') }}">
+                        @endif
                         <div class="row g-6">
                             <div class="col-md-4">
                                 <label class="form-label fs-6 fw-semibold">{{ trans('sw.payment_type')}}</label>
