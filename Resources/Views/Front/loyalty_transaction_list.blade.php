@@ -187,7 +187,7 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="text-gray-800">{{ $transaction->source_type ?? '-' }}</span>
+                                <span class="text-gray-800">{{ $transaction->source_type ? trans('sw.loyalty_source_' . $transaction->source_type) : '-' }}</span>
                             </td>
                             <td>
                                 <span class="text-gray-800">{{ $transaction->reason ?? '-' }}</span>

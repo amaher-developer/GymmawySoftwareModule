@@ -149,7 +149,7 @@
                                     <span class="badge badge-light-info">{{ trans('sw.manual') }}</span>
                                 @endif
                             </td>
-                            <td><span class="text-gray-800">{{ $transaction->source_type ?? '-' }}</span></td>
+                            <td><span class="text-gray-800">{{ $transaction->source_type ? trans('sw.loyalty_source_' . $transaction->source_type) : '-' }}</span></td>
                             <td><span class="text-gray-800">{{ $transaction->reason ?? '-' }}</span></td>
                             <td><span class="text-gray-800">{{ $transaction->created_at->format('Y-m-d H:i') }}</span></td>
                             <td>
