@@ -317,6 +317,7 @@ class GymMemberApiController extends GenericApiController
         //GymUser::where('fp_check', [0, 2, 3])->where('fp_id', '!=', null)->withTrashed()->increment('fp_check_count');
         Setting::where('id', $branch_id)->update(['fp_last_updated_at' => Carbon::now()]);
 
+        Cache::flush();
         return Response::json(['member_status' => $member_status, 'attendance_status' => $attendance_status, 'token' => $token], 200);
     }
     private function encode_arr($data) {
