@@ -170,7 +170,7 @@ class GymMemberApiController extends GenericApiController
             $del_members = GymMember::where('branch_setting_id',$branch_id)->whereNotIn('fp_id', $set_members_ids)->whereNotNull('fp_id')->where('fp_check_count', '<', 5)->where('fp_check', TypeConstants::ZK_EXPIRE_MEMBER)->withTrashed()->orderBy('id', 'asc')->pluck('fp_id');
 
         $set_new_members = GymMember::select('id','name', 'phone','fp_id', 'fp_uid', 'code')->with('member_subscription_info')->where('branch_setting_id',$branch_id)
-            ->whereNull('fp_id')->limit(5)->orderBy('id', 'desc')->get();
+            ->whereNull('fp_id')->limit(1)->orderBy('id', 'desc')->get();
         $set_new_members = ZKNewMemberResource::collection($set_new_members);
 
         $get_members = GymMember::where('branch_setting_id',$branch_id)->whereNotNull('fp_id')
