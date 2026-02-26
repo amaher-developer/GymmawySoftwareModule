@@ -156,7 +156,7 @@ class GymMemberApiController extends GenericApiController
             ->whereIn('fp_check', [TypeConstants::ZK_ACTIVE_MEMBER, TypeConstants::ZK_SET_MEMBER])
             //->where('fp_check', TypeConstants::ZK_SET_MEMBER)
             ->orderBy('updated_at', 'desc')
-            ->limit(5000)
+            ->limit(500)
             ->get();
 
         $set_members_ids = $set_members->pluck('id');
@@ -177,11 +177,11 @@ class GymMemberApiController extends GenericApiController
             ->where('fp_check_count', '<', 10)
             ->whereIn('fp_check', [TypeConstants::ZK_ACTIVE_MEMBER, TypeConstants::ZK_SET_MEMBER])
             ->orderBy('updated_at', 'desc')
-            ->limit(5000)->pluck('fp_id')->toArray();
+            ->limit(500)->pluck('fp_id')->toArray();
         $get_users = GymUser::where('branch_setting_id',$branch_id)->whereNotNull('fp_id')->where('fp_check_count', '<', 10)
             ->whereIn('fp_check', [TypeConstants::ZK_ACTIVE_MEMBER, TypeConstants::ZK_SET_MEMBER])
             ->orderBy('updated_at', 'desc')
-            ->limit(5000)->pluck('fp_id')->toArray();
+            ->limit(500)->pluck('fp_id')->toArray();
 
         if(count($get_users) > 0)
             $get_members = array_merge($get_members, $get_users);
