@@ -16,9 +16,11 @@ Route::prefix('store/product')
                 ->get('create', 'Front\GymStoreProductFrontController@create');
             Route::name('sw.createStoreProduct')
                 ->post('create', 'Front\GymStoreProductFrontController@store');
-            Route::name('sw.storePurchasesBill')
-                ->post('create-purchases-bill', 'Front\GymStoreProductFrontController@storePurchasesBill');
         });
+
+        
+        Route::name('sw.storePurchasesBill')
+        ->post('create-purchases-bill', 'Front\GymStoreProductFrontController@storePurchasesBill');
 
         // Edit store product - edit permission
         Route::group(['defaults' => ['permission' => 'editStoreProduct']], function () {
