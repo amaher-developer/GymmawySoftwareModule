@@ -428,7 +428,7 @@ class TypeConstants {
     const TABBY_TRANSACTION = 4;
     const PAYMOB_TRANSACTION = 5;
     const TAMARA_TRANSACTION = 6;
-    const PAYTABS_TRANSACTION = 7;
+    const PAYTABS_TRANSACTION = 8;
 
     // Payment Channels
     const CHANNEL_SYSTEM = 1;

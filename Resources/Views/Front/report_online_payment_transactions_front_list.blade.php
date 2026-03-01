@@ -152,14 +152,14 @@
             <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
                 <!--begin::Show All Toggle-->
                 @if($show_all)
-                    <a href="{{ route('sw.reportOnlinePaymentTransactionList', array_diff_key(request()->query(), ['show_all' => ''])) }}" class="btn btn-sm btn-flex btn-light-success">
-                        <i class="ki-outline ki-check-circle fs-6"></i>
-                        {{ trans('sw.show_successful_only')}}
-                    </a>
-                @else
-                    <a href="{{ route('sw.reportOnlinePaymentTransactionList', array_merge(request()->query(), ['show_all' => 1])) }}" class="btn btn-sm btn-flex btn-light-warning">
+                    <a href="{{ route('sw.reportOnlinePaymentTransactionList', array_diff_key(request()->query(), ['show_all' => ''])) }}" class="btn btn-sm btn-flex btn-light-warning">
                         <i class="ki-outline ki-eye fs-6"></i>
                         {{ trans('sw.show_all_transactions')}}
+                    </a>
+                @else
+                    <a href="{{ route('sw.reportOnlinePaymentTransactionList', array_merge(request()->query(), ['show_all' => 1])) }}" class="btn btn-sm btn-flex btn-light-success">
+                        <i class="ki-outline ki-check-circle fs-6"></i>
+                        {{ trans('sw.show_successful_only')}}
                     </a>
                 @endif
                 <!--end::Show All Toggle-->
@@ -314,10 +314,14 @@
                                     <span class="fw-bold">{{ @$order->amount }}</span>
                                 </td>
                                 <td>
-                                    @if(@$order->status == 1)
-                                        <span class="badge badge-success">{{ trans('sw.successful')}}</span>
+                                    @if($order->status == 1)
+                                        <span class="badge badge-light-success">{{ trans('sw.successful')}}</span>
+                                    @elseif($order->status == 0)
+                                        <span class="badge badge-light-warning">{{ trans('sw.pending')}}</span>
+                                    @elseif($order->status == 3)
+                                        <span class="badge badge-light-secondary">{{ trans('sw.cancelled')}}</span>
                                     @else
-                                        <span class="badge badge-danger">{{ trans('sw.declined')}}</span>
+                                        <span class="badge badge-light-danger">{{ trans('sw.declined')}}</span>
                                     @endif
                                 </td>
                                 <td>

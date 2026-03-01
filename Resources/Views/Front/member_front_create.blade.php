@@ -414,6 +414,20 @@
                             </div>
                             @endif
 
+                            <!-- PayTabs Payment Option -->
+                            @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
+                            <div class="col-md-6" id="paytabs_payment_option">
+                                <label class="form-label">{{ trans('sw.paytabs_payment')}}</label>
+                                <div class="form-check form-switch form-check-custom form-check-solid">
+                                    <input class="form-check-input" type="checkbox" name="send_paytabs_link" id="send_paytabs_link" value="1"/>
+                                    <label class="form-check-label" for="send_paytabs_link">
+                                        {{ trans('sw.send_paytabs_payment_link')}}
+                                    </label>
+                                </div>
+                                <div class="text-muted fs-7 mt-1">{{ trans('sw.paytabs_payment_description')}}</div>
+                            </div>
+                            @endif
+
                             <!-- Notes -->
                             <div class="col-md-12">
                                 <label class="form-label">{{ trans('sw.notes')}}</label>

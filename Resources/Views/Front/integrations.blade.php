@@ -229,6 +229,119 @@
                             </div>
                         </div>
                     </div>
+                    {{-- PAYTABS --}}
+                    <div class="card card-bordered mb-8">
+                        <div class="card-header min-h-50px">
+                            <h3 class="card-title fw-bold text-dark">
+                                <i class="ki-outline ki-wallet fs-2 me-2 text-primary"></i>{{ trans('sw.paytabs_settings') }}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-5">
+                                <div class="col-md-6 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_profile_id') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][profile_id]"
+                                           value="{{ $paymentsSettings['paytabs']['profile_id'] ?? '' }}"
+                                           placeholder="150281">
+                                </div>
+                                <div class="col-md-6 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_server_key') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][server_key]"
+                                           value="{{ $paymentsSettings['paytabs']['server_key'] ?? '' }}"
+                                           placeholder="SXXX-XXXX-XXXX">
+                                </div>
+                            </div>
+                            <div class="row mb-5">
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_client_key') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][client_key]"
+                                           value="{{ $paymentsSettings['paytabs']['client_key'] ?? '' }}"
+                                           placeholder="CXXX-XXXX-XXXX">
+                                </div>
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_region') }}</label>
+                                    <select class="form-select form-select-solid" name="payments[paytabs][region]">
+                                        @foreach(['SAU' => 'Saudi Arabia', 'ARE' => 'UAE', 'EGY' => 'Egypt', 'OMN' => 'Oman', 'JOR' => 'Jordan', 'KWT' => 'Kuwait', 'BHR' => 'Bahrain'] as $code => $name)
+                                            <option value="{{ $code }}" {{ ($paymentsSettings['paytabs']['region'] ?? 'SAU') === $code ? 'selected' : '' }}>
+                                                {{ $name }} ({{ $code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_currency') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][currency]"
+                                           value="{{ $paymentsSettings['paytabs']['currency'] ?? 'SAR' }}"
+                                           placeholder="SAR">
+                                </div>
+                            </div>
+                            <div class="row mb-5">
+                                <div class="col-md-12 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_base_url') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][base_url]"
+                                           value="{{ $paymentsSettings['paytabs']['base_url'] ?? '' }}"
+                                           placeholder="https://secure.paytabs.sa">
+                                    <div class="form-text text-muted">{{ trans('sw.paytabs_base_url_hint') }}</div>
+                                </div>
+                            </div>
+                            <div class="row mb-5">
+                                <div class="col-md-6 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_minimum_amount') }}</label>
+                                    <input type="number" step="0.01" class="form-control form-control-solid"
+                                           name="payments[paytabs][minimum_amount]"
+                                           value="{{ $paymentsSettings['paytabs']['minimum_amount'] ?? '1' }}"
+                                           placeholder="1">
+                                </div>
+                                <div class="col-md-6 fv-row d-flex align-items-end">
+                                    <div class="form-check form-switch mt-7">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="payments[paytabs][is_test]"
+                                               value="1"
+                                               {{ ($paymentsSettings['paytabs']['is_test'] ?? true) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold">{{ trans('sw.paytabs_is_test') }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-5">
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_country') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][country]"
+                                           value="{{ $paymentsSettings['paytabs']['country'] ?? 'SA' }}"
+                                           placeholder="SA">
+                                </div>
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_city') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][city]"
+                                           value="{{ $paymentsSettings['paytabs']['city'] ?? '' }}"
+                                           placeholder="Riyadh">
+                                </div>
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_address') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][address]"
+                                           value="{{ $paymentsSettings['paytabs']['address'] ?? '' }}"
+                                           placeholder="N/A">
+                                </div>
+                            </div>
+                            <div class="notice d-flex bg-light-primary rounded border-primary border border-dashed p-4">
+                                <i class="ki-outline ki-information-5 fs-2tx text-primary me-4"></i>
+                                <div class="fs-7 text-gray-700">
+                                    <strong>{{ trans('sw.paytabs_callback_url') }}:</strong>
+                                    <code>{{ url('paytabs/callback') }}</code><br>
+                                    <strong>Profile ID:</strong> 150281 &nbsp;|&nbsp;
+                                    <strong>Merchant ID:</strong> 88091
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
                 {{-- end tab-payments --}}
 

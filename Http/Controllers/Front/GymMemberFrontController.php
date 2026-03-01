@@ -11,6 +11,7 @@ use Modules\Software\Classes\SMSFactory;
 use Modules\Software\Services\TabbyPaymentService;
 use Modules\Software\Services\TamaraPaymentService;
 use Modules\Software\Services\PaymobPaymentService;
+use Modules\Software\Services\PayTabsPaymentService;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
 use Modules\Software\Classes\WAUltramsg;
@@ -1009,6 +1010,39 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
+            // Send PayTabs payment link if checkbox is checked
+            if ($request->input('send_paytabs_link')) {
+                try {
+                    $paytabsService = new PayTabsPaymentService();
+                    if ($paytabsService->isPayTabsConfigured()) {
+                        $paytabsResult = $paytabsService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
+
+                        if ($paytabsResult['success']) {
+                            Log::info('PayTabs payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $paytabsResult['payment_url'],
+                                'sent_whatsapp' => $paytabsResult['sent_whatsapp'],
+                                'sent_sms' => $paytabsResult['sent_sms'],
+                                'sent_email' => $paytabsResult['sent_email'] ?? false,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process PayTabs payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_added'),
@@ -1650,6 +1684,44 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to process Paymob payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send PayTabs payment link if checkbox is checked and amount difference > 0
+        if ($request->input('send_paytabs_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $paytabsService = new PayTabsPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member && $paytabsService->isPayTabsConfigured()) {
+                    $paytabsResult = $paytabsService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paytabsResult['success']) {
+                        Log::info('PayTabs payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $paytabsResult['payment_url'],
+                            'sent_whatsapp' => $paytabsResult['sent_whatsapp'],
+                            'sent_sms' => $paytabsResult['sent_sms'],
+                            'sent_email' => $paytabsResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process PayTabs payment for membership edit', [
                     'member_id' => $member_subscription->member_id,
                     'subscription_id' => $member_subscription->id,
                     'error' => $e->getMessage(),
@@ -2876,6 +2948,42 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to process Paymob payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send PayTabs payment link if checkbox is checked
+        if ($request->input('send_paytabs_link')) {
+            try {
+                $paytabsService = new PayTabsPaymentService();
+                $memberSubObj = GymMemberSubscription::find($member_subscription);
+
+                if ($memberSubObj && $paytabsService->isPayTabsConfigured()) {
+                    $paytabsResult = $paytabsService->processRenewalPayment(
+                        $member,
+                        $memberSubObj->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paytabsResult['success']) {
+                        Log::info('PayTabs payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $memberSubObj->id,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $paytabsResult['payment_url'],
+                            'sent_whatsapp' => $paytabsResult['sent_whatsapp'],
+                            'sent_sms' => $paytabsResult['sent_sms'],
+                            'sent_email' => $paytabsResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process PayTabs payment for renewal', [
                     'member_id' => $member->id,
                     'error' => $e->getMessage(),
                 ]);

@@ -2340,8 +2340,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $q->withTrashed();
         }])->orderBy('id', 'DESC');
 
-        // By default show only successful transactions
-        if (!$show_all) {
+        // By default show all transactions; filter to successful only when requested
+        if ($show_all) {
             $orders->where('status', TypeConstants::SUCCESS);
         }
 
