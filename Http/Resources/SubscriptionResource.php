@@ -19,6 +19,7 @@ class SubscriptionResource extends JsonResource
         return
             [
                 "id" => $this->id,
+                "title" => $this->name,
                 "name" => (int)$this->period.' '.trans('sw.day_2'),//$this->name,
                 "image" => $this->image,
                 "price" => number_format($this->price + ( $this->price * (@$setting->vat_details['vat_percentage'] / 100)) , 2).' '.env('APP_CURRENCY_'.strtoupper($this->lang)) ,
