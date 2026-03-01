@@ -234,6 +234,19 @@ class GymAiReport
                 'list_padding'     => 'padding-right:20px;padding-left:0',
                 'ol_padding'       => 'padding-right:22px;padding-left:0',
                 'border_side'      => 'border-right',
+                'kpi_labels'       => [
+                    'total_revenue'        => 'إجمالي الإيرادات',
+                    'renewal_rate'         => 'معدل التجديد',
+                    'new_members'          => 'أعضاء جدد',
+                    'churn_rate'           => 'معدل الإلغاء',
+                    'average_member_value' => 'متوسط قيمة العضو',
+                ],
+                'att_labels'       => [
+                    'average_visits_per_member' => 'متوسط الزيارات لكل عضو',
+                    'inactive_members'          => 'الأعضاء غير النشطين',
+                    'peak_hours'                => 'أوقات الذروة',
+                    'low_hours'                 => 'الأوقات الهادئة',
+                ],
             ];
         }
 
@@ -265,6 +278,19 @@ class GymAiReport
             'list_padding'     => 'padding-left:20px;padding-right:0',
             'ol_padding'       => 'padding-left:22px;padding-right:0',
             'border_side'      => 'border-left',
+            'kpi_labels'       => [
+                'total_revenue'        => 'Total Revenue',
+                'renewal_rate'         => 'Renewal Rate',
+                'new_members'          => 'New Members',
+                'churn_rate'           => 'Churn Rate',
+                'average_member_value' => 'Average Member Value',
+            ],
+            'att_labels'       => [
+                'average_visits_per_member' => 'Average Visits Per Member',
+                'inactive_members'          => 'Inactive Members',
+                'peak_hours'                => 'Peak Hours',
+                'low_hours'                 => 'Low Hours',
+            ],
         ];
     }
 
@@ -638,7 +664,7 @@ PROMPT;
         if (!empty($r['kpi_analysis']) && is_array($r['kpi_analysis'])) {
             $cells = [];
             foreach ($r['kpi_analysis'] as $k => $v) {
-                $label     = ucwords(str_replace('_', ' ', $k));
+                $label     = $lbl['kpi_labels'][$k] ?? ucwords(str_replace('_', ' ', $k));
                 $cardColor = str_contains($k, 'churn')
                     ? $D
                     : (str_contains($k, 'renewal') || str_contains($k, 'revenue') || str_contains($k, 'value') ? $S : $P);
@@ -664,7 +690,7 @@ PROMPT;
         if (!empty($r['attendance_analysis']) && is_array($r['attendance_analysis'])) {
             $i = 0;
             foreach ($r['attendance_analysis'] as $k => $v) {
-                $label   = ucwords(str_replace('_', ' ', $k));
+                $label   = $lbl['att_labels'][$k] ?? ucwords(str_replace('_', ' ', $k));
                 $rowBg   = ($i % 2 === 0) ? '#f8fafc' : '#fff';
                 $attRows .= "<tr style='background:{$rowBg}'>
                     <td style='padding:9px 14px;color:#555;font-size:13px;text-align:{$align};width:56%'>{$label}</td>
