@@ -604,7 +604,7 @@ PROMPT;
         }
 
         try {
-            $sms = SMSFactory::create(env('SMS_GATEWAY'));
+            $sms = new SMSFactory(env('SMS_GATEWAY'));
             $sms->send($phone, $this->buildSmsText($report));
             return true;
         } catch (\Exception $e) {
