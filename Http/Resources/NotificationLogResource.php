@@ -17,9 +17,9 @@ class NotificationLogResource extends JsonResource
         return [
             'id'        => $this->id,
             'title'     => $response['title']   ?? $response['body'] ?? $this->contentull,
-            'image'     => $response['image']   ?? null,
+            'image'     => $response['image']   ?? '',
             'content'   => $response['content'] ?? $response['body'] ?? $this->content,
-            'url'       => $response['url']     ?? null,
+            'url'       => $response['url']     ?? '',
             'type'      => $response['type']    ?? null,
             'date'      => $date,
             'is_new'    => Carbon::parse($this->created_at)->isAfter(Carbon::now()->subDay()) ? 1 : 0,
