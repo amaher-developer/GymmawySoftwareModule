@@ -98,6 +98,12 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
                 $result = $this->pushToMember($data, $members);
                 if (!$result) { $result = new \stdClass(); }
                 $result->message_id = 1;
+                $result->image = $data['image'];
+                $result->title = $data['title'];
+                $result->body = $data['body'];
+                $result->url = $data['url'];
+                $result->type = $data['type'];
+                $result->member_codes = $user_inputs['member_codes'];
             }
 
             if(@$user_inputs['member_code_all']){

@@ -15,7 +15,9 @@ use Modules\Software\Http\Resources\BannerContentResource;
 use Modules\Software\Http\Resources\BannerResource;
 use Modules\Software\Http\Resources\CategoryWithSubscriptionResource;
 use Modules\Software\Http\Resources\MemberResource;
+use Modules\Software\Http\Resources\NotificationLogResource;
 use Modules\Software\Http\Resources\NotificationResource;
+use Modules\Software\Models\GymMemberNotificationLog;
 use Modules\Software\Http\Resources\PTResource;
 use Modules\Software\Http\Resources\SettingResource;
 use Modules\Software\Http\Resources\StoreResource;
@@ -147,9 +149,23 @@ class GymGenericApiController extends GenericController
         return $this->successResponse();
     }
     public function banners(){
-        $banners = GymBanner::orderBy("id", "desc")->paginate($this->limit);
-        $this->getPaginateAttribute($banners);
-        $this->return['result']['banners'] =  $banners ?  BannerResource::collection($banners) : [];
+        $member = Auth::guard('api')->user();
+        $code = @$member->code;
+
+        $notifications = GymMemberNotificationLog::where(function ($q) use ($code) {
+                if ($code) {
+                    $q->whereRaw('FIND_IN_SET(?, codes)', [$code])
+                      ->orWhere('codes', '')
+                      ->orWhereNull('codes');
+                } else {
+                    $q->where('codes', '')->orWhereNull('codes');
+                }
+            })
+            ->orderBy('id', 'desc')
+            ->paginate($this->limit);
+
+        $this->getPaginateAttribute($notifications);
+        $this->return['result']['banners'] = $notifications ? NotificationLogResource::collection($notifications) : [];
         return $this->successResponse();
     }
 
