@@ -17,7 +17,7 @@ class NotificationLogResource extends JsonResource
         return [
             'id'        => $this->id,
             'title'     => $response['title']   ?? $response['body'] ?? $this->content,
-            'image'     => $response['image']   ?? '',
+            'image'     => $response['image']   ?? @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
             'date'      => $date,
             'is_new'    => Carbon::parse($this->created_at)->isAfter(Carbon::now()->subDay()) ? 1 : 0,
             'new_title' => ""
