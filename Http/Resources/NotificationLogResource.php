@@ -2,6 +2,7 @@
 
 namespace Modules\Software\Http\Resources;
 
+use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class NotificationLogResource extends JsonResource
@@ -10,14 +11,19 @@ class NotificationLogResource extends JsonResource
     {
         $response = is_array($this->response) ? $this->response : json_decode($this->response, true);
 
+        $lang = request('lang', config('app.locale', 'en'));
+        $date = Carbon::parse($this->created_at)->locale($lang)->isoFormat('D MMMM YYYY');
+
         return [
-            'id'         => $this->id,
-            'title'      => $response['title']   ?? null,
-            'content'    => $response['content'] ?? $response['body'] ?? $this->content,
-            'image'      => $response['image']   ?? null,
-            'url'        => $response['url']     ?? null,
-            'type'       => $response['type']    ?? null,
-            'created_at' => $this->created_at,
+            'id'        => $this->id,
+            'title'     => $response['title']   ?? null,
+            'image'     => $response['image']   ?? null,
+            'content'   => $response['content'] ?? $response['body'] ?? $this->content,
+            'url'       => $response['url']     ?? null,
+            'type'      => $response['type']    ?? null,
+            'date'      => $date,
+            'is_new'    => Carbon::parse($this->created_at)->isAfter(Carbon::now()->subDay()) ? 1 : 0,
+            'new_title' => '',
         ];
     }
 }
