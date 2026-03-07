@@ -150,6 +150,9 @@ class GymGenericApiController extends GenericController
     }
     public function banners(){
         $member = Auth::guard('api')->user();
+        if (!$member && ($token = \request()->bearerToken())) {
+            $member = GymMember::where('api_token', hash('sha256', $token))->first();
+        }
         $code = @$member->code;
 
         $notifications = GymMemberNotificationLog::where(function ($q) use ($code) {
