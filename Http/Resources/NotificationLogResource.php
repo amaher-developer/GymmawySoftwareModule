@@ -16,7 +16,7 @@ class NotificationLogResource extends JsonResource
 
         return [
             'id'        => $this->id,
-            'title'     => $response['title']   ?? null,
+            'title'     => $response['title']   ?? $response['body'] ?? $this->contentull,
             'image'     => $response['image']   ?? null,
             'content'   => $response['content'] ?? $response['body'] ?? $this->content,
             'url'       => $response['url']     ?? null,
