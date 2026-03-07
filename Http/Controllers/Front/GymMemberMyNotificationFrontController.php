@@ -101,7 +101,7 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
                 $result->image = $data['image'];
                 $result->title = $data['title'];
                 $result->body = $data['body'];
-                $result->url = $data['url'];
+                $result->url = $data['url'] ?? null;
                 $result->type = $data['type'];
                 $result->member_codes = $user_inputs['member_codes'];
             }
