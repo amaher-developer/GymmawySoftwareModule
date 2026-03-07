@@ -96,6 +96,7 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
             if(@$user_inputs['member_codes'] && (count(@$user_inputs['member_codes']) > 0) && !@$user_inputs['member_code_all']) {
                 $members = GymMember::branch()->whereIn('code', $user_inputs['member_codes'])->pluck('id');
                 $result = $this->pushToMember($data, $members);
+                @$result->message_id = 1;
             }
 
             if(@$user_inputs['member_code_all']){
