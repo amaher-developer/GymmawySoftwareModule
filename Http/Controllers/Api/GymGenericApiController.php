@@ -153,12 +153,13 @@ class GymGenericApiController extends GenericController
         $code = @$member->code;
 
         $notifications = GymMemberNotificationLog::where(function ($q) use ($code) {
+                $q->where('codes', '')->orWhereNull('codes');
                 if ($code) {
-                    $q->whereRaw('FIND_IN_SET(?, codes)', [$code])
-                      ->orWhere('codes', '')
-                      ->orWhereNull('codes');
-                } else {
-                    $q->where('codes', '')->orWhereNull('codes');
+                    $c = (string) $code;
+                    $q->orWhere('codes', $c)
+                      ->orWhere('codes', 'LIKE', $c . ',%')
+                      ->orWhere('codes', 'LIKE', '%,' . $c . ',%')
+                      ->orWhere('codes', 'LIKE', '%,' . $c);
                 }
             })
             ->orderBy('id', 'desc')
