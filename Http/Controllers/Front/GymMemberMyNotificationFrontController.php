@@ -86,7 +86,9 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
         $data['sound'] = 'default';
         $data['badge'] = '1';
         $data['e'] = 1;
-        switch ($user_inputs['type']) {
+        $data['type'] = $user_inputs['type'] ?? null;
+        $data['url'] = null;
+        switch ($user_inputs['type'] ?? null) {
             case TypeConstants::NOTIFICATION_EXTERNAL_URL:
                 $data['url'] = $user_inputs['url'];
                 break;
@@ -101,7 +103,7 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
                 $result->image = $data['image'];
                 $result->title = $data['title'];
                 $result->body = $data['body'];
-                $result->url = $data['url'] ?? null;
+                $result->url = $data['url'];
                 $result->type = $data['type'];
                 $result->member_codes = $user_inputs['member_codes'];
             }
