@@ -149,6 +149,8 @@ class GymGenericApiController extends GenericController
         return $this->successResponse();
     }
     public function banners(){
+        
+        $this->checkExpiredToken();
         $member = Auth::guard('api')->user();
         if (!$member && ($deviceToken = \request('device_token'))) {
             $pushToken = GymPushToken::where('token', $deviceToken)->first();
