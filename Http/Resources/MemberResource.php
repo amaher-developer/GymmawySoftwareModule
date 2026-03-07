@@ -52,7 +52,7 @@ class MemberResource extends JsonResource
                 'expire_date' => @$this->member_subscription_info->expire_date,
 //                'attendees_count' => (string)count(@$this->member_attendees) ?? "0",//@$this->member_attendees_count ?? 0,
                 'attendees_count' => (string)@$this->member_subscription_info->visits ?? "0",//@$this->member_attendees_count ?? 0,
-                'membership_status' => @$this->member_subscription_info->status_name ?? trans('sw.active'),
+                'membership_status' => @$this->member_subscription_info->status_name ?? trans('sw.expired'),
                 'freeze_check' => @$freeze_check,
                 'attendees' => @$this->member_attendees,
             ];

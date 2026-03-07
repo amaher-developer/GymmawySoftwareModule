@@ -218,11 +218,7 @@ class GymGenericApiController extends GenericController
             ->orderBy('id', 'desc')
             ->get();
 
-        $member = GymMember::with(['member_subscription_info' => function($query) use ($member_subscriptions){
-            if((@count($member_subscriptions) > 1) && (@$member_subscriptions[0]->status  == TypeConstants::Coming))
-                $query->where('id',  $member_subscriptions[1]->id);
-            $query->orderBy('id', 'desc');
-        }, 'member_attendees' => function ($q) {
+        $member = GymMember::with(['member_subscription_info', 'member_attendees' => function ($q) {
             $q->orderBy('id', 'desc')->limit(20);
         }])//->withCount('member_attendees')
             ->where(['id' => @Auth::guard('api')->user()->id])->first();
