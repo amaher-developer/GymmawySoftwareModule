@@ -213,10 +213,10 @@ class GymStoreProductFrontController extends GymGenericFrontController
         $product_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $product_inputs['user_id'] = $this->user_sw->id;
 
-        $nextCode = str_pad((GymStoreProduct::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         $product_inputs['code'] = $product_inputs['code'] ?? null;
         if (empty($product_inputs['code'])) {
-            $product_inputs['code'] = $nextCode;
+            $maxCode = GymStoreProduct::withTrashed()->whereRaw('code REGEXP \'^[0-9]+$\'')->max('code');
+            $product_inputs['code'] = str_pad(((int)$maxCode + 1), 14, 0, STR_PAD_LEFT);
         }
 
         $product = $this->StoreProductRepository->create($product_inputs);
