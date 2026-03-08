@@ -3,6 +3,7 @@
 namespace Modules\Software\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Modules\Software\Models\GymStoreProduct;
 
 class GymStoreProductRequest extends FormRequest
 {
@@ -23,6 +24,13 @@ class GymStoreProductRequest extends FormRequest
      */
     public function rules()
     {
+        $checkDeleteCode = GymStoreProduct::where('code', request('code'))->onlyTrashed()->first();
+        if($checkDeleteCode){
+            $checkDeleteCode->code = $checkDeleteCode->code.'-deleted';
+            $checkDeleteCode->save();
+        }
+
+
         $productId = $this->route('product')
             ?? $this->route('store_product')
             ?? $this->route('storeProduct')
