@@ -244,12 +244,12 @@ class GymGenericApiController extends GenericController
             ->get();
 
         $member = GymMember::with(['member_subscription_info' => function ($q) {
-            $q->orderByRaw('CASE status
+            $q->reorder()->orderByRaw('CASE status
                 WHEN ' . TypeConstants::Active  . ' THEN 1
                 WHEN ' . TypeConstants::Freeze  . ' THEN 2
                 WHEN ' . TypeConstants::Coming  . ' THEN 3
                 WHEN ' . TypeConstants::Expired . ' THEN 4
-                ELSE 5 END');
+                ELSE 5 END')->orderBy('id', 'desc');
         }, 'member_attendees' => function ($q) {
             $q->orderBy('id', 'desc')->limit(20);
         }])->where(['id' => @Auth::guard('api')->user()->id])->first();
