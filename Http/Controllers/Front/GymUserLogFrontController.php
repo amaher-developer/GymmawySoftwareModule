@@ -816,6 +816,11 @@ class GymUserLogFrontController extends GymGenericFrontController
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
+
+        $keys = ['created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
+            , 'joining_date', 'expire_date', 'status'];
+        if ($this->lang == 'ar') $keys = array_reverse($keys);
+        
         $this->fileName = 'members-' . Carbon::now()->toDateTimeString();
         foreach ($records as $key => $record) {
             $records[$key]['created_at'] = Carbon::parse($record['created_at'])->toDateTimeString();
@@ -831,10 +836,6 @@ class GymUserLogFrontController extends GymGenericFrontController
             $records[$key]['status'] = $record['member']['member_subscription_info']['status_name'];
 
         }
-
-        $keys = ['created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'];
-        if ($this->lang == 'ar') $keys = array_reverse($keys);
 
         $title = trans('sw.subscribed_clients');
         $customPaper = array(0, 0, 720, 1440);
