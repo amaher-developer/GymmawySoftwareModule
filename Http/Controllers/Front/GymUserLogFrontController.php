@@ -822,7 +822,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         $this->fileName = 'members-' . Carbon::now()->toDateTimeString();
         foreach ($records as $key => $record) {
-            $records[$key]['created_at'] = Carbon::parse($record['created_at'])->locale($this->lang)->diffForHumans();
+            $records[$key]['created_at'] = Carbon::parse($record['created_at'])->toDateTimeString();
             $records[$key]['name'] = $record['member']['name'];
             $records[$key]['barcode'] = $record['member']['code'];
             $records[$key]['phone'] = (str_replace('+', '00', $record['member']['phone']));
