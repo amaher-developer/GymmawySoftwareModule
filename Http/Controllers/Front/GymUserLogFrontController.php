@@ -779,7 +779,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         }//else
             //$logs = $logs->whereDate('created_at', Carbon::now()->toDateString());
 
-        $logs->orderBy('created_at', 'DESC');
+        $logs->orderBy('id', 'DESC');
         if($this->limit){
             $logs = $logs->paginate($this->limit)->onEachSide(1);
             $total = $logs->total();
