@@ -816,11 +816,10 @@ class GymUserLogFrontController extends GymGenericFrontController
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
-
         $keys = ['created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
             , 'joining_date', 'expire_date', 'status'];
         if ($this->lang == 'ar') $keys = array_reverse($keys);
-        
+
         $this->fileName = 'members-' . Carbon::now()->toDateTimeString();
         foreach ($records as $key => $record) {
             $records[$key]['created_at'] = Carbon::parse($record['created_at'])->toDateTimeString();
@@ -837,6 +836,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         }
 
+   
         $title = trans('sw.subscribed_clients');
         $customPaper = array(0, 0, 720, 1440);
 
@@ -1055,7 +1055,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             });
         }//else
             //$logs->whereDate('created_at', Carbon::now()->toDateString());
-        $logs->orderBy('created_at', 'DESC');
+        $logs->orderBy('id', 'DESC');
 
         $statsQuery = clone $logs;
         $totalAttendances = (clone $statsQuery)->count();
@@ -1228,7 +1228,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             });
         }//else
             //$logs->whereDate('created_at', Carbon::now()->toDateString());
-        $logs->orderBy('created_at', 'DESC');
+        $logs->orderBy('id', 'DESC');
         if($this->limit){
             $logs = $logs->paginate($this->limit)->onEachSide(1);
             $total = $logs->total();
