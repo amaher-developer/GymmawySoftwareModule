@@ -816,10 +816,6 @@ class GymUserLogFrontController extends GymGenericFrontController
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
-        $keys = ['barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'];
-        if ($this->lang == 'ar') $keys = array_reverse($keys);
-
         $this->fileName = 'members-' . Carbon::now()->toDateTimeString();
         foreach ($records as $key => $record) {
             $records[$key]['created_at'] = Carbon::parse($record['created_at'])->toDateTimeString();
@@ -836,9 +832,13 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         }
 
+        $keys = ['created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
+            , 'joining_date', 'expire_date', 'status'];
+        if ($this->lang == 'ar') $keys = array_reverse($keys);
+
         $title = trans('sw.subscribed_clients');
         $customPaper = array(0, 0, 720, 1440);
-        
+
         // Try mPDF for better Arabic support
         if ($this->lang == 'ar') {
             try {
@@ -855,30 +855,30 @@ class GymUserLogFrontController extends GymGenericFrontController
                     'default_font' => 'dejavusans',
                     'default_font_size' => 10
                 ]);
-                
+
                 $html = view('software::Front.export_pdf', [
-                    'records' => $records, 
-                    'title' => $title, 
+                    'records' => $records,
+                    'title' => $title,
                     'keys' => $keys,
                     'lang' => $this->lang
                 ])->render();
-                
+
                 $mpdf->WriteHTML($html);
-                
+
                 $notes = trans('sw.export_pdf_members');
                 $this->userLog($notes, \Modules\Software\Classes\TypeConstants::ExportMemberPDF);
-                
+
                 return response($mpdf->Output($this->fileName.'.pdf', 'D'), 200, [
                     'Content-Type' => 'application/pdf',
                     'Content-Disposition' => 'attachment; filename="' . $this->fileName . '.pdf"'
                 ]);
-                
+
             } catch (\Exception $e) {
                 // Fallback to DomPDF if mPDF fails
                 \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
             }
         }
-        
+
         // Configure PDF for Arabic text using DomPDF
         $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys])
         ->setPaper($customPaper, 'landscape')
@@ -1054,7 +1054,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             });
         }//else
             //$logs->whereDate('created_at', Carbon::now()->toDateString());
-        $logs->orderBy('id', 'DESC');
+        $logs->orderBy('created_at', 'DESC');
 
         $statsQuery = clone $logs;
         $totalAttendances = (clone $statsQuery)->count();
@@ -1227,7 +1227,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             });
         }//else
             //$logs->whereDate('created_at', Carbon::now()->toDateString());
-        $logs->orderBy('id', 'DESC');
+        $logs->orderBy('created_at', 'DESC');
         if($this->limit){
             $logs = $logs->paginate($this->limit)->onEachSide(1);
             $total = $logs->total();
