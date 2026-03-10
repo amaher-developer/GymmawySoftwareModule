@@ -816,7 +816,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
-        $keys = ['barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
+        $keys = ['created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
             , 'joining_date', 'expire_date', 'status'];
         if ($this->lang == 'ar') $keys = array_reverse($keys);
 
