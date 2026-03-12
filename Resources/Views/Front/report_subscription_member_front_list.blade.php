@@ -221,6 +221,9 @@
                                 <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.amount_remaining')}}
                             </th>
                             <th class="min-w-120px text-nowrap">
+                                <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.store_balance')}}
+                            </th>
+                            <th class="min-w-120px text-nowrap">
                                 <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.joining_date')}}
                             </th>
                             <th class="min-w-120px text-nowrap">
@@ -263,6 +266,9 @@
                                 </td>
                                 <td>
                                     <span class="fw-bold">{{ number_format(@$log->amount_remaining, 2) }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ number_format(@$log->member->store_balance, 2) }}</span>
                                 </td>
                                 <td>
                                     <span class="fw-bold">{{ @\Carbon\Carbon::parse($log->joining_date)->format('Y-m-d') }}</span>
