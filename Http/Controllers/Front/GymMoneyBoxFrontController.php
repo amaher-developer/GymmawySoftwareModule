@@ -1004,8 +1004,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $total_add_to_money_box = ($sorders->where('type', TypeConstants::CreateMoneyBoxAdd)->where('operation', 0)->sum('amount'));
         $total_withdraw_from_money_box = ($sorders->where('type', TypeConstants::CreateMoneyBoxWithdraw)->where('operation', 1)->sum('amount'));
 
-        $total_activities = ($sorders->whereIn('type', [TypeConstants::CreateActivity,TypeConstants::EditActivity,TypeConstants::DeleteActivity ])->where('operation', 0)->sum('amount')
-            - $sorders->whereIn('type', [TypeConstants::CreateActivity,TypeConstants::EditActivity,TypeConstants::DeleteActivity ])->where('operation', 1)->sum('amount'));
+        $total_activities = ($sorders->whereIn('type', [TypeConstants::CreateNonMember, TypeConstants::EditNonMember, TypeConstants::DeleteNonMember, TypeConstants::CreateActivity, TypeConstants::EditActivity, TypeConstants::DeleteActivity])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateNonMember, TypeConstants::EditNonMember, TypeConstants::DeleteNonMember, TypeConstants::CreateActivity, TypeConstants::EditActivity, TypeConstants::DeleteActivity])->where('operation', 1)->sum('amount'));
 
         $total_subscriptions = ($sorders->whereIn('type', [TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::EditMember,TypeConstants::DeleteMember, TypeConstants::CreateMemberPayAmountRemainingForm, TypeConstants::EditSubscription,TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription ])->where('operation', 0)->sum('amount')
             - $sorders->whereIn('type', [TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::EditMember,TypeConstants::DeleteMember, TypeConstants::CreateMemberPayAmountRemainingForm, TypeConstants::EditSubscription,TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription ])->where('operation', 1)->sum('amount'));
