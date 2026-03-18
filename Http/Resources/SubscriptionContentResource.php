@@ -17,12 +17,30 @@ class SubscriptionContentResource extends JsonResource
     public function toArray($request)
     {
         $setting = Setting::select('vat_details')->first();
+        $currency = env('APP_CURRENCY_'.strtoupper($this->lang));
+        $vatPct = (float)@$setting->vat_details['vat_percentage'];
+
+        $basePrice = (float)$this->price;
+        $discountValue = (float)$this->default_discount_value;
+        $discountType  = $this->default_discount_type; // 1 = percentage, 0 = fixed
+
+        if ($discountValue > 0) {
+            $discountedPrice = $discountType == 1
+                ? $basePrice - ($basePrice * $discountValue / 100)
+                : $basePrice - $discountValue;
+            $discountedPrice = max(0, $discountedPrice);
+        } else {
+            $discountedPrice = $basePrice;
+        }
+
+        $finalPrice = $discountedPrice + ($discountedPrice * $vatPct / 100);
+
         return
             [
                 "id" => $this->id,
                 "name" => Str::limit(@$this->name, 30),
                 "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
-                "price" => number_format($this->price + ( $this->price * (@$setting->vat_details['vat_percentage'] / 100)) , 2). ' ' . env('APP_CURRENCY_'.strtoupper($this->lang)) . ' ',
+                "price" => number_format($finalPrice, 2). ' ' . $currency . ' ',
                 "content" => strip_tags(@$this->content),
                 "period" => $this->period . ' '. trans('sw.day_2'),
                 "workouts" => $this->workouts,
