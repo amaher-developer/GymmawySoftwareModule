@@ -888,7 +888,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return null;
         }
 
-        $today = Carbon::now();
+        $today = Carbon::now()->toDateString();
         $endDate = $member->end_date ?? ($member->expire_date ? Carbon::parse($member->expire_date) : null);
         if ($endDate && $endDate->lt($today)) {
             return null;
@@ -1081,7 +1081,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
                 if(($member->joining_date > Carbon::now()) && ($checkForMemberVisits)){
                     $msg = trans('sw.membership_not_coming');
                 }elseif(($member->classes > 0) && ($member->classes >= $member->visits)
-                    && ($member->expire_date >= Carbon::now()) && ($checkForMemberVisits)){
+                    && (Carbon::parse($member->expire_date)->toDateString() >= Carbon::now()->toDateString()) && ($checkForMemberVisits)){
 
                     // time of membership
                     if(($member->start_time_day) && ($member->end_time_day) &&

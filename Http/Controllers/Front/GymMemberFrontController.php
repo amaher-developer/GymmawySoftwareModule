@@ -2663,7 +2663,12 @@ class GymMemberFrontController extends GymGenericFrontController
             ->get();
         $other_subscriptions = $other_subscriptions->where('member_id', $member->id);
         if ($other_subscriptions->count() > 0) {
-            return Response::json(['msg' => trans('sw.error_date_between'), 'code' => 'custom_expire_date'], 200);
+            // if the membership expired but the date not expired for ex:, if i put limit for visits and i complete all my visits without expire date
+            if(($membership->status == TypeConstants::Expired) && (Carbon::parse($membership->expire_date)->toDateString() >= Carbon::now()->toDateString())){
+                $membership->expire_date = Carbon::now()->subDay();
+                $membership->save();
+            }else
+                return Response::json(['msg' => trans('sw.error_date_between'), 'code' => 'custom_expire_date'], 200);
         }
 
         $renew_subscription = [
