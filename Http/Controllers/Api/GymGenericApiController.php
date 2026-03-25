@@ -456,7 +456,17 @@ class GymGenericApiController extends GenericController
 
     public function memberSubscriptionFreeze(){
         $member_id =  @Auth::guard('api')->user()->id;
-        $memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('member_id', $member_id)->orderBy('id', 'desc')->first();
+        $memberInfo = GymMember::with(['member_subscription_info' => function ($q) {
+            $q->reorder()->orderByRaw('CASE status
+                WHEN ' . TypeConstants::Active  . ' THEN 1
+                WHEN ' . TypeConstants::Freeze  . ' THEN 2
+                WHEN ' . TypeConstants::Coming  . ' THEN 3
+                WHEN ' . TypeConstants::Expired . ' THEN 4
+                ELSE 5 END')->orderBy('id', 'desc');
+        }])->where(['id' => $member_id])->first();
+
+        //$memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('member_id', $member_id)->orderBy('id', 'desc')->first();
+        $memberInfo = @$memberInfo->member_subscription_info;
         if($memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active) ){
             $memberInfo->status = TypeConstants::Freeze;
             $memberInfo->number_times_freeze = ($memberInfo->number_times_freeze - 1);
