@@ -19,6 +19,7 @@ Route::post('/member-subscription-info', 'Api\WebsiteApiController@memberSubscri
 Route::post('/member-subscription-invoice-info', 'Api\WebsiteApiController@memberSubscriptionInvoiceInfo')->middleware(['api']);
 Route::post('/member-subscription-info-by-phone', 'Api\WebsiteApiController@memberSubscriptionInfoByPhone')->middleware(['api']);
 Route::post('/create-member-subscription', 'Api\WebsiteApiController@createMemberSubscription')->middleware(['api']);
+Route::post('/send-subscription-notification', 'Api\WebsiteApiController@sendSubscriptionNotification')->middleware(['api']);
 Route::post('/member-attendance-info', 'Api\WebsiteApiController@memberAttendanceInfo')->middleware(['api']);
 
 
