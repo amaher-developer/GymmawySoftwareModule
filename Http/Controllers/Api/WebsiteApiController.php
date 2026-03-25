@@ -6,7 +6,7 @@ use Modules\Generic\Classes\Constants;
 use Modules\Generic\Http\Controllers\Api\GenericApiController;
 use Modules\Generic\Models\Setting;
 use Modules\Generic\Repositories\SettingRepository;
-use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
+use Modules\Generic\Http\Controllers\Api\FirebaseApiController;
 use App\Modules\Notification\Models\Push_tokens;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Controllers\Front\GymMoneyBoxFrontController;
