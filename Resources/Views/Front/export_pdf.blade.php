@@ -109,6 +109,65 @@
     <div class="no-data">{{ trans('sw.no_record_found')}}</div>
 @endif
 
+@if(!empty($stats))
+    <div style="margin-top: 24px;">
+        <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 4px;">
+            {{ trans('sw.online_transaction_report') }} - {{ trans('sw.total_amount') }}
+        </div>
+        <table style="width: 50%; margin-bottom: 16px;">
+            <tr>
+                <td style="background:#f5f5f5; font-weight:bold;">{{ trans('admin.total_count') }}</td>
+                <td>{{ $stats['total_count'] }}</td>
+                <td style="background:#f5f5f5; font-weight:bold;">{{ trans('sw.total_amount') }}</td>
+                <td>{{ number_format($stats['total_amount'], 2) }}</td>
+            </tr>
+        </table>
+
+        <div style="font-weight: bold; margin-bottom: 6px;">{{ trans('sw.status') }}</div>
+        <table style="width: 60%; margin-bottom: 16px;">
+            <thead>
+                <tr>
+                    <th>{{ trans('sw.status') }}</th>
+                    <th>{{ trans('admin.total_count') }}</th>
+                    <th>{{ trans('sw.total_amount') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php $statusLabels = [1 => trans('sw.successful'), 0 => trans('sw.pending'), 2 => trans('sw.declined'), 3 => trans('sw.cancelled')]; @endphp
+                @foreach($stats['by_status'] as $code => $data)
+                    <tr>
+                        <td>{{ $statusLabels[$code] ?? $code }}</td>
+                        <td>{{ $data['count'] }}</td>
+                        <td>{{ number_format($data['amount'], 2) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div style="font-weight: bold; margin-bottom: 6px;">{{ trans('sw.payment_gateway') }}</div>
+        <table style="width: 60%;">
+            <thead>
+                <tr>
+                    <th>{{ trans('sw.payment_gateway') }}</th>
+                    <th>{{ trans('admin.total_count') }}</th>
+                    <th>{{ trans('sw.total_amount') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($stats['by_gateway'] as $data)
+                    @if($data['count'] > 0)
+                        <tr>
+                            <td>{{ $data['label'] }}</td>
+                            <td>{{ $data['count'] }}</td>
+                            <td>{{ number_format($data['amount'], 2) }}</td>
+                        </tr>
+                    @endif
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+@endif
+
 </body>
 </html>
 

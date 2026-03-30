@@ -22,6 +22,7 @@ class MembersAttendanceExport implements FromCollection, WithHeadings, WithMappi
     private $data;
     private $keys;
     private $settings;
+    private $stats;
 
     public function __construct($data)
     {
@@ -29,6 +30,7 @@ class MembersAttendanceExport implements FromCollection, WithHeadings, WithMappi
         $this->data = $data['records'];
         $this->keys = $data['keys'];
         $this->settings = $data['settings'] ?? null;
+        $this->stats = $data['stats'] ?? null;
     }
     public function headings(): array
     {
@@ -132,12 +134,73 @@ class MembersAttendanceExport implements FromCollection, WithHeadings, WithMappi
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $rtl = ($this->lang == 'ar');
-                $event->sheet->getDelegate()->setRightToLeft($rtl);
+                $sheet = $event->sheet->getDelegate();
+                $sheet->setRightToLeft($rtl);
 
                 if ($this->settings) {
                     $this->applyReportHeader($event, count($this->keys));
                 }
+
+                if ($this->stats) {
+                    $this->appendStatsToSheet($sheet);
+                }
             }
         ];
+    }
+
+    private function appendStatsToSheet(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet): void
+    {
+        $lastDataRow = $sheet->getHighestDataRow();
+        $row = $lastDataRow + 2;
+
+        $statusLabels = [
+            1 => trans('sw.successful'),
+            0 => trans('sw.pending'),
+            2 => trans('sw.declined'),
+            3 => trans('sw.cancelled'),
+        ];
+
+        // Section header
+        $sheet->setCellValue('A' . $row, trans('sw.online_transaction_report') . ' - ' . trans('sw.total_amount'));
+        $sheet->getStyle('A' . $row)->applyFromArray(['font' => ['bold' => true, 'size' => 12]]);
+        $row++;
+
+        // Totals
+        $sheet->setCellValue('A' . $row, trans('admin.total_count'));
+        $sheet->setCellValue('B' . $row, $this->stats['total_count']);
+        $row++;
+        $sheet->setCellValue('A' . $row, trans('sw.total_amount'));
+        $sheet->setCellValue('B' . $row, number_format($this->stats['total_amount'], 2));
+        $sheet->getStyle('A' . $row)->applyFromArray(['font' => ['bold' => true]]);
+        $row += 2;
+
+        // By status
+        $sheet->setCellValue('A' . $row, trans('sw.status'));
+        $sheet->setCellValue('B' . $row, trans('admin.total_count'));
+        $sheet->setCellValue('C' . $row, trans('sw.total_amount'));
+        $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8F5E9']]]);
+        $row++;
+        foreach ($this->stats['by_status'] as $statusCode => $data) {
+            $sheet->setCellValue('A' . $row, $statusLabels[$statusCode] ?? $statusCode);
+            $sheet->setCellValue('B' . $row, $data['count']);
+            $sheet->setCellValue('C' . $row, number_format($data['amount'], 2));
+            $row++;
+        }
+
+        $row++;
+        // By gateway
+        $sheet->setCellValue('A' . $row, trans('sw.payment_gateway'));
+        $sheet->setCellValue('B' . $row, trans('admin.total_count'));
+        $sheet->setCellValue('C' . $row, trans('sw.total_amount'));
+        $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E3F2FD']]]);
+        $row++;
+        foreach ($this->stats['by_gateway'] as $data) {
+            if ($data['count'] > 0) {
+                $sheet->setCellValue('A' . $row, $data['label']);
+                $sheet->setCellValue('B' . $row, $data['count']);
+                $sheet->setCellValue('C' . $row, number_format($data['amount'], 2));
+                $row++;
+            }
+        }
     }
 }

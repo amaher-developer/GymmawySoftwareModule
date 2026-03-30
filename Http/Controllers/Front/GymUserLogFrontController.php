@@ -2350,6 +2350,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
         })->when(($to), function ($query) use ($to) {
             $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($transaction), function ($query) use ($transaction) {
+            $query->where('payment_method', (int)$transaction);
         })->when(($search), function ($query) use ($search) {
             $query->where('id', '=', (int)$search);
             $query->orWhere('name', '=', (int)$search);
@@ -2357,6 +2359,27 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->orWhere('address', '=', (int)$search);
         });
         $search_query = request()->query();
+
+        // Compute stats from the same filtered query (before pagination)
+        $statsQuery = clone $orders;
+        $allRecords = $statsQuery->get(['status', 'payment_method', 'amount']);
+        $stats = [
+            'total_count'  => $allRecords->count(),
+            'total_amount' => $allRecords->sum('amount'),
+            'by_status' => [
+                TypeConstants::SUCCESS   => ['count' => $allRecords->where('status', TypeConstants::SUCCESS)->count(),   'amount' => $allRecords->where('status', TypeConstants::SUCCESS)->sum('amount')],
+                TypeConstants::PENDING   => ['count' => $allRecords->where('status', TypeConstants::PENDING)->count(),   'amount' => $allRecords->where('status', TypeConstants::PENDING)->sum('amount')],
+                TypeConstants::FAILURE   => ['count' => $allRecords->where('status', TypeConstants::FAILURE)->count(),   'amount' => $allRecords->where('status', TypeConstants::FAILURE)->sum('amount')],
+                TypeConstants::CANCELLED => ['count' => $allRecords->where('status', TypeConstants::CANCELLED)->count(), 'amount' => $allRecords->where('status', TypeConstants::CANCELLED)->sum('amount')],
+            ],
+            'by_gateway' => [
+                TypeConstants::TABBY_TRANSACTION   => ['label' => 'Tabby',   'count' => $allRecords->where('payment_method', TypeConstants::TABBY_TRANSACTION)->count(),   'amount' => $allRecords->where('payment_method', TypeConstants::TABBY_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYMOB_TRANSACTION  => ['label' => 'Paymob',  'count' => $allRecords->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->count(),  'amount' => $allRecords->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->sum('amount')],
+                TypeConstants::TAMARA_TRANSACTION  => ['label' => 'Tamara',  'count' => $allRecords->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->count(),  'amount' => $allRecords->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYTABS_TRANSACTION => ['label' => 'PayTabs', 'count' => $allRecords->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->count(), 'amount' => $allRecords->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYPAL_TRANSACTION_FEES => ['label' => 'PayPal', 'count' => $allRecords->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->count(), 'amount' => $allRecords->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->sum('amount')],
+            ],
+        ];
 
         if ($this->limit) {
             $orders = $orders->paginate($this->limit)->onEachSide(1);
@@ -2366,8 +2389,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-      return view('software::Front.report_online_payment_transactions_front_list', compact( 'orders', 'title', 'total', 'search_query', 'show_all'));
-
+        return view('software::Front.report_online_payment_transactions_front_list', compact('orders', 'title', 'total', 'search_query', 'show_all', 'stats', 'transaction'));
     }
 
     function exportOnlinePaymentExcel()
@@ -2386,6 +2408,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
         })->when(($to), function ($query) use ($to) {
             $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($transaction), function ($query) use ($transaction) {
+            $query->where('payment_method', (int)$transaction);
         })->when(($search), function ($query) use ($search) {
             $query->where('id', '=', (int)$search);
             $query->orWhere('name', '=', (int)$search);
@@ -2395,12 +2419,31 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         $records = $orders->limit(300)->get();
 
+        // Compute stats for export
+        $stats = [
+            'total_count'  => $records->count(),
+            'total_amount' => $records->sum('amount'),
+            'by_status' => [
+                TypeConstants::SUCCESS   => ['count' => $records->where('status', TypeConstants::SUCCESS)->count(),   'amount' => $records->where('status', TypeConstants::SUCCESS)->sum('amount')],
+                TypeConstants::PENDING   => ['count' => $records->where('status', TypeConstants::PENDING)->count(),   'amount' => $records->where('status', TypeConstants::PENDING)->sum('amount')],
+                TypeConstants::FAILURE   => ['count' => $records->where('status', TypeConstants::FAILURE)->count(),   'amount' => $records->where('status', TypeConstants::FAILURE)->sum('amount')],
+                TypeConstants::CANCELLED => ['count' => $records->where('status', TypeConstants::CANCELLED)->count(), 'amount' => $records->where('status', TypeConstants::CANCELLED)->sum('amount')],
+            ],
+            'by_gateway' => [
+                TypeConstants::TABBY_TRANSACTION   => ['label' => 'Tabby',   'count' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->count(),   'amount' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYMOB_TRANSACTION  => ['label' => 'Paymob',  'count' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->sum('amount')],
+                TypeConstants::TAMARA_TRANSACTION  => ['label' => 'Tamara',  'count' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYTABS_TRANSACTION => ['label' => 'PayTabs', 'count' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYPAL_TRANSACTION_FEES => ['label' => 'PayPal', 'count' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->sum('amount')],
+            ],
+        ];
+
         $this->fileName = 'online-payment-transactions-' . Carbon::now()->toDateTimeString();
 
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportOnlinePaymentExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'payment_gateway_name', 'payment_channel_name', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'payment_gateway_name', 'payment_channel_name', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings, 'stats' => $stats]), $this->fileName . '.xlsx');
     }
 
     function exportOnlinePaymentPDF()
@@ -2419,6 +2462,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
         })->when(($to), function ($query) use ($to) {
             $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($transaction), function ($query) use ($transaction) {
+            $query->where('payment_method', (int)$transaction);
         })->when(($search), function ($query) use ($search) {
             $query->where('id', '=', (int)$search);
             $query->orWhere('name', '=', (int)$search);
@@ -2427,6 +2472,25 @@ class GymUserLogFrontController extends GymGenericFrontController
         });
 
         $records = $orders->limit(300)->get();
+
+        // Compute stats for export
+        $stats = [
+            'total_count'  => $records->count(),
+            'total_amount' => $records->sum('amount'),
+            'by_status' => [
+                TypeConstants::SUCCESS   => ['count' => $records->where('status', TypeConstants::SUCCESS)->count(),   'amount' => $records->where('status', TypeConstants::SUCCESS)->sum('amount')],
+                TypeConstants::PENDING   => ['count' => $records->where('status', TypeConstants::PENDING)->count(),   'amount' => $records->where('status', TypeConstants::PENDING)->sum('amount')],
+                TypeConstants::FAILURE   => ['count' => $records->where('status', TypeConstants::FAILURE)->count(),   'amount' => $records->where('status', TypeConstants::FAILURE)->sum('amount')],
+                TypeConstants::CANCELLED => ['count' => $records->where('status', TypeConstants::CANCELLED)->count(), 'amount' => $records->where('status', TypeConstants::CANCELLED)->sum('amount')],
+            ],
+            'by_gateway' => [
+                TypeConstants::TABBY_TRANSACTION   => ['label' => 'Tabby',   'count' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->count(),   'amount' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYMOB_TRANSACTION  => ['label' => 'Paymob',  'count' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->sum('amount')],
+                TypeConstants::TAMARA_TRANSACTION  => ['label' => 'Tamara',  'count' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYTABS_TRANSACTION => ['label' => 'PayTabs', 'count' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYPAL_TRANSACTION_FEES => ['label' => 'PayPal', 'count' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->sum('amount')],
+            ],
+        ];
 
         $keys = ['name', 'phone', 'subscription.name', 'amount', 'status', 'payment_gateway_name', 'payment_channel_name', 'created_at'];
         if ($this->lang == 'ar') $keys = array_reverse($keys);
@@ -2467,7 +2531,8 @@ class GymUserLogFrontController extends GymGenericFrontController
                     'records' => $records,
                     'title' => $title,
                     'keys' => $keys,
-                    'lang' => $this->lang
+                    'lang' => $this->lang,
+                    'stats' => $stats,
                 ])->render();
 
                 $mpdf->WriteHTML($html);
@@ -2485,7 +2550,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             }
         }
 
-        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys])
+        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys, 'stats' => $stats])
         ->setPaper($customPaper, 'landscape')
         ->setOptions([
             'isHtml5ParserEnabled' => true,
@@ -2499,6 +2564,86 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportOnlinePaymentPDF);
 
         return $pdf->download($this->fileName . '.pdf');
+    }
+
+    public function updateOnlinePaymentStatus($id)
+    {
+        $invoice = GymOnlinePaymentInvoice::branch()->findOrFail($id);
+        $newStatus = (int) request()->input('status');
+
+        $allowedStatuses = [TypeConstants::PENDING, TypeConstants::SUCCESS, TypeConstants::FAILURE, TypeConstants::CANCELLED];
+        if (!in_array($newStatus, $allowedStatuses)) {
+            return response()->json(['success' => false, 'message' => trans('admin.invalid_data')], 422);
+        }
+
+        $oldStatus = $invoice->status;
+        $invoice->update(['status' => $newStatus]);
+
+        // If marking as SUCCESS and subscription not yet activated: create subscription + moneybox
+        if ($newStatus === TypeConstants::SUCCESS && $oldStatus !== TypeConstants::SUCCESS && !$invoice->member_subscription_id) {
+            try {
+                $memberId        = $invoice->member_id;
+                $subscriptionId  = $invoice->subscription_id;
+                $branchId        = $invoice->branch_setting_id;
+                $amount          = (float) $invoice->amount;
+                $paymentMethod   = $invoice->payment_method;
+
+                // Find subscription plan to get period (in days)
+                $subscriptionPlan = \Modules\Software\Models\GymSubscription::find($subscriptionId);
+                $duration = $subscriptionPlan ? (int)($subscriptionPlan->period ?? 30) : 30;
+
+                // Find or extend existing active subscription
+                $memberSub = \Modules\Software\Models\GymMemberSubscription::where('member_id', $memberId)
+                    ->where('subscription_id', $subscriptionId)
+                    ->where('status', '!=', TypeConstants::Expired)
+                    ->first();
+
+                if ($memberSub) {
+                    $currentExpire = \Carbon\Carbon::parse($memberSub->expire_date);
+                    $newExpire = $currentExpire->isPast()
+                        ? \Carbon\Carbon::now()->addDays($duration)
+                        : $currentExpire->addDays($duration);
+                    $memberSub->update([
+                        'expire_date'      => $newExpire,
+                        'amount_paid'      => $memberSub->amount_paid + $amount,
+                        'amount_remaining' => max(0, $memberSub->amount_remaining - $amount),
+                        'payment_type'     => $paymentMethod,
+                    ]);
+                    $memberSubId = $memberSub->id;
+                } else {
+                    $memberSubId = \Modules\Software\Models\GymMemberSubscription::insertGetId([
+                        'member_id'         => $memberId,
+                        'subscription_id'   => $subscriptionId,
+                        'branch_setting_id' => $branchId,
+                        'joining_date'      => \Carbon\Carbon::now(),
+                        'expire_date'       => \Carbon\Carbon::now()->addDays($duration),
+                        'amount_paid'       => $amount,
+                        'amount_remaining'  => 0,
+                        'payment_type'      => $paymentMethod,
+                        'status'            => TypeConstants::Active,
+                        'created_at'        => \Carbon\Carbon::now(),
+                        'updated_at'        => \Carbon\Carbon::now(),
+                    ]);
+                }
+
+                // Link the invoice to the subscription
+                $invoice->update(['member_subscription_id' => $memberSubId]);
+
+                // Create moneybox entry
+                \Modules\Software\Models\GymMoneyBox::create([
+                    'branch_setting_id' => $branchId,
+                    'member_id'         => $memberId,
+                    'money_box_type_id' => 1,
+                    'payment_type'      => $paymentMethod,
+                    'value'             => $amount,
+                    'notes'             => trans('sw.online_transaction_report') . ' #' . $invoice->id,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('updateOnlinePaymentStatus activation failed: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => trans('sw.update_status')]);
     }
 
     public function reportUserNotificationsList()

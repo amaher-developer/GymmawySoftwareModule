@@ -116,6 +116,8 @@ Route::prefix('user/log')
             ->get('/online-payment-pdf', 'Front\GymUserLogFrontController@exportOnlinePaymentPDF');
         Route::name('sw.exportOnlinePaymentExcel')
             ->get('/online-payment-excel', 'Front\GymUserLogFrontController@exportOnlinePaymentExcel');
+        Route::name('sw.updateOnlinePaymentStatus')
+            ->post('/online-payment-transaction/{id}/update-status', 'Front\GymUserLogFrontController@updateOnlinePaymentStatus');
 
         // User notifications report - view permission
         Route::name('sw.reportUserNotificationsList')
