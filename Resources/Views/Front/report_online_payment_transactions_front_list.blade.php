@@ -415,7 +415,7 @@
                                             <!--end::Invoice-->
                                         @endif
                                         <!--begin::Change Status-->
-                                        /* <button type="button"
+                                        <!-- <button type="button"
                                                 class="btn btn-icon btn-bg-light btn-active-color-warning btn-sm btn-change-status"
                                                 data-id="{{ $order->id }}"
                                                 data-status="{{ $order->status }}"
@@ -424,7 +424,7 @@
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#kt_modal_change_payment_status">
                                             <i class="ki-outline ki-pencil fs-2"></i>
-                                        </button> */
+                                        </button> -->
                                         <!--end::Change Status-->
                                     </div>
                                 </td>
