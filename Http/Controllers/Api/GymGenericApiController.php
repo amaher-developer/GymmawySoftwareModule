@@ -277,6 +277,66 @@ class GymGenericApiController extends GenericController
         return $this->successResponse();
     }
 
+    public function previousSubscriptions(){
+        $member_id = @Auth::guard('api')->user()->id;
+        $subscriptions = GymMemberSubscription::with(['subscription' => function($q){ $q->withTrashed(); }])
+            ->where('member_id', $member_id)
+            ->orderBy('id', 'desc')
+            ->paginate($this->limit);
+        $this->getPaginateAttribute($subscriptions);
+        $result = [];
+        foreach($subscriptions as $sub){
+            $result[] = [
+                'id'           => $sub->id,
+                'name'         => @$sub->subscription ? $sub->subscription->name : ($sub->subscription_id ? '#'.$sub->subscription_id : '-'),
+                'price'        => number_format((float)$sub->price, 2),
+                'duration'     => @$sub->subscription ? $sub->subscription->period . ' ' . trans('sw.days') : '-',
+                'start_date'   => Carbon::parse($sub->joining_date)->translatedFormat('d F Y'),
+                'end_date'     => Carbon::parse($sub->expire_date)->translatedFormat('d F Y'),
+                'status'       => $sub->status_name ?? '-',
+                'status_value' => $sub->status_value ?? 0,
+                'amount_paid'  => number_format((float)($sub->amount_paid ?? $sub->price), 2),
+                'amount_remaining' => number_format((float)($sub->amount_remaining ?? 0), 2),
+            ];
+        }
+        $this->return['result']['subscriptions'] = $result;
+        return $this->successResponse();
+    }
+
+    public function attendanceSummary(){
+        $member_id = @Auth::guard('api')->user()->id;
+        $now = Carbon::now();
+
+        $total = GymMemberAttendee::where('member_id', $member_id)->count();
+        $this_month = GymMemberAttendee::where('member_id', $member_id)
+            ->whereYear('created_at', $now->year)
+            ->whereMonth('created_at', $now->month)
+            ->count();
+        $this_week = GymMemberAttendee::where('member_id', $member_id)
+            ->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])
+            ->count();
+
+        // Monthly chart: last 6 months
+        $monthly_chart = [];
+        for($i = 5; $i >= 0; $i--){
+            $month = $now->copy()->subMonths($i);
+            $count = GymMemberAttendee::where('member_id', $member_id)
+                ->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
+            $monthly_chart[] = [
+                'month' => $month->translatedFormat('M'),
+                'count' => $count,
+            ];
+        }
+
+        $this->return['result']['total']         = $total;
+        $this->return['result']['this_month']    = $this_month;
+        $this->return['result']['this_week']     = $this_week;
+        $this->return['result']['monthly_chart'] = $monthly_chart;
+        return $this->successResponse();
+    }
+
     public function get_settings()
     {
         // Select only columns that exist + JSON columns (social_media contains all social links)

@@ -54,6 +54,9 @@ class MemberResource extends JsonResource
                 'attendees_count' => (string)@$this->member_subscription_info->visits ?? "0",//@$this->member_attendees_count ?? 0,
                 'membership_status' => @$this->member_subscription_info->status_name ?? trans('sw.expired'),
                 'freeze_check' => @$freeze_check,
+                'freeze_limit' => (int)(@$this->member_subscription_info->freeze_limit ?? 0),
+                'number_times_freeze' => (int)(@$this->member_subscription_info->number_times_freeze ?? 0),
+                'loyalty_points' => (int)($this->loyalty_points_balance ?? 0),
                 'attendees' => @$this->member_attendees,
             ];
     }

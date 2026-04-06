@@ -15,6 +15,8 @@
     Route::post('member_info', 'Api\GymGenericApiController@memberInfo')->middleware('auth:api');
     Route::post('member_block', 'Api\GymGenericApiController@memberBlock')->middleware('auth:api');
     Route::post('attendances', 'Api\GymGenericApiController@attendances')->middleware('auth:api');
+    Route::post('previous-subscriptions', 'Api\GymGenericApiController@previousSubscriptions')->middleware('auth:api');
+    Route::post('attendances/summary', 'Api\GymGenericApiController@attendanceSummary')->middleware('auth:api');
 
     Route::post('pt-training-classes', 'Api\GymPTApiController@trainingClasses')->middleware('auth:api');
 

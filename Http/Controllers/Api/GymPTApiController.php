@@ -2,7 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Api;
 
-   
+
 
 use Modules\Software\Http\Resources\PTClassResource;
 use Modules\Software\Http\Resources\PTContentResource;
@@ -52,8 +52,7 @@ class GymPTApiController extends GymGenericApiController
         return $this->successResponse();
     }
     public function trainingClasses(){
-        if (!$this->validateApiRequest(['date'])) return $this->response;
-        $date = request('date');
+        $date = request('date') ?: Carbon::today()->toDateString();
         $dayOfWeek = Carbon::parse($date)->dayOfWeek;
         $records = [];
         $pt_member = GymPTMember::where('member_id', Auth::guard('api')->user()->id)
