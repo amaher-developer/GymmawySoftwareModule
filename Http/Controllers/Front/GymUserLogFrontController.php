@@ -426,6 +426,18 @@ class GymUserLogFrontController extends GymGenericFrontController
 //            $q->whereRaw(' json_extract(activities->"$[*].name_ar", "'.$search.'")');
             });
         });
+        // ── Statistics (computed on filtered query before paginating) ─────────
+        $statsBase = clone $logs;
+        $stats = [
+            'total_paid'      => (clone $statsBase)->sum('amount_paid'),
+            'total_remaining' => (clone $statsBase)->sum('amount_remaining'),
+            'total_discount'  => (clone $statsBase)->sum('discount_value'),
+            'count_active'    => (clone $statsBase)->where('status', TypeConstants::Active)->count(),
+            'count_frozen'    => (clone $statsBase)->where('status', TypeConstants::Freeze)->count(),
+            'count_expired'   => (clone $statsBase)->where('status', TypeConstants::Expired)->count(),
+            'count_coming'    => (clone $statsBase)->where('status', TypeConstants::Coming)->count(),
+        ];
+
         if($this->limit){
             $logs = $logs->paginate($this->limit)->onEachSide(1);
             $total = $logs->total();
@@ -435,7 +447,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         }
         $search_query = request()->query();
 
-        return view('software::Front.report_subscription_member_front_list', compact('subscriptions', 'group_discounts','search_query','logs','title', 'total'));
+        return view('software::Front.report_subscription_member_front_list', compact('subscriptions', 'group_discounts','search_query','logs','title', 'total', 'stats'));
     }
     function exportSubscriptionMemberExcel()
     {

@@ -1752,7 +1752,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->restore();
         } else {
             $member->delete();
-            if (\request('refund') && @$member->member_subscription_inf) {
+            if (\request('refund') && @$member->member_subscription_info) {
                 $amount_box = GymMoneyBox::branch()->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 

@@ -217,6 +217,13 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     function exportExcel(){
         $from = request('from');
         $to = request('to');
+        if (request('filter_date')) {
+            $resolvedDate = request('filter_date') === 'yesterday'
+                ? Carbon::yesterday()->toDateString()
+                : Carbon::now()->toDateString();
+            $from = $resolvedDate;
+            $to   = $resolvedDate;
+        }
         $payment_type = request('payment_type');
         $moneybox_type = request('moneybox_type');
         $user = request('user');
@@ -295,6 +302,13 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $from = request('from');
         $to = request('to');
+        if (request('filter_date')) {
+            $resolvedDate = request('filter_date') === 'yesterday'
+                ? Carbon::yesterday()->toDateString()
+                : Carbon::now()->toDateString();
+            $from = $resolvedDate;
+            $to   = $resolvedDate;
+        }
         $subscription = request('subscription');
         $payment_type = request('payment_type');
         $moneybox_type = request('moneybox_type');

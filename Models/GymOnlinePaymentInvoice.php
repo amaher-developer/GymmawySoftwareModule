@@ -14,6 +14,7 @@ class GymOnlinePaymentInvoice extends GenericModel
     protected $table = 'sw_gym_online_payment_invoices';
     protected $guarded = ['id'];
     protected $appends = ['image', 'payment_gateway_name', 'payment_channel_name'];
+    protected $casts   = ['response_code' => 'array'];
     public static $uploads_path='uploads/subscriptions/';
     public static $thumbnails_uploads_path='uploads/subscriptions/thumbnails/';
 
