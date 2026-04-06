@@ -25,7 +25,7 @@ class PTReservationContentResource extends JsonResource
                 }
             }
         }
-            return $records;
+            return array_values($records);
 
     }
 }

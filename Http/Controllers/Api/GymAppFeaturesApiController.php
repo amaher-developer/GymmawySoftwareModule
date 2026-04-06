@@ -45,8 +45,7 @@ class GymAppFeaturesApiController extends GymGenericApiController
 
     public function trainers()
     {
-        $trainers = GymPTTrainer::select('id', 'name', 'image', 'phone', 'price', 'specialization', 'bio')
-            ->orderBy('name')
+        $trainers = GymPTTrainer::orderBy('name')
             ->get()
             ->map(function ($t) {
                 return [

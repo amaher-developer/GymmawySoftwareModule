@@ -7,7 +7,7 @@ use Modules\Generic\Models\Contact;
 use Modules\Generic\Models\Setting;
 // Firebase integration - optional, loaded dynamically if available
 // use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
-use App\Modules\Notification\Models\PushNotification;
+use Modules\Software\Models\GymPushNotification;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Resources\ActivityResource;
 use Modules\Software\Http\Resources\AttendanceResource;
@@ -419,7 +419,7 @@ class GymGenericApiController extends GenericController
     public function myNotifications(){
         $member = @\request()->user();
         if (!empty($member->id)) {
-            $notifications = PushNotification::where('member_id', @$member->id)->orWhere('member_id', null)->orderBy('id', 'desc')->paginate($this->limit);
+            $notifications = GymPushNotification::where('member_id', @$member->id)->orWhere('member_id', null)->orderBy('id', 'desc')->get();
             $this->return['notifications'] = $notifications ? NotificationResource::collection($notifications) : [];
             return $this->successResponse();
         } else {
