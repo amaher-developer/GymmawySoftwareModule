@@ -26,6 +26,7 @@ class PTTrainerContentResource extends JsonResource
                 "image" => @$this->pt_trainer->image_name ? @$this->pt_trainer->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
                 "reservations" => $this->reservation_details ? ((@isset($this->reservation_details['is_mobile']) && ($this->reservation_details['is_mobile'] == 0)) ? []  : array_values((new PTReservationContentResource($this->reservation_details))->toArray(request()))) : []
             ];
+            
     }
 }
 

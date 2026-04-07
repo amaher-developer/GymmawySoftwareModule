@@ -149,21 +149,93 @@
     <!--begin::Card body-->
     <div class="card-body pt-0">
         <!--begin::Filter-->
-        <div class="collapse" id="kt_subscription_members_filter_collapse">
+        <div class="collapse {{ request()->hasAny(['subscription','status','remaining_status','discount_status','group_discount_id','joining_date','expire_date','from','to']) ? 'show' : '' }}" id="kt_subscription_members_filter_collapse">
             <div class="card card-body mb-5">
                 <form id="form_filter" action="" method="get">
-                    <div class="row g-6">
+                    <div class="row g-4">
+
+                        {{-- Date range (created_at) --}}
                         <div class="col-md-4">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.date_range')}}</label>
                             <div class="input-group date-picker input-daterange">
-                                <input type="text" class="form-control" name="from" id="from_date" value="@php echo @strip_tags($_GET['from']) @endphp" placeholder="{{ trans('sw.from')}}" autocomplete="off">
+                                <input type="text" class="form-control" name="from" value="{{ request('from') }}" placeholder="{{ trans('sw.from')}}" autocomplete="off">
                                 <span class="input-group-text">{{ trans('sw.to')}}</span>
-                                <input type="text" class="form-control" name="to" id="to_date" value="@php echo @strip_tags($_GET['to']) @endphp" placeholder="{{ trans('sw.to')}}" autocomplete="off">
+                                <input type="text" class="form-control" name="to"   value="{{ request('to') }}"   placeholder="{{ trans('sw.to')}}"   autocomplete="off">
                             </div>
                         </div>
+
+                        {{-- Subscription --}}
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.membership')}}</label>
+                            <select name="subscription" class="form-select form-select-solid" data-control="select2" data-placeholder="{{ trans('sw.all') }}" data-allow-clear="true">
+                                <option value="">{{ trans('sw.all') }}</option>
+                                @foreach($subscriptions as $sub)
+                                    <option value="{{ $sub->id }}" {{ request('subscription') == $sub->id ? 'selected' : '' }}>{{ $sub->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Status --}}
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.status')}}</label>
+                            <select name="status" class="form-select form-select-solid" data-control="select2" data-placeholder="{{ trans('sw.all') }}" data-allow-clear="true">
+                                <option value="">{{ trans('sw.all') }}</option>
+                                <option value="0" {{ request()->has('status') && request('status') === '0' ? 'selected' : '' }}>{{ trans('sw.active') }}</option>
+                                <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>{{ trans('sw.frozen') }}</option>
+                                <option value="2" {{ request('status') == '2' ? 'selected' : '' }}>{{ trans('sw.expired') }}</option>
+                                <option value="3" {{ request('status') == '3' ? 'selected' : '' }}>{{ trans('sw.coming') }}</option>
+                            </select>
+                        </div>
+
+                        {{-- Remaining Status --}}
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.amount_remaining')}}</label>
+                            <select name="remaining_status" class="form-select form-select-solid" data-control="select2" data-placeholder="{{ trans('sw.all') }}" data-allow-clear="true">
+                                <option value="">{{ trans('sw.all') }}</option>
+                                <option value="1" {{ request('remaining_status') == '1' ? 'selected' : '' }}>{{ trans('sw.has_remaining_amount') }}</option>
+                                <option value="2" {{ request('remaining_status') == '2' ? 'selected' : '' }}>{{ trans('sw.no_remaining_amount') }}</option>
+                            </select>
+                        </div>
+
+                        {{-- Discount Status --}}
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.discount')}}</label>
+                            <select name="discount_status" class="form-select form-select-solid" data-control="select2" data-placeholder="{{ trans('sw.all') }}" data-allow-clear="true">
+                                <option value="">{{ trans('sw.all') }}</option>
+                                <option value="1" {{ request('discount_status') == '1' ? 'selected' : '' }}>{{ trans('sw.discount') }}</option>
+                                <option value="2" {{ request('discount_status') == '2' ? 'selected' : '' }}>{{ trans('sw.no') }} {{ trans('sw.discount') }}</option>
+                            </select>
+                        </div>
+
+                        {{-- Group Discount --}}
+                        @if($group_discounts->count())
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.group_discount')}}</label>
+                            <select name="group_discount_id" class="form-select form-select-solid" data-control="select2" data-placeholder="{{ trans('sw.all') }}" data-allow-clear="true">
+                                <option value="">{{ trans('sw.all') }}</option>
+                                @foreach($group_discounts as $gd)
+                                    <option value="{{ $gd->id }}" {{ request('group_discount_id') == $gd->id ? 'selected' : '' }}>{{ $gd->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
+
+                        {{-- Joining Date --}}
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.joining_date')}}</label>
+                            <input type="text" class="form-control form-control-solid date-single" name="joining_date" value="{{ request('joining_date') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        </div>
+
+                        {{-- Expire Date --}}
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.expire_date')}}</label>
+                            <input type="text" class="form-control form-control-solid date-single" name="expire_date" value="{{ request('expire_date') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        </div>
+
                     </div>
+
                     <div class="d-flex justify-content-end mt-5">
-                        <button type="reset" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</button>
+                        <a href="{{ url()->current() }}" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</a>
                         <button type="submit" class="btn btn-primary fw-semibold px-6">
                             <i class="ki-outline ki-check fs-6"></i>
                             {{ trans('sw.filter')}}
@@ -173,11 +245,16 @@
             </div>
         </div>
         <!--end::Filter-->
+
         <!--begin::Search-->
         <div class="d-flex align-items-center position-relative my-1 mb-5">
             <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
             <form class="d-flex" action="" method="get" style="max-width: 400px;">
-                <input type="text" name="search" class="form-control form-control-solid ps-12" value="@php echo @strip_tags($_GET['search']) @endphp" placeholder="{{ trans('sw.search_on')}}">
+                {{-- carry all other active filters so search doesn't reset them --}}
+                @foreach(request()->except('search') as $k => $v)
+                    <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                @endforeach
+                <input type="text" name="search" class="form-control form-control-solid ps-12" value="{{ request('search') }}" placeholder="{{ trans('sw.search_on')}}">
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
                 </button>
@@ -185,19 +262,135 @@
         </div>
         <!--end::Search-->
 
-        <!--begin::Total count-->
-        <div class="d-flex align-items-center mb-5">
-            <div class="symbol symbol-50px me-5">
-                <div class="symbol-label bg-light-primary">
-                    <i class="ki-outline ki-chart-simple fs-2x text-primary"></i>
+        <!--begin::Statistics-->
+        <div class="row g-4 mb-6">
+            {{-- Total records --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-primary border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-primary">
+                                <i class="ki-outline ki-chart-simple fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('admin.total_count')}}</div>
+                            <div class="fs-2 fw-bold text-primary">{{ number_format($total) }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="d-flex flex-column">
-                <span class="fs-6 fw-semibold text-gray-900">{{ trans('admin.total_count')}}</span>
-                <span class="fs-2 fw-bold text-primary">{{ $total }}</span>
+            {{-- Total paid --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-success border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-success">
+                                <i class="ki-outline ki-dollar fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.amount_paid')}}</div>
+                            <div class="fs-2 fw-bold text-success">{{ number_format($stats['total_paid'], 2) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- Total remaining --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-warning border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-warning">
+                                <i class="ki-outline ki-wallet fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.amount_remaining')}}</div>
+                            <div class="fs-2 fw-bold text-warning">{{ number_format($stats['total_remaining'], 2) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- Total discount --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-info border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-info">
+                                <i class="ki-outline ki-discount fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.discount')}}</div>
+                            <div class="fs-2 fw-bold text-info">{{ number_format($stats['total_discount'], 2) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- Status breakdown --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-success border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-success">
+                                <i class="ki-outline ki-check-circle fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.active')}}</div>
+                            <div class="fs-2 fw-bold text-success">{{ number_format($stats['count_active']) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-info border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-info">
+                                <i class="ki-outline ki-snowflake fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.frozen')}}</div>
+                            <div class="fs-2 fw-bold text-info">{{ number_format($stats['count_frozen']) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-danger border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-danger">
+                                <i class="ki-outline ki-cross-circle fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.expired')}}</div>
+                            <div class="fs-2 fw-bold text-danger">{{ number_format($stats['count_expired']) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-primary border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-primary">
+                                <i class="ki-outline ki-time fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.coming')}}</div>
+                            <div class="fs-2 fw-bold text-primary">{{ number_format($stats['count_coming']) }}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <!--end::Total count-->
+        <!--end::Statistics-->
 
         @if(count($logs) > 0)
             <!--begin::Table-->
@@ -507,10 +700,12 @@
                 defaultViewDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() }
             });
 
-            $('button[type="reset"]').on('click', function() {
-                setTimeout(() => {
-                    $(this).closest('form').find('select').trigger('change');
-                }, 100);
+            $('.date-single').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true,
+                clearBtn: true,
+                orientation: 'bottom auto',
             });
         });
 
