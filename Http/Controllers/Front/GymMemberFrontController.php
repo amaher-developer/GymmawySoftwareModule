@@ -27,6 +27,7 @@ use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMemberSubscriptionFreeze;
 use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymMoneyBoxType;
+use Modules\Software\Models\GymOnlinePaymentInvoice;
 use Modules\Software\Models\GymNonMemberTime;
 use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymReservation;
@@ -911,6 +912,9 @@ class GymMemberFrontController extends GymGenericFrontController
 
             }
 
+            $store_payment_url = null;
+            $store_payment_sent_via = ['whatsapp' => false, 'sms' => false, 'email' => false];
+
             // Send Tabby payment link if checkbox is checked and member has remaining amount
             if ($request->input('send_tabby_link')) {
                 try {
@@ -926,6 +930,8 @@ class GymMemberFrontController extends GymGenericFrontController
                         );
 
                         if ($tabbyResult['success']) {
+                            $store_payment_url = $tabbyResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $tabbyResult['sent_whatsapp'], 'sms' => $tabbyResult['sent_sms'], 'email' => $tabbyResult['sent_email'] ?? false];
                             Log::info('Tabby payment link sent for new member', [
                                 'member_id' => $member->id,
                                 'amount_paid' => $sub['amount_paid'],
@@ -959,6 +965,8 @@ class GymMemberFrontController extends GymGenericFrontController
                         );
 
                         if ($tamaraResult['success']) {
+                            $store_payment_url = $tamaraResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $tamaraResult['sent_whatsapp'], 'sms' => $tamaraResult['sent_sms'], 'email' => $tamaraResult['sent_email'] ?? false];
                             Log::info('Tamara payment link sent for new member', [
                                 'member_id' => $member->id,
                                 'amount_paid' => $sub['amount_paid'],
@@ -992,6 +1000,8 @@ class GymMemberFrontController extends GymGenericFrontController
                         );
 
                         if ($paymobResult['success']) {
+                            $store_payment_url = $paymobResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $paymobResult['sent_whatsapp'], 'sms' => $paymobResult['sent_sms'], 'email' => $paymobResult['sent_email'] ?? false];
                             Log::info('Paymob payment link sent for new member', [
                                 'member_id' => $member->id,
                                 'amount_paid' => $sub['amount_paid'],
@@ -1025,6 +1035,8 @@ class GymMemberFrontController extends GymGenericFrontController
                         );
 
                         if ($paytabsResult['success']) {
+                            $store_payment_url = $paytabsResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $paytabsResult['sent_whatsapp'], 'sms' => $paytabsResult['sent_sms'], 'email' => $paytabsResult['sent_email'] ?? false];
                             Log::info('PayTabs payment link sent for new member', [
                                 'member_id' => $member->id,
                                 'amount_paid' => $sub['amount_paid'],
@@ -1041,6 +1053,17 @@ class GymMemberFrontController extends GymGenericFrontController
                         'error' => $e->getMessage(),
                     ]);
                 }
+            }
+
+            // If AJAX request and payment link was generated, return JSON for payment waiting flow
+            if ($request->ajax() && $store_payment_url) {
+                return response()->json([
+                    'status' => true,
+                    'member_subscription_id' => $member_subscription->id,
+                    'payment_url' => $store_payment_url,
+                    'sent_via' => $store_payment_sent_via,
+                    'redirect_url' => route('sw.showOrderSubscription', @$member_subscription),
+                ]);
             }
 
             session()->flash('sweet_flash_message', [
@@ -2630,6 +2653,11 @@ class GymMemberFrontController extends GymGenericFrontController
                 $q->select('id', 'name_ar', 'name_en');
             }]);
         }])->find($subscription_id);
+
+        if (!$subscription) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error'), 'code' => 'subscription'], 200);
+        }
+
         $custom_expire_date = $request->custom_expire_date;
         $custom_start_date = $request->custom_start_date;
         $amount_paid = (float)@$request->amount_paid;
@@ -2851,13 +2879,14 @@ class GymMemberFrontController extends GymGenericFrontController
             }
         }
 
+        $renew_payment_url = null;
+        $renew_payment_sent_via = ['whatsapp' => false, 'sms' => false, 'email' => false];
+
         // Send Tabby payment link if checkbox is checked and member has remaining amount
         if ($request->input('send_tabby_link')) {
             try {
                 $tabbyService = new TabbyPaymentService();
-                $memberSubObj = GymMemberSubscription::find($member_subscription);
-
-                if ($memberSubObj && $tabbyService->isTabbyConfigured()) {
+                if ($member_subscription && $tabbyService->isTabbyConfigured()) {
                     $tabbyResult = $tabbyService->processRenewalPayment(
                         $member,
                         $member_subscription->id,
@@ -2868,9 +2897,11 @@ class GymMemberFrontController extends GymGenericFrontController
                     );
 
                     if ($tabbyResult['success']) {
+                        $renew_payment_url = $tabbyResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $tabbyResult['sent_whatsapp'], 'sms' => $tabbyResult['sent_sms'], 'email' => $tabbyResult['sent_email'] ?? false];
                         Log::info('Tabby payment link sent for membership renewal', [
                             'member_id' => $member->id,
-                            'subscription_id' => $member_subscription,
+                            'subscription_id' => $member_subscription->id,
                             'amount_paid' => $amount_paid,
                             'payment_url' => $tabbyResult['payment_url'],
                             'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
@@ -2891,9 +2922,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($request->input('send_tamara_link')) {
             try {
                 $tamaraService = new TamaraPaymentService();
-                $memberSubObj = GymMemberSubscription::find($member_subscription);
-
-                if ($memberSubObj && $tamaraService->isTamaraConfigured()) {
+                if ($member_subscription && $tamaraService->isTamaraConfigured()) {
                     $tamaraResult = $tamaraService->processRenewalPayment(
                         $member,
                         $member_subscription->id,
@@ -2904,9 +2933,11 @@ class GymMemberFrontController extends GymGenericFrontController
                     );
 
                     if ($tamaraResult['success']) {
+                        $renew_payment_url = $tamaraResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $tamaraResult['sent_whatsapp'], 'sms' => $tamaraResult['sent_sms'], 'email' => $tamaraResult['sent_email'] ?? false];
                         Log::info('Tamara payment link sent for membership renewal', [
                             'member_id' => $member->id,
-                            'subscription_id' => $member_subscription,
+                            'subscription_id' => $member_subscription->id,
                             'amount_paid' => $amount_paid,
                             'payment_url' => $tamaraResult['payment_url'],
                             'sent_whatsapp' => $tamaraResult['sent_whatsapp'],
@@ -2927,9 +2958,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($request->input('send_paymob_link')) {
             try {
                 $paymobService = new PaymobPaymentService();
-                $memberSubObj = GymMemberSubscription::find($member_subscription);
-
-                if ($memberSubObj && $paymobService->isPaymobConfigured()) {
+                if ($member_subscription && $paymobService->isPaymobConfigured()) {
                     $paymobResult = $paymobService->processRenewalPayment(
                         $member,
                         $member_subscription->id,
@@ -2940,9 +2969,11 @@ class GymMemberFrontController extends GymGenericFrontController
                     );
 
                     if ($paymobResult['success']) {
+                        $renew_payment_url = $paymobResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $paymobResult['sent_whatsapp'], 'sms' => $paymobResult['sent_sms'], 'email' => $paymobResult['sent_email'] ?? false];
                         Log::info('Paymob payment link sent for membership renewal', [
                             'member_id' => $member->id,
-                            'subscription_id' => $member_subscription,
+                            'subscription_id' => $member_subscription->id,
                             'amount_paid' => $amount_paid,
                             'payment_url' => $paymobResult['payment_url'],
                             'sent_whatsapp' => $paymobResult['sent_whatsapp'],
@@ -2963,12 +2994,10 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($request->input('send_paytabs_link')) {
             try {
                 $paytabsService = new PayTabsPaymentService();
-                $memberSubObj = GymMemberSubscription::find($member_subscription);
-
-                if ($memberSubObj && $paytabsService->isPayTabsConfigured()) {
+                if ($member_subscription && $paytabsService->isPayTabsConfigured()) {
                     $paytabsResult = $paytabsService->processRenewalPayment(
                         $member,
-                        $memberSubObj->id,
+                        $member_subscription->id,
                         $subscription,
                         $amount_paid,
                         $this->mainSettings,
@@ -2976,9 +3005,11 @@ class GymMemberFrontController extends GymGenericFrontController
                     );
 
                     if ($paytabsResult['success']) {
+                        $renew_payment_url = $paytabsResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $paytabsResult['sent_whatsapp'], 'sms' => $paytabsResult['sent_sms'], 'email' => $paytabsResult['sent_email'] ?? false];
                         Log::info('PayTabs payment link sent for membership renewal', [
                             'member_id' => $member->id,
-                            'subscription_id' => $memberSubObj->id,
+                            'subscription_id' => $member_subscription->id,
                             'amount_paid' => $amount_paid,
                             'payment_url' => $paytabsResult['payment_url'],
                             'sent_whatsapp' => $paytabsResult['sent_whatsapp'],
@@ -3010,7 +3041,88 @@ class GymMemberFrontController extends GymGenericFrontController
             'type' => 'success'
         ]);
 
-        return Response::json(['status' => true], 200);
+        return Response::json([
+            'status' => true,
+            'member_subscription_id' => $member_subscription ? $member_subscription->id : null,
+            'payment_url' => $renew_payment_url,
+            'sent_via' => $renew_payment_sent_via,
+        ], 200);
+    }
+
+    /**
+     * Check if a member subscription has been paid via online payment gateway.
+     * Used by the frontend polling mechanism after sending a payment link.
+     */
+    public function checkPaymentStatus($memberSubscriptionId)
+    {
+        $invoice = GymOnlinePaymentInvoice::where('member_subscription_id', $memberSubscriptionId)
+            ->where('status', TypeConstants::SUCCESS)
+            ->latest()
+            ->first();
+
+        return response()->json([
+            'paid' => !is_null($invoice),
+            'payment_method' => $invoice ? $invoice->payment_gateway_name : null,
+        ]);
+    }
+
+    /**
+     * Resend a payment link for an existing member subscription.
+     */
+    public function resendPaymentLink(Request $request, $memberSubscriptionId)
+    {
+        if ($request->isMethod('GET')) {
+            return redirect()->route('sw.listMember');
+        }
+
+        $memberSubscription = GymMemberSubscription::with(['member', 'subscription'])->find($memberSubscriptionId);
+        if (!$memberSubscription) {
+            return response()->json(['success' => false, 'error' => 'Subscription not found'], 404);
+        }
+
+        $member = $memberSubscription->member;
+        $subscription = $memberSubscription->subscription;
+        $gateway = $request->input('gateway'); // tabby, tamara, paymob, paytabs
+        $amountPaid = (float) $memberSubscription->amount_paid;
+
+        try {
+            $paymentUrl = null;
+            $sentVia = ['whatsapp' => false, 'sms' => false, 'email' => false];
+
+            if ($gateway === 'tabby') {
+                $service = new TabbyPaymentService();
+                if ($service->isTabbyConfigured()) {
+                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; 
+
+                        
+                    }
+                }
+            } elseif ($gateway === 'tamara') {
+                $service = new TamaraPaymentService();
+                if ($service->isTamaraConfigured()) {
+                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; }
+                }
+            } elseif ($gateway === 'paymob') {
+                $service = new PaymobPaymentService();
+                if ($service->isPaymobConfigured()) {
+                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; }
+                }
+            } elseif ($gateway === 'paytabs') {
+                $service = new PayTabsPaymentService();
+                if ($service->isPayTabsConfigured()) {
+                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; }
+                }
+            }
+
+            return response()->json(['success' => true, 'payment_url' => $paymentUrl, 'sent_via' => $sentVia]);
+        } catch (\Exception $e) {
+            Log::error('Failed to resend payment link', ['member_subscription_id' => $memberSubscriptionId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
     private function prepare_inputs($inputs)
@@ -3716,6 +3828,40 @@ class GymMemberFrontController extends GymGenericFrontController
         $member_balance_value = $type == 0 ? ($this->member_balance + $amount) : ($this->member_balance - $amount);
         return number_format($member_balance_value, 2);
 
+    }
+
+    public function checkPhoneExists(Request $request)
+    {
+        $phone = $request->phone;
+        $member = GymMember::branch()->where('phone', $phone)->first();
+        if ($member) {
+            return response()->json([
+                'exists' => true,
+                'name'   => $member->name ?? '',
+            ]);
+        }
+        return response()->json(['exists' => false]);
+    }
+
+    public function checkSubscriptionOverlap(Request $request)
+    {
+        $member_id   = $request->member_id;
+        $start_date  = $request->start_date;
+        $expire_date = $request->expire_date;
+
+        $overlap = GymMemberSubscription::branch()
+            ->where('member_id', $member_id)
+            ->where(function ($query) use ($start_date, $expire_date) {
+                $query->where(function ($q) use ($start_date, $expire_date) {
+                    $q->where('joining_date', '<=', Carbon::parse($start_date))
+                      ->where('expire_date', '>=', Carbon::parse($expire_date));
+                })
+                ->orWhereBetween('joining_date', [$start_date, $expire_date])
+                ->orWhereBetween('expire_date', [$start_date, $expire_date]);
+            })
+            ->exists();
+
+        return response()->json(['overlap' => $overlap]);
     }
 }
 

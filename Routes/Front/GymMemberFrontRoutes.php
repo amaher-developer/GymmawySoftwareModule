@@ -114,4 +114,20 @@ Route::prefix('member')
         Route::name('sw.getMembersBySearch')
             ->get('/search', 'Front\GymMemberFrontController@getMembersBySearch');
 
+        // Check if a phone number already exists
+        Route::name('sw.checkMemberPhoneExists')
+            ->get('/check-phone-exists', 'Front\GymMemberFrontController@checkPhoneExists');
+
+        // Check if new subscription dates overlap with existing ones
+        Route::name('sw.checkSubscriptionOverlap')
+            ->get('/check-subscription-overlap', 'Front\GymMemberFrontController@checkSubscriptionOverlap');
+
+        // Check payment status for a member subscription (polling endpoint)
+        Route::name('sw.checkMemberPaymentStatus')
+            ->get('/subscription/{memberSubscriptionId}/check-payment-status', 'Front\GymMemberFrontController@checkPaymentStatus');
+
+        // Resend payment link for a member subscription (POST only; GET redirects back)
+        Route::name('sw.resendMemberPaymentLink')
+            ->match(['GET', 'POST'], '/subscription/{memberSubscriptionId}/resend-payment-link', 'Front\GymMemberFrontController@resendPaymentLink');
+
     });

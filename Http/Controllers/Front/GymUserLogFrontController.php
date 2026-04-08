@@ -2053,14 +2053,22 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         return view('software::Front.report_moneybox_tax_front_list', compact(
                 'revenues', 'expenses', 'earnings'
-//                ,'cache_revenues', 'cache_expenses', 'cache_earnings'
-//                ,'online_revenues', 'online_expenses', 'online_earnings'
-//                ,'bank_revenues', 'bank_expenses', 'bank_earnings'
-//                ,'total_add_to_money_box', 'total_withdraw_from_money_box'
                 ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores', 'total_moneybox'
                 , 'orders', 'title', 'total', 'search_query'
                 , 'payment_expenses', 'payment_revenues', 'payment_types'));
 
+    }
+
+    public function reportMoneyboxTaxReal()
+    {
+        // Reuse all logic from reportMoneyboxTax, only swap the view
+        $this->limit = 50; // more rows per page for the detailed report
+        $result = $this->reportMoneyboxTax();
+
+        if ($result instanceof \Illuminate\View\View) {
+            return view('software::Front.report_moneybox_tax_real_front_list', $result->getData());
+        }
+        return $result;
     }
 
     function exportExcelMoneyboxTax(){

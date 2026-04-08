@@ -113,7 +113,10 @@ class GymGenericApiController extends GenericController
         $activities = GymActivity::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
         $stores = GymStoreProduct::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
         $trainings = GymPTClass::where('is_mobile', 1)->with(['pt_subscription.pt_trainers'])->orderBy('id', 'desc')->limit(5)->get();
-        $banners = GymBanner::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
+        $banners = GymBanner::where('is_mobile', 1)->where('type', 1)->orderBy('id', 'desc')->limit(10)->get();
+        $offers  = GymBanner::where('is_mobile', 1)->where('type', 4)->orderBy('id', 'desc')->limit(10)->get();
+        $news    = GymBanner::where('is_mobile', 1)->where('type', 3)->orderBy('id', 'desc')->limit(10)->get();
+        $events  = GymBanner::where('is_mobile', 1)->where('type', 2)->orderBy('id', 'desc')->limit(10)->get();
 
         $category_with_subscription = GymCategory::with(['subscriptions' => function ($q) {
             $q->limit(10);
@@ -124,7 +127,13 @@ class GymGenericApiController extends GenericController
         $this->return['result']['welcome_member'] =  $app_welcome_member;
         $this->return['result']['welcome_msg'] =  $app_welcome_msg;
         $this->return['result']['phones'] =  [@Setting::first()->phone];
-        $this->return['result']['banners'] =  $stores ?  BannerResource::collection($banners) : '';
+        $this->return['result']['banners'] =  $banners->isNotEmpty() ? BannerResource::collection($banners) : [];
+        $this->return['result']['is_offers'] =  $offers->isNotEmpty() ? 1 : 0;
+        $this->return['result']['offers'] =  $offers->isNotEmpty() ? BannerResource::collection($offers) : [];
+        $this->return['result']['is_news'] =  $news->isNotEmpty() ? 1 : 0;
+        $this->return['result']['news'] =  $news->isNotEmpty() ? BannerResource::collection($news) : [];
+        $this->return['result']['is_events'] =  $events->isNotEmpty() ? 1 : 0;
+        $this->return['result']['events'] =  $events->isNotEmpty() ? BannerResource::collection($events) : [];
         $this->return['result']['subscriptions'] =  $subscriptions ?  SubscriptionResource::collection($subscriptions) : '';
         $this->return['result']['is_trainings'] =  1;
         $this->return['result']['trainings'] =  $trainings ?  PTResource::collection($trainings) : '';

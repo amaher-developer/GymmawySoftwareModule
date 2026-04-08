@@ -1122,6 +1122,8 @@
     var member_subscription_renew_url = "{{route('sw.memberSubscriptionRenew', ':id')}}";
     var member_subscription_edit_url = "{{route('sw.memberSubscriptionEdit', ':id')}}";
     var member_subscription_renew_store_url = "{{route('sw.memberSubscriptionRenewStore', ':id')}}";
+    var member_subscription_overlap_check_url = "{{route('sw.checkSubscriptionOverlap')}}";
+    var trans_error_date_between = '{{trans('sw.error_date_between')}}';
     {{--var member_subscription_renew_current_url = "{{route('sw.listMember').'?'.urldecode(ltrim(strstr(\Request::getRequestUri(), '?'), '?'))}}";--}}
     var member_subscription_renew_csrf_token = "{{csrf_token()}}";
     var trans_expire_date_must_after_today = '{{trans('sw.expire_date_must_after_today')}}';
@@ -1159,6 +1161,20 @@
     var path_mp3 = '{{asset(\Modules\Software\Models\GymSubscription::$uploads_path)}}';
     var current_lang = '{{$lang}}';
     var active_loyalty = {{ @$mainSettings->active_loyalty ? 'true' : 'false' }};
+
+    // Payment Waiting Flow (shared)
+    var pw_check_status_url = '{{ route('sw.checkMemberPaymentStatus', ':id') }}';
+    var pw_resend_url = '{{ route('sw.resendMemberPaymentLink', ':id') }}';
+    var pw_active_wa = {{ (@$mainSettings->active_wa && env('WA_GATEWAY') == 'ULTRA') ? 'true' : 'false' }};
+    var pw_active_sms = {{ (@$mainSettings->active_sms && env('SMS_GATEWAY')) ? 'true' : 'false' }};
+    var pw_trans_payment_waiting_title = '{{ trans('sw.payment_waiting_title') }}';
+    var pw_trans_payment_link_sent_via = '{{ trans('sw.payment_link_sent_via') }}';
+    var pw_trans_payment_confirmed = '{{ trans('sw.payment_confirmed') }}';
+    var pw_trans_payment_confirmed_desc = '{{ trans('sw.payment_confirmed_desc') }}';
+    var pw_trans_payment_link_resent = '{{ trans('sw.payment_link_resent') }}';
+    var pw_trans_email = '{{ trans('sw.email') }}';
+    var pw_trans_done = '{{ trans('admin.done') }}';
+    var pw_csrf_token = '{{ csrf_token() }}';
 
 </script>
 @if((\Request::route()->getName() !=  'sw.editMember') && (\Request::route()->getName() !=  'sw.listMember'))
@@ -1293,6 +1309,155 @@
 
 </script>
 @yield('scripts')
+
+<!-- Shared Payment Waiting Modal -->
+<div class="modal fade" id="paymentWaitingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="ki-outline ki-timer fs-2 text-primary me-2"></i>
+                    {{ trans('sw.payment_waiting_title') }}
+                </h5>
+            </div>
+            <div class="modal-body text-center py-8">
+                <div id="pw_loading_state">
+                    <div class="mb-5">
+                        <div class="progress h-8px bg-light-primary mb-3">
+                            <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width:100%"></div>
+                        </div>
+                        <p class="text-muted fs-6">{{ trans('sw.payment_waiting_desc') }}</p>
+                    </div>
+                    <div class="alert alert-light-success border border-dashed border-success d-flex align-items-center p-5 mb-5" id="pw_sent_notice" style="display:none !important;">
+                        <i class="ki-outline ki-check-circle fs-2hx text-success me-4"></i>
+                        <div class="d-flex flex-column text-start">
+                            <span class="fw-bold fs-6" id="pw_sent_text"></span>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <button type="button" class="btn btn-light-primary" id="pw_resend_btn">
+                            <i class="ki-outline ki-send fs-3 me-1"></i>
+                            {{ trans('sw.payment_resend_link') }}
+                        </button>
+                        <button type="button" class="btn btn-light" id="pw_continue_btn">
+                            <i class="ki-outline ki-arrow-right fs-3 me-1"></i>
+                            {{ trans('sw.payment_continue_without') }}
+                        </button>
+                    </div>
+                </div>
+                <div id="pw_success_state" style="display:none;">
+                    <div class="mb-5">
+                        <i class="ki-outline ki-check-circle fs-5x text-success"></i>
+                    </div>
+                    <h4 class="text-success fw-bold mb-3">{{ trans('sw.payment_confirmed') }}</h4>
+                    <p class="text-muted fs-6 mb-5">{{ trans('sw.payment_confirmed_desc') }}</p>
+                    <button type="button" class="btn btn-success" id="pw_success_continue_btn">
+                        <i class="ki-outline ki-arrow-right fs-3 me-1"></i>
+                        {{ trans('sw.payment_continue') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End Shared Payment Waiting Modal -->
+
+<script>
+// ===== Shared Payment Waiting Flow Functions =====
+var pw_polling_interval = null;
+var pw_member_subscription_id = null;
+var pw_redirect_url = null;
+var pw_active_gateway = null;
+var pw_on_success_callback = null;
+
+function pwShowSentNotice(sentVia) {
+    var channels = [];
+    if (sentVia && sentVia.whatsapp) channels.push('WhatsApp');
+    if (sentVia && sentVia.sms) channels.push('SMS');
+    if (sentVia && sentVia.email) channels.push(pw_trans_email);
+    if (channels.length > 0) {
+        $('#pw_sent_text').text(pw_trans_payment_link_sent_via + ' ' + channels.join(', '));
+        $('#pw_sent_notice').show();
+    } else {
+        $('#pw_sent_notice').hide();
+    }
+}
+
+function pwStartPolling() {
+    if (pw_polling_interval) clearInterval(pw_polling_interval);
+    pw_polling_interval = setInterval(function () {
+        if (!pw_member_subscription_id) return;
+        $.ajax({
+            url: pw_check_status_url.replace(':id', pw_member_subscription_id),
+            type: 'GET',
+            success: function (data) {
+                if (data.paid) {
+                    clearInterval(pw_polling_interval);
+                    pw_polling_interval = null;
+                    $('#pw_loading_state').hide();
+                    $('#pw_success_state').show();
+                }
+            }
+        });
+    }, 4000);
+}
+
+function pwStopPolling() {
+    if (pw_polling_interval) {
+        clearInterval(pw_polling_interval);
+        pw_polling_interval = null;
+    }
+}
+
+function pwOpenModal(memberSubscriptionId, sentVia, redirectUrl, gateway, onSuccessCallback) {
+    pw_member_subscription_id = memberSubscriptionId;
+    pw_redirect_url = redirectUrl;
+    pw_active_gateway = gateway;
+    pw_on_success_callback = onSuccessCallback || null;
+    $('#pw_loading_state').show();
+    $('#pw_success_state').hide();
+    $('#pw_sent_notice').hide();
+    pwShowSentNotice(sentVia);
+    $('#paymentWaitingModal').modal('show');
+    pwStartPolling();
+}
+
+$(document).on('click', '#pw_resend_btn', function () {
+    if (!pw_member_subscription_id || !pw_active_gateway) return;
+    var $btn = $(this).prop('disabled', true);
+    $.ajax({
+        url: pw_resend_url.replace(':id', pw_member_subscription_id),
+        type: 'POST',
+        data: { gateway: pw_active_gateway, _token: pw_csrf_token },
+        success: function (data) {
+            $btn.prop('disabled', false);
+            if (data.success) {
+                pwShowSentNotice(data.sent_via);
+                swal({ title: pw_trans_done, text: pw_trans_payment_link_resent, type: 'success', timer: 2500 });
+            }
+        },
+        error: function () { $btn.prop('disabled', false); }
+    });
+});
+
+$(document).on('click', '#pw_continue_btn', function () {
+    pwStopPolling();
+    $('#paymentWaitingModal').modal('hide');
+    if (pw_on_success_callback) pw_on_success_callback(false);
+    else if (pw_redirect_url) window.location.href = pw_redirect_url;
+});
+
+$(document).on('click', '#pw_success_continue_btn', function () {
+    pwStopPolling();
+    $('#paymentWaitingModal').modal('hide');
+    if (pw_on_success_callback) pw_on_success_callback(true);
+    else if (pw_redirect_url) window.location.href = pw_redirect_url;
+});
+
+$('#paymentWaitingModal').on('hidden.bs.modal', function () {
+    pwStopPolling();
+});
+</script>
 
 <!--end::Javascript-->
 </body>

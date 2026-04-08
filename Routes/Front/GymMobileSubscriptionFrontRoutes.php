@@ -62,3 +62,23 @@ Route::name('sw.paymob-mobile.cancel')
     ->get('mobile-payment/paymob/cancel', 'Front\GymMobileSubscriptionFrontController@paymobCancel');
 Route::name('sw.paymob-mobile.failure')
     ->get('mobile-payment/paymob/failure', 'Front\GymMobileSubscriptionFrontController@paymobFailure');
+
+// ── Upgrade Subscription Mobile (WebView) ────────────────────────────────────
+Route::name('sw.upgrade-subscription-mobile')
+    ->get('upgrade-subscription-mobile', 'Front\GymMobileSubscriptionFrontController@showUpgradeMobile');
+
+Route::name('sw.upgrade-invoice-mobile.submit')
+    ->post('upgrade-invoice-mobile/submit', 'Front\GymMobileSubscriptionFrontController@upgradeInvoiceSubmit');
+
+Route::name('sw.upgrade-invoice-mobile')
+    ->get('upgrade-invoice-mobile/{id}', 'Front\GymMobileSubscriptionFrontController@upgradeInvoiceMobile');
+
+// ── PT Subscription Mobile (WebView) ──────────────────────────────────────────
+Route::name('sw.pt-subscription-mobile')
+    ->get('pt-subscription-mobile/{id}', 'Front\GymMobileSubscriptionFrontController@showPtMobile');
+
+Route::name('sw.pt-invoice-mobile.submit')
+    ->post('pt-invoice-mobile/submit', 'Front\GymMobileSubscriptionFrontController@ptInvoiceSubmit');
+
+Route::name('sw.pt-invoice-mobile')
+    ->get('pt-invoice-mobile/{id}', 'Front\GymMobileSubscriptionFrontController@ptInvoiceMobile');

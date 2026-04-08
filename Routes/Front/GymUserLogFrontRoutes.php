@@ -104,6 +104,10 @@ Route::prefix('user/log')
         // Moneybox tax report - view permission
         Route::name('sw.reportMoneyboxTax')
             ->get('moneybox-tax', 'Front\GymUserLogFrontController@reportMoneyboxTax');
+
+        // Real tax report (detailed VAT breakdown)
+        Route::name('sw.reportMoneyboxTaxReal')
+            ->get('moneybox-tax-real', 'Front\GymUserLogFrontController@reportMoneyboxTaxReal');
         Route::name('sw.exportMoneyBoxTaxPDF')
             ->get('/moneybox-tax/pdf', 'Front\GymUserLogFrontController@exportPDFMoneyboxTax');
         Route::name('sw.exportMoneyBoxTaxExcel')

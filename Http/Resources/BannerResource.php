@@ -17,15 +17,19 @@ class BannerResource extends JsonResource
     {
         Carbon::setLocale($request->lang);
         $this->is_new = rand(0,1);
+        $displayDate  = $this->type == 2 && $this->event_date
+            ? Carbon::parse($this->event_date)->translatedFormat('d F Y')
+            : Carbon::parse($this->created_at)->translatedFormat('d F Y');
         return
             [
-                "id" => $this->id,
-                "title" => $this->title,
-                "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
-                "date" => Carbon::parse(@$this->created_at)->translatedFormat('d F Y'),
-                "is_new" => @$this->is_new ? $this->is_new : 0,
-                "new_title" => @$this->is_new ? trans('sw.new') : '',
-                'type' => 1
+                "id"         => $this->id,
+                "title"      => $this->title,
+                "image"      => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
+                "date"       => $displayDate,
+                "event_date" => $this->event_date ? Carbon::parse($this->event_date)->toDateString() : null,
+                "is_new"     => @$this->is_new ? $this->is_new : 0,
+                "new_title"  => @$this->is_new ? trans('sw.new') : '',
+                'type'       => (int) ($this->type ?? 1),
             ];
     }
 }

@@ -16,12 +16,14 @@ class BannerContentResource extends JsonResource
     {
         return
             [
-                "id" => $this->id,
-                "title" => $this->title,
-                "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
-                "url" => $this->url ? $this->url : '',
-                "phone" => $this->phone ? $this->phone : '',
-                "content" => $this->content ? $this->content : ''
+                "id"         => $this->id,
+                "title"      => $this->title,
+                "image"      => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
+                "url"        => $this->url    ?? '',
+                "phone"      => $this->phone  ?? '',
+                "content"    => $this->content ?? '',
+                "type"       => (int) ($this->type ?? 1),
+                "event_date" => $this->event_date ? \Carbon\Carbon::parse($this->event_date)->toDateString() : null,
             ];
     }
 }

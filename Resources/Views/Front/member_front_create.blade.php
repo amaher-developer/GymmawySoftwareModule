@@ -551,6 +551,7 @@
         </div>
     </div>
     <!-- Modal Camera with effects-->
+
 @endsection
 
 
@@ -859,6 +860,132 @@
             var effect = $(this).attr('data-effect');
             $('#modalCamera').addClass(effect);
 
+        });
+    </script>
+
+    <script>
+        // ===== Payment Gateway Pre-Submit Flow =====
+        var pw_check_status_url = '{{ route('sw.checkMemberPaymentStatus', ':id') }}';
+        var pw_resend_url = '{{ route('sw.resendMemberPaymentLink', ':id') }}';
+        // ===== Payment Gateway Pre-Submit Flow (uses shared pw* functions from master layout) =====
+        function pwGetActiveGateway() {
+            if ($('#send_tabby_link').is(':checked')) return 'tabby';
+            if ($('#send_tamara_link').is(':checked')) return 'tamara';
+            if ($('#send_paymob_link').is(':checked')) return 'paymob';
+            if ($('#send_paytabs_link').is(':checked')) return 'paytabs';
+            return null;
+        }
+
+        function pwHasCommunicationChannel() {
+            var phone = $('input[name="phone"]').val() || '';
+            var email = $('input[name="email"]').val() || '';
+            return (pw_active_wa && phone.trim().length > 0)
+                || (pw_active_sms && phone.trim().length > 0)
+                || email.trim().length > 0;
+        }
+
+        // Phone existence check before form submit
+        var phoneCheckUrl = '{{ route('sw.checkMemberPhoneExists') }}';
+        var phoneAlreadyConfirmed = false;
+
+        function checkPhoneThenSubmit(e, $form) {
+            if (phoneAlreadyConfirmed) return true;
+            var phone = $form.find('input[name="phone"]').val().trim();
+            if (!phone) return true;
+
+            e.preventDefault();
+            $.ajax({
+                url: phoneCheckUrl,
+                type: 'GET',
+                data: { phone: phone },
+                success: function (data) {
+                    if (data.exists) {
+                        swal({
+                            title: '{{ trans('sw.error') }}',
+                            text: '{{ trans('sw.phone_already_exists') }}',
+                            type: 'error',
+                            confirmButtonText: '{{ trans('sw.ok') }}'
+                        });
+                    } else {
+                        phoneAlreadyConfirmed = true;
+                        $form.submit();
+                    }
+                },
+                error: function () {
+                    // If check fails, allow form to proceed
+                    phoneAlreadyConfirmed = true;
+                    $form.submit();
+                }
+            });
+            return false;
+        }
+
+        // Intercept form submit when a payment gateway is checked
+        $('form.form').on('submit', function (e) {
+            var $form = $(this);
+            // Run phone existence check first (only on new member, not edit)
+            @if(!$member->id)
+            if (!phoneAlreadyConfirmed) {
+                return checkPhoneThenSubmit(e, $form);
+            }
+            @endif
+
+            var gateway = pwGetActiveGateway();
+            if (!gateway) return true; // no gateway selected, submit normally
+
+            if (!pwHasCommunicationChannel()) {
+                e.preventDefault();
+                swal({
+                    title: '{{ trans('sw.payment_no_communication_title') }}',
+                    text: '{{ trans('sw.payment_no_communication_desc') }}',
+                    type: 'warning',
+                    confirmButtonText: '{{ trans('sw.payment_continue_without') }}',
+                    showCancelButton: true,
+                    cancelButtonText: '{{ trans('admin.cancel') }}'
+                }).then(function (confirm) {
+                    if (confirm) {
+                        $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paytabs_link').prop('checked', false);
+                        $('form.form').off('submit').submit();
+                    }
+                });
+                return false;
+            }
+
+            e.preventDefault();
+            var $form = $(this);
+            var formData = new FormData($form[0]);
+
+            $.ajax({
+                url: $form.attr('action') || window.location.href,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                beforeSend: function () {
+                    $form.find('[type=submit]').prop('disabled', true).addClass('disabled');
+                },
+                success: function (data) {
+                    $form.find('[type=submit]').prop('disabled', false).removeClass('disabled');
+                    if (data.status === true && data.payment_url) {
+                        pwOpenModal(data.member_subscription_id, data.sent_via, data.redirect_url, gateway, function (paid) {
+                            if (data.redirect_url) window.location.href = data.redirect_url;
+                        });
+                    } else if (data.status === true) {
+                        if (data.redirect_url) window.location.href = data.redirect_url;
+                    }
+                },
+                error: function (xhr) {
+                    $form.find('[type=submit]').prop('disabled', false).removeClass('disabled');
+                    if (xhr.status === 422) {
+                        $form.off('submit').submit();
+                    } else {
+                        swal('{{ trans('sw.error') }}', '{{ trans('sw.something_went_wrong') }}', 'error');
+                    }
+                }
+            });
+
+            return false;
         });
     </script>
 
