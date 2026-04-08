@@ -423,7 +423,7 @@
                     <!--begin::Table footer totals-->
                     <tfoot>
                         <tr class="bg-light fw-bold text-gray-900 fs-6">
-                            <td colspan="7" class="text-end pe-4">{{ trans('admin.total') }}</td>
+                            <td colspan="7" class="text-end pe-4">{{ trans('admin.total_count') }}</td>
                             <td class="text-end text-success">{{ number_format($netTaxableAmount, 2) }}</td>
                             <td class="text-end">-</td>
                             <td class="text-end text-success">{{ number_format($netVatPayable, 2) }}</td>
