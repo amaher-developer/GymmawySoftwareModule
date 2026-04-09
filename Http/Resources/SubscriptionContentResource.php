@@ -48,7 +48,9 @@ class SubscriptionContentResource extends JsonResource
                 "number_times_freeze" => $this->number_times_freeze,
                 "activities" => @$this->activities ? SubscriptionActivityResource::collection($this->activities) : [],
                 "is_payment" => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? 1 : 0,
-                "payment_link" => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? (@env('APP_WEBSITE'). $this->lang ."/"."subscription-mobile/".$this->id) : "",
+                //"payment_link" => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? (@env('APP_WEBSITE'). $this->lang ."/"."subscription-mobile/".$this->id) : "",
+                "payment_link" => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? route('sw.subscription-mobile', ['id' => $this->id]) : "",
+
             ];
     }
 }
