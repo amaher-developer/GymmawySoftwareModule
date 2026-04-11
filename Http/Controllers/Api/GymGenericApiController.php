@@ -291,8 +291,7 @@ class GymGenericApiController extends GenericController
         $subscriptions = GymMemberSubscription::with(['subscription' => function($q){ $q->withTrashed(); }])
             ->where('member_id', $member_id)
             ->orderBy('id', 'desc')
-            ->paginate($this->limit);
-        $this->getPaginateAttribute($subscriptions);
+            ->get();
         $result = [];
         foreach($subscriptions as $sub){
             $result[] = [
@@ -373,12 +372,26 @@ class GymGenericApiController extends GenericController
             $device_type = Constants::ANDROID;
 
         $device_token = request('device_token');
+
+        // Resolve member id safely even when this endpoint is called without auth middleware.
+        $memberId = @Auth::guard('api')->user()->id;
+        if (!$memberId) {
+            $token = request()->bearerToken();
+            if (!$token) {
+                $token = request('token');
+            }
+            if ($token) {
+                $token = trim((string) preg_replace('/^Bearer\s+/i', '', (string) $token));
+                $memberId = GymMember::where('api_token', hash('sha256', $token))->value('id');
+            }
+        }
+
         $record = GymPushToken::where('token', $device_token)->first();
         if (!$record) {
             GymPushToken::create([
                 'device_type' => $device_type,
                 'token' => $device_token,
-                'member_id' => @Auth::guard('api')->user()->id
+                'member_id' => $memberId,
             ]);
             
             // Try to add token to Firebase topic if class exists
@@ -391,7 +404,10 @@ class GymGenericApiController extends GenericController
                 \Log::info('Firebase integration not available', ['error' => $e->getMessage()]);
             }
         } else {
-            $record->update(['member_id' => @Auth::guard('api')->user()->id]);
+            // Do not clear existing member binding with null updates.
+            if ($memberId) {
+                $record->update(['member_id' => $memberId]);
+            }
         }
         $this->successResponse();
         return $this->response;

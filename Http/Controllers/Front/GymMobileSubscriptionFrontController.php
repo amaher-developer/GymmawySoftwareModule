@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
 use Modules\Generic\Http\Controllers\Front\PaymobFrontController;
 use Modules\Generic\Http\Controllers\Front\PayTabsFrontController;
 use Modules\Generic\Http\Controllers\Front\TabbyFrontController;
@@ -56,7 +57,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     public function showMobile($id)
     {
         $this->currentMember = $currentUser = $this->resolveMemberFromRequest(request());
-
+        View::share('currentUser', $currentUser);
         $record = GymSubscription::where('id', $id)->first();
 
         if (!$record) {
@@ -66,7 +67,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $title = $record->name;
         $mainSettings = $this->mainSettings;
 
-        return view('software::Front.subscription_mobile', compact('title', 'record', 'mainSettings', 'currentUser'));
+        return view('software::Front.subscription_mobile', compact('title', 'record', 'mainSettings'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1050,14 +1051,53 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     protected function resolveMemberFromRequest(Request $request): ?GymMember
     {
-        $token = $request->input('token') ?: $request->bearerToken();
-        if ($token) {
-            $token    = str_replace('Bearer ', '', $token);
-            $pushToken = DB::table('sw_gym_push_tokens')->where('token', $token)->first();
-            if ($pushToken && $pushToken->member_id) {
-                return GymMember::find($pushToken->member_id);
+        // 1) If guard already resolved the member from Authorization header, use it directly.
+        $guardMember = $request->user('api') ?: \Auth::guard('api')->user();
+        if ($guardMember instanceof GymMember) {
+            return $guardMember;
+        }
+
+        // 2) Resolve from either query token or bearer token.
+        $rawToken = $request->input('token') ?: $request->bearerToken();
+        if (!$rawToken) {
+            return null;
+        }
+
+        $rawToken = trim((string) preg_replace('/^Bearer\s+/i', '', (string) $rawToken));
+        if ($rawToken === '') {
+            return null;
+        }
+
+        // Build robust token candidates (url-encoded / plus-space variations).
+        $decoded = urldecode($rawToken);
+        $tokenCandidates = array_values(array_unique(array_filter([
+            $rawToken,
+            $decoded,
+            str_replace(' ', '+', $rawToken),
+            str_replace(' ', '+', $decoded),
+        ])));
+
+        // 3) Preferred mobile-web flow: map push token -> member.
+        $pushToken = DB::table('sw_gym_push_tokens')
+            ->whereIn('token', $tokenCandidates)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($pushToken && $pushToken->member_id) {
+            $member = GymMember::find($pushToken->member_id);
+            if ($member) {
+                return $member;
             }
         }
+
+        // 4) Fallback: token may be the app API bearer token (stored hashed in api_token).
+        foreach ($tokenCandidates as $plainToken) {
+            $member = GymMember::where('api_token', hash('sha256', $plainToken))->first();
+            if ($member) {
+                return $member;
+            }
+        }
+
         return null;
     }
 

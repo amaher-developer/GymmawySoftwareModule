@@ -43,8 +43,7 @@ class GymTrainingApiController extends GymGenericApiController
 
     public function tracks(){
         $member = @\request()->user();
-        $tracks = GymTrainingTrack::with(['member'])->where('member_id', @$member->id)->orderBy("id", "desc")->paginate($this->limit);
-        $this->getPaginateAttribute($tracks);
+        $tracks = GymTrainingTrack::with(['member'])->where('member_id', @$member->id)->orderBy("id", "desc")->get();
         $this->return['result']['tracks'] =  $tracks ?  TrainingTrackResource::collection($tracks) : [];
         return $this->successResponse();
     }

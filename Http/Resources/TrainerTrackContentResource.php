@@ -17,6 +17,7 @@ class TrainerTrackContentResource extends JsonResource
     public function toArray($request)
     {
         Carbon::setLocale($request->lang);
+        $memberName = @$this->member->name ?: '-';
         return
             [
 
@@ -27,7 +28,7 @@ class TrainerTrackContentResource extends JsonResource
                 "weight" => @$this->weight . ' kg ',
                 "report" => @$this->notes,
                 "date" => Carbon::parse(@$this->created_at)->translatedFormat('d F Y'),
-                "short_content" => trans('sw.report_msg', ['name' => 'ahmed maher'])
+                "short_content" => trans('sw.report_msg', ['name' => $memberName])
             ];
     }
 }
