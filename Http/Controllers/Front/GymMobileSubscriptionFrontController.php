@@ -70,6 +70,46 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         return view('software::Front.subscription_mobile', compact('title', 'record', 'mainSettings'));
     }
 
+    public function showActivityMobile($id)
+    {
+        $request = request();
+        $token = trim((string) $request->input('token', ''));
+
+        // Token is optional, but when provided it must resolve to a member.
+        if ($token !== '' && !$this->resolveMemberFromRequest($request)) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $lang = app()->getLocale() ?: env('DEFAULT_LANG', 'en');
+        $base = rtrim((string) env('APP_WEBSITE', '/'), '/');
+        $url = $base . '/' . $lang . '/activity/' . (int) $id;
+        if ($token !== '') {
+            $url .= '?token=' . urlencode($token);
+        }
+
+        return redirect()->away($url);
+    }
+
+    public function showStoreMobile($id)
+    {
+        $request = request();
+        $token = trim((string) $request->input('token', ''));
+
+        // Token is optional, but when provided it must resolve to a member.
+        if ($token !== '' && !$this->resolveMemberFromRequest($request)) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $lang = app()->getLocale() ?: env('DEFAULT_LANG', 'en');
+        $base = rtrim((string) env('APP_WEBSITE', '/'), '/');
+        $url = $base . '/' . $lang . '/store/' . (int) $id;
+        if ($token !== '') {
+            $url .= '?token=' . urlencode($token);
+        }
+
+        return redirect()->away($url);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 2 — Process form & redirect to gateway
     // ─────────────────────────────────────────────────────────────────────────

@@ -41,7 +41,9 @@ class PTContentResource extends JsonResource
                 "is_reserved" => $this->is_reserved ?? 0,
                 "trainers" => @$this->pt_subscription_trainer ? PTTrainerContentResource::collection(@$this->pt_subscription_trainer) : [],
                 "is_payment" => @env('APP_WEB_PAYMENT_PT_SUBSCRIPTION') == 1 ? 1 : 0,
-                "payment_link" => @env('APP_WEB_PAYMENT_PT_SUBSCRIPTION') == 1 ? route('sw.pt-subscription-mobile', ['id' => $this->id]) : "",
+                "payment_link" => @env('APP_WEB_PAYMENT_PT_SUBSCRIPTION') == 1
+                    ? route('sw.pt-subscription-mobile', ['id' => $this->id, 'lang' => $lang])
+                    : "",
 
             ];
     }

@@ -24,7 +24,9 @@ class ActivityContentResource extends JsonResource
                 "price" => $this->price ? number_format($this->price + ( $this->price * (@$setting->vat_details['vat_percentage'] / 100)) , 2) . ' ' . env('APP_CURRENCY_'.strtoupper($this->lang)) . ' ' : '0',
                 "content" => $this->content ? $this->content : '',
                 "is_payment" => @env('APP_WEB_PAYMENT_ACTIVITY') == 1 ? 1 : 0,
-                "payment_link" => @env('APP_WEB_PAYMENT_ACTIVITY') == 1 ? (@env('APP_WEBSITE'). $this->lang ."/"."activity/".$this->id) : "",
+                "payment_link" => @env('APP_WEB_PAYMENT_ACTIVITY') == 1
+                    ? route('sw.activity-mobile', ['id' => $this->id, 'lang' => $this->lang])
+                    : "",
             ];
     }
 }

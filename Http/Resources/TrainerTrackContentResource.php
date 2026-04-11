@@ -27,6 +27,10 @@ class TrainerTrackContentResource extends JsonResource
                 "height" => @$this->height .' cm ',
                 "weight" => @$this->weight . ' kg ',
                 "report" => @$this->notes,
+                "notes" => @$this->notes,
+                "assessment" => @$this->assessment ?: (@$this->report_assessment ?: ''),
+                "medicines" => @$this->medicines ?: (@$this->medicine ?: ''),
+                "plans" => @$this->plans ?: (@$this->plan_details ?: ''),
                 "date" => Carbon::parse(@$this->created_at)->translatedFormat('d F Y'),
                 "short_content" => trans('sw.report_msg', ['name' => $memberName])
             ];

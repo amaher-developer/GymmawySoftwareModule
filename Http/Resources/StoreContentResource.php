@@ -24,7 +24,9 @@ class StoreContentResource extends JsonResource
 //                "price_unit" => env('APP_CURRENCY_'.strtoupper($this->lang)) ,
                 "content" => $this->content ?? ' ',
                 "is_payment" => @env('APP_WEB_PAYMENT_STORE') == 1 ? 1 : 0,
-                "payment_link" => @env('APP_WEB_PAYMENT_STORE') == 1 ? (@env('APP_WEBSITE'). $this->lang ."/"."store/".$this->id) : "",
+                "payment_link" => @env('APP_WEB_PAYMENT_STORE') == 1
+                    ? route('sw.store-mobile', ['id' => $this->id, 'lang' => $this->lang])
+                    : "",
             ];
     }
 }
