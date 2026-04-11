@@ -65,7 +65,7 @@ Route::name('sw.paymob-mobile.failure')
 
 // ── Upgrade Subscription Mobile (WebView) ────────────────────────────────────
 Route::name('sw.upgrade-subscription-mobile')
-    ->get('upgrade-subscription-mobile', 'Front\GymMobileSubscriptionFrontController@showUpgradeMobile');
+    ->any('upgrade-subscription-mobile', 'Front\GymMobileSubscriptionFrontController@showUpgradeMobile');
 
 Route::name('sw.upgrade-invoice-mobile.submit')
     ->post('upgrade-invoice-mobile/submit', 'Front\GymMobileSubscriptionFrontController@upgradeInvoiceSubmit');
