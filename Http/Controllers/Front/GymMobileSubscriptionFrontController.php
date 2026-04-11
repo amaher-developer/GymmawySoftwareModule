@@ -1285,7 +1285,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         // Eligible upgrades: mobile, active, price > current, not current
         $upgrades = GymSubscription::where('is_mobile', 1)
-            ->where('price', '>', $currentPrice)
+            ->where(DB::raw('CAST(price AS DECIMAL(10,2))'), '>', $currentPrice)
             ->where('id', '!=', $activeSub->subscription_id)
             ->orderBy('price', 'asc')
             ->get();

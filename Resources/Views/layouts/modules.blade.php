@@ -215,6 +215,20 @@
                     <div class="text-muted fs-7 mt-1">{{trans('sw.paymob_payment_description')}}</div>
                 </div>
                 @endif
+
+                <!-- PayTabs Payment Option -->
+                @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
+                <div class="mb-4" id="renew_paytabs_payment_option">
+                    <label class="form-label">{{ trans('sw.paytabs_payment')}}</label>
+                    <div class="form-check form-switch form-check-custom form-check-solid">
+                        <input class="form-check-input" type="checkbox" name="send_paytabs_link" id="renew_send_paytabs_link" value="1"/>
+                        <label class="form-check-label" for="renew_send_paytabs_link">
+                            {{ trans('sw.send_paytabs_payment_link')}}
+                        </label>
+                    </div>
+                    <div class="text-muted fs-7 mt-1">{{ trans('sw.paytabs_payment_description')}}</div>
+                </div>
+                @endif
             </div>
 
             @if(@$mainSettings->active_loyalty)
