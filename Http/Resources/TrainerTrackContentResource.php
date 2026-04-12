@@ -21,7 +21,6 @@ class TrainerTrackContentResource extends JsonResource
         $memberName = @$this->member->name ?: '-';
         $timeline = GymTrainingMemberLog::query()
             ->where('member_id', $this->member_id)
-            ->where('training_id', $this->id)
             ->orderByDesc('created_at')
             ->limit(50)
             ->get()

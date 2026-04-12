@@ -47,6 +47,9 @@ class GymTrainingApiController extends GymGenericApiController
         $member = @\request()->user();
         $lang = request('lang') ?: env('DEFAULT_LANG', 'en');
         Carbon::setLocale($lang);
+        $latestTrackId = GymTrainingTrack::where('member_id', @$member->id)
+            ->orderByDesc('id')
+            ->value('id');
 
         $tracks = GymTrainingTrack::with(['member'])
             ->where('member_id', @$member->id)
@@ -85,21 +88,35 @@ class GymTrainingApiController extends GymGenericApiController
             ->orderByDesc('created_at')
             ->limit(200)
             ->get()
-            ->map(function ($log) {
+            ->map(function ($log) use ($latestTrackId) {
                 $type = (string) ($log->training_type ?? 'activity');
                 $action = (string) ($log->action ?? 'updated');
                 $notes = trim((string) ($log->notes ?? ''));
+                $meta = is_string($log->meta) ? json_decode($log->meta, true) : (array) $log->meta;
+                $title = trim(ucfirst(str_replace('_', ' ', $type)));
+                if ($action !== '' && $type !== 'note') {
+                    $title .= ' - ' . ucfirst(str_replace('_', ' ', $action));
+                }
                 if ($notes === '') {
                     $notes = trim(ucfirst(str_replace('_', ' ', $type . ' ' . $action)));
                 }
 
+                $trackId = 0;
+                if ($type === 'track' && !empty($log->reference_id)) {
+                    $trackId = (int) $log->reference_id;
+                } elseif (!empty($meta['track_id'])) {
+                    $trackId = (int) $meta['track_id'];
+                } elseif (!empty($latestTrackId)) {
+                    $trackId = (int) $latestTrackId;
+                }
+
                 return [
                     'id' => (int) $log->id,
-                    'track_id' => (int) ($log->training_id ?? 0),
+                    'track_id' => $trackId,
                     'is_timeline' => 1,
                     'type' => $type,
                     'action' => $action,
-                    'title' => Carbon::parse(@$log->created_at)->translatedFormat('d F Y'),
+                    'title' => $title,
                     'image' => asset('resources/assets/new_front/images/report_track.png'),
                     'short_content' => $notes,
                     'date' => Carbon::parse(@$log->created_at)->translatedFormat('d F Y'),
