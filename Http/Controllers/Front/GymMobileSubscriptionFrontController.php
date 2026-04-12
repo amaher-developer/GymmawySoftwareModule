@@ -13,10 +13,12 @@ use Modules\Generic\Http\Controllers\Front\PayTabsFrontController;
 use Modules\Generic\Http\Controllers\Front\TabbyFrontController;
 use Modules\Generic\Http\Controllers\Front\TamaraFrontController;
 use Modules\Software\Classes\TypeConstants;
+use Modules\Software\Models\GymActivity;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymOnlinePaymentInvoice;
+use Modules\Software\Models\GymStoreProduct;
 use Modules\Software\Models\GymSubscription;
 
 /**
@@ -74,40 +76,46 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     {
         $request = request();
         $token = trim((string) $request->input('token', ''));
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
 
         // Token is optional, but when provided it must resolve to a member.
-        if ($token !== '' && !$this->resolveMemberFromRequest($request)) {
+        if ($token !== '' && !$currentUser) {
             return redirect()->route('sw.mobile-payment.error');
         }
 
-        $lang = app()->getLocale() ?: env('DEFAULT_LANG', 'en');
-        $base = rtrim((string) env('APP_WEBSITE', '/'), '/');
-        $url = $base . '/' . $lang . '/activity/' . (int) $id;
-        if ($token !== '') {
-            $url .= '?token=' . urlencode($token);
+        $record = GymActivity::find((int) $id);
+        if (!$record) {
+            return abort(404);
         }
 
-        return redirect()->away($url);
+        View::share('currentUser', $currentUser);
+        $title = $record->name;
+        $mainSettings = $this->mainSettings;
+
+        return view('software::Front.activity_mobile', compact('title', 'record', 'mainSettings'));
     }
 
     public function showStoreMobile($id)
     {
         $request = request();
         $token = trim((string) $request->input('token', ''));
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
 
         // Token is optional, but when provided it must resolve to a member.
-        if ($token !== '' && !$this->resolveMemberFromRequest($request)) {
+        if ($token !== '' && !$currentUser) {
             return redirect()->route('sw.mobile-payment.error');
         }
 
-        $lang = app()->getLocale() ?: env('DEFAULT_LANG', 'en');
-        $base = rtrim((string) env('APP_WEBSITE', '/'), '/');
-        $url = $base . '/' . $lang . '/store/' . (int) $id;
-        if ($token !== '') {
-            $url .= '?token=' . urlencode($token);
+        $record = GymStoreProduct::find((int) $id);
+        if (!$record) {
+            return abort(404);
         }
 
-        return redirect()->away($url);
+        View::share('currentUser', $currentUser);
+        $title = $record->name;
+        $mainSettings = $this->mainSettings;
+
+        return view('software::Front.store_mobile', compact('title', 'record', 'mainSettings'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -191,6 +199,293 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         return redirect($paymentUrl);
+    }
+
+    public function activityInvoiceSubmit(Request $request)
+    {
+        $this->currentMember = $this->resolveMemberFromRequest($request);
+
+        $activityId = (int) $request->input('activity_id');
+        $activity = GymActivity::find($activityId);
+        if (!$activity) {
+            return redirect()->back()->with('error', trans('front.error_in_data'));
+        }
+
+        $memberData = $this->buildGenericMemberData($request);
+        if (!$memberData) {
+            return redirect()->back()->with('error', trans('front.error_in_data'));
+        }
+
+        $vatPercentage = (float) (@$this->mainSettings->vat_details['vat_percentage'] ?? 0);
+        $baseAmount = (float) ($activity->price ?? 0);
+        $vatAmount = $vatPercentage > 0 ? round(($baseAmount * $vatPercentage) / 100, 2) : 0;
+        $amount = round($baseAmount + $vatAmount, 2);
+
+        $memberData['joining_date'] = Carbon::now()->toDateString();
+        $memberData['payment_method'] = (int) $request->input('payment_method');
+        $memberData['payment_channel'] = TypeConstants::CHANNEL_MOBILE_APP;
+        $memberData['amount'] = $amount;
+        $memberData['vat_percentage'] = $vatPercentage;
+        $memberData['vat'] = $vatAmount;
+
+        $paymentMethod = $memberData['payment_method'];
+        if ($paymentMethod === 2) {
+            $paymentUrl = $this->initiateGenericTabby('activity', $activityId, $activity->name ?? 'Activity', $memberData);
+        } elseif ($paymentMethod === 4) {
+            $paymentUrl = $this->initiateGenericTamara('activity', $activityId, $activity->name ?? 'Activity', (string)($activity->content ?? ''), $memberData);
+        } elseif ($paymentMethod === 5) {
+            $paymentUrl = $this->initiateGenericPaytabs('activity', $activityId, $activity->name ?? 'Activity', $memberData);
+        } elseif ($paymentMethod === 6) {
+            $paymentUrl = $this->initiateGenericPaymob('activity', $activityId, $activity->name ?? 'Activity', $memberData);
+        } else {
+            return redirect()->back()->with('error', trans('front.error_in_data'));
+        }
+
+        return redirect($paymentUrl);
+    }
+
+    public function storeInvoiceSubmit(Request $request)
+    {
+        $this->currentMember = $this->resolveMemberFromRequest($request);
+
+        $productId = (int) $request->input('product_id');
+        $product = GymStoreProduct::find($productId);
+        if (!$product) {
+            return redirect()->back()->with('error', trans('front.error_in_data'));
+        }
+
+        $memberData = $this->buildGenericMemberData($request);
+        if (!$memberData) {
+            return redirect()->back()->with('error', trans('front.error_in_data'));
+        }
+
+        $vatPercentage = (float) (@$this->mainSettings->vat_details['vat_percentage'] ?? 0);
+        $baseAmount = (float) ($product->price ?? 0);
+        $vatAmount = $vatPercentage > 0 ? round(($baseAmount * $vatPercentage) / 100, 2) : 0;
+        $amount = round($baseAmount + $vatAmount, 2);
+
+        $memberData['joining_date'] = Carbon::now()->toDateString();
+        $memberData['payment_method'] = (int) $request->input('payment_method');
+        $memberData['payment_channel'] = TypeConstants::CHANNEL_MOBILE_APP;
+        $memberData['amount'] = $amount;
+        $memberData['vat_percentage'] = $vatPercentage;
+        $memberData['vat'] = $vatAmount;
+
+        $paymentMethod = $memberData['payment_method'];
+        if ($paymentMethod === 2) {
+            $paymentUrl = $this->initiateGenericTabby('store', $productId, $product->name ?? 'Store Product', $memberData);
+        } elseif ($paymentMethod === 4) {
+            $paymentUrl = $this->initiateGenericTamara('store', $productId, $product->name ?? 'Store Product', (string)($product->content ?? ''), $memberData);
+        } elseif ($paymentMethod === 5) {
+            $paymentUrl = $this->initiateGenericPaytabs('store', $productId, $product->name ?? 'Store Product', $memberData);
+        } elseif ($paymentMethod === 6) {
+            $paymentUrl = $this->initiateGenericPaymob('store', $productId, $product->name ?? 'Store Product', $memberData);
+        } else {
+            return redirect()->back()->with('error', trans('front.error_in_data'));
+        }
+
+        return redirect($paymentUrl);
+    }
+
+    protected function buildGenericMemberData(Request $request): ?array
+    {
+        if ($this->currentMember) {
+            return [
+                'name' => $this->currentMember->name,
+                'phone' => $this->currentMember->phone,
+                'email' => $this->currentMember->email ?? '',
+                'address' => $this->currentMember->address ?? '',
+                'dob' => $this->currentMember->dob,
+                'gender' => $this->currentMember->gender,
+            ];
+        }
+
+        if (!$request->name || !$request->phone || !$request->gender || !$request->dob || !$request->address) {
+            return null;
+        }
+
+        if (GymMember::where('phone', $request->phone)->exists()) {
+            return null;
+        }
+
+        return [
+            'name' => $request->name,
+            'phone' => $request->phone,
+            'email' => $request->email ?? '',
+            'address' => $request->address,
+            'dob' => Carbon::parse($request->dob),
+            'gender' => $request->gender,
+        ];
+    }
+
+    protected function createGenericInvoice(array $member, int $paymentMethod, string $uniqueId, string $type, int $itemId): GymOnlinePaymentInvoice
+    {
+        return GymOnlinePaymentInvoice::create([
+            'payment_id'      => $uniqueId,
+            'member_id'       => optional($this->currentMember)->id,
+            'status'          => TypeConstants::PENDING,
+            'subscription_id' => null,
+            'name'            => $member['name'],
+            'email'           => $member['email'] ?? '',
+            'phone'           => $member['phone'],
+            'dob'             => $member['dob'],
+            'address'         => $member['address'],
+            'gender'          => $member['gender'],
+            'amount'          => $member['amount'],
+            'vat'             => $member['vat'],
+            'vat_percentage'  => $member['vat_percentage'],
+            'payment_method'  => $paymentMethod,
+            'payment_channel' => $member['payment_channel'],
+            'response_code'   => [
+                'joining_date' => $member['joining_date'],
+                "is_{$type}" => true,
+                "{$type}_id" => $itemId,
+                'token' => request('token'),
+            ],
+        ]);
+    }
+
+    protected function genericErrorRoute(string $type, int $itemId): string
+    {
+        if ($type === 'activity') {
+            return route('sw.activity-mobile', ['id' => $itemId, 'token' => request('token')]);
+        }
+        return route('sw.store-mobile', ['id' => $itemId, 'token' => request('token')]);
+    }
+
+    protected function initiateGenericTabby(string $type, int $itemId, string $itemName, array $member): string
+    {
+        $uniqueId   = uniqid();
+        $invoice    = $this->createGenericInvoice($member, TypeConstants::TABBY_TRANSACTION, $uniqueId, $type, $itemId);
+        $errorRoute = $this->genericErrorRoute($type, $itemId);
+
+        $tabby  = new TabbyFrontController();
+        $result = $tabby->createCheckoutSession([
+            'amount'          => round($member['amount'], 2),
+            'currency'        => env('TABBY_CURRENCY', 'SAR'),
+            'description'     => $itemName,
+            'buyer'           => ['name' => $member['name'], 'phone' => $member['phone'], 'email' => $member['email'] ?? '', 'address' => '', 'city' => '', 'zip' => '', 'country' => 'SA'],
+            'order_reference' => (string) $invoice->id,
+            'loyalty_level'   => 0,
+            'order_history'   => [],
+            'success_url'     => route('sw.tabby-mobile.verify',  ['invoice_id' => $uniqueId]),
+            'cancel_url'      => route('sw.tabby-mobile.cancel',  ['invoice_id' => $uniqueId]),
+            'failure_url'     => route('sw.tabby-mobile.failure', ['invoice_id' => $uniqueId]),
+            'payment_type'    => $type . '_payment',
+            'member_id'       => optional($this->currentMember)->id,
+        ]);
+
+        if (!$result['success']) {
+            \Session::flash('error', $result['error'] ?? trans('front.error_in_data'));
+            return $errorRoute;
+        }
+
+        $invoice->transaction_id = $result['checkout_id'];
+        $invoice->save();
+        return $result['payment_url'];
+    }
+
+    protected function initiateGenericTamara(string $type, int $itemId, string $itemName, string $itemContent, array $member): string
+    {
+        $uniqueId   = uniqid();
+        $invoice    = $this->createGenericInvoice($member, TypeConstants::TAMARA_TRANSACTION, $uniqueId, $type, $itemId);
+        $errorRoute = $this->genericErrorRoute($type, $itemId);
+
+        [, , $currency] = $this->getTamaraCredentials();
+        $tamara = new TamaraFrontController();
+        $result = $tamara->createCheckoutSession([
+            'amount'           => round($member['amount'], 2),
+            'currency'         => $currency,
+            'description'      => $itemName,
+            'buyer'            => ['name' => $member['name'], 'phone' => $member['phone'], 'email' => $member['email'] ?? '', 'address' => $member['address'] ?? '', 'city' => env('TAMARA_CITY', 'Riyadh')],
+            'order_reference'  => (string) $invoice->id,
+            'success_url'      => route('sw.tamara-mobile.verify',  ['invoice_id' => $uniqueId]),
+            'cancel_url'       => route('sw.tamara-mobile.cancel',  ['invoice_id' => $uniqueId]),
+            'failure_url'      => route('sw.tamara-mobile.failure', ['invoice_id' => $uniqueId]),
+            'notification_url' => route('tamara.webhook'),
+            'payment_type'     => $type . '_payment',
+            'member_id'        => optional($this->currentMember)->id,
+            'items'            => [[
+                'title' => $itemName,
+                'description' => $itemContent,
+                'quantity' => 1,
+                'unit_price' => round((float) $member['amount'] - (float) $member['vat'], 2),
+                'total_amount' => round($member['amount'], 2),
+                'reference_id' => (string) $invoice->id,
+            ]],
+        ]);
+
+        if (!$result['success']) {
+            \Session::flash('error', $result['error'] ?? trans('front.error_in_data'));
+            return $errorRoute;
+        }
+
+        $invoice->transaction_id = $result['order_id'];
+        $invoice->save();
+        return $result['payment_url'];
+    }
+
+    protected function initiateGenericPaytabs(string $type, int $itemId, string $itemName, array $member): string
+    {
+        $uniqueId   = uniqid();
+        $invoice    = $this->createGenericInvoice($member, TypeConstants::PAYTABS_TRANSACTION, $uniqueId, $type, $itemId);
+        $errorRoute = $this->genericErrorRoute($type, $itemId);
+
+        $paytabs = new PayTabsFrontController();
+        $result  = $paytabs->createCheckoutSession([
+            'amount'          => round($member['amount'], 2),
+            'description'     => $itemName,
+            'buyer'           => ['name' => $member['name'], 'email' => $member['email'] ?: 'member@gym.com', 'phone' => $member['phone'], 'city' => '', 'address' => ''],
+            'cart_id'         => (string) $invoice->id,
+            'return_url'      => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
+            'callback_url'    => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
+            'payment_type'    => $type . '_payment',
+            'member_id'       => optional($this->currentMember)->id,
+        ]);
+
+        if (!$result['success']) {
+            \Session::flash('error', $result['error'] ?? trans('front.error_in_data'));
+            return $errorRoute;
+        }
+
+        $invoice->transaction_id = $result['tran_ref'] ?? '';
+        $invoice->save();
+        return $result['redirect_url'] ?? ($result['payment_url'] ?? $errorRoute);
+    }
+
+    protected function initiateGenericPaymob(string $type, int $itemId, string $itemName, array $member): string
+    {
+        $uniqueId   = uniqid();
+        $invoice    = $this->createGenericInvoice($member, TypeConstants::PAYMOB_TRANSACTION, $uniqueId, $type, $itemId);
+        $errorRoute = $this->genericErrorRoute($type, $itemId);
+
+        $nameParts   = explode(' ', $member['name'], 2);
+        $billingData = [
+            'first_name' => $nameParts[0] ?? 'Gym', 'last_name' => $nameParts[1] ?? 'Member',
+            'email' => $member['email'] ?: 'member@gym.com', 'phone_number' => $member['phone'],
+            'apartment' => 'NA', 'floor' => 'NA', 'street' => $member['address'] ?: 'NA',
+            'building' => 'NA', 'shipping_method' => 'NA', 'postal_code' => 'NA',
+            'city' => 'NA', 'country' => 'EG', 'state' => 'NA',
+        ];
+
+        $paymob    = new PaymobFrontController();
+        $iframeUrl = $paymob->payment([
+            'name'         => $itemName,
+            'price'        => round($member['amount'], 2),
+            'desc'         => $itemName,
+            'qty'          => 1,
+            'no_fee'       => true,
+            'billing_data' => $billingData,
+            'redirect_url' => route('sw.paymob-mobile.verify', ['invoice_id' => $uniqueId]),
+        ]);
+
+        if (!$iframeUrl) {
+            \Session::flash('error', trans('front.error_in_data'));
+            $invoice->status = TypeConstants::FAILURE;
+            $invoice->save();
+            return $errorRoute;
+        }
+        return $iframeUrl;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -458,6 +753,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return redirect()->route($invoiceRoute, ['id' => $invoice->member_subscription_id]);
         }
 
+        if ($this->isGenericItemPayment($invoice) && (int) $invoice->status === TypeConstants::SUCCESS) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
+        }
+
         // Use transaction_id saved at checkout time if tabby didn't send payment_id in redirect
         $tabbyPaymentId = $tabbyPayId ?: $invoice->transaction_id;
 
@@ -519,6 +818,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         );
         $invoice->save();
 
+        if ($this->isGenericItemPayment($invoice)) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
+        }
+
         $joiningDate = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
         $sub = $this->finalizeMobileCheckout($invoice, $joiningDate);
 
@@ -551,6 +854,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         if ($invoice->member_subscription_id) {
             return redirect()->route('sw.invoice-mobile', ['id' => $invoice->member_subscription_id]);
+        }
+
+        if ($this->isGenericItemPayment($invoice) && (int) $invoice->status === TypeConstants::SUCCESS) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
         }
 
         if ($paymentStatus !== 'approved') {
@@ -602,6 +909,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         );
         $invoice->save();
 
+        if ($this->isGenericItemPayment($invoice)) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
+        }
+
         $sub = $this->finalizeMobileCheckout($invoice, $joiningDate);
 
         if ($sub) {
@@ -631,6 +942,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         if ($invoice->member_subscription_id) {
             return redirect()->route('sw.invoice-mobile', ['id' => $invoice->member_subscription_id]);
+        }
+
+        if ($this->isGenericItemPayment($invoice) && (int) $invoice->status === TypeConstants::SUCCESS) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
         }
 
         $joiningDate = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
@@ -672,6 +987,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             ['paytabs_verify' => $payment]
         );
         $invoice->save();
+
+        if ($this->isGenericItemPayment($invoice)) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
+        }
 
         $sub = $this->finalizeMobileCheckout($invoice, $joiningDate);
 
@@ -784,6 +1103,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return redirect()->route($invoiceRoute, ['id' => $invoice->member_subscription_id]);
         }
 
+        if ($this->isGenericItemPayment($invoice) && (int) $invoice->status === TypeConstants::SUCCESS) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
+        }
+
         // Verify HMAC if secret is configured
         $pmSettings  = \Modules\Generic\Models\Setting::first();
         $hmacSecret  = $pmSettings ? ($pmSettings->payments['paymob']['hmac_secret'] ?? '') : '';
@@ -812,6 +1135,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             ['paymob_verify' => $request->all()]
         );
         $invoice->save();
+
+        if ($this->isGenericItemPayment($invoice)) {
+            return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
+        }
 
         Log::info('Paymob Mobile verify success', ['invoice_id' => $invoiceId, 'transaction_id' => $transactionId]);
 
@@ -1156,11 +1483,50 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         if ($paymentId) {
             $inv = GymOnlinePaymentInvoice::where('payment_id', $paymentId)->first();
             if ($inv) {
+                $rc = (array) $inv->response_code;
+                if (!empty($rc['is_activity'])) {
+                    return redirect()->route('sw.activity-mobile', [
+                        'id' => (int) ($rc['activity_id'] ?? 0),
+                        'token' => $token,
+                    ]);
+                }
+                if (!empty($rc['is_store'])) {
+                    return redirect()->route('sw.store-mobile', [
+                        'id' => (int) ($rc['store_id'] ?? 0),
+                        'token' => $token,
+                    ]);
+                }
                 $params = ['id' => $inv->subscription_id];
                 if ($token) $params['token'] = $token;
                 return redirect()->route('sw.subscription-mobile', $params);
             }
         }
+        return redirect()->route('sw.mobile-payment.error');
+    }
+
+    protected function isGenericItemPayment(GymOnlinePaymentInvoice $invoice): bool
+    {
+        $rc = (array) $invoice->response_code;
+        return !empty($rc['is_activity']) || !empty($rc['is_store']);
+    }
+
+    protected function redirectToGenericItemPage(GymOnlinePaymentInvoice $invoice, ?string $token)
+    {
+        $rc = (array) $invoice->response_code;
+        $token = $token ?: ($rc['token'] ?? null);
+        if (!empty($rc['is_activity'])) {
+            return redirect()->route('sw.activity-mobile', [
+                'id' => (int) ($rc['activity_id'] ?? 0),
+                'token' => $token,
+            ])->with('success', trans('front.payment_success_title'));
+        }
+        if (!empty($rc['is_store'])) {
+            return redirect()->route('sw.store-mobile', [
+                'id' => (int) ($rc['store_id'] ?? 0),
+                'token' => $token,
+            ])->with('success', trans('front.payment_success_title'));
+        }
+
         return redirect()->route('sw.mobile-payment.error');
     }
 
@@ -1616,6 +1982,18 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     {
         $this->currentMember = $currentUser = $this->resolveMemberFromRequest(request());
 
+        $hasActiveMainSubscription = false;
+        if ($currentUser) {
+            $hasActiveMainSubscription = GymMemberSubscription::where('member_id', $currentUser->id)
+                ->whereDate('expire_date', '>=', Carbon::now()->toDateString())
+                ->orderByDesc('id')
+                ->exists();
+        }
+
+        if (!$hasActiveMainSubscription) {
+            \Session::flash('error', trans('sw.pt_active_subscription_warning'));
+        }
+
         $ptSubscription = \Modules\Software\Models\GymPTSubscription::with([
             'classes' => function ($q) {
                 $q->where('is_active', true)->with(['activeClassTrainers.trainer']);
@@ -1630,7 +2008,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $mainSettings = $this->mainSettings;
 
         return view('software::Front.pt_subscription_mobile', compact(
-            'title', 'ptSubscription', 'mainSettings', 'currentUser'
+            'title', 'ptSubscription', 'mainSettings', 'currentUser', 'hasActiveMainSubscription'
         ));
     }
 

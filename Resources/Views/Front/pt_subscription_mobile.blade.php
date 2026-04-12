@@ -113,6 +113,16 @@
         .btn-pay:active:not(:disabled) { background: #e06c00; }
         ::placeholder { color: #bbb !important; }
         .no-trainers { color: #888; font-size: 13px; padding: 6px 0; }
+        .subscription-warning {
+            background: #fff3f3;
+            color: #b42318;
+            border: 1px solid #f2b8b5;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
     </style>
 </head>
 <body>
@@ -126,6 +136,13 @@
         <h4>{{ $ptSubscription->name }}</h4>
     </div>
 
+    @if(empty($hasActiveMainSubscription))
+        <div class="subscription-warning">
+            {{ trans('sw.pt_active_subscription_warning') }}
+        </div>
+    @endif
+
+    @if(!empty($hasActiveMainSubscription))
     <form method="post" action="{{ route('sw.pt-invoice-mobile.submit') }}" id="ptForm">
         {{ csrf_field() }}
         <input type="hidden" name="token"              value="{{ request('token') }}">
@@ -317,6 +334,7 @@
 
         <button type="submit" class="btn-pay" id="payBtn" disabled>{{ trans('front.pay_now') }}</button>
     </form>
+    @endif
 
     <div style="padding-bottom:60px;"></div>
 

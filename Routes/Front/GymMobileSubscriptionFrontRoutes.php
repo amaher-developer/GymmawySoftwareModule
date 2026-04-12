@@ -87,5 +87,11 @@ Route::name('sw.pt-invoice-mobile')
 Route::name('sw.activity-mobile')
     ->get('activity-mobile/{id}', 'Front\GymMobileSubscriptionFrontController@showActivityMobile');
 
+Route::name('sw.activity-invoice-mobile.submit')
+    ->post('activity-invoice-mobile/submit', 'Front\GymMobileSubscriptionFrontController@activityInvoiceSubmit');
+
 Route::name('sw.store-mobile')
     ->get('store-mobile/{id}', 'Front\GymMobileSubscriptionFrontController@showStoreMobile');
+
+Route::name('sw.store-invoice-mobile.submit')
+    ->post('store-invoice-mobile/submit', 'Front\GymMobileSubscriptionFrontController@storeInvoiceSubmit');
