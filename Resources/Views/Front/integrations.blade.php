@@ -165,6 +165,7 @@
                                 </div>
                                 <div class="col-md-6 fv-row d-flex align-items-end">
                                     <div class="form-check form-switch mt-7">
+                                        <input type="hidden" name="payments[tabby][is_test]" value="0">
                                         <input class="form-check-input" type="checkbox"
                                                name="payments[tabby][is_test]"
                                                value="1"
@@ -219,6 +220,7 @@
                             <div class="row mb-5">
                                 <div class="col-md-6 fv-row">
                                     <div class="form-check form-switch mt-2">
+                                        <input type="hidden" name="payments[tamara][is_test]" value="0">
                                         <input class="form-check-input" type="checkbox"
                                                name="payments[tamara][is_test]"
                                                value="1"
@@ -299,6 +301,7 @@
                                 </div>
                                 <div class="col-md-6 fv-row d-flex align-items-end">
                                     <div class="form-check form-switch mt-7">
+                                        <input type="hidden" name="payments[paytabs][is_test]" value="0">
                                         <input class="form-check-input" type="checkbox"
                                                name="payments[paytabs][is_test]"
                                                value="1"
