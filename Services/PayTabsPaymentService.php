@@ -334,6 +334,74 @@ class PayTabsPaymentService
     }
 
     /**
+     * Generate and send PayTabs payment link WITHOUT creating a subscription.
+     */
+    public function generateLinkWithoutSubscription(
+        $member,
+        GymSubscription $subscription,
+        float $amount,
+        $mainSettings,
+        ?int $branchSettingId = null
+    ): array {
+        if (!$this->isEnabled) {
+            return ['success' => false, 'invoice_id' => null, 'payment_url' => null, 'error' => 'PayTabs not configured'];
+        }
+        try {
+            $subscriptionName = app()->getLocale() === 'ar'
+                ? ($subscription->name_ar ?? $subscription->name_en)
+                : ($subscription->name_en ?? $subscription->name_ar);
+
+            $result = $this->paytabsController->createMemberPaymentLink([
+                'amount'                 => $amount,
+                'currency'               => $this->currency,
+                'subscription_name'      => $subscriptionName,
+                'duration'               => $subscription->period ?? 30,
+                'member_id'              => $member->id,
+                'subscription_id'        => $subscription->id,
+                'member_subscription_id' => null,
+                'branch_setting_id'      => $branchSettingId,
+                'member_name'            => $member->name,
+                'member_phone'           => $this->formatPhoneNumber($member->phone ?? ''),
+                'member_email'           => $member->email ?? 'member@gym.com',
+                'city'                   => $this->city,
+                'country'                => $this->country,
+                'address'                => $member->address ?? $this->address,
+                'success_url'            => route('paytabs.member.success'),
+                'cancel_url'             => route('paytabs.member.cancel'),
+                'failure_url'            => route('paytabs.member.failure'),
+            ]);
+
+            if (!$result['success']) {
+                return ['success' => false, 'invoice_id' => null, 'payment_url' => null, 'error' => $result['error'] ?? 'link_failed'];
+            }
+
+            $invoice = GymOnlinePaymentInvoice::create([
+                'branch_setting_id'      => $branchSettingId,
+                'member_id'              => $member->id,
+                'subscription_id'        => $subscription->id,
+                'member_subscription_id' => null,
+                'payment_id'             => $result['tran_ref'] ?? null,
+                'transaction_id'         => $result['cart_id'] ?? null,
+                'status'                 => TypeConstants::PENDING,
+                'payment_method'         => TypeConstants::PAYTABS_TRANSACTION,
+                'payment_channel'        => TypeConstants::CHANNEL_SYSTEM,
+                'amount'                 => $amount,
+                'name'                   => $member->name,
+                'phone'                  => $member->phone,
+                'email'                  => $member->email,
+                'response_code'          => json_encode(['payment_url' => $result['payment_url']]),
+            ]);
+
+            $sent = $this->sendPaymentLinkToMember($member, $result['payment_url'], $subscription, $amount, $mainSettings);
+
+            return ['success' => true, 'invoice_id' => $invoice->id, 'payment_url' => $result['payment_url'], 'sent_via' => $sent];
+        } catch (\Exception $e) {
+            Log::error('PayTabs generateLinkWithoutSubscription failed', ['member_id' => $member->id, 'error' => $e->getMessage()]);
+            return ['success' => false, 'invoice_id' => null, 'payment_url' => null, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Build payment message for WhatsApp/SMS
      */
     protected function buildPaymentMessage(

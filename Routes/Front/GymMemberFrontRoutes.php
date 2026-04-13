@@ -122,6 +122,18 @@ Route::prefix('member')
         Route::name('sw.checkSubscriptionOverlap')
             ->get('/check-subscription-overlap', 'Front\GymMemberFrontController@checkSubscriptionOverlap');
 
+        // Send payment link for new member before creating member (no member/subscription saved yet)
+        Route::name('sw.memberNewCheckAndSendLink')
+            ->post('/member-new-check-and-send-link', 'Front\GymMemberFrontController@memberNewCheckAndSendLink');
+
+        // Pre-check date conflicts and send payment link for renewal (no subscription saved yet)
+        Route::name('sw.memberRenewalCheckAndSendLink')
+            ->post('/{id}/member-renewal-check-and-send-link', 'Front\GymMemberFrontController@memberRenewalCheckAndSendLink');
+
+        // Poll invoice payment status (used by renewal-via-link waiting modal)
+        Route::name('sw.checkInvoicePaymentStatus')
+            ->get('/invoice/{invoiceId}/check-payment-status', 'Front\GymMemberFrontController@checkInvoicePaymentStatus');
+
         // Check payment status for a member subscription (polling endpoint)
         Route::name('sw.checkMemberPaymentStatus')
             ->get('/subscription/{memberSubscriptionId}/check-payment-status', 'Front\GymMemberFrontController@checkPaymentStatus');

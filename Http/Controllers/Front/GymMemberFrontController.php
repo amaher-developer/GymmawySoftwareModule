@@ -3050,6 +3050,180 @@ class GymMemberFrontController extends GymGenericFrontController
     }
 
     /**
+     * Check date conflicts and send payment link for renewal WITHOUT saving a subscription.
+     * Called from JS when a gateway checkbox is checked before the renew modal is submitted.
+     * The subscription is only created later (via memberSubscriptionRenewStore) after payment confirmation.
+     */
+    public function memberRenewalCheckAndSendLink(Request $request)
+    {
+        $membership       = GymMemberSubscription::where('id', $request->id)->first();
+        $subscription     = GymSubscription::branch()->find($request->membership_id);
+
+        if (!$subscription) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error')], 200);
+        }
+
+        $custom_expire_date = $request->custom_expire_date;
+        $custom_start_date  = $request->custom_start_date ?? Carbon::now()->toDateString();
+        $discount_value     = (float) @$request->discount_value;
+        $vat                = round(($subscription->price - $discount_value)
+                                * ((float) @$this->mainSettings->vat_details['vat_percentage'] / 100), 2);
+        $amount_total       = round($subscription->price - $discount_value + $vat, 2);
+        $expire_date        = $custom_expire_date
+            ? Carbon::parse($custom_expire_date)->toDateString()
+            : Carbon::now()->addDays((int) $subscription->period)->toDateString();
+
+        $member_id = @$membership ? @$membership->member_id : @$request->member_id;
+        $member    = $this->MemberRepository->withTrashed()->find($member_id);
+
+        if (!$member) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error')], 200);
+        }
+
+        // Date conflict check (same logic as memberSubscriptionRenewStore)
+        $other_subscriptions = GymMemberSubscription::branch()
+            ->where(function ($q) use ($custom_start_date, $expire_date) {
+                $q->where('joining_date', '<=', Carbon::parse($custom_start_date))
+                  ->where('expire_date', '>=', Carbon::parse($expire_date));
+            })
+            ->orWhereBetween('joining_date', [$custom_start_date, $expire_date])
+            ->orWhereBetween('expire_date',  [$custom_start_date, $expire_date])
+            ->get()
+            ->where('member_id', $member->id);
+
+        if ($other_subscriptions->count() > 0) {
+            $canOverride = $membership
+                && $membership->status == TypeConstants::Expired
+                && Carbon::parse($membership->expire_date)->toDateString() >= Carbon::now()->toDateString();
+            if (!$canOverride) {
+                return Response::json(['msg' => trans('sw.error_date_between'), 'code' => 'custom_expire_date'], 200);
+            }
+        }
+
+        // Send payment link via the chosen gateway — no subscription created
+        $gateway = $request->input('gateway'); // tabby|tamara|paymob|paytabs
+        $result  = ['success' => false];
+
+        try {
+            if ($gateway === 'tabby') {
+                $svc = new TabbyPaymentService();
+                if ($svc->isTabbyConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'tamara') {
+                $svc = new TamaraPaymentService();
+                if ($svc->isTamaraConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paymob') {
+                $svc = new PaymobPaymentService();
+                if ($svc->isPaymobConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paytabs') {
+                $svc = new PayTabsPaymentService();
+                if ($svc->isPayTabsConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('memberRenewalCheckAndSendLink error', ['gateway' => $gateway, 'error' => $e->getMessage()]);
+        }
+
+        if (!$result['success']) {
+            return Response::json(['status' => false, 'msg' => trans('sw.payment_link_failed')], 200);
+        }
+
+        return Response::json([
+            'status'      => true,
+            'invoice_id'  => $result['invoice_id'],
+            'payment_url' => $result['payment_url'],
+            'sent_via'    => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
+        ], 200);
+    }
+
+    /**
+     * Send payment link for a NEW member before the member is created.
+     * No member or subscription is saved — the form is submitted normally after payment confirmation.
+     */
+    public function memberNewCheckAndSendLink(Request $request)
+    {
+        $subscription = GymSubscription::branch()->find($request->subscription_id);
+        if (!$subscription) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error')], 200);
+        }
+
+        $discount_value = (float) @$request->discount_value;
+        $vat            = round(($subscription->price - $discount_value)
+                            * ((float) @$this->mainSettings->vat_details['vat_percentage'] / 100), 2);
+        $amount_total   = round($subscription->price - $discount_value + $vat, 2);
+
+        // Build a temporary member-like object from form data (no DB record yet)
+        $member              = new \stdClass();
+        $member->id          = null;
+        $member->name        = $request->input('name', '');
+        $member->phone       = $request->input('phone', '');
+        $member->email       = $request->input('email', '');
+        $member->city        = $request->input('city', '');
+        $member->address     = $request->input('address', '');
+        $member->gender      = $request->input('gender', null);
+        $member->dob         = $request->input('dob', null);
+
+        $gateway = $request->input('gateway');
+        $result  = ['success' => false];
+
+        try {
+            if ($gateway === 'tabby') {
+                $svc = new TabbyPaymentService();
+                if ($svc->isTabbyConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'tamara') {
+                $svc = new TamaraPaymentService();
+                if ($svc->isTamaraConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paymob') {
+                $svc = new PaymobPaymentService();
+                if ($svc->isPaymobConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paytabs') {
+                $svc = new PayTabsPaymentService();
+                if ($svc->isPayTabsConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('memberNewCheckAndSendLink error', ['gateway' => $gateway, 'error' => $e->getMessage()]);
+        }
+
+        if (!$result['success']) {
+            return Response::json(['status' => false, 'msg' => trans('sw.payment_link_failed')], 200);
+        }
+
+        return Response::json([
+            'status'      => true,
+            'invoice_id'  => $result['invoice_id'],
+            'payment_url' => $result['payment_url'],
+            'sent_via'    => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
+        ], 200);
+    }
+
+    /**
+     * Poll an invoice by ID to check if payment is confirmed (SUCCESS).
+     * Used by the renewal-via-link waiting modal.
+     */
+    public function checkInvoicePaymentStatus($invoiceId)
+    {
+        $invoice = GymOnlinePaymentInvoice::where('id', $invoiceId)
+            ->where('status', TypeConstants::SUCCESS)
+            ->first();
+
+        return response()->json(['paid' => !is_null($invoice)]);
+    }
+
+    /**
      * Check if a member subscription has been paid via online payment gateway.
      * Used by the frontend polling mechanism after sending a payment link.
      */
@@ -3745,6 +3919,9 @@ class GymMemberFrontController extends GymGenericFrontController
 
             $member_credit = GymMemberCredit::create(['member_id' => $member_id, 'user_id' => Auth::guard('sw')->user()->id, 'amount' => $amount,'operation' => $type]);
 
+            $add_to_moneybox = intval(@$request->add_to_moneybox);
+
+            if ($add_to_moneybox) {
             // ACCOUNTING RULE: Create Money Box entry for cash transactions
             // - Type 0 (Add): Cash received (wallet top-up or debt payment)
             // - Type 1 (Refund): Cash withdrawn (refund from balance)
@@ -3775,6 +3952,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'payment_type' => $payment_type
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
             ]);
+            } // end if ($add_to_moneybox)
 
             // DEBT PAYMENT LOGIC: Link payment to unpaid store orders (only for additions)
             // If member had debt (negative balance), apply this payment to their unpaid invoices
@@ -3820,7 +3998,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->store_balance = $member_balance_value;
             $member->save();
 
-            if(($member_balance_value >= 0) && ($type != 1)){
+            if ($add_to_moneybox && ($member_balance_value >= 0) && ($type != 1)){
                 GymMoneyBox::where('is_store_balance', 2)->where('member_id', $member->id)->update(['is_store_balance' => 1, 'payment_type' => $payment_type]);
             }
         }

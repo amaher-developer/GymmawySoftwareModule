@@ -372,59 +372,86 @@
                                 </select>
                             </div>
 
-                            <!-- Tabby Payment Option -->
-                            @if(!empty($mainSettings->payments['tabby']['merchant_code'] ?? null))
-                            <div class="col-md-6" id="tabby_payment_option">
-                                <label class="form-label">{{ trans('sw.tabby_payment')}}</label>
-                                <div class="form-check form-switch form-check-custom form-check-solid">
-                                    <input class="form-check-input" type="checkbox" name="send_tabby_link" id="send_tabby_link" value="1"/>
-                                    <label class="form-check-label" for="send_tabby_link">
-                                        {{ trans('sw.send_tabby_payment_link')}}
-                                    </label>
-                                </div>
-                                <div class="text-muted fs-7 mt-1">{{ trans('sw.tabby_payment_description')}}</div>
-                            </div>
-                            @endif
+                            @php
+                                $hasAnyGateway = !empty($mainSettings->payments['tabby']['merchant_code'] ?? null)
+                                    || !empty($mainSettings->payments['tamara']['token'] ?? null)
+                                    || !empty($mainSettings->payments['paymob']['api_key'] ?? null)
+                                    || (!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null));
+                            @endphp
+                            @if($hasAnyGateway)
+                            <!-- Payment Gateway Cards -->
+                            <div class="col-12" id="payment_gateway_section">
+                                <div class="pgw-section">
+                                    <div class="pgw-section-title">
+                                        <i class="ki-outline ki-send"></i>
+                                        {{ trans('sw.send_payment_link') }}
+                                    </div>
+                                    <div class="pgw-grid">
 
-                            <!-- Tamara Payment Option -->
-                            @if(!empty($mainSettings->payments['tamara']['token'] ?? null))
-                            <div class="col-md-6" id="tamara_payment_option">
-                                <label class="form-label">{{ trans('sw.tamara_payment')}}</label>
-                                <div class="form-check form-switch form-check-custom form-check-solid">
-                                    <input class="form-check-input" type="checkbox" name="send_tamara_link" id="send_tamara_link" value="1"/>
-                                    <label class="form-check-label" for="send_tamara_link">
-                                        {{ trans('sw.send_tamara_payment_link')}}
-                                    </label>
-                                </div>
-                                <div class="text-muted fs-7 mt-1">{{ trans('sw.tamara_payment_description')}}</div>
-                            </div>
-                            @endif
+                                        @if(!empty($mainSettings->payments['tabby']['merchant_code'] ?? null))
+                                        <div class="pgw-card" id="tabby_payment_option">
+                                            <input type="checkbox" name="send_tabby_link" id="send_tabby_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/tabby-logo.webp') }}" alt="Tabby" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <span class="badge badge-light-success fs-8 fw-semibold px-2 py-1">{{ trans('sw.buy_now_pay_later') }}</span>
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.tabby_payment_description') }}</div>
+                                        </div>
+                                        @endif
 
-                            <!-- Paymob Payment Option -->
-                            @if(!empty($mainSettings->payments['paymob']['api_key'] ?? null))
-                            <div class="col-md-6" id="paymob_payment_option">
-                                <label class="form-label">{{ trans('sw.paymob_payment')}}</label>
-                                <div class="form-check form-switch form-check-custom form-check-solid">
-                                    <input class="form-check-input" type="checkbox" name="send_paymob_link" id="send_paymob_link" value="1"/>
-                                    <label class="form-check-label" for="send_paymob_link">
-                                        {{ trans('sw.send_paymob_payment_link')}}
-                                    </label>
-                                </div>
-                                <div class="text-muted fs-7 mt-1">{{ trans('sw.paymob_payment_description')}}</div>
-                            </div>
-                            @endif
+                                        @if(!empty($mainSettings->payments['tamara']['token'] ?? null))
+                                        <div class="pgw-card" id="tamara_payment_option">
+                                            <input type="checkbox" name="send_tamara_link" id="send_tamara_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/tamara-logo.svg') }}" alt="Tamara" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <span class="badge badge-light-warning fs-8 fw-semibold px-2 py-1">{{ trans('sw.buy_now_pay_later') }}</span>
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.tamara_payment_description') }}</div>
+                                        </div>
+                                        @endif
 
-                            <!-- PayTabs Payment Option -->
-                            @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
-                            <div class="col-md-6" id="paytabs_payment_option">
-                                <label class="form-label">{{ trans('sw.paytabs_payment')}}</label>
-                                <div class="form-check form-switch form-check-custom form-check-solid">
-                                    <input class="form-check-input" type="checkbox" name="send_paytabs_link" id="send_paytabs_link" value="1"/>
-                                    <label class="form-check-label" for="send_paytabs_link">
-                                        {{ trans('sw.send_paytabs_payment_link')}}
-                                    </label>
+                                        @if(!empty($mainSettings->payments['paymob']['api_key'] ?? null))
+                                        <div class="pgw-card" id="paymob_payment_option">
+                                            <input type="checkbox" name="send_paymob_link" id="send_paymob_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/paymob.png') }}" alt="Paymob" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.paymob_payment_description') }}</div>
+                                        </div>
+                                        @endif
+
+                                        @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
+                                        <div class="pgw-card" id="paytabs_payment_option">
+                                            <input type="checkbox" name="send_paytabs_link" id="send_paytabs_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/paytabs-logo.svg') }}" alt="PayTabs" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.paytabs_payment_description') }}</div>
+                                        </div>
+                                        @endif
+
+                                    </div>
                                 </div>
-                                <div class="text-muted fs-7 mt-1">{{ trans('sw.paytabs_payment_description')}}</div>
                             </div>
                             @endif
 
@@ -951,42 +978,60 @@
                 return false;
             }
 
+            // Step 1: send payment link first (no member/subscription created yet)
             e.preventDefault();
-            var $form = $(this);
-            var formData = new FormData($form[0]);
+            var $btn = $form.find('[type=submit]').prop('disabled', true).addClass('disabled');
+
+            var payload = {
+                gateway:         gateway,
+                subscription_id: $form.find('[name=subscription_id]').val(),
+                discount_value:  $form.find('[name=discount_value]').val() || 0,
+                name:            $form.find('[name=name]').val(),
+                phone:           $form.find('[name=phone]').val(),
+                email:           $form.find('[name=email]').val(),
+                city:            $form.find('[name=city]').val(),
+                address:         $form.find('[name=address]').val(),
+                _token:          $form.find('[name=_token]').val()
+            };
 
             $.ajax({
-                url: $form.attr('action') || window.location.href,
+                url:  pw_new_member_check_send_url,
                 type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                beforeSend: function () {
-                    $form.find('[type=submit]').prop('disabled', true).addClass('disabled');
-                },
+                data: payload,
                 success: function (data) {
-                    $form.find('[type=submit]').prop('disabled', false).removeClass('disabled');
-                    if (data.status === true && data.payment_url) {
-                        pwOpenModal(data.member_subscription_id, data.sent_via, data.redirect_url, gateway, function (paid) {
-                            if (data.redirect_url) window.location.href = data.redirect_url;
-                        });
-                    } else if (data.status === true) {
-                        if (data.redirect_url) window.location.href = data.redirect_url;
+                    $btn.prop('disabled', false).removeClass('disabled');
+                    if (!data.status) {
+                        swal('{{ trans('sw.error') }}', data.msg || '{{ trans('sw.something_went_wrong') }}', 'warning');
+                        return;
                     }
+
+                    // Step 2: open waiting modal — poll by invoice ID
+                    pwOpenModal(
+                        data.invoice_id,
+                        data.sent_via,
+                        null,
+                        gateway,
+                        function () {
+                            // Step 3: payment confirmed or "complete" — submit form as normal (no gateway)
+                            $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paytabs_link').prop('checked', false);
+                            $('form.form').off('submit').submit();
+                        },
+                        pw_check_invoice_url
+                    );
                 },
-                error: function (xhr) {
-                    $form.find('[type=submit]').prop('disabled', false).removeClass('disabled');
-                    if (xhr.status === 422) {
-                        $form.off('submit').submit();
-                    } else {
-                        swal('{{ trans('sw.error') }}', '{{ trans('sw.something_went_wrong') }}', 'error');
-                    }
+                error: function () {
+                    $btn.prop('disabled', false).removeClass('disabled');
+                    swal('{{ trans('sw.error') }}', '{{ trans('sw.something_went_wrong') }}', 'error');
                 }
             });
 
             return false;
         });
+
+        // Init payment gateway cards (mutual exclusivity)
+        if (typeof window.initPgwCards === 'function') {
+            window.initPgwCards('#payment_gateway_section');
+        }
     </script>
 
 @endsection

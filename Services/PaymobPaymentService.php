@@ -311,6 +311,47 @@ class PaymobPaymentService
     }
 
     /**
+     * Generate and send Paymob payment link WITHOUT creating a subscription.
+     */
+    public function generateLinkWithoutSubscription(
+        $member,
+        GymSubscription $subscription,
+        float $amount,
+        $mainSettings,
+        ?int $branchSettingId = null
+    ): array {
+        if (!$this->isEnabled) {
+            return ['success' => false, 'invoice_id' => null, 'payment_url' => null, 'error' => 'Paymob not configured'];
+        }
+        try {
+            $invoice = GymOnlinePaymentInvoice::create([
+                'branch_setting_id'      => $branchSettingId,
+                'member_id'              => $member->id,
+                'subscription_id'        => $subscription->id,
+                'member_subscription_id' => null,
+                'payment_id'             => null,
+                'status'                 => TypeConstants::PENDING,
+                'payment_method'         => TypeConstants::PAYMOB_TRANSACTION,
+                'payment_channel'        => TypeConstants::CHANNEL_SYSTEM,
+                'amount'                 => $amount,
+                'name'                   => $member->name,
+                'phone'                  => $member->phone,
+                'email'                  => $member->email,
+                'response_code'          => json_encode(['pending' => true]),
+            ]);
+
+            $token      = $this->paymobController->generateHmacToken($invoice->id);
+            $paymentUrl = url("/paymob/pay/{$invoice->id}?token={$token}");
+            $sent       = $this->sendPaymentLinkToMember($member, $paymentUrl, $subscription, $amount, $mainSettings);
+
+            return ['success' => true, 'invoice_id' => $invoice->id, 'payment_url' => $paymentUrl, 'sent_via' => $sent];
+        } catch (\Exception $e) {
+            Log::error('Paymob generateLinkWithoutSubscription failed', ['member_id' => $member->id, 'error' => $e->getMessage()]);
+            return ['success' => false, 'invoice_id' => null, 'payment_url' => null, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Build payment message for WhatsApp/SMS
      */
     protected function buildPaymentMessage(

@@ -39,7 +39,7 @@ class SubscriptionContentResource extends JsonResource
             [
                 "id" => $this->id,
                 "name" => Str::limit(@$this->name, 30),
-                "image" => $this->image_name ? $this->image : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
+                "image" => $this->image_name ? $this->image : @env('APP_URL').@env('APP_URL_ASSETS') . 'placeholder_black.png',
                 "price" => number_format($finalPrice, 2). ' ' . $currency . ' ',
                 "content" => strip_tags(@$this->content),
                 "period" => $this->period . ' '. trans('sw.day_2'),

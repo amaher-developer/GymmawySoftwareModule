@@ -81,7 +81,7 @@ class PTContentResource extends JsonResource
             "name"         => $name,
             "image"        => $this->pt_subscription->image_name
                                 ? $this->pt_subscription->image
-                                : @env('APP_WEBSITE').@env('APP_URL_ASSETS') . 'placeholder_black.png',
+                                : @env('APP_URL').@env('APP_URL_ASSETS') . 'placeholder_black.png',
             "price"        => $this->price
                                 ? number_format(
                                     $this->price + ($this->price * (@$setting->vat_details['vat_percentage'] / 100)), 2

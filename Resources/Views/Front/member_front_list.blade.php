@@ -1034,6 +1034,16 @@
                                   class="form-control form-control-solid" rows="3" id="credit_notes"></textarea>
                     </div>
 
+                    <!-- Moneybox Option -->
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="credit_add_to_moneybox" name="add_to_moneybox" value="1" checked>
+                            <label class="form-check-label fw-bold" for="credit_add_to_moneybox">
+                                <i class="ki-outline ki-finance-calculator fs-4 me-1"></i>{{ trans('sw.include_in_moneybox_report')}}
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Action Buttons -->
                     <div class="d-flex justify-content-end gap-2">
                         <button class="btn btn-secondary" data-dismiss="modal" type="button">
@@ -1979,6 +1989,7 @@
                  'amount_refund': $('#credit_amount_refund').val(),
                  'payment_type': $('#credit_payment_type').val(),
                  'notes': $('#credit_notes').val(),
+                 'add_to_moneybox': $('#credit_add_to_moneybox').is(':checked') ? 1 : 0,
                  "_token": "{{ csrf_token() }}"
              }
 
@@ -2001,6 +2012,7 @@
                             $('#credit_amount_add').val('');
                             $('#credit_amount_refund').val('');
                             $('#credit_notes').val('');
+                            $('#credit_add_to_moneybox').prop('checked', true);
                             $('#form_credit_add_btn').hide();
                             $('#form_credit_refund_btn').hide();
                             $('#credits_balance').val(data);

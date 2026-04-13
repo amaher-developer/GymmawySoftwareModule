@@ -1164,6 +1164,9 @@
 
     // Payment Waiting Flow (shared)
     var pw_check_status_url = '{{ route('sw.checkMemberPaymentStatus', ':id') }}';
+    var pw_check_invoice_url = '{{ route('sw.checkInvoicePaymentStatus', ':id') }}';
+    var pw_renewal_check_send_url = '{{ route('sw.memberRenewalCheckAndSendLink', ':id') }}';
+    var pw_new_member_check_send_url = '{{ route('sw.memberNewCheckAndSendLink') }}';
     var pw_resend_url = '{{ route('sw.resendMemberPaymentLink', ':id') }}';
     var pw_active_wa = {{ (@$mainSettings->active_wa && env('WA_GATEWAY') == 'ULTRA') ? 'true' : 'false' }};
     var pw_active_sms = {{ (@$mainSettings->active_sms && env('SMS_GATEWAY')) ? 'true' : 'false' }};
@@ -1369,6 +1372,7 @@ var pw_member_subscription_id = null;
 var pw_redirect_url = null;
 var pw_active_gateway = null;
 var pw_on_success_callback = null;
+var pw_poll_url = null; // overridable per call
 
 function pwShowSentNotice(sentVia) {
     var channels = [];
@@ -1387,8 +1391,9 @@ function pwStartPolling() {
     if (pw_polling_interval) clearInterval(pw_polling_interval);
     pw_polling_interval = setInterval(function () {
         if (!pw_member_subscription_id) return;
+        var pollUrl = (pw_poll_url || pw_check_status_url).replace(':id', pw_member_subscription_id);
         $.ajax({
-            url: pw_check_status_url.replace(':id', pw_member_subscription_id),
+            url: pollUrl,
             type: 'GET',
             success: function (data) {
                 if (data.paid) {
@@ -1409,11 +1414,12 @@ function pwStopPolling() {
     }
 }
 
-function pwOpenModal(memberSubscriptionId, sentVia, redirectUrl, gateway, onSuccessCallback) {
+function pwOpenModal(memberSubscriptionId, sentVia, redirectUrl, gateway, onSuccessCallback, checkUrl) {
     pw_member_subscription_id = memberSubscriptionId;
     pw_redirect_url = redirectUrl;
     pw_active_gateway = gateway;
     pw_on_success_callback = onSuccessCallback || null;
+    pw_poll_url = checkUrl || null;
     $('#pw_loading_state').show();
     $('#pw_success_state').hide();
     $('#pw_sent_notice').hide();
