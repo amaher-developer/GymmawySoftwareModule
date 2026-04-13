@@ -120,7 +120,12 @@
     /* RTL support */
     [dir=rtl] .pgw-check { right: auto; left: 8px; }
     [dir=rtl] .pgw-logo-wrap { padding-right: 0; padding-left: 24px; }
-</style>
+
+
+
+
+    /*-------------------------------------*/
+    
     span#client_balance span {
         padding: 3px;
         border-radius: 3px !important;
