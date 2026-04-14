@@ -275,7 +275,7 @@ class WebsiteApiController extends GenericApiController
             if ($message_notification) {
                 $msg = $notificationService->dynamicMsg($message_notification->message, $memberSubscription, $settings);
                 $notify_data = [
-                    'image' => @env('APP_WEBSITE') ? env('APP_WEBSITE') . env('APP_URL_ASSETS') . 'placeholder_black.png' : @$settings->logo,
+                    'image' => @env('APP_URL') ? env('APP_URL') . env('APP_URL_ASSETS') . 'placeholder_black.png' : @$settings->logo,
                     'sound' => 'default',
                     'badge' => '1',
                     'e'     => 1,

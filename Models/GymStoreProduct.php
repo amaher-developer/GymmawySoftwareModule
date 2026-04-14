@@ -63,8 +63,8 @@ class GymStoreProduct extends GenericModel
     {
         $image = $this->getRawOriginal('image');
         if (!$image) {
-            if (@env('APP_WEBSITE')) {
-                return @env('APP_WEBSITE') . @env('APP_URL_ASSETS') . 'placeholder_black.png';
+            if (@env('APP_URL_ASSETS')) {
+                return @env('APP_URL') . @env('APP_URL_ASSETS') . 'placeholder_black.png';
             }
             return asset('resources/assets/new_front/img/blank-image.svg');
         }
