@@ -30,50 +30,44 @@ class PTContentResource extends JsonResource
             ?? $this->getRawOriginal('content_en')
             ?? '';
 
-        // Fetch/classes and map detailed info
+        // Build classes from the subscription's classes relation
         $classes = [];
-        if ($this->classes && is_iterable($this->classes)) {
-            foreach ($this->classes as $class) {
-                // pick localized fields
-                $className    = $class->{'name_' . $lang} ?? $class->name_en ?? $class->name ?? '';
-                $classTitle   = $class->{'title_' . $lang} ?? $class->title_en ?? $class->title ?? '';
-                $classDesc    = $class->{'description_' . $lang} ?? $class->description_en ?? $class->description ?? '';
-                $type         = $class->type ?? '';
-                $price        = $class->price ?? null;
-                $vatPercent   = @$setting->vat_details['vat_percentage'] ?? 0;
+        $vatPercent = @$setting->vat_details['vat_percentage'] ?? 0;
+        $ptClasses = $this->pt_subscription ? ($this->pt_subscription->classes ?? collect()) : collect();
+        foreach ($ptClasses as $class) {
+            $className  = $class->{'name_' . $lang} ?? $class->name_en ?? $class->name ?? '';
+            $classTitle = $class->{'title_' . $lang} ?? $class->title_en ?? $class->title ?? '';
+            $classDesc  = $class->{'description_' . $lang} ?? $class->description_en ?? $class->description ?? '';
+            $price      = $class->price ?? null;
 
-                $classPrice   = is_numeric($price)
-                    ? number_format($price + ($price * ($vatPercent / 100)), 2) . ' ' . env('APP_CURRENCY_' . strtoupper($lang))
-                    : '';
+            $classPrice = is_numeric($price)
+                ? number_format($price + ($price * ($vatPercent / 100)), 2) . ' ' . env('APP_CURRENCY_' . strtoupper($lang))
+                : '';
 
-                // trainers for this class with their schedule (current method is via relation, fallback empty)
-                $classTrainers = [];
-                if (isset($class->activeClassTrainers) && is_iterable($class->activeClassTrainers)) {
-                    foreach ($class->activeClassTrainers as $ct) {
-                        $trainerArr = [
-                            'id'   => $ct->trainer->id ?? null,
-                            'name' => $ct->trainer->name ?? '',
-                            'schedule' => [
-                                'day'   => $ct->day ?? '',
-                                'start' => $ct->from_time ?? '',
-                                'end'   => $ct->to_time ?? '',
-                            ]
-                        ];
-                        $classTrainers[] = $trainerArr;
-                    }
+            $classTrainers = [];
+            if ($class->activeClassTrainers && is_iterable($class->activeClassTrainers)) {
+                foreach ($class->activeClassTrainers as $ct) {
+                    $classTrainers[] = [
+                        'id'       => $ct->trainer->id ?? null,
+                        'name'     => $ct->trainer->name ?? '',
+                        'schedule' => [
+                            'day'   => $ct->day ?? '',
+                            'start' => $ct->from_time ?? '',
+                            'end'   => $ct->to_time ?? '',
+                        ],
+                    ];
                 }
-
-                $classes[] = [
-                    'id'          => $class->id,
-                    'name'        => $className,
-                    'title'       => $classTitle,
-                    'description' => $classDesc,
-                    'type'        => $type,
-                    'price'       => $classPrice,
-                    'trainers'    => $classTrainers,
-                    // add more fields as needed...
-                ];
             }
+
+            $classes[] = [
+                'id'          => $class->id,
+                'name'        => $className,
+                'title'       => $classTitle,
+                'description' => $classDesc,
+                'type'        => $class->type ?? '',
+                'price'       => $classPrice,
+                'trainers'    => $classTrainers,
+            ];
         }
 
         return [
@@ -90,14 +84,42 @@ class PTContentResource extends JsonResource
             "classes"      => $classes,
             "content"      => $content,
             "is_reserved"  => $this->is_reserved ?? 0,
-            "trainers"     => @$this->pt_subscription_trainer
-                                ? PTTrainerContentResource::collection(@$this->pt_subscription_trainer)
-                                : [],
+            "trainers"     => $this->_buildTrainers($lang),
             "is_payment"   => @env('APP_WEB_PAYMENT_PT_SUBSCRIPTION') == 1 ? 1 : 0,
             "payment_link" => @env('APP_WEB_PAYMENT_PT_SUBSCRIPTION') == 1
                                 ? route('sw.pt-subscription-mobile', ['id' => $this->id, 'lang' => $lang])
                                 : "",
         ];
+    }
+
+    private function _buildTrainers($lang)
+    {
+        // Try old pt_subscription_trainer relation first
+        $oldTrainers = $this->pt_subscription_trainer ?? collect();
+        if ($oldTrainers && $oldTrainers->isNotEmpty()) {
+            return PTTrainerContentResource::collection($oldTrainers);
+        }
+
+        // Fall back to new activeClassTrainers relation
+        $trainers = [];
+        foreach ($this->activeClassTrainers ?? [] as $ct) {
+            $t = $ct->trainer;
+            if (!$t) continue;
+            $trainers[] = [
+                'id'             => $t->id,
+                'name'           => $t->name ?? '',
+                'phone'          => $t->phone ?? '',
+                'specialization' => $t->specialization ?? '',
+                'bio'            => $t->bio ?? '',
+                'is_completed'   => 0,
+                'is_complete_msg'=> '',
+                'image'          => $t->image_name
+                    ? $t->image
+                    : (env('APP_URL') . env('APP_URL_ASSETS') . 'placeholder_black.png'),
+                'reservations'   => [],
+            ];
+        }
+        return $trainers;
     }
 }
 

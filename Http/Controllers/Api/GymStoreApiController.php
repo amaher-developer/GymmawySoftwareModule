@@ -11,10 +11,7 @@ class GymStoreApiController extends GymGenericApiController
 
     public function stores(){
         $stores = GymStoreProduct::orderBy("id", "desc");
-        if(@request('device_type'))
-            $stores = $stores->where('is_mobile', 1);
-        else
-            $stores = $stores->where('is_web', 1);
+        $stores = $stores->where('is_mobile', 1);
         $stores = $stores->paginate($this->limit);
         $this->getPaginateAttribute($stores);
         $this->return['result']['stores'] =  $stores ?  StoreResource::collection($stores) : [];

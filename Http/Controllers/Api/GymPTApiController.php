@@ -28,9 +28,13 @@ class GymPTApiController extends GymGenericApiController
         return $this->successResponse();
     }
     public function training($id){
-        if (!$this->validateApiRequest(['id'])) return $this->response;
-        $training = GymPTClass::with(['pt_subscription', 'pt_subscription_trainer.pt_trainer'])->where("id", $id)->first();
-        $this->return['result']['training'] =  $training ? new PTContentResource($training) : '';
+        $training = GymPTClass::with([
+            'pt_subscription',
+            'pt_subscription.classes.activeClassTrainers.trainer',
+            'pt_subscription_trainer.pt_trainer',
+            'activeClassTrainers.trainer',
+        ])->where("id", $id)->first();
+        $this->return['result']['training'] = $training ? new PTContentResource($training) : '';
 
         return $this->successResponse();
     }
@@ -55,7 +59,12 @@ class GymPTApiController extends GymGenericApiController
         $date = request('date') ?: Carbon::today()->toDateString();
         $dayOfWeek = Carbon::parse($date)->dayOfWeek;
         $records = [];
-        $pt_member = GymPTMember::where('member_id', Auth::guard('api')->user()->id)
+        $authUser = Auth::guard('api')->user();
+        if (!$authUser) {
+            $this->return['result']['classes'] = [];
+            return $this->successResponse();
+        }
+        $pt_member = GymPTMember::where('member_id', $authUser->id)
             ->whereDate('joining_date', '<=', Carbon::parse($date)->toDateString())
             ->whereDate('expire_date', '>=', Carbon::parse($date)->toDateString())
             ->get();

@@ -106,6 +106,20 @@
                 <input type="radio" name="payment_method" value="5" id="paytabs_s">
                 <div class="payment-details">
                     <label for="paytabs_s">{{ trans('front.paytabs_payment_msg') }}</label>
+                    <p style="margin: 5px 0 0;">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/paytabs-logo.svg') }}"
+                             onerror="this.style.display='none'" alt="PayTabs">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay">
+                    </p>
+                    <span class="policy-msg">{{ trans('front.paytabs_policy_msg') }}</span>
                 </div>
             </div>
         @endif
@@ -115,6 +129,15 @@
                 <input type="radio" name="payment_method" value="6" id="paymob_s">
                 <div class="payment-details">
                     <label for="paymob_s">{{ trans('front.paymob_payment_msg') }}</label>
+                    <p style="margin: 5px 0 0;">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
+                        <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                             src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
+                    </p>
+                    <span class="policy-msg">{{ trans('front.paymob_policy_msg') }}</span>
                 </div>
             </div>
         @endif

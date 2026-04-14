@@ -442,14 +442,14 @@ class GymGenericApiController extends GenericController
 
 
     public function myNotifications(){
-        $member = @\request()->user();
+        $member = @Auth::guard('api')->user();
         if (!empty($member->id)) {
-            $notifications = GymPushNotification::where('member_id', @$member->id)->orWhere('member_id', null)->orderBy('id', 'desc')->get();
-            $this->return['notifications'] = $notifications ? NotificationResource::collection($notifications) : [];
-            return $this->successResponse();
+            $notifications = GymPushNotification::where('member_id', $member->id)->orWhere('member_id', null)->orderBy('id', 'desc')->get();
         } else {
-            return $this->falseResponse(trans('auth.failed'));
+            $notifications = GymPushNotification::whereNull('member_id')->orWhere('member_id', 0)->orderBy('id', 'desc')->get();
         }
+        $this->return['notifications'] = $notifications ? NotificationResource::collection($notifications) : [];
+        return $this->successResponse();
     }
 
     public function logErrors(Request $request)
