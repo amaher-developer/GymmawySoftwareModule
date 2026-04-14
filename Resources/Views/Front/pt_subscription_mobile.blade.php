@@ -123,6 +123,18 @@
             line-height: 1.6;
             margin-bottom: 14px;
         }
+        .login-alert {
+            background: #f0f6ff;
+            color: #1a56a0;
+            border: 1px solid #bed3f5;
+            border-radius: 10px;
+            padding: 16px 14px;
+            font-size: 14px;
+            line-height: 1.7;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .login-alert .lock-icon { font-size: 28px; display: block; margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -136,7 +148,25 @@
         <h4>{{ $ptSubscription->name }}</h4>
     </div>
 
-    @if(empty($hasActiveMainSubscription))
+    @php
+        $resolvedToken = request('payment_link_token') ?: request('token');
+    @endphp
+
+    {{-- Case 1: No token in request (not logged in from mobile app) --}}
+    @if(!$hasToken)
+        <div class="login-alert">
+            <span class="lock-icon">🔒</span>
+            {{ trans('sw.pt_login_required_to_pay') }}
+        </div>
+
+    {{-- Case 2: Token provided but member not resolved (invalid/expired token) --}}
+    @elseif($hasToken && !$currentUser)
+        <div class="subscription-warning">
+            {{ trans('sw.pt_invalid_token_warning') }}
+        </div>
+
+    {{-- Case 3: Logged in but no active main subscription --}}
+    @elseif(!$hasActiveMainSubscription)
         <div class="subscription-warning">
             {{ trans('sw.pt_active_subscription_warning') }}
         </div>
@@ -145,7 +175,8 @@
     @if(!empty($hasActiveMainSubscription))
     <form method="post" action="{{ route('sw.pt-invoice-mobile.submit') }}" id="ptForm">
         {{ csrf_field() }}
-        <input type="hidden" name="token"              value="{{ request('token') }}">
+        <input type="hidden" name="payment_link_token" value="{{ $resolvedToken }}">
+        <input type="hidden" name="token"              value="{{ $resolvedToken }}">
         <input type="hidden" name="pt_class_id"        id="hiddenClassId"        value="">
         <input type="hidden" name="pt_class_trainer_id" id="hiddenClassTrainerId" value="">
         <input type="hidden" name="amount"             id="hiddenAmount"         value="">

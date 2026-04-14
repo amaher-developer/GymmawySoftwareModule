@@ -1424,8 +1424,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $guardMember;
         }
 
-        // 2) Resolve from either query token or bearer token.
-        $rawToken = $request->input('token') ?: $request->bearerToken();
+        // 2) Resolve from either query token (payment_link_token or legacy token) or bearer token.
+        $rawToken = $request->input('payment_link_token')
+            ?: $request->input('token')
+            ?: $request->bearerToken();
         if (!$rawToken) {
             return null;
         }
@@ -1980,7 +1982,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function showPtMobile($id)
     {
-        $this->currentMember = $currentUser = $this->resolveMemberFromRequest(request());
+        $request = request();
+        $rawToken = trim((string) ($request->input('payment_link_token') ?: $request->input('token') ?: ''));
+        $hasToken = $rawToken !== '';
+
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
 
         $hasActiveMainSubscription = false;
         if ($currentUser) {
@@ -1988,10 +1994,6 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 ->whereDate('expire_date', '>=', Carbon::now()->toDateString())
                 ->orderByDesc('id')
                 ->exists();
-        }
-
-        if (!$hasActiveMainSubscription) {
-            \Session::flash('error', trans('sw.pt_active_subscription_warning'));
         }
 
         $ptSubscription = \Modules\Software\Models\GymPTSubscription::with([
@@ -2008,7 +2010,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $mainSettings = $this->mainSettings;
 
         return view('software::Front.pt_subscription_mobile', compact(
-            'title', 'ptSubscription', 'mainSettings', 'currentUser', 'hasActiveMainSubscription'
+            'title', 'ptSubscription', 'mainSettings', 'currentUser',
+            'hasActiveMainSubscription', 'hasToken'
         ));
     }
 
