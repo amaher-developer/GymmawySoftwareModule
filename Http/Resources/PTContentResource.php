@@ -33,6 +33,7 @@ class PTContentResource extends JsonResource
         // Build classes from the subscription's classes relation
         $classes = [];
         $vatPercent = @$setting->vat_details['vat_percentage'] ?? 0;
+        $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         $ptClasses = $this->pt_subscription ? ($this->pt_subscription->classes ?? collect()) : collect();
         foreach ($ptClasses as $class) {
             $className  = $class->{'name_' . $lang} ?? $class->name_en ?? $class->name ?? '';
@@ -44,17 +45,43 @@ class PTContentResource extends JsonResource
                 ? number_format($price + ($price * ($vatPercent / 100)), 2) . ' ' . env('APP_CURRENCY_' . strtoupper($lang))
                 : '';
 
+            // Parse class schedule: stored as {"work_days":{"0":{"status":true,"start":"09:00","end":"10:00"},...}}
+            $classSchedule = [];
+            $workDays = $class->schedule['work_days'] ?? [];
+            foreach ($workDays as $dayIndex => $dayData) {
+                if (!empty($dayData['status'])) {
+                    $classSchedule[] = [
+                        'day'   => $dayNames[$dayIndex] ?? $dayIndex,
+                        'start' => $dayData['start'] ?? '',
+                        'end'   => $dayData['end'] ?? '',
+                    ];
+                }
+            }
+
             $classTrainers = [];
             if ($class->activeClassTrainers && is_iterable($class->activeClassTrainers)) {
                 foreach ($class->activeClassTrainers as $ct) {
+                    if (!$ct->trainer) continue;
+                    // Trainer may have their own schedule (if column exists) or inherit class schedule
+                    $trainerSchedule = [];
+                    $ctSchedule = is_array($ct->schedule) ? $ct->schedule : [];
+                    $trainerWorkDays = ($ctSchedule['work_days'] ?? null) ?: $workDays;
+                    foreach ($trainerWorkDays as $dayIndex => $dayData) {
+                        if (!empty($dayData['status'])) {
+                            $trainerSchedule[] = [
+                                'day'   => $dayNames[$dayIndex] ?? $dayIndex,
+                                'start' => $dayData['start'] ?? '',
+                                'end'   => $dayData['end'] ?? '',
+                            ];
+                        }
+                    }
                     $classTrainers[] = [
-                        'id'       => $ct->trainer->id ?? null,
+                        'id'       => $ct->trainer->id,
                         'name'     => $ct->trainer->name ?? '',
-                        'schedule' => [
-                            'day'   => $ct->day ?? '',
-                            'start' => $ct->from_time ?? '',
-                            'end'   => $ct->to_time ?? '',
-                        ],
+                        'image'    => $ct->trainer->image_name
+                            ? $ct->trainer->image
+                            : (env('APP_URL') . env('APP_URL_ASSETS') . 'placeholder_black.png'),
+                        'schedule' => $trainerSchedule,
                     ];
                 }
             }
@@ -66,6 +93,8 @@ class PTContentResource extends JsonResource
                 'description' => $classDesc,
                 'type'        => $class->type ?? '',
                 'price'       => $classPrice,
+                'total_sessions' => $class->total_sessions ?? 0,
+                'schedule'    => $classSchedule,
                 'trainers'    => $classTrainers,
             ];
         }
@@ -100,11 +129,30 @@ class PTContentResource extends JsonResource
             return PTTrainerContentResource::collection($oldTrainers);
         }
 
-        // Fall back to new activeClassTrainers relation
+        // Fall back to new activeClassTrainers relation (new schema)
+        $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        $classWorkDays = $this->schedule['work_days'] ?? [];
+
         $trainers = [];
+        $seen = [];
         foreach ($this->activeClassTrainers ?? [] as $ct) {
             $t = $ct->trainer;
-            if (!$t) continue;
+            if (!$t || in_array($t->id, $seen)) continue;
+            $seen[] = $t->id;
+
+            $ctSchedule = is_array($ct->schedule) ? $ct->schedule : [];
+            $trainerWorkDays = ($ctSchedule['work_days'] ?? null) ?: $classWorkDays;
+            $schedule = [];
+            foreach ($trainerWorkDays as $dayIndex => $dayData) {
+                if (!empty($dayData['status'])) {
+                    $schedule[] = [
+                        'day'   => $dayNames[$dayIndex] ?? $dayIndex,
+                        'start' => $dayData['start'] ?? '',
+                        'end'   => $dayData['end'] ?? '',
+                    ];
+                }
+            }
+
             $trainers[] = [
                 'id'             => $t->id,
                 'name'           => $t->name ?? '',
@@ -116,6 +164,7 @@ class PTContentResource extends JsonResource
                 'image'          => $t->image_name
                     ? $t->image
                     : (env('APP_URL') . env('APP_URL_ASSETS') . 'placeholder_black.png'),
+                'schedule'       => $schedule,
                 'reservations'   => [],
             ];
         }
