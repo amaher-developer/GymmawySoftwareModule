@@ -2071,13 +2071,14 @@ class GymUserLogFrontController extends GymGenericFrontController
         return $result;
     }
 
-    function exportExcelMoneyboxTax(){
-        $from = request('from');
-        $to = request('to');;
-        $transaction = request('transaction');
-        $operation = intVal($transaction-1);
+    private function buildMoneyboxTaxQuery()
+    {
+        $from        = request()->has('from')        ? request('from')        : false;
+        $to          = request()->has('to')          ? request('to')          : false;
+        $search      = request()->has('search')      ? request('search')      : false;
+        $transaction = request()->has('transaction') ? request('transaction') : false;
 
-        $records = GymMoneyBox::branch()->with(['user', 'member_subscription.member' => function($q){
+        $query = GymMoneyBox::branch()->with(['user', 'member_subscription.member' => function($q){
             $q->withTrashed();
         }, 'member_pt_subscription' => function($q){
             $q->withTrashed();
@@ -2085,20 +2086,56 @@ class GymUserLogFrontController extends GymGenericFrontController
             $q->withTrashed();
         }, 'store_order' => function($q){
             $q->withTrashed();
-        }])
-           ->whereIn('type', [
-               TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::DeleteMember,  TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription
-               ,TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity
-//                , TypeConstants::CreateMemberPayAmountRemainingForm
-               , TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::DeletePTMember,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription
-               , TypeConstants::CreateStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::DeleteStoreOrder
-               , TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder
-           ])
-            ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
-        if($transaction){
-            $records->where('operation', $operation);
+        }])->orderBy('id', 'DESC');
+
+        if (isset($_GET['type']) && request('type')) {
+            $types = [];
+            if (request('type') == 1) {
+                $types = [TypeConstants::CreateMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription];
+            } elseif (request('type') == 2) {
+                $types = [TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity];
+            } elseif (request('type') == 3) {
+                $types = [TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::DeletePTMember, TypeConstants::CreatePTSubscription, TypeConstants::DeletePTSubscription];
+            } elseif (request('type') == 4) {
+                $types = [TypeConstants::CreateStoreProduct, TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder, TypeConstants::DeleteStoreOrder, TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder];
+            } elseif (request('type') == 5) {
+                $types = [TypeConstants::CreateMoneyBoxAdd, TypeConstants::CreateMoneyBoxWithdraw, TypeConstants::CreateMoneyBoxWithdrawEarnings];
+            }
+            $query->whereIn('type', $types);
+        } else {
+            $query->whereIn('type', [
+                TypeConstants::CreateMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription,
+                TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity,
+                TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::DeletePTMember, TypeConstants::CreatePTSubscription, TypeConstants::DeletePTSubscription,
+                TypeConstants::CreateStoreProduct, TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder, TypeConstants::DeleteStoreOrder,
+                TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder,
+                TypeConstants::CreateMoneyBoxAdd, TypeConstants::CreateMoneyBoxWithdraw, TypeConstants::CreateMoneyBoxWithdrawEarnings,
+            ]);
         }
-        $records = $records->get();
+
+        $query->when($from, function ($q) use ($from) {
+            $q->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
+        })->when(@$this->mainSettings->vat_details['vat_percentage'], function ($q) {
+            $q->where('vat', '>', 0);
+        })->when($to, function ($q) use ($to) {
+            $q->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when($search, function ($q) use ($search) {
+            if ((string)$search[0] == '#') {
+                $q->where('id', (int)trim($search, '#'));
+            } else {
+                $q->where('id', '=', (int)$search)
+                  ->orWhere('amount', '=', (int)$search)
+                  ->orWhere('notes', 'like', '%' . $search . '%');
+            }
+        })->when($transaction, function ($q) use ($transaction) {
+            $q->where('operation', '=', intVal($transaction - 1));
+        });
+
+        return $query;
+    }
+
+    function exportExcelMoneyboxTax(){
+        $records = $this->buildMoneyboxTaxQuery()->get();
 
         $this->fileName = 'reports-' . Carbon::now()->toDateTimeString();
 //        $title = trans('sw.moneybox');
@@ -2219,29 +2256,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportPDFMoneyboxTax(){
 
-        $from = request('from');
-        $to = request('to');
-        $transaction = request('transaction');
-        $operation = intVal($transaction-1);
-
-        $records = $this->GymMoneyBoxRepository->with(['user', 'member_subscription.member' => function($q){
-            $q->withTrashed();
-        }, 'member_pt_subscription' => function($q){
-            $q->withTrashed();
-        }])
-            ->whereIn('type', [
-                TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::DeleteMember,  TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription
-                ,TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity
-//                , TypeConstants::CreateMemberPayAmountRemainingForm
-                , TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::DeletePTMember,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription
-                , TypeConstants::CreateStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::DeleteStoreOrder
-                , TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder
-            ])
-            ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
-        if($transaction){
-            $records->where('operation', $operation);
-        }
-        $records = $records->get();
+        $records = $this->buildMoneyboxTaxQuery()->get();
         $this->fileName = 'reports-' . Carbon::now()->toDateTimeString();
         $keys = ['id', 'invoice_total', 'vat_total', 'invoice_total_required',  'notes', 'created_at', 'by'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
