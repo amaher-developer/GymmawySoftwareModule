@@ -2,8 +2,10 @@
 
 namespace Modules\Software\Providers;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Factory;
+use Modules\Software\Console\NotifyPTClassesTomorrow;
 
 class SoftwareServiceProvider extends ServiceProvider
 {
@@ -29,6 +31,8 @@ class SoftwareServiceProvider extends ServiceProvider
         $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
         $this->registerAuthGuard();
+        $this->commands([NotifyPTClassesTomorrow::class]);
+   
     }
     
     /**
