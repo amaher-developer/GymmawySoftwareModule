@@ -1638,10 +1638,21 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return abort(403, trans('front.error_in_data'));
         }
 
-        // Find the active subscription for this member
+        // Pick the current membership using priority: Active -> Freeze -> Coming -> Expired
         $activeSub = GymMemberSubscription::with('subscription')
             ->where('member_id', $member->id)
-            ->where('expire_date', '>=', Carbon::now()->toDateString())
+            ->whereIn('status', [
+                TypeConstants::Active,
+                TypeConstants::Freeze,
+                TypeConstants::Coming,
+                TypeConstants::Expired,
+            ])
+            ->orderByRaw('CASE status
+                WHEN ' . TypeConstants::Active . ' THEN 1
+                WHEN ' . TypeConstants::Freeze . ' THEN 2
+                WHEN ' . TypeConstants::Coming . ' THEN 3
+                WHEN ' . TypeConstants::Expired . ' THEN 4
+                ELSE 5 END')
             ->orderBy('id', 'desc')
             ->first();
 
@@ -1649,7 +1660,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return redirect()->route('sw.mobile-payment.error');
         }
 
-        $currentPrice = (float) ($activeSub->subscription->price ?? 0);
+        $currentPrice = (float) ($activeSub->price ?? ($activeSub->subscription->price ?? 0));
 
         // Eligible upgrades: mobile, active, price > current, not current
         $upgrades = GymSubscription::where('is_mobile', 1)
@@ -1851,7 +1862,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
         $invoice->transaction_id = $result['tran_ref'] ?? '';
         $invoice->save();
-        return $result['redirect_url'];
+        return $result['redirect_url'] ?? ($result['payment_url'] ?? $errorRoute);
     }
 
     protected function initiateUpgradePaymob(array $sub, array $member): string
@@ -2217,7 +2228,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         $invoice->transaction_id = $result['tran_ref'] ?? '';
         $invoice->save();
-        return $result['redirect_url'];
+        return $result['redirect_url'] ?? ($result['payment_url'] ?? $errorRoute);
     }
 
     protected function initiatePtPaymob(array $ptSub, array $member): string

@@ -105,8 +105,10 @@
         .payment-option input[type="radio"] { margin-top: 4px; width: 20px; height: 20px; flex-shrink: 0; }
         .payment-option .payment-details { flex: 1; }
         .payment-option label { font-weight: bold; font-size: 14px; cursor: pointer; display: block; margin-bottom: 5px; }
-        .payment-option img { height: 36px; width: auto; padding: 4px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; object-fit: contain; }
+        .payment-option img { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; }
         .payment-option .policy-msg { font-size: 11px; color: #666; }
+        #tabbyCard { padding-top: 10px; width: 100%; }
+        #tabbyCard div:first-child { background-color: #f5f5f5 !important; }
 
         /* ── Pay button ── */
         .btn-pay {
@@ -232,6 +234,7 @@
                 <label for="tabby_u">{{ trans('front.tabby_installment_msg') }}</label>
                 <img src="{{ asset('resources/assets/new_front/images/tabby-logo.webp') }}" onerror="this.style.display='none'" alt="Tabby">
                 <span class="policy-msg">{{ trans('front.tabby_policy_msg') }}</span>
+                <div id="tabbyCard"></div>
             </div>
         </div>
         @endif
@@ -243,6 +246,9 @@
                 <label for="tamara_u">{{ trans('front.tamara_installment_msg') }}</label>
                 <img src="https://cdn.tamara.co/assets/png/tamara-logo-badge-{{ app()->getLocale() == 'ar' ? 'ar' : 'en' }}.png" alt="Tamara">
                 <span class="policy-msg">{{ trans('front.tamara_policy_msg') }}</span>
+                <div style="padding-top: 10px;">
+                    <tamara-widget type="tamara-summary" amount="0" inline-type="2"></tamara-widget>
+                </div>
             </div>
         </div>
         @endif
@@ -253,11 +259,16 @@
             <div class="payment-details">
                 <label for="paytabs_u">{{ trans('front.paytabs_payment_msg') }}</label>
                 <p style="margin:5px 0 0;">
-                    <img src="{{ asset('resources/assets/new_front/images/paytabs-logo.svg') }}" alt="PayTabs">
-                    <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
-                    <img src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
-                    <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
-                    <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                        src="{{ asset('resources/assets/new_front/images/paytabs-logo.svg') }}" alt="PayTabs">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                        src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                        src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                        src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                        src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay">
                 </p>
                 <span class="policy-msg">{{ trans('front.paytabs_policy_msg') }}</span>
             </div>
@@ -270,9 +281,12 @@
             <div class="payment-details">
                 <label for="paymob_u">{{ trans('front.paymob_payment_msg') }}</label>
                 <p style="margin:5px 0 0;">
-                    <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
-                    <img src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
-                    <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                         src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                         src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                         src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
                 </p>
                 <span class="policy-msg">{{ trans('front.paymob_policy_msg') }}</span>
             </div>
@@ -298,11 +312,41 @@
     <script defer src="https://cdn.tamara.co/widget-v2/tamara-widget.js"></script>
     @endif
 
+    @if($tabbyEnabled)
+    <script src="https://checkout.tabby.ai/tabby-card.js"></script>
+    @endif
+
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastr@2.1.4/build/toastr.min.js"></script>
     <script>
         var selectedPlanId  = null;
         var paymentOpts     = ['tabby','tamara','paytabs','paymob'];
+        var tabbyCardInstance = null;
+
+        function updateTabbyCard(price) {
+            if (typeof TabbyCard === 'undefined') return;
+            if (!document.getElementById('tabbyCard')) return;
+            if (tabbyCardInstance && typeof tabbyCardInstance.destroy === 'function') {
+                tabbyCardInstance.destroy();
+            }
+            tabbyCardInstance = new TabbyCard({
+                selector: '#tabbyCard',
+                currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
+                lang: '{{ app()->getLocale() }}',
+                price: Number(price || 0),
+                size: 'wide',
+                theme: 'black',
+                header: false,
+                publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',
+                merchantCode: '{{ $mainSettings->payments["tabby"]["merchant_code"] ?? "" }}'
+            });
+        }
+
+        function updateTamaraWidget(price) {
+            document.querySelectorAll('tamara-widget').forEach(function(el) {
+                el.setAttribute('amount', Number(price || 0).toFixed(2));
+            });
+        }
 
         function selectPlan(planId, fullPrice, diffTotal, diffBase, diffVat, planName, rawPrice) {
             // Deselect all cards
@@ -326,6 +370,9 @@
                 var el = document.getElementById('payOpt_' + g);
                 if (el) el.style.display = 'flex';
             });
+
+            updateTabbyCard(diffTotal);
+            updateTamaraWidget(diffTotal);
 
             checkPayBtn();
         }
