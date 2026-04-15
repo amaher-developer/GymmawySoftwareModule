@@ -52,6 +52,7 @@ class GymTrainingApiController extends GymGenericApiController
     public function tracks(){
         $member = @\request()->user();
         $lang = request('lang') ?: env('DEFAULT_LANG', 'en');
+        app()->setLocale($lang);
         Carbon::setLocale($lang);
         $latestTrackId = GymTrainingTrack::where('member_id', @$member->id)
             ->orderByDesc('id')
@@ -94,15 +95,12 @@ class GymTrainingApiController extends GymGenericApiController
             ->orderByDesc('created_at')
             ->limit(200)
             ->get()
-            ->map(function ($log) use ($latestTrackId) {
+            ->map(function ($log) use ($latestTrackId, $lang) {
                 $type = (string) ($log->training_type ?? 'activity');
                 $action = (string) ($log->action ?? 'updated');
                 $notes = trim((string) ($log->notes ?? ''));
                 $meta = is_string($log->meta) ? json_decode($log->meta, true) : (array) $log->meta;
-                $title = trim(ucfirst(str_replace('_', ' ', $type)));
-                if ($action !== '' && $type !== 'note') {
-                    $title .= ' - ' . ucfirst(str_replace('_', ' ', $action));
-                }
+                $title = $this->localizedTrainingType($type, $lang);
                 if ($notes === '') {
                     $notes = trim(ucfirst(str_replace('_', ' ', $type . ' ' . $action)));
                 }
@@ -150,27 +148,38 @@ class GymTrainingApiController extends GymGenericApiController
         if (!$this->validateApiRequest(['id'])) return $this->response;
 
         $lang = request('lang') ?: env('DEFAULT_LANG', 'en');
+        app()->setLocale($lang);
         Carbon::setLocale($lang);
 
+        $isTimeline = (int) request('is_timeline') === 1;
+        $selectedType = (string) request('type', '');
+
+        if ($isTimeline) {
+            $log = GymTrainingMemberLog::query()
+                ->where('member_id', @$member->id)
+                ->where('id', $id)
+                ->first();
+
+            $this->return['result']['track'] = $log
+                ? $this->buildSelectedLogPayload($log, $lang)
+                : '';
+
+            return $this->successResponse();
+        }
+
         $track = GymTrainingTrack::with(['member'])->where('member_id', @$member->id)->where("id", $id)->first();
-        $this->return['result']['track'] = $track ? $this->buildTrackDetailsPayload($track, $lang) : '';
+        $this->return['result']['track'] = $track
+            ? $this->buildTrackDetailsPayload($track, $lang, $selectedType)
+            : '';
 
         return $this->successResponse();
     }
 
-    private function buildTrackDetailsPayload(GymTrainingTrack $track, string $lang): array
+    private function buildTrackDetailsPayload(GymTrainingTrack $track, string $lang, string $selectedType = ''): array
     {
         $memberName = @$track->member->name ?: '-';
-        $timelineData = $this->resolveTrackTimeline($track, $lang);
         $measurements = $this->buildTrackMeasurementsPayload($track);
         $calculations = $this->buildTrackCalculationsPayload($track, $track->member);
-
-        $latestAssessment = $timelineData['latest']['assessment'] ?? null;
-        $latestPlan = $timelineData['latest']['plan'] ?? null;
-        $latestMedicine = $timelineData['latest']['medicine'] ?? null;
-        $latestNote = $timelineData['latest']['note'] ?? null;
-        $latestFile = $timelineData['latest']['file'] ?? null;
-        $latestAi = $timelineData['latest']['ai'] ?? null;
 
         $summary = trim(strip_tags((string) @$track->notes));
         if ($summary === '') {
@@ -185,21 +194,89 @@ class GymTrainingApiController extends GymGenericApiController
             'weight' => $this->valueWithUnit($track->weight, 'kg'),
             'report' => (string) ($track->notes ?? ''),
             'notes' => (string) ($track->notes ?? ''),
-            'assessment' => (string) ($latestAssessment['summary'] ?? ''),
-            'medicines' => (string) ($latestMedicine['summary'] ?? ''),
-            'plans' => (string) ($latestPlan['summary'] ?? ''),
+            'assessment' => '',
+            'medicines' => '',
+            'plans' => '',
             'date' => Carbon::parse(@$track->created_at)->translatedFormat('d F Y'),
             'short_content' => $summary,
             'measurements' => $measurements,
             'calculations' => $calculations,
-            'latest_assessment' => $latestAssessment,
-            'latest_plan' => $latestPlan,
-            'latest_medicine' => $latestMedicine,
-            'latest_note' => $latestNote,
-            'latest_file' => $latestFile,
-            'latest_ai' => $latestAi,
-            'activity_timeline' => $timelineData['items'],
-            'related_logs_count' => count($timelineData['items']),
+            'latest_assessment' => null,
+            'latest_plan' => null,
+            'latest_medicine' => null,
+            'latest_note' => null,
+            'latest_file' => null,
+            'latest_ai' => null,
+            'activity_timeline' => [
+                [
+                    'id' => (int) $track->id,
+                    'type' => $selectedType !== '' ? $selectedType : 'track',
+                    'action' => 'view',
+                    'title' => $this->localizedTrainingType('track', $lang),
+                    'content' => (string) ($track->notes ?? ''),
+                    'date' => Carbon::parse(@$track->created_at)->translatedFormat('d F Y'),
+                    'time' => Carbon::parse(@$track->created_at)->format('H:i'),
+                    'details' => [
+                        'summary' => $summary,
+                        'measurements' => $measurements,
+                        'calculations' => $calculations,
+                    ],
+                ],
+            ],
+            'related_logs_count' => 1,
+        ];
+    }
+
+    private function buildSelectedLogPayload(GymTrainingMemberLog $log, string $lang): array
+    {
+        $type = (string) ($log->training_type ?? 'activity');
+        $details = $this->resolveTrackLogDetails($log, $lang);
+        $summary = trim((string) ($details['summary'] ?? $log->notes ?? ''));
+        $track = null;
+
+        if ($type === 'track' && !empty($log->reference_id)) {
+            $track = GymTrainingTrack::with('member')->find((int) $log->reference_id);
+        } elseif (!empty(request('track_id'))) {
+            $track = GymTrainingTrack::with('member')->find((int) request('track_id'));
+        }
+
+        $measurements = $this->buildTrackMeasurementsPayload($track);
+        $calculations = $this->buildTrackCalculationsPayload($track, $track?->member);
+
+        return [
+            'id' => (int) $log->id,
+            'title' => $this->localizedTrainingType($type, $lang),
+            'image' => asset('resources/assets/new_front/images/report_track.png'),
+            'height' => $measurements['height'] ?? null,
+            'weight' => $measurements['weight'] ?? null,
+            'report' => $summary,
+            'notes' => (string) ($log->notes ?? ''),
+            'assessment' => $type === 'assessment' ? $summary : '',
+            'medicines' => $type === 'medicine' ? $summary : '',
+            'plans' => $type === 'plan' ? $summary : '',
+            'date' => Carbon::parse(@$log->created_at)->translatedFormat('d F Y'),
+            'short_content' => $summary,
+            'measurements' => $measurements,
+            'calculations' => $calculations,
+            'latest_assessment' => $type === 'assessment' ? $details : null,
+            'latest_plan' => $type === 'plan' ? $details : null,
+            'latest_medicine' => $type === 'medicine' ? $details : null,
+            'latest_note' => $type === 'note' ? $details : null,
+            'latest_file' => $type === 'file' ? $details : null,
+            'latest_ai' => in_array($type, ['ai', 'ai_plan'], true) ? $details : null,
+            'activity_timeline' => [
+                [
+                    'id' => (int) $log->id,
+                    'type' => $type,
+                    'action' => (string) ($log->action ?? 'view'),
+                    'title' => $this->localizedTrainingType($type, $lang),
+                    'content' => $summary,
+                    'date' => Carbon::parse(@$log->created_at)->translatedFormat('d F Y'),
+                    'time' => Carbon::parse(@$log->created_at)->format('H:i'),
+                    'details' => $details,
+                ],
+            ],
+            'related_logs_count' => 1,
         ];
     }
 
@@ -243,7 +320,7 @@ class GymTrainingApiController extends GymGenericApiController
                 'id' => (int) $log->id,
                 'type' => $type,
                 'action' => $action,
-                'title' => trim(ucfirst(str_replace('_', ' ', $type))),
+                'title' => $this->localizedTrainingType($type, $lang),
                 'content' => $summary,
                 'date' => Carbon::parse(@$log->created_at)->translatedFormat('d F Y'),
                 'time' => Carbon::parse(@$log->created_at)->format('H:i'),
@@ -519,6 +596,22 @@ class GymTrainingApiController extends GymGenericApiController
             $parts[] = str_replace('_', ' ', (string) $key) . ': ' . $value;
         }
         return empty($parts) ? null : implode("\n", $parts);
+    }
+
+    private function localizedTrainingType(string $type, string $lang): string
+    {
+        $isArabic = strtolower($lang) === 'ar';
+
+        return match ($type) {
+            'assessment' => $isArabic ? 'تقييم' : 'Assessment',
+            'plan' => trans('sw.plan'),
+            'medicine' => $isArabic ? 'دواء' : 'Medicine',
+            'note' => trans('sw.notes'),
+            'file' => trans('sw.file'),
+            'track' => $isArabic ? 'قياس' : 'Track',
+            'ai', 'ai_plan' => $isArabic ? 'خطة ذكية' : 'AI Plan',
+            default => trans('sw.activity'),
+        };
     }
 
 }
