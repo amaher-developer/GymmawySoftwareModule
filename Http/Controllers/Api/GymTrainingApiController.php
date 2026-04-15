@@ -376,15 +376,22 @@ class GymTrainingApiController extends GymGenericApiController
         if ($type === 'assessment') {
             $assessment = GymTrainingAssessment::find((int) ($log->reference_id ?? 0));
             if (!$assessment) {
-                return ['summary' => (string) ($log->notes ?? ''), 'data' => null];
+                return [
+                    'summary' => $this->formatAssessmentSummaryText((string) ($log->notes ?? ''), $lang),
+                    'data' => null,
+                ];
             }
             $answers = is_array($assessment->answers)
                 ? $assessment->answers
                 : (json_decode((string) $assessment->answers, true) ?: []);
 
+            $summarySource = $assessment->notes
+                ?: $this->stringifyAnswers($answers, $lang)
+                ?: (string) ($log->notes ?? '');
+
             return [
-                'summary' => $assessment->notes ?: $this->stringifyAnswers($answers) ?: (string) ($log->notes ?? ''),
-                'notes' => (string) ($assessment->notes ?? ''),
+                'summary' => $this->formatAssessmentSummaryText($summarySource, $lang),
+                'notes' => $this->formatAssessmentSummaryText((string) ($assessment->notes ?? ''), $lang),
                 'answers' => $answers,
                 'date' => optional($assessment->created_at)->format('Y-m-d'),
             ];
@@ -579,23 +586,148 @@ class GymTrainingApiController extends GymGenericApiController
         return [];
     }
 
-    private function stringifyAnswers($answers): ?string
+    private function stringifyAnswers($answers, string $lang): ?string
     {
         if (!is_array($answers) || empty($answers)) {
             return null;
         }
         $parts = [];
         foreach ($answers as $key => $value) {
+            $normalizedKey = strtolower(trim(str_replace(' ', '_', (string) $key)));
             if (is_array($value)) {
-                $value = implode(', ', array_filter(array_map('strval', $value)));
+                $value = implode(', ', array_filter(array_map(function ($item) use ($normalizedKey, $lang) {
+                    return $this->localizeAssessmentValue($normalizedKey, (string) $item, $lang);
+                }, $value)));
             }
             $value = trim((string) $value);
             if ($value === '') {
                 continue;
             }
-            $parts[] = str_replace('_', ' ', (string) $key) . ': ' . $value;
+            $parts[] = $this->localizeAssessmentFieldLabel($normalizedKey, $lang) . ': ' . $this->localizeAssessmentValue($normalizedKey, $value, $lang);
         }
-        return empty($parts) ? null : implode("\n", $parts);
+        return empty($parts) ? null : implode('<br>', $parts);
+    }
+
+    private function formatAssessmentSummaryText(string $text, string $lang): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $normalized = preg_replace('/\s+/', ' ', $text) ?? $text;
+        preg_match_all('/([a-zA-Z][a-zA-Z0-9_ ]*?):\s*([^:]+?)(?=(?:\s+[a-zA-Z][a-zA-Z0-9_ ]*?:)|$)/', $normalized, $matches, PREG_SET_ORDER);
+
+        if (empty($matches)) {
+            return $text;
+        }
+
+        $parts = [];
+        foreach ($matches as $match) {
+            $rawKey = trim((string) ($match[1] ?? ''));
+            $rawValue = trim((string) ($match[2] ?? ''));
+            if ($rawKey === '' || $rawValue === '') {
+                continue;
+            }
+
+            $key = strtolower(str_replace(' ', '_', $rawKey));
+            $label = $this->localizeAssessmentFieldLabel($key, $lang);
+            $value = $this->localizeAssessmentValue($key, $rawValue, $lang);
+            $parts[] = $label . ': ' . $value;
+        }
+
+        if (empty($parts)) {
+            return $text;
+        }
+
+        return implode('<br>', $parts);
+    }
+
+    private function localizeAssessmentFieldLabel(string $key, string $lang): string
+    {
+        $isArabic = strtolower($lang) === 'ar';
+
+        $mapAr = [
+            'age' => 'العمر',
+            'gender' => 'النوع',
+            'weight' => 'الوزن',
+            'height' => 'الطول',
+            'bmi' => 'مؤشر كتلة الجسم',
+            'fat_percentage' => 'نسبة الدهون',
+            'muscle_mass' => 'الكتلة العضلية',
+            'waist_circumference' => 'محيط الخصر',
+            'chest_circumference' => 'محيط الصدر',
+            'arm_circumference' => 'محيط الذراع',
+            'thigh_circumference' => 'محيط الفخذ',
+            'primary_goal' => 'الهدف الأساسي',
+            'target_weight' => 'الوزن المستهدف',
+            'target_date' => 'التاريخ المستهدف',
+            'training_experience' => 'الخبرة التدريبية',
+            'activity_level' => 'مستوى النشاط',
+            'stress_level' => 'مستوى التوتر',
+            'diet_type' => 'نوع النظام الغذائي',
+        ];
+
+        $mapEn = [
+            'age' => 'Age',
+            'gender' => 'Gender',
+            'weight' => 'Weight',
+            'height' => 'Height',
+            'bmi' => 'BMI',
+            'fat_percentage' => 'Fat Percentage',
+            'muscle_mass' => 'Muscle Mass',
+            'waist_circumference' => 'Waist Circumference',
+            'chest_circumference' => 'Chest Circumference',
+            'arm_circumference' => 'Arm Circumference',
+            'thigh_circumference' => 'Thigh Circumference',
+            'primary_goal' => 'Primary Goal',
+            'target_weight' => 'Target Weight',
+            'target_date' => 'Target Date',
+            'training_experience' => 'Training Experience',
+            'activity_level' => 'Activity Level',
+            'stress_level' => 'Stress Level',
+            'diet_type' => 'Diet Type',
+        ];
+
+        if ($isArabic) {
+            return $mapAr[$key] ?? str_replace('_', ' ', $key);
+        }
+
+        return $mapEn[$key] ?? ucfirst(str_replace('_', ' ', $key));
+    }
+
+    private function localizeAssessmentValue(string $key, string $value, string $lang): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $isArabic = strtolower($lang) === 'ar';
+        $normalized = strtolower(str_replace(' ', '_', $value));
+
+        if (!$isArabic) {
+            return str_replace('_', ' ', $value);
+        }
+
+        $map = [
+            'male' => 'ذكر',
+            'female' => 'أنثى',
+            'beginner' => 'مبتدئ',
+            'intermediate' => 'متوسط',
+            'advanced' => 'متقدم',
+            'light' => 'خفيف',
+            'moderate' => 'متوسط',
+            'high' => 'مرتفع',
+            'low' => 'منخفض',
+            'regular' => 'عادي',
+            'body_toning' => 'شد الجسم',
+            'weight_loss' => 'إنقاص الوزن',
+            'weight_gain' => 'زيادة الوزن',
+            'muscle_gain' => 'زيادة الكتلة العضلية',
+        ];
+
+        return $map[$normalized] ?? str_replace('_', ' ', $value);
     }
 
     private function localizedTrainingType(string $type, string $lang): string
