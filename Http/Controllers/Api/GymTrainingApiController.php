@@ -422,6 +422,14 @@ class GymTrainingApiController extends GymGenericApiController
                 $summary = trim($summary . ' - ' . $meta['notes']);
             }
 
+            $planDetails = (string) (
+                $planAssignment->training_plan_details
+                ?? $planAssignment->diet_plan_details
+                ?? $planAssignment->plan_details
+                ?? $plan->content
+                ?? ''
+            );
+
             return [
                 'summary' => $summary,
                 'title' => (string) ($planAssignment->title ?? $plan->title ?? ''),
@@ -429,6 +437,9 @@ class GymTrainingApiController extends GymGenericApiController
                 'from_date' => $planAssignment->from_date ?? ($meta['from_date'] ?? null),
                 'to_date' => $planAssignment->to_date ?? ($meta['to_date'] ?? null),
                 'notes' => (string) ($planAssignment->notes ?? ($meta['notes'] ?? '')),
+                'plan_details' => $planDetails,
+                'download_url' => $this->resolvePlanDownloadUrl($log),
+                'file_name' => trim((string) ($planAssignment->title ?? $plan->title ?? trans('sw.plan'))) . '.pdf',
                 'tasks' => $tasks,
             ];
         }
@@ -924,6 +935,18 @@ class GymTrainingApiController extends GymGenericApiController
         }
 
         return asset('uploads/training_files/' . ltrim($fileName, '/'));
+    }
+
+    private function resolvePlanDownloadUrl(GymTrainingMemberLog $log): string
+    {
+        $memberId = (int) ($log->member_id ?? 0);
+        $logId = (int) ($log->id ?? 0);
+
+        if ($memberId <= 0 || $logId <= 0) {
+            return '';
+        }
+
+        return url('training/member-log/' . $memberId . '/plan/' . $logId . '/pdf');
     }
 
     private function localizedTrainingType(string $type, string $lang): string
