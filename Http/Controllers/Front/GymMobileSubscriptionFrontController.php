@@ -305,7 +305,19 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $memberData['amount'] = $amount;
         $memberData['vat_percentage'] = $vatPercentage;
         $memberData['vat'] = $vatAmount;
-        $memberData['activity_ids'] = $activityIds; // all selected IDs stored in invoice
+        // Store full activity objects so invoice can display without re-querying
+        $memberData['activity_ids'] = $selectedActivities->map(fn($a) => [
+            'id'                   => $a->id,
+            'name_ar'              => $a->name_ar,
+            'name_en'              => $a->name_en,
+            'price'                => $a->price,
+            'reservation_limit'    => $a->reservation_limit,
+            'reservation_duration' => $a->reservation_duration ?? null,
+            'reservation_period'   => $a->reservation_period ?? null,
+            'name'                 => $a->name ?? $a->name_ar,
+            'content'              => $a->content ?? null,
+            'image_name'           => $a->image_name ?? null,
+        ])->values()->toArray();
 
         $primaryActivity = $selectedActivities->firstWhere('id', $primaryId) ?? $selectedActivities->first();
         $primaryId = (int) $primaryActivity->id;
@@ -1726,10 +1738,17 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return ['non_member_id' => (int) $rc['non_member_id']];
         }
 
-        // Support both single activity_id and multi activity_ids
-        $activityIds = $rc['activity_ids'] ?? [(int) ($rc['activity_id'] ?? 0)];
-        $activityIds = array_values(array_filter(array_map('intval', (array) $activityIds)));
-        $activities = !empty($activityIds) ? GymActivity::whereIn('id', $activityIds)->get() : collect();
+        // Support: new format (array of objects), old format (array of IDs), or single activity_id
+        $rawActivityData = $rc['activity_ids'] ?? [(int) ($rc['activity_id'] ?? 0)];
+        $rawActivityData = (array) $rawActivityData;
+        // Detect whether items are full objects or plain IDs
+        if (!empty($rawActivityData) && is_array($rawActivityData[0])) {
+            // New format: full activity objects stored directly — use them, no DB query needed
+            $activities = collect($rawActivityData)->map(fn($a) => (object) $a);
+        } else {
+            $activityIds = array_values(array_filter(array_map('intval', $rawActivityData)));
+            $activities  = !empty($activityIds) ? GymActivity::whereIn('id', $activityIds)->get() : collect();
+        }
         if ($activities->isEmpty()) {
             return [];
         }
@@ -1746,13 +1765,16 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $userId = $this->resolveSystemUserId($member, $branchSettingId);
 
         $activitiesPayload = $activities->map(fn($a) => [
-            'id'                   => (int) $a->id,
+            'id'                   => (int) ($a->id ?? 0),
             'name_ar'              => (string) ($a->name_ar ?? ''),
             'name_en'              => (string) ($a->name_en ?? ''),
-            'price'                => (float) ($a->price ?? 0),
-            'reservation_limit'    => (int) ($a->reservation_limit ?? 0),
-            'reservation_duration' => (int) ($a->reservation_duration ?? 0),
-            'reservation_period'   => (int) ($a->reservation_period ?? 0),
+            'price'                => (string) ($a->price ?? '0'),
+            'reservation_limit'    => (string) ($a->reservation_limit ?? '0'),
+            'reservation_duration' => isset($a->reservation_duration) && $a->reservation_duration ? (string) $a->reservation_duration : null,
+            'reservation_period'   => isset($a->reservation_period)   && $a->reservation_period   ? (string) $a->reservation_period   : null,
+            'name'                 => (string) ($a->name ?? $a->name_ar ?? ''),
+            'content'              => $a->content ?? null,
+            'image_name'           => $a->image_name ?? null,
         ])->values()->all();
 
         $totalBaseAmount = (float) $activities->sum('price');
@@ -2900,13 +2922,22 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $invoice = GymOnlinePaymentInvoice::where('payment_id', $request->invoice_id)->first();
         if (!$invoice) return abort(404);
 
-        $rc          = (array) $invoice->response_code;
-        $activityIds = $rc['activity_ids'] ?? [(int) ($rc['activity_id'] ?? 0)];
-        $activities  = GymActivity::whereIn('id', array_filter(array_map('intval', $activityIds)))->get();
+        $rc              = (array) $invoice->response_code;
+        $storedActivities = $rc['activity_ids'] ?? [];
+        // Support old format (plain IDs) by falling back to DB query
+        if (!empty($storedActivities) && !is_array($storedActivities[0])) {
+            $storedActivities = GymActivity::whereIn('id', array_filter(array_map('intval', $storedActivities)))
+                ->get()->map(fn($a) => [
+                    'id' => $a->id, 'name_ar' => $a->name_ar, 'name_en' => $a->name_en,
+                    'price' => $a->price, 'name' => $a->name ?? $a->name_ar,
+                    'content' => $a->content ?? null, 'image_name' => $a->image_name ?? null,
+                ])->values()->toArray();
+        }
 
         $title        = trans('front.invoice');
         $mainSettings = $this->mainSettings;
-        return view('software::Front.activity_invoice_mobile', compact('title', 'invoice', 'activities', 'mainSettings'));
+        return view('software::Front.activity_invoice_mobile', compact('title', 'invoice', 'mainSettings'))
+            ->with('storedActivities', $storedActivities);
     }
 
     public function storeOrderInvoiceMobile(Request $request)

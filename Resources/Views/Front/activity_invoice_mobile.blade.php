@@ -10,7 +10,7 @@
         $logoUrl = $logo ? asset('uploads/settings/' . $logo) : null;
         $vatPercentage = (float) (@$mainSettings->vat_details['vat_percentage'] ?? 0);
         $rc = is_array($invoice->response_code) ? $invoice->response_code : json_decode($invoice->response_code, true);
-        $activityIds = $rc['activity_ids'] ?? [];
+        $storedActivities = $storedActivities ?? [];
     @endphp
     <style>
         * { box-sizing: border-box; }
@@ -87,16 +87,15 @@
             </div>
             @endif
 
-            @if(count($activityIds) > 0)
+            @if(count($storedActivities) > 0)
             <div class="invoice-row" style="flex-direction: column; align-items: flex-start; gap: 6px;">
                 <span class="label">{{ trans('sw.activities') ?? trans('front.activities') ?? 'Activities' }}</span>
                 <ul class="activity-list" style="width:100%">
-                    @foreach($activityIds as $aid)
+                    @foreach($storedActivities as $act)
                         @php
-                            $act = $activities->firstWhere('id', $aid);
-                            $actName = $act ? ($isRtl ? ($act->name_ar ?? $act->name_en ?? $act->name) : ($act->name_en ?? $act->name_ar ?? $act->name)) : '#'.$aid;
-                            $actPrice = $act ? (float)($act->price ?? 0) : 0;
-                            $actVat = $vatPercentage > 0 ? round($actPrice * $vatPercentage / 100, 2) : 0;
+                            $actName  = $isRtl ? ($act['name_ar'] ?? $act['name_en'] ?? $act['name'] ?? '') : ($act['name_en'] ?? $act['name_ar'] ?? $act['name'] ?? '');
+                            $actPrice = (float)($act['price'] ?? 0);
+                            $actVat   = $vatPercentage > 0 ? round($actPrice * $vatPercentage / 100, 2) : 0;
                             $actTotal = round($actPrice + $actVat, 2);
                         @endphp
                         <li>
