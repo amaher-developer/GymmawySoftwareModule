@@ -1010,7 +1010,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
         }
 
-        $tamaraCheckout = (array) ((array) $invoice->response_code)['tamara_checkout'] ?? [];
+        $tamaraCheckout = (array) (((array) $invoice->response_code)['tamara_checkout'] ?? []);
         $tamaraOrderId = (string) ($invoice->transaction_id ?: $orderId ?: ($tamaraCheckout['order_id'] ?? ''));
         $joiningDate   = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
         $positiveRedirectStatuses = ['approved', 'success', 'captured', 'fully_captured', 'authorised', 'authorized'];
@@ -1126,7 +1126,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $joiningDate = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
-        $paytabsCheckout = (array) ((array) $invoice->response_code)['paytabs_checkout'] ?? [];
+        $paytabsCheckout = (array) (((array) $invoice->response_code)['paytabs_checkout'] ?? []);
         $cartId = (string) ($request->input('cart_id') ?? $request->input('cartId') ?? ($paytabsCheckout['cart_id'] ?? ''));
 
         // PayTabs sends tran_ref in the callback — use it to fill transaction_id if missing.
