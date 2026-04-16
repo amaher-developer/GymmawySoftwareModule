@@ -98,7 +98,8 @@ class NotifyPTClassesTomorrow extends Command
                 ]);
 
                 $sent++;
-                $this->line("  Sent to member #{$memberId} ({$ptMember->member->name ?? ''})");
+                $memberName = optional($ptMember->member)->name ?? '';
+                $this->line("  Sent to member #{$memberId} ({$memberName})");
             } catch (\Throwable $e) {
                 Log::error('NotifyPTClassesTomorrow: push failed for member #' . $memberId . ' — ' . $e->getMessage());
                 $skip++;

@@ -2719,20 +2719,53 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     ? (clone $joining)->addDays($totalSessions * 7) // 1 session/week estimate
                     : (clone $joining)->addMonths(3);
 
-                $ptMember = \Modules\Software\Models\GymPTMember::create([
+                $resolvedTrainerId = 0;
+                if ($ptClassTrainerId > 0) {
+                    $resolvedTrainerId = (int) (\Modules\Software\Models\GymPTClassTrainer::where('id', $ptClassTrainerId)
+                        ->value('trainer_id') ?? 0);
+                }
+                if ($resolvedTrainerId <= 0) {
+                    $resolvedTrainerId = (int) (\Modules\Software\Models\GymPTClassTrainer::where('class_id', $ptClassId)
+                        ->orderByDesc('is_active')
+                        ->orderByDesc('id')
+                        ->value('trainer_id') ?? 0);
+                }
+                if ($resolvedTrainerId <= 0 && Schema::hasTable('sw_gym_pt_subscription_trainers')) {
+                    $resolvedTrainerId = (int) (DB::table('sw_gym_pt_subscription_trainers')
+                        ->where('pt_class_id', $ptClassId)
+                        ->orderByDesc('id')
+                        ->value('pt_trainer_id') ?? 0);
+                }
+                if ($resolvedTrainerId <= 0) {
+                    $resolvedTrainerId = (int) (DB::table('sw_gym_pt_trainers')->orderBy('id')->value('id') ?? 0);
+                }
+
+                $ptMemberData = [
                     'member_id'          => $member->id,
                     'pt_subscription_id' => $ptSubscriptionId,
+                    'pt_class_id'        => $ptClassId,
+                    'pt_trainer_id'      => $resolvedTrainerId > 0 ? $resolvedTrainerId : null,
                     'class_id'           => $ptClassId,
-                    'class_trainer_id'   => $ptClassTrainerId,
+                    'class_trainer_id'   => $ptClassTrainerId > 0 ? $ptClassTrainerId : null,
+                    'classes'            => $totalSessions,
+                    'visits'             => 0,
                     'total_sessions'     => $totalSessions,
                     'remaining_sessions' => $totalSessions,
                     'start_date'         => $joining->toDateString(),
+                    'end_date'           => $expireDate->toDateString(),
                     'expire_date'        => $expireDate->toDateString(),
                     'joining_date'       => $joining->toDateString(),
+                    'amount_paid'        => $invoice->amount,
                     'paid_amount'        => $invoice->amount,
+                    'amount_remaining'   => 0,
+                    'payment_type'       => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
                     'is_active'          => 1,
                     'branch_setting_id'  => $member->branch_setting_id ?? null,
-                ]);
+                ];
+
+                $ptMemberColumns = Schema::getColumnListing('sw_gym_pt_members');
+                $ptMemberInsert = array_intersect_key($ptMemberData, array_flip($ptMemberColumns));
+                $ptMember = \Modules\Software\Models\GymPTMember::create($ptMemberInsert);
 
                 // Store pt_member_id for idempotency; reuse member_subscription_id column
                 $invoice->member_subscription_id = $ptMember->id;
