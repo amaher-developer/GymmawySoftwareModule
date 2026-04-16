@@ -98,3 +98,10 @@ Route::name('sw.training-plan-mobile')
 
 Route::name('sw.store-invoice-mobile.submit')
     ->post('store-invoice-mobile/submit', 'Front\GymMobileSubscriptionFrontController@storeInvoiceSubmit');
+
+// ── Activity / Store invoice pages (shown after successful payment) ───────────
+Route::name('sw.activity-invoice-mobile')
+    ->get('activity-invoice-mobile', 'Front\GymMobileSubscriptionFrontController@activityInvoiceMobile');
+
+Route::name('sw.store-order-invoice-mobile')
+    ->get('store-order-invoice-mobile', 'Front\GymMobileSubscriptionFrontController@storeOrderInvoiceMobile');
