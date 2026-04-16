@@ -2370,13 +2370,19 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $invoice    = $this->createUpgradeInvoice($member, TypeConstants::PAYTABS_TRANSACTION, $uniqueId);
         $errorRoute = route('sw.upgrade-subscription-mobile', ['token' => request('token')]);
 
+        $verifyUrl  = route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId, 'token' => request('token')]);
+        $cancelUrl  = route('sw.paytabs-mobile.cancel', ['invoice_id' => $uniqueId, 'token' => request('token')]);
+        $failureUrl = route('sw.paytabs-mobile.failure', ['invoice_id' => $uniqueId, 'token' => request('token')]);
+
         $paytabs = new PayTabsFrontController();
         $result  = $paytabs->createCheckoutSession([
             'amount'          => $member['amount'],
             'description'     => $sub['name'],
             'buyer'           => ['name' => $member['name'], 'email' => $member['email'] ?: 'member@gym.com', 'phone' => $member['phone'], 'city' => '', 'address' => ''],
             'cart_id'         => (string) $invoice->id,
-            'return_url'      => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
+            'success_url'     => $verifyUrl,
+            'cancel_url'      => $cancelUrl,
+            'failure_url'     => $failureUrl,
             'callback_url'    => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
             'payment_type'    => 'upgrade_subscription',
             'member_id'       => $this->currentMember->id,
