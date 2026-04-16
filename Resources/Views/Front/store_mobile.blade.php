@@ -90,7 +90,7 @@
                         <div class="prod-price">{{ number_format($unitTotal, 2) }} {{ trans('front.pound_unit') }}</div>
                     </div>
                     <div class="qty-wrap" id="qty_wrap_{{ $prod->id }}" style="{{ $prod->id == $record->id ? '' : 'visibility:hidden' }}">
-                        <button type="button" onclick="changeQty({{ $prod->id }}, -1)">âˆ’</button>
+                        <button type="button" onclick="changeQty({{ $prod->id }}, -1)">-</button>
                         <input type="number" id="qty_{{ $prod->id }}" value="1" min="1" max="99"
                                onchange="recalculate()" oninput="recalculate()">
                         <button type="button" onclick="changeQty({{ $prod->id }}, 1)">+</button>
