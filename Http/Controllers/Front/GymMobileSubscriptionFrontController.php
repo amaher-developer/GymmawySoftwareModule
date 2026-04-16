@@ -550,11 +550,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $errorRoute;
         }
 
-        $invoice->transaction_id = $result['order_id'] ?? '';
-        $invoice->response_code  = array_merge(
-            (array) $invoice->response_code,
-            ['tamara_checkout' => $result]
-        );
+        $invoice->transaction_id = $result['order_id'];
         $invoice->save();
         return $result['payment_url'];
     }
@@ -571,9 +567,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'description'     => $itemName,
             'buyer'           => ['name' => $member['name'], 'email' => $member['email'] ?: 'member@gym.com', 'phone' => $member['phone'], 'city' => '', 'address' => ''],
             'cart_id'         => (string) $invoice->id,
-            'success_url'     => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
-            'cancel_url'      => route('sw.paytabs-mobile.cancel', ['invoice_id' => $uniqueId]),
-            'failure_url'     => route('sw.paytabs-mobile.failure', ['invoice_id' => $uniqueId]),
+            'return_url'      => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
             'callback_url'    => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
             'payment_type'    => $type . '_payment',
             'member_id'       => optional($this->currentMember)->id,
@@ -585,10 +579,6 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $invoice->transaction_id = $result['tran_ref'] ?? '';
-        $invoice->response_code  = array_merge(
-            (array) $invoice->response_code,
-            ['paytabs_checkout' => $result]
-        );
         $invoice->save();
         return $result['redirect_url'] ?? ($result['payment_url'] ?? $errorRoute);
     }
@@ -1010,11 +1000,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
         }
 
-        $tamaraCheckout = (array) (((array) $invoice->response_code)['tamara_checkout'] ?? []);
+        $tamaraCheckout = (array) ((array) $invoice->response_code)['tamara_checkout'] ?? [];
         $tamaraOrderId = (string) ($invoice->transaction_id ?: $orderId ?: ($tamaraCheckout['order_id'] ?? ''));
         $joiningDate   = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
-        $positiveRedirectStatuses = ['approved', 'success', 'captured', 'fully_captured', 'authorised', 'authorized'];
-        $hasPositiveRedirectStatus = in_array($paymentStatus, $positiveRedirectStatuses, true);
 
         if ($tamaraOrderId === '') {
             $invoice->status = TypeConstants::FAILURE;
@@ -1037,7 +1025,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         ]);
 
         $isAuthorised = in_array($authoriseStatus, ['authorised', 'authorized', 'fully_captured', 'partially_captured'], true);
-        if (!$isAuthorised && !$autoCaptured && !$hasPositiveRedirectStatus) {
+        if (!$isAuthorised && !$autoCaptured) {
             $invoice->status = TypeConstants::FAILURE;
             $invoice->response_code = array_merge((array) $invoice->response_code, [
                 'tamara_verify' => $request->all(),
@@ -1059,7 +1047,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             Log::info('Tamara Mobile capture', ['capture' => $capture]);
 
             $captureStatus = strtolower((string) ($capture['status'] ?? ''));
-            if (!($capture['capture_id'] ?? null) && !in_array($captureStatus, ['fully_captured', 'partially_captured'], true) && !$hasPositiveRedirectStatus) {
+            if (!($capture['capture_id'] ?? null) && !in_array($captureStatus, ['fully_captured', 'partially_captured'], true)) {
                 $invoice->status = TypeConstants::FAILURE;
                 $invoice->response_code = array_merge((array) $invoice->response_code, [
                     'tamara_verify' => $request->all(),
@@ -1126,15 +1114,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $joiningDate = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
-        $paytabsCheckout = (array) (((array) $invoice->response_code)['paytabs_checkout'] ?? []);
+        $paytabsCheckout = (array) ((array) $invoice->response_code)['paytabs_checkout'] ?? [];
         $cartId = (string) ($request->input('cart_id') ?? $request->input('cartId') ?? ($paytabsCheckout['cart_id'] ?? ''));
 
         // PayTabs sends tran_ref in the callback — use it to fill transaction_id if missing.
-        $tranRef = (string) ($invoice->transaction_id
-            ?: $request->input('tran_ref', '')
-            ?: $request->input('tranRef', '')
-            ?: $request->input('transaction_ref', '')
-            ?: ($paytabsCheckout['tran_ref'] ?? ''));
+        $tranRef = (string) ($invoice->transaction_id ?: $request->input('tran_ref', ''));
         if ($tranRef && !$invoice->transaction_id) {
             $invoice->transaction_id = $tranRef;
             $invoice->save();
@@ -1150,7 +1134,6 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         Log::info('PayTabs Mobile verify (callback)', [
             'invoice_id'      => $invoiceId,
             'tran_ref'        => $tranRef,
-            'cart_id'         => $cartId,
             'response_status' => $responseStatus,
             'payload_keys'    => array_keys($callbackPayload),
         ]);
@@ -1164,12 +1147,6 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             if ($payment) {
                 $callbackPayload = array_merge($callbackPayload, $payment);
             }
-        }
-
-        // Mirror the working member-link flow: if we reached success redirect with gateway IDs
-        // but PayTabs has not exposed a definitive status yet, avoid a false error page.
-        if ($responseStatus === null && ($tranRef !== '' || $cartId !== '')) {
-            $responseStatus = 'A';
         }
 
         if ($responseStatus === null) {
