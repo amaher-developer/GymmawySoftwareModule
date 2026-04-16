@@ -3250,14 +3250,29 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
         $memberSubscription = GymMemberSubscription::with(['member', 'subscription'])->find($memberSubscriptionId);
-        if (!$memberSubscription) {
-            return response()->json(['success' => false, 'error' => 'Subscription not found'], 404);
+        $member = null;
+        $subscription = null;
+        $invoice = null;
+
+        if ($memberSubscription) {
+            $member = $memberSubscription->member;
+            $subscription = $memberSubscription->subscription;
+        } else {
+            // Support resending by invoice_id for links created via member-new-check-and-send-link.
+            $invoice = GymOnlinePaymentInvoice::with(['member', 'subscription'])->find($memberSubscriptionId);
+            if (!$invoice || !$invoice->member || !$invoice->subscription) {
+                return response()->json(['success' => false, 'error' => 'Subscription not found'], 404);
+            }
+
+            $member = $invoice->member;
+            $subscription = $invoice->subscription;
         }
 
-        $member = $memberSubscription->member;
-        $subscription = $memberSubscription->subscription;
         $gateway = $request->input('gateway'); // tabby, tamara, paymob, paytabs
-        $amountPaid = (float) $memberSubscription->amount_paid;
+        $amountPaid = $memberSubscription
+            ? (float) $memberSubscription->amount_paid
+            : (float) ($invoice->amount ?? 0);
+        $branchSettingId = $invoice->branch_setting_id ?? @$this->user_sw->branch_setting_id;
 
         try {
             $paymentUrl = null;
@@ -3266,29 +3281,34 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($gateway === 'tabby') {
                 $service = new TabbyPaymentService();
                 if ($service->isTabbyConfigured()) {
-                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
-                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; 
-
-                        
-                    }
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
                 }
             } elseif ($gateway === 'tamara') {
                 $service = new TamaraPaymentService();
                 if ($service->isTamaraConfigured()) {
-                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
-                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; }
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
                 }
             } elseif ($gateway === 'paymob') {
                 $service = new PaymobPaymentService();
                 if ($service->isPaymobConfigured()) {
-                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
-                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; }
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
                 }
             } elseif ($gateway === 'paytabs') {
                 $service = new PayTabsPaymentService();
                 if ($service->isPayTabsConfigured()) {
-                    $result = $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, @$this->user_sw->branch_setting_id);
-                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = ['whatsapp' => $result['sent_whatsapp'], 'sms' => $result['sent_sms'], 'email' => $result['sent_email'] ?? false]; }
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
                 }
             }
 
