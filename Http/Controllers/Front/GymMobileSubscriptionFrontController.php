@@ -971,9 +971,15 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function tamaraVerify(Request $request)
     {
-        $invoiceId    = $request->invoice_id;
-        $paymentStatus = $request->paymentStatus; // Tamara redirect param
-        $orderId       = $request->orderId;
+        $invoiceId = $request->invoice_id;
+        // Tamara callback params can vary in key naming/casing across environments.
+        $paymentStatus = strtolower((string) (
+            $request->input('paymentStatus')
+            ?? $request->input('payment_status')
+            ?? $request->input('status')
+            ?? ''
+        ));
+        $orderId = (string) ($request->input('orderId') ?? $request->input('order_id') ?? '');
 
         $invoice = GymOnlinePaymentInvoice::with(['subscription' => fn($q) => $q->withTrashed()])
             ->where('payment_id', $invoiceId)->first();
@@ -994,31 +1000,42 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $this->redirectToGenericItemPage($invoice, $request->token ?? null);
         }
 
-        if ($paymentStatus !== 'approved') {
-            $invoice->status = TypeConstants::FAILURE;
-            $invoice->save();
-            return redirect()->route('sw.mobile-payment.error');
-        }
-
-        $tamaraOrderId = $invoice->transaction_id;
+        $tamaraOrderId = (string) ($invoice->transaction_id ?: $orderId);
         $joiningDate   = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
 
-        // Authorise order
-        $authorise       = $this->tamaraAuthoriseOrder($tamaraOrderId);
-        $authoriseStatus = $authorise['status'] ?? null;
-        $autoCaptured    = $authorise['auto_captured'] ?? false;
-
-        Log::info('Tamara Mobile authorise', ['status' => $authoriseStatus, 'auto_captured' => $autoCaptured]);
-
-        if (!in_array($authoriseStatus, ['authorised', 'fully_captured']) && !$autoCaptured) {
+        if ($tamaraOrderId === '') {
             $invoice->status = TypeConstants::FAILURE;
-            $invoice->response_code = array_merge((array) $invoice->response_code, ['tamara_authorise' => $authorise]);
+            $invoice->response_code = array_merge((array) $invoice->response_code, ['tamara_verify' => $request->all()]);
             $invoice->save();
             return redirect()->route('sw.mobile-payment.error');
         }
 
-        // Capture if not auto-captured
-        if ($authoriseStatus === 'authorised' && !$autoCaptured) {
+        // Authorise order (source of truth). Do not fail only because redirect query param differs.
+        $authorise       = $this->tamaraAuthoriseOrder($tamaraOrderId);
+        $authoriseStatus = strtolower((string) ($authorise['status'] ?? ''));
+        $autoCaptured    = (bool) ($authorise['auto_captured'] ?? false);
+
+        Log::info('Tamara Mobile authorise', [
+            'payment_status' => $paymentStatus,
+            'status' => $authoriseStatus,
+            'auto_captured' => $autoCaptured,
+            'invoice_id' => $invoiceId,
+            'order_id' => $tamaraOrderId,
+        ]);
+
+        $isAuthorised = in_array($authoriseStatus, ['authorised', 'authorized', 'fully_captured', 'partially_captured'], true);
+        if (!$isAuthorised && !$autoCaptured) {
+            $invoice->status = TypeConstants::FAILURE;
+            $invoice->response_code = array_merge((array) $invoice->response_code, [
+                'tamara_verify' => $request->all(),
+                'tamara_authorise' => $authorise,
+            ]);
+            $invoice->save();
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        // Capture if authorised and not already auto-captured.
+        if (in_array($authoriseStatus, ['authorised', 'authorized'], true) && !$autoCaptured) {
             $capture = $this->tamaraCapturePayment(
                 $tamaraOrderId,
                 number_format((float) $invoice->amount, 2, '.', ''),
@@ -1028,18 +1045,27 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             );
             Log::info('Tamara Mobile capture', ['capture' => $capture]);
 
-            if (!($capture['capture_id'] ?? null) && !in_array($capture['status'] ?? '', ['fully_captured', 'partially_captured'])) {
+            $captureStatus = strtolower((string) ($capture['status'] ?? ''));
+            if (!($capture['capture_id'] ?? null) && !in_array($captureStatus, ['fully_captured', 'partially_captured'], true)) {
                 $invoice->status = TypeConstants::FAILURE;
-                $invoice->response_code = array_merge((array) $invoice->response_code, ['tamara_capture' => $capture]);
+                $invoice->response_code = array_merge((array) $invoice->response_code, [
+                    'tamara_verify' => $request->all(),
+                    'tamara_authorise' => $authorise,
+                    'tamara_capture' => $capture,
+                ]);
                 $invoice->save();
                 return redirect()->route('sw.mobile-payment.error');
             }
         }
 
         $invoice->status = TypeConstants::SUCCESS;
+        $invoice->transaction_id = $tamaraOrderId;
         $invoice->response_code = array_merge(
             (array) $invoice->response_code,
-            ['tamara_authorise' => $authorise]
+            [
+                'tamara_verify' => $request->all(),
+                'tamara_authorise' => $authorise,
+            ]
         );
         $invoice->save();
 
@@ -1076,9 +1102,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         if ($invoice->member_subscription_id) {
             $rcCheck = (array) $invoice->response_code;
-            if (!empty($rcCheck['is_pt']))      $invoiceRoute = 'sw.pt-invoice-mobile';
+            if (!empty($rcCheck['is_pt']))          $invoiceRoute = 'sw.pt-invoice-mobile';
             elseif (!empty($rcCheck['is_upgrade'])) $invoiceRoute = 'sw.upgrade-invoice-mobile';
-            else                                $invoiceRoute = 'sw.invoice-mobile';
+            else                                    $invoiceRoute = 'sw.invoice-mobile';
             return redirect()->route($invoiceRoute, ['id' => $invoice->member_subscription_id]);
         }
 
@@ -1087,34 +1113,54 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $joiningDate = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
-        $tranRef     = $invoice->transaction_id;
 
-        if (!$tranRef) {
-            Log::error('PayTabs Mobile verify: no tran_ref', ['invoice_id' => $invoiceId]);
+        // PayTabs sends tran_ref in the callback — use it to fill transaction_id if missing.
+        $tranRef = (string) ($invoice->transaction_id ?: $request->input('tran_ref', ''));
+        if ($tranRef && !$invoice->transaction_id) {
+            $invoice->transaction_id = $tranRef;
+            $invoice->save();
+        }
+
+        // PayTabs sends payment_result directly in the redirect callback payload.
+        // Use that as primary source; only hit queryTransaction API as fallback.
+        $callbackPayload = $request->all();
+        $responseStatus  = $callbackPayload['payment_result']['response_status']
+            ?? $request->input('payment_result.response_status')
+            ?? null;
+
+        Log::info('PayTabs Mobile verify (callback)', [
+            'invoice_id'      => $invoiceId,
+            'tran_ref'        => $tranRef,
+            'response_status' => $responseStatus,
+            'payload_keys'    => array_keys($callbackPayload),
+        ]);
+
+        // If callback did NOT carry the status, query PayTabs API directly.
+        if ($responseStatus === null && $tranRef) {
+            $paytabs = new PayTabsFrontController();
+            $payment = $paytabs->queryTransaction($tranRef);
+            Log::info('PayTabs Mobile verify (query)', ['tran_ref' => $tranRef, 'response' => $payment]);
+            $responseStatus = $payment['payment_result']['response_status'] ?? null;
+            if ($payment) {
+                $callbackPayload = array_merge($callbackPayload, $payment);
+            }
+        }
+
+        if ($responseStatus === null) {
+            Log::error('PayTabs Mobile verify: could not determine response_status', [
+                'invoice_id' => $invoiceId, 'tran_ref' => $tranRef,
+            ]);
             $invoice->status = TypeConstants::FAILURE;
+            $invoice->response_code = array_merge((array) $invoice->response_code, ['paytabs_verify' => $callbackPayload]);
             $invoice->save();
             return redirect()->route('sw.mobile-payment.error');
         }
-
-        $paytabs = new PayTabsFrontController();
-        $payment = $paytabs->queryTransaction($tranRef);
-
-        Log::info('PayTabs Mobile verify', ['tran_ref' => $tranRef, 'response' => $payment]);
-
-        if (!$payment) {
-            Log::error('PayTabs Mobile verify: queryTransaction returned null', ['tran_ref' => $tranRef]);
-            $invoice->status = TypeConstants::FAILURE;
-            $invoice->save();
-            return redirect()->route('sw.mobile-payment.error');
-        }
-
-        $responseStatus = $payment['payment_result']['response_status'] ?? null;
 
         Log::info('PayTabs Mobile verify status', ['tran_ref' => $tranRef, 'status' => $responseStatus]);
 
-        if ($responseStatus !== 'A') {
+        if (strtoupper($responseStatus) !== 'A') {
             $invoice->status = TypeConstants::FAILURE;
-            $invoice->response_code = array_merge((array) $invoice->response_code, ['paytabs_verify' => $payment]);
+            $invoice->response_code = array_merge((array) $invoice->response_code, ['paytabs_verify' => $callbackPayload]);
             $invoice->save();
             return redirect()->route('sw.mobile-payment.error');
         }
@@ -1122,7 +1168,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $invoice->status = TypeConstants::SUCCESS;
         $invoice->response_code = array_merge(
             (array) $invoice->response_code,
-            ['paytabs_verify' => $payment]
+            ['paytabs_verify' => $callbackPayload]
         );
         $invoice->save();
 
