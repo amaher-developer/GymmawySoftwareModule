@@ -70,7 +70,6 @@
         <span class="checkmark">✅</span>
         <div>
             <h4>{{ trans('front.payment_success_title') }}</h4>
-            <p>{{ trans('front.payment_success_desc') }}</p>
         </div>
     </div>
 
