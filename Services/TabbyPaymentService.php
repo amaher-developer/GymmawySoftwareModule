@@ -186,7 +186,7 @@ class TabbyPaymentService
      * @return array ['whatsapp' => bool, 'sms' => bool, 'email' => bool]
      */
     public function sendPaymentLinkToMember(
-        GymMember $member,
+        $member,
         string $paymentUrl,
         GymSubscription $subscription,
         float $amountPaid,
@@ -498,7 +498,7 @@ class TabbyPaymentService
      * @return array
      */
     protected function buildPaymentEmailData(
-        GymMember $member,
+        $member,
         string $subscriptionName,
         float $amount,
         string $paymentUrl,

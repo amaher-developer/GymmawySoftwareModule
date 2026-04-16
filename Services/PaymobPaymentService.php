@@ -3,7 +3,6 @@
 namespace Modules\Software\Services;
 
 use Modules\Generic\Http\Controllers\Front\PaymobFrontController;
-use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberSubscription;
@@ -392,7 +391,7 @@ class PaymobPaymentService
      * Build payment email data
      */
     protected function buildPaymentEmailData(
-        GymMember $member,
+        $member,
         string $subscriptionName,
         float $amount,
         string $paymentUrl,

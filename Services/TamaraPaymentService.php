@@ -162,7 +162,7 @@ class TamaraPaymentService
      * Send Tamara payment link to member via WhatsApp/SMS
      */
     public function sendPaymentLinkToMember(
-        GymMember $member,
+        $member,
         string $paymentUrl,
         GymSubscription $subscription,
         float $amountPaid,
@@ -440,7 +440,7 @@ class TamaraPaymentService
      * Build payment email data
      */
     protected function buildPaymentEmailData(
-        GymMember $member,
+        $member,
         string $subscriptionName,
         float $amount,
         string $paymentUrl,
