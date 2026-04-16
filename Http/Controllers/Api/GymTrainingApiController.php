@@ -434,11 +434,12 @@ class GymTrainingApiController extends GymGenericApiController
                 'summary' => $summary,
                 'title' => (string) ($planAssignment->title ?? $plan->title ?? ''),
                 'type' => (int) ($planAssignment->type ?? $plan->type ?? 0),
+                'member_plan_id' => $memberPlanId,
                 'from_date' => $planAssignment->from_date ?? ($meta['from_date'] ?? null),
                 'to_date' => $planAssignment->to_date ?? ($meta['to_date'] ?? null),
                 'notes' => (string) ($planAssignment->notes ?? ($meta['notes'] ?? '')),
                 'plan_details' => $planDetails,
-                'download_url' => $this->resolvePlanDownloadUrl($log),
+                'download_url' => $this->resolvePlanDownloadUrl($memberPlanId),
                 'file_name' => trim((string) ($planAssignment->title ?? $plan->title ?? trans('sw.plan'))) . '.pdf',
                 'tasks' => $tasks,
             ];
@@ -937,16 +938,29 @@ class GymTrainingApiController extends GymGenericApiController
         return asset('uploads/training_files/' . ltrim($fileName, '/'));
     }
 
-    private function resolvePlanDownloadUrl(GymTrainingMemberLog $log): string
+    private function resolvePlanDownloadUrl(int $memberPlanId): string
     {
-        $memberId = (int) ($log->member_id ?? 0);
-        $logId = (int) ($log->id ?? 0);
-
-        if ($memberId <= 0 || $logId <= 0) {
+        if ($memberPlanId <= 0) {
             return '';
         }
 
-        return url('training/member-log/' . $memberId . '/plan/' . $logId . '/pdf');
+        $token = trim((string) (request('payment_link_token') ?: request('token') ?: request()->bearerToken() ?: ''));
+        $lang = trim((string) (request('lang') ?: app()->getLocale() ?: ''));
+        $localePrefix = in_array($lang, ['ar', 'en'], true) ? $lang . '/' : '';
+        $url = url($localePrefix . 'training-plan-mobile/' . $memberPlanId);
+
+        $query = array_filter([
+            'token' => $token,
+            'lang' => in_array($lang, ['ar', 'en'], true) ? $lang : null,
+        ], function ($value) {
+            return $value !== null && $value !== '';
+        });
+
+        if (empty($query)) {
+            return $url;
+        }
+
+        return $url . '?' . http_build_query($query);
     }
 
     private function localizedTrainingType(string $type, string $lang): string

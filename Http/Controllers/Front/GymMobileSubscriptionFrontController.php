@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Modules\Generic\Http\Controllers\Front\PaymobFrontController;
 use Modules\Generic\Http\Controllers\Front\PayTabsFrontController;
@@ -17,9 +18,16 @@ use Modules\Software\Models\GymActivity;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMoneyBox;
+use Modules\Software\Models\GymNonMember;
 use Modules\Software\Models\GymOnlinePaymentInvoice;
+use Modules\Software\Models\GymStoreOrder;
+use Modules\Software\Models\GymStoreOrderProduct;
 use Modules\Software\Models\GymStoreProduct;
 use Modules\Software\Models\GymSubscription;
+use Modules\Software\Models\GymTrainingMember;
+use Modules\Software\Models\GymTrainingPlan;
+use Modules\Software\Models\GymUser;
+use Modules\Software\Models\GymUserLog;
 
 /**
  * GymMobileSubscriptionFrontController
@@ -116,6 +124,65 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $mainSettings = $this->mainSettings;
 
         return view('software::Front.store_mobile', compact('title', 'record', 'mainSettings'));
+    }
+
+    public function showTrainingPlanMobile(Request $request, $id)
+    {
+        $lang = (string) ($request->input('lang') ?: app()->getLocale());
+        if (in_array($lang, ['ar', 'en'], true)) {
+            app()->setLocale($lang);
+            Carbon::setLocale($lang);
+        }
+
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
+        if (!$currentUser) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $assignment = GymTrainingMember::with([
+            'member',
+            'training_plan.tasks' => function ($q) {
+                $q->orderBy('order', 'asc')->orderBy('id', 'asc');
+            },
+            'diet_plan.tasks' => function ($q) {
+                $q->orderBy('order', 'asc')->orderBy('id', 'asc');
+            },
+        ])->find((int) $id);
+
+        if (!$assignment || (int) ($assignment->member_id ?? 0) !== (int) $currentUser->id) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $plan = $this->resolveAssignedTrainingPlan($assignment);
+        $detailsHtml = (string) (
+            $assignment->training_plan_details
+            ?? $assignment->diet_plan_details
+            ?? $assignment->plan_details
+            ?? $plan->content
+            ?? ''
+        );
+
+        $tasks = collect($plan?->tasks ?? [])->map(function ($task) {
+            return [
+                'id' => (int) ($task->id ?? 0),
+                'title' => trim((string) ($task->title ?? '')),
+                'notes' => trim((string) ($task->content ?? '')),
+            ];
+        })->values();
+
+        $title = (string) ($assignment->title ?? $plan->title ?? trans('sw.training_plan'));
+        $mainSettings = $this->mainSettings;
+
+        return view('software::Front.training_plan_mobile', [
+            'title' => $title,
+            'plan' => $plan,
+            'assignment' => $assignment,
+            'member' => $currentUser,
+            'tasks' => $tasks,
+            'mainSettings' => $mainSettings,
+            'planDetailsHtml' => $detailsHtml,
+            'isDietPlan' => (int) ($assignment->type ?? $plan->type ?? 0) === TypeConstants::DIET_PLAN_TYPE,
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -853,7 +920,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         if ($invoice->member_subscription_id) {
-            return redirect()->route('sw.invoice-mobile', ['id' => $invoice->member_subscription_id]);
+            $rcCheck = (array) $invoice->response_code;
+            if (!empty($rcCheck['is_pt']))      $invoiceRoute = 'sw.pt-invoice-mobile';
+            elseif (!empty($rcCheck['is_upgrade'])) $invoiceRoute = 'sw.upgrade-invoice-mobile';
+            else                                $invoiceRoute = 'sw.invoice-mobile';
+            return redirect()->route($invoiceRoute, ['id' => $invoice->member_subscription_id]);
         }
 
         if ($this->isGenericItemPayment($invoice) && (int) $invoice->status === TypeConstants::SUCCESS) {
@@ -941,7 +1012,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         if ($invoice->member_subscription_id) {
-            return redirect()->route('sw.invoice-mobile', ['id' => $invoice->member_subscription_id]);
+            $rcCheck = (array) $invoice->response_code;
+            if (!empty($rcCheck['is_pt']))      $invoiceRoute = 'sw.pt-invoice-mobile';
+            elseif (!empty($rcCheck['is_upgrade'])) $invoiceRoute = 'sw.upgrade-invoice-mobile';
+            else                                $invoiceRoute = 'sw.invoice-mobile';
+            return redirect()->route($invoiceRoute, ['id' => $invoice->member_subscription_id]);
         }
 
         if ($this->isGenericItemPayment($invoice) && (int) $invoice->status === TypeConstants::SUCCESS) {
@@ -1470,6 +1545,25 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         return null;
     }
 
+    protected function resolveAssignedTrainingPlan(GymTrainingMember $assignment): ?GymTrainingPlan
+    {
+        $assignmentType = (int) ($assignment->type ?? 0);
+
+        if ($assignmentType === TypeConstants::DIET_PLAN_TYPE && $assignment->diet_plan) {
+            return $assignment->diet_plan;
+        }
+
+        if ($assignment->training_plan) {
+            return $assignment->training_plan;
+        }
+
+        if ($assignment->diet_plan) {
+            return $assignment->diet_plan;
+        }
+
+        return null;
+    }
+
     protected function markInvoiceFailed(?string $paymentId): void
     {
         if (!$paymentId) return;
@@ -1514,6 +1608,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     protected function redirectToGenericItemPage(GymOnlinePaymentInvoice $invoice, ?string $token)
     {
+        if ((int) $invoice->status === TypeConstants::SUCCESS) {
+            $this->finalizeGenericMobileCheckout($invoice);
+            $invoice->refresh();
+        }
+
         $rc = (array) $invoice->response_code;
         $token = $token ?: ($rc['token'] ?? null);
         if (!empty($rc['is_activity'])) {
@@ -1530,6 +1629,293 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         return redirect()->route('sw.mobile-payment.error');
+    }
+
+    protected function finalizeGenericMobileCheckout(GymOnlinePaymentInvoice $invoice): void
+    {
+        $rc = (array) $invoice->response_code;
+        if (!empty($rc['generic_finalized'])) {
+            return;
+        }
+
+        $lockKey = 'generic_mobile_finalize_' . $invoice->id;
+        DB::selectOne('SELECT GET_LOCK(?, 30) AS locked', [$lockKey]);
+
+        try {
+            DB::transaction(function () use ($invoice) {
+                $lockedInvoice = GymOnlinePaymentInvoice::where('id', $invoice->id)->lockForUpdate()->first();
+                if (!$lockedInvoice || (int) $lockedInvoice->status !== TypeConstants::SUCCESS) {
+                    return;
+                }
+
+                $rc = (array) $lockedInvoice->response_code;
+                if (!empty($rc['generic_finalized'])) {
+                    return;
+                }
+
+                $result = [];
+                if (!empty($rc['is_activity'])) {
+                    $result = $this->finalizeActivityMobileCheckout($lockedInvoice, $rc);
+                } elseif (!empty($rc['is_store'])) {
+                    $result = $this->finalizeStoreMobileCheckout($lockedInvoice, $rc);
+                }
+
+                $lockedInvoice->response_code = array_merge($rc, $result, ['generic_finalized' => true]);
+                $lockedInvoice->save();
+            });
+        } finally {
+            DB::selectOne('SELECT RELEASE_LOCK(?)', [$lockKey]);
+        }
+    }
+
+    protected function finalizeActivityMobileCheckout(GymOnlinePaymentInvoice $invoice, array $rc): array
+    {
+        if (!empty($rc['non_member_id'])) {
+            return ['non_member_id' => (int) $rc['non_member_id']];
+        }
+
+        $activityId = (int) ($rc['activity_id'] ?? 0);
+        $activity = $activityId ? GymActivity::find($activityId) : null;
+        if (!$activity) {
+            return [];
+        }
+
+        $member = null;
+        if ($invoice->member_id) {
+            $member = GymMember::find((int) $invoice->member_id);
+        }
+        if (!$member && !empty($invoice->phone)) {
+            $member = GymMember::where('phone', $invoice->phone)->first();
+        }
+
+        $branchSettingId = $this->resolveBranchSettingId($member);
+        $userId = $this->resolveSystemUserId($member, $branchSettingId);
+
+        $activitiesPayload = [[
+            'id' => (int) $activity->id,
+            'name_ar' => (string) ($activity->name_ar ?? ''),
+            'name_en' => (string) ($activity->name_en ?? ''),
+            'price' => (float) ($activity->price ?? 0),
+            'reservation_limit' => (int) ($activity->reservation_limit ?? 0),
+            'reservation_duration' => (int) ($activity->reservation_duration ?? 0),
+            'reservation_period' => (int) ($activity->reservation_period ?? 0),
+        ]];
+
+        $nonMemberData = [
+            'name' => (string) ($invoice->name ?? trans('sw.guest')),
+            'phone' => (string) ($invoice->phone ?? ''),
+            'activities' => $activitiesPayload,
+            'price' => (float) $invoice->amount,
+            'vat' => (float) ($invoice->vat ?? 0),
+            'amount_paid' => (float) $invoice->amount,
+            'amount_remaining' => 0,
+            'amount_before_discount' => (float) ($activity->price ?? 0),
+            'discount_value' => 0,
+            'discount_type' => 0,
+            'payment_type' => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'branch_setting_id' => $branchSettingId,
+        ];
+
+        $nonMemberColumns = Schema::getColumnListing('sw_gym_non_members');
+        $nonMemberInsert = array_intersect_key($nonMemberData, array_flip($nonMemberColumns));
+        $nonMember = GymNonMember::create($nonMemberInsert);
+
+        $activityNames = (string) ($activity->{'name_' . $this->lang} ?? $activity->name_en ?? $activity->name_ar ?? $activity->name ?? trans('sw.activity'));
+        $notes = str_replace(':activities', $activityNames, trans('sw.non_member_moneybox_add_msg'));
+        $notes = str_replace(':member', (string) ($invoice->name ?? trans('sw.guest')), $notes);
+        $notes = str_replace(':amount_paid', round((float) $invoice->amount, 2), $notes);
+        $notes = str_replace(':amount_remaining', 0, $notes);
+        if (!empty($invoice->vat_percentage)) {
+            $notes .= ' - ' . trans('sw.vat_added');
+        }
+
+        $this->createGenericMoneyBoxEntry([
+            'member_id' => $member?->id,
+            'amount' => (float) $invoice->amount,
+            'vat' => (float) ($invoice->vat ?? 0),
+            'notes' => $notes,
+            'type' => TypeConstants::CreateNonMember,
+            'payment_type' => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'branch_setting_id' => $branchSettingId,
+            'user_id' => $userId,
+            'non_member_subscription_id' => (int) $nonMember->id,
+        ]);
+
+        $this->createUserLogEntry($notes, TypeConstants::CreateMoneyBoxAdd, $userId, $branchSettingId);
+        $memberNotes = str_replace(':name', (string) ($invoice->name ?? trans('sw.guest')), trans('sw.add_non_member'));
+        $this->createUserLogEntry($memberNotes, TypeConstants::CreateNonMember, $userId, $branchSettingId);
+
+        return ['non_member_id' => (int) $nonMember->id];
+    }
+
+    protected function finalizeStoreMobileCheckout(GymOnlinePaymentInvoice $invoice, array $rc): array
+    {
+        if (!empty($rc['store_order_id'])) {
+            return ['store_order_id' => (int) $rc['store_order_id']];
+        }
+
+        $storeId = (int) ($rc['store_id'] ?? 0);
+        $product = $storeId ? GymStoreProduct::find($storeId) : null;
+        if (!$product) {
+            return [];
+        }
+
+        $member = null;
+        if ($invoice->member_id) {
+            $member = GymMember::find((int) $invoice->member_id);
+        }
+        if (!$member && !empty($invoice->phone)) {
+            $member = GymMember::where('phone', $invoice->phone)->first();
+        }
+
+        $branchSettingId = $this->resolveBranchSettingId($member);
+        $userId = $this->resolveSystemUserId($member, $branchSettingId);
+
+        $productsJson = [[
+            'id' => (int) $product->id,
+            'quantity' => 1,
+            'price' => (float) ($product->price ?? 0),
+        ]];
+
+        $orderData = [
+            'member_id' => $member?->id,
+            'user_id' => $userId,
+            'products' => $productsJson,
+            'amount_paid' => (float) $invoice->amount,
+            'amount_remaining' => 0,
+            'amount_before_discount' => (float) ($product->price ?? 0),
+            'discount_value' => 0,
+            'discount_type' => 0,
+            'vat' => (float) ($invoice->vat ?? 0),
+            'payment_type' => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'payment_status' => 'paid',
+            'total_amount' => (float) $invoice->amount,
+            'branch_setting_id' => $branchSettingId,
+        ];
+
+        $orderColumns = Schema::getColumnListing('sw_gym_store_orders');
+        $orderInsert = array_intersect_key($orderData, array_flip($orderColumns));
+        $order = GymStoreOrder::create($orderInsert);
+
+        $orderProductData = [
+            'order_id' => (int) $order->id,
+            'product_id' => (int) $product->id,
+            'quantity' => 1,
+            'price' => (float) ($product->price ?? 0),
+            'branch_setting_id' => $branchSettingId,
+        ];
+        $orderProductColumns = Schema::getColumnListing('sw_gym_store_order_product');
+        GymStoreOrderProduct::create(array_intersect_key($orderProductData, array_flip($orderProductColumns)));
+
+        if (Schema::hasColumn('sw_gym_store_products', 'quantity')) {
+            GymStoreProduct::where('id', $product->id)->update(['quantity' => DB::raw('quantity - 1')]);
+        }
+
+        $notes = trans('sw.add_store_order', [
+            'price' => round((float) $invoice->amount, 2),
+            'username' => $member?->name ?? trans('sw.guest'),
+        ]);
+        if (!empty($invoice->vat_percentage)) {
+            $notes .= ' - ' . trans('sw.vat_added');
+        }
+
+        $this->createGenericMoneyBoxEntry([
+            'member_id' => $member?->id,
+            'amount' => (float) $invoice->amount,
+            'vat' => (float) ($invoice->vat ?? 0),
+            'notes' => $notes,
+            'type' => TypeConstants::CashSale,
+            'payment_type' => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'branch_setting_id' => $branchSettingId,
+            'user_id' => $userId,
+            'store_order_id' => (int) $order->id,
+            'is_store_balance' => 0,
+        ]);
+
+        $this->createUserLogEntry($notes, TypeConstants::CreateStoreOrder, $userId, $branchSettingId);
+
+        return ['store_order_id' => (int) $order->id];
+    }
+
+    protected function createGenericMoneyBoxEntry(array $data): void
+    {
+        $branchSettingId = (int) ($data['branch_setting_id'] ?? 1);
+        $moneyBoxQuery = GymMoneyBox::query();
+        if (Schema::hasColumn('sw_gym_money_boxes', 'branch_setting_id')) {
+            $moneyBoxQuery->where('branch_setting_id', $branchSettingId);
+        }
+
+        $lastBox = $moneyBoxQuery->orderByDesc('id')->first();
+        $amountBefore = $lastBox ? (float) $lastBox->amount_before : 0;
+        $operation = $lastBox ? (int) $lastBox->operation : TypeConstants::Add;
+        $amountAfter = $this->computeAmountAfter((float) ($data['amount'] ?? 0), $amountBefore, $operation);
+
+        $moneyBoxData = [
+            'user_id' => $data['user_id'] ?? null,
+            'member_id' => $data['member_id'] ?? null,
+            'amount' => (float) ($data['amount'] ?? 0),
+            'vat' => (float) ($data['vat'] ?? 0),
+            'operation' => TypeConstants::Add,
+            'amount_before' => $amountAfter,
+            'notes' => (string) ($data['notes'] ?? ''),
+            'type' => (int) ($data['type'] ?? TypeConstants::CreateMoneyBoxAdd),
+            'payment_type' => (int) ($data['payment_type'] ?? TypeConstants::ONLINE_PAYMENT),
+            'branch_setting_id' => $branchSettingId,
+            'non_member_subscription_id' => $data['non_member_subscription_id'] ?? null,
+            'store_order_id' => $data['store_order_id'] ?? null,
+            'member_pt_subscription_id' => $data['member_pt_subscription_id'] ?? null,
+            'is_store_balance' => $data['is_store_balance'] ?? null,
+        ];
+
+        $moneyBoxColumns = Schema::getColumnListing('sw_gym_money_boxes');
+        GymMoneyBox::create(array_intersect_key($moneyBoxData, array_flip($moneyBoxColumns)));
+    }
+
+    protected function createUserLogEntry(string $notes, int $type, ?int $userId, int $branchSettingId): void
+    {
+        $payload = [
+            'user_id' => $userId,
+            'type' => $type,
+            'notes' => $notes,
+            'branch_setting_id' => $branchSettingId,
+        ];
+
+        $columns = Schema::getColumnListing('sw_gym_user_logs');
+        GymUserLog::create(array_intersect_key($payload, array_flip($columns)));
+    }
+
+    protected function resolveBranchSettingId(?GymMember $member): int
+    {
+        $branchSettingId = (int) ($member->branch_setting_id ?? 0);
+        if ($branchSettingId > 0) {
+            return $branchSettingId;
+        }
+
+        $branchSettingId = (int) ($this->user_sw->branch_setting_id ?? 0);
+        if ($branchSettingId > 0) {
+            return $branchSettingId;
+        }
+
+        return 1;
+    }
+
+    protected function resolveSystemUserId(?GymMember $member, int $branchSettingId): ?int
+    {
+        if (!empty($this->user_sw?->id)) {
+            return (int) $this->user_sw->id;
+        }
+
+        if (!empty($member?->user_id)) {
+            return (int) $member->user_id;
+        }
+
+        $userId = GymUser::where('branch_setting_id', $branchSettingId)->orderBy('id')->value('id');
+        if ($userId) {
+            return (int) $userId;
+        }
+
+        $fallback = GymUser::orderBy('id')->value('id');
+        return $fallback ? (int) $fallback : null;
     }
 
     protected function createMoneyBoxEntry(GymOnlinePaymentInvoice $invoice, GymMember $member, int $type, int $memberSubId): void
@@ -2355,7 +2741,30 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $invoice->save();
 
                 // Money box
-                $this->createMoneyBoxEntry($invoice, $member, TypeConstants::CreateMember, $ptMember->id);
+                $notes = trans('sw.pt_member_moneybox_add_msg', [
+                    'subscription' => ($ptClass->name ?? trans('sw.pt_subscription')) . ' (' . $totalSessions . ')',
+                    'member' => $member->name,
+                    'amount_paid' => (float) $invoice->amount,
+                    'amount_remaining' => 0,
+                ]);
+                if (!empty($invoice->vat_percentage)) {
+                    $notes .= ' - ' . trans('sw.vat_added');
+                }
+
+                $this->createGenericMoneyBoxEntry([
+                    'member_id' => $member->id,
+                    'amount' => (float) $invoice->amount,
+                    'vat' => (float) ($invoice->vat ?? 0),
+                    'notes' => $notes,
+                    'type' => TypeConstants::CreatePTMember,
+                    'payment_type' => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+                    'branch_setting_id' => $this->resolveBranchSettingId($member),
+                    'user_id' => $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)),
+                    'member_pt_subscription_id' => (int) $ptMember->id,
+                ]);
+
+                $this->createUserLogEntry($notes, TypeConstants::CreateMoneyBoxAdd, $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)), $this->resolveBranchSettingId($member));
+                $this->createUserLogEntry($notes, TypeConstants::CreatePTMember, $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)), $this->resolveBranchSettingId($member));
 
                 return $ptMember->id;
             });
