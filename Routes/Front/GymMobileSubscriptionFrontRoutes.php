@@ -55,6 +55,11 @@ Route::name('sw.paytabs-mobile.cancel')
 Route::name('sw.paytabs-mobile.failure')
     ->match(['GET', 'POST'], 'mobile-payment/paytabs/failure', 'Front\GymMobileSubscriptionFrontController@paytabsFailure');
 
+// PayTabs member result pages with locale prefix (Lang middleware redirects /paytabs/* → /{locale}/paytabs/*)
+Route::match(['GET', 'POST'], 'paytabs/member/success', '\Modules\Generic\Http\Controllers\Front\PayTabsFrontController@memberSuccess');
+Route::match(['GET', 'POST'], 'paytabs/member/cancel',  '\Modules\Generic\Http\Controllers\Front\PayTabsFrontController@memberCancel');
+Route::match(['GET', 'POST'], 'paytabs/member/failure', '\Modules\Generic\Http\Controllers\Front\PayTabsFrontController@memberFailure');
+
 // ── Paymob ────────────────────────────────────────────────────────────────────
 Route::name('sw.paymob-mobile.verify')
     ->get('mobile-payment/paymob/verify', 'Front\GymMobileSubscriptionFrontController@paymobVerify');
