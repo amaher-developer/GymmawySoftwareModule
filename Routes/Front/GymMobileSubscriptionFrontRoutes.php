@@ -49,11 +49,11 @@ Route::name('sw.tamara-mobile.failure')
 
 // ── PayTabs ───────────────────────────────────────────────────────────────────
 Route::name('sw.paytabs-mobile.verify')
-    ->get('mobile-payment/paytabs/verify', 'Front\GymMobileSubscriptionFrontController@paytabsVerify');
+    ->match(['GET', 'POST'], 'mobile-payment/paytabs/verify', 'Front\GymMobileSubscriptionFrontController@paytabsVerify');
 Route::name('sw.paytabs-mobile.cancel')
-    ->get('mobile-payment/paytabs/cancel', 'Front\GymMobileSubscriptionFrontController@paytabsCancel');
+    ->match(['GET', 'POST'], 'mobile-payment/paytabs/cancel', 'Front\GymMobileSubscriptionFrontController@paytabsCancel');
 Route::name('sw.paytabs-mobile.failure')
-    ->get('mobile-payment/paytabs/failure', 'Front\GymMobileSubscriptionFrontController@paytabsFailure');
+    ->match(['GET', 'POST'], 'mobile-payment/paytabs/failure', 'Front\GymMobileSubscriptionFrontController@paytabsFailure');
 
 // ── Paymob ────────────────────────────────────────────────────────────────────
 Route::name('sw.paymob-mobile.verify')
