@@ -1331,7 +1331,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         if (!empty($rc['is_pt'])) {
             $ptMemberId = $this->finalizePtMobileCheckout($invoice, $joiningDate);
             if ($ptMemberId) {
-                $dummy       = new GymMemberSubscription(['id' => $ptMemberId]);
+                $dummy = new GymMemberSubscription();
+                $dummy->id    = $ptMemberId; // bypass $guarded to set PK
                 $dummy->is_pt = true;
                 return $dummy;
             }
