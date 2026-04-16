@@ -2210,15 +2210,24 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $errorRoute  = route('sw.pt-subscription-mobile', ['id' => $ptSub['id'], 'token' => request('token')]);
 
         $paytabs = new PayTabsFrontController();
-        $result  = $paytabs->createHppSession([
+        $result  = $paytabs->createCheckoutSession([
             'amount'          => $totalAmount,
             'description'     => $ptSub['name'],
-            'customer_name'   => $member['name'],
-            'customer_email'  => $member['email'] ?? 'member@gym.com',
-            'customer_phone'  => $member['phone'],
-            'return_url'      => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
+            'buyer'           => [
+                'name'    => $member['name'],
+                'email'   => $member['email'] ?? 'member@gym.com',
+                'phone'   => $member['phone'],
+                'city'    => '',
+                'address' => '',
+            ],
+            'success_url'     => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
+            'cancel_url'      => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
+            'failure_url'     => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
             'callback_url'    => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
             'cart_id'         => (string) $invoice->id,
+            'payment_type'    => 'pt_subscription',
+            'member_id'       => optional($this->currentMember)->id,
+            'subscription_id' => $ptSub['id'],
         ]);
 
         if (!$result['success']) {
