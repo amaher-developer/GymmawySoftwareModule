@@ -1093,11 +1093,45 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     public function paytabsVerify(Request $request)
     {
         $invoiceId = $request->invoice_id;
+        $cartId    = (string) ($request->input('cart_id') ?? $request->input('cartId') ?? '');
+        $tranRef   = (string) ($request->input('tran_ref') ?? $request->input('tranRef') ?? '');
 
-        $invoice = GymOnlinePaymentInvoice::with(['subscription' => fn($q) => $q->withTrashed()])
-            ->where('payment_id', $invoiceId)->first();
+        $invoiceQuery = GymOnlinePaymentInvoice::with(['subscription' => fn($q) => $q->withTrashed()]);
+        $invoice = null;
+
+        if ($invoiceId !== null && $invoiceId !== '') {
+            $invoice = (clone $invoiceQuery)
+                ->where('payment_id', $invoiceId)
+                ->orWhere('transaction_id', $invoiceId)
+                ->orWhere('id', is_numeric($invoiceId) ? (int) $invoiceId : -1)
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
+        if (!$invoice && $cartId !== '') {
+            $invoice = (clone $invoiceQuery)
+                ->where('payment_id', $cartId)
+                ->orWhere('transaction_id', $cartId)
+                ->orWhere('id', is_numeric($cartId) ? (int) $cartId : -1)
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
+        if (!$invoice && $tranRef !== '') {
+            $invoice = (clone $invoiceQuery)
+                ->where('transaction_id', $tranRef)
+                ->orWhere('payment_id', $tranRef)
+                ->orderBy('id', 'desc')
+                ->first();
+        }
 
         if (!$invoice) {
+            Log::warning('PayTabs Mobile verify: invoice not found', [
+                'invoice_id' => $invoiceId,
+                'cart_id'    => $cartId,
+                'tran_ref'   => $tranRef,
+                'params'     => $request->all(),
+            ]);
             return redirect()->route('sw.mobile-payment.error');
         }
 
@@ -1115,10 +1149,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         $joiningDate = $invoice->response_code['joining_date'] ?? Carbon::now()->toDateString();
         $paytabsCheckout = (array) ((array) $invoice->response_code)['paytabs_checkout'] ?? [];
-        $cartId = (string) ($request->input('cart_id') ?? $request->input('cartId') ?? ($paytabsCheckout['cart_id'] ?? ''));
+        $cartId = (string) ($cartId ?: ($paytabsCheckout['cart_id'] ?? ''));
 
         // PayTabs sends tran_ref in the callback — use it to fill transaction_id if missing.
-        $tranRef = (string) ($invoice->transaction_id ?: $request->input('tran_ref', ''));
+        $tranRef = (string) ($invoice->transaction_id ?: $tranRef);
         if ($tranRef && !$invoice->transaction_id) {
             $invoice->transaction_id = $tranRef;
             $invoice->save();
