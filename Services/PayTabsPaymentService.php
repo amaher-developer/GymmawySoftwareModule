@@ -97,6 +97,27 @@ class PayTabsPaymentService
 
             $duration = $subscription->period ?? 30;
 
+            // Create pending invoice first so we can pass a stable invoice_id to PayTabs return URL.
+            $invoice = GymOnlinePaymentInvoice::create([
+                'branch_setting_id'      => $branchSettingId ?? $memberSubscription->branch_setting_id,
+                'member_id'              => $member->id,
+                'subscription_id'        => $subscription->id,
+                'member_subscription_id' => $memberSubscription->id,
+                'payment_id'             => null,
+                'transaction_id'         => null,
+                'status'                 => TypeConstants::PENDING,
+                'payment_method'         => TypeConstants::PAYTABS_TRANSACTION,
+                'payment_channel'        => TypeConstants::CHANNEL_SYSTEM,
+                'amount'                 => $amountPaid,
+                'name'                   => $member->name,
+                'phone'                  => $member->phone,
+                'email'                  => $member->email,
+                'address'                => $member->address,
+                'gender'                 => $member->gender,
+                'dob'                    => $member->dob,
+                'response_code'          => json_encode(['status' => 'pending_checkout']),
+            ]);
+
             $result = $this->paytabsController->createMemberPaymentLink([
                 'amount'                 => $amountPaid,
                 'currency'               => $this->currency,
@@ -112,31 +133,17 @@ class PayTabsPaymentService
                 'city'                   => $this->city,
                 'country'                => $this->country,
                 'address'                => $member->address ?? $this->address,
+                'invoice_id'             => $invoice->id,
                 'success_url'            => route('paytabs.member.success'),
                 'cancel_url'             => route('paytabs.member.cancel'),
                 'failure_url'            => route('paytabs.member.failure'),
             ]);
 
             if ($result['success']) {
-                // Create pending invoice record
-                $invoice = GymOnlinePaymentInvoice::create([
-                    'branch_setting_id'      => $branchSettingId ?? $memberSubscription->branch_setting_id,
-                    'member_id'              => $member->id,
-                    'subscription_id'        => $subscription->id,
-                    'member_subscription_id' => $memberSubscription->id,
-                    'payment_id'             => $result['tran_ref'] ?? null,
-                    'transaction_id'         => $result['cart_id']  ?? null,
-                    'status'                 => TypeConstants::PENDING,
-                    'payment_method'         => TypeConstants::PAYTABS_TRANSACTION,
-                    'payment_channel'        => TypeConstants::CHANNEL_SYSTEM,
-                    'amount'                 => $amountPaid,
-                    'name'                   => $member->name,
-                    'phone'                  => $member->phone,
-                    'email'                  => $member->email,
-                    'address'                => $member->address,
-                    'gender'                 => $member->gender,
-                    'dob'                    => $member->dob,
-                    'response_code'          => json_encode([
+                $invoice->update([
+                    'payment_id'     => $result['tran_ref'] ?? null,
+                    'transaction_id' => $result['cart_id']  ?? null,
+                    'response_code'  => json_encode([
                         'payment_url' => $result['payment_url'],
                         'tran_ref'    => $result['tran_ref'] ?? null,
                         'cart_id'     => $result['cart_id']  ?? null,
@@ -151,6 +158,13 @@ class PayTabsPaymentService
                     'amount'          => $amountPaid,
                     'payment_url'     => $result['payment_url'],
                     'invoice_id'      => $invoice->id,
+                ]);
+            } else {
+                $invoice->update([
+                    'status' => TypeConstants::FAILURE,
+                    'response_code' => json_encode([
+                        'error' => $result['error'] ?? 'checkout_failed',
+                    ]),
                 ]);
             }
 
@@ -351,6 +365,24 @@ class PayTabsPaymentService
                 ? ($subscription->name_ar ?? $subscription->name_en)
                 : ($subscription->name_en ?? $subscription->name_ar);
 
+            // Create pending invoice first so we can pass invoice_id to the PayTabs return URL.
+            $invoice = GymOnlinePaymentInvoice::create([
+                'branch_setting_id'      => $branchSettingId,
+                'member_id'              => $member->id,
+                'subscription_id'        => $subscription->id,
+                'member_subscription_id' => null,
+                'payment_id'             => null,
+                'transaction_id'         => null,
+                'status'                 => TypeConstants::PENDING,
+                'payment_method'         => TypeConstants::PAYTABS_TRANSACTION,
+                'payment_channel'        => TypeConstants::CHANNEL_SYSTEM,
+                'amount'                 => $amount,
+                'name'                   => $member->name,
+                'phone'                  => $member->phone,
+                'email'                  => $member->email,
+                'response_code'          => json_encode(['status' => 'pending_checkout']),
+            ]);
+
             $result = $this->paytabsController->createMemberPaymentLink([
                 'amount'                 => $amount,
                 'currency'               => $this->currency,
@@ -366,30 +398,30 @@ class PayTabsPaymentService
                 'city'                   => $this->city,
                 'country'                => $this->country,
                 'address'                => $member->address ?? $this->address,
+                'invoice_id'             => $invoice->id,
                 'success_url'            => route('paytabs.member.success'),
                 'cancel_url'             => route('paytabs.member.cancel'),
                 'failure_url'            => route('paytabs.member.failure'),
             ]);
 
             if (!$result['success']) {
+                $invoice->update([
+                    'status' => TypeConstants::FAILURE,
+                    'response_code' => json_encode([
+                        'error' => $result['error'] ?? 'link_failed',
+                    ]),
+                ]);
                 return ['success' => false, 'invoice_id' => null, 'payment_url' => null, 'error' => $result['error'] ?? 'link_failed'];
             }
 
-            $invoice = GymOnlinePaymentInvoice::create([
-                'branch_setting_id'      => $branchSettingId,
-                'member_id'              => $member->id,
-                'subscription_id'        => $subscription->id,
-                'member_subscription_id' => null,
-                'payment_id'             => $result['tran_ref'] ?? null,
-                'transaction_id'         => $result['cart_id'] ?? null,
-                'status'                 => TypeConstants::PENDING,
-                'payment_method'         => TypeConstants::PAYTABS_TRANSACTION,
-                'payment_channel'        => TypeConstants::CHANNEL_SYSTEM,
-                'amount'                 => $amount,
-                'name'                   => $member->name,
-                'phone'                  => $member->phone,
-                'email'                  => $member->email,
-                'response_code'          => json_encode(['payment_url' => $result['payment_url']]),
+            $invoice->update([
+                'payment_id'     => $result['tran_ref'] ?? null,
+                'transaction_id' => $result['cart_id'] ?? null,
+                'response_code'  => json_encode([
+                    'payment_url' => $result['payment_url'],
+                    'tran_ref'    => $result['tran_ref'] ?? null,
+                    'cart_id'     => $result['cart_id'] ?? null,
+                ]),
             ]);
 
             $sent = $this->sendPaymentLinkToMember($member, $result['payment_url'], $subscription, $amount, $mainSettings);
