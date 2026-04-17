@@ -871,7 +871,7 @@
                     </div>
                 </div>
                 <div class="btn-row">
-                    <a class="btn-download btn-success" href="{{ $details['path'] }}" target="_blank">
+                    <a class="btn-download btn-success" download="" href="{{ $details['path'] }}" target="_blank">
                         <span>⬇</span>
                         <span>{{ $isArabic ? 'تحميل / فتح الملف' : 'Open / Download File' }}</span>
                     </a>
