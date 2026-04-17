@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0D1B2A">
+    <meta name="theme-color" content="#18181B">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{{ $typeLabel }} — {{ $title }}</title>
@@ -17,7 +17,7 @@
         :root {
             --bg:      #F2F5FB;
             --surface: #FFFFFF;
-            --dark:    #0D1B2A;
+            --dark:    #18181B;
             --ink:     #111827;
             --ink2:    #374151;
             --muted:   #6B7280;
@@ -167,17 +167,17 @@
             font-weight: 700;
         }
 
-        /* ─── Type-specific Hero Gradients ─── */
-        .hero-assessment { background: linear-gradient(145deg,#2E1065 0%,#5B21B6 55%,#7C3AED 100%); }
-        .hero-plan       { background: linear-gradient(145deg,#1E3A8A 0%,#1D4ED8 55%,#3B82F6 100%); }
-        .hero-medicine   { background: linear-gradient(145deg,#7F1D1D 0%,#B91C1C 55%,#EF4444 100%); }
-        .hero-note       { background: linear-gradient(145deg,#064E3B 0%,#047857 55%,#10B981 100%); }
-        .hero-file       { background: linear-gradient(145deg,#78350F 0%,#B45309 55%,#F59E0B 100%); }
-        .hero-track      { background: linear-gradient(145deg,#0C4A6E 0%,#0369A1 55%,#0EA5E9 100%); }
-        .hero-ai         { background: linear-gradient(145deg,#2E1065 0%,#6D28D9 55%,#8B5CF6 100%); }
-        .hero-ai_plan    { background: linear-gradient(145deg,#1e1b4b 0%,#5B21B6 55%,#7C3AED 100%); }
-        .hero-activity   { background: linear-gradient(145deg,#064E3B 0%,#047857 55%,#10B981 100%); }
-        .hero-default    { background: linear-gradient(145deg,#0D1B2A 0%,#203A43 55%,#2C5364 100%); }
+        /* ─── Hero Gradient (neutral — safe for any brand) ─── */
+        .hero-assessment,
+        .hero-plan,
+        .hero-medicine,
+        .hero-note,
+        .hero-file,
+        .hero-track,
+        .hero-ai,
+        .hero-ai_plan,
+        .hero-activity,
+        .hero-default { background: linear-gradient(145deg, #18181B 0%, #27272A 55%, #18181B 100%); }
 
         /* ─── Member Strip ─── */
         .member-strip {

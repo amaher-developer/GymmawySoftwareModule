@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0D1B2A">
+    <meta name="theme-color" content="#18181B">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{{ $title }}</title>
@@ -17,8 +17,8 @@
         :root {
             --bg:      #F2F5FB;
             --surface: #FFFFFF;
-            --dark:    #0D1B2A;
-            --dark2:   #1A2C40;
+            --dark:    #18181B;
+            --dark2:   #27272A;
             --ink:     #111827;
             --ink2:    #374151;
             --muted:   #6B7280;
@@ -93,7 +93,8 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #059669, #0EA5E9);
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.22);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -110,17 +111,14 @@
         }
 
         .member-code {
-            color: #34D399;
-            font-weight: 800;
+            color: #9CA3AF;
+            font-weight: 700;
             font-size: 11px;
         }
 
         /* ─── Hero ─── */
         .hero {
-            background:
-                radial-gradient(ellipse 80% 60% at 80% -20%, rgba(5,150,105,0.25) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 50% at 10% 110%, rgba(14,165,233,0.18) 0%, transparent 60%),
-                linear-gradient(150deg, #0D1B2A 0%, #1A2C40 50%, #0F2C3A 100%);
+            background: linear-gradient(150deg, #18181B 0%, #27272A 50%, #18181B 100%);
             padding: 28px 20px 32px;
             position: relative;
             overflow: hidden;
@@ -133,7 +131,7 @@
             width: 200px;
             height: 200px;
             border-radius: 50%;
-            background: rgba(5,150,105,0.12);
+            background: rgba(255,255,255,0.04);
             pointer-events: none;
         }
 
@@ -144,7 +142,7 @@
             width: 160px;
             height: 160px;
             border-radius: 50%;
-            background: rgba(14,165,233,0.10);
+            background: rgba(255,255,255,0.03);
             pointer-events: none;
         }
 
@@ -157,11 +155,11 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(52,211,153,0.15);
-            border: 1px solid rgba(52,211,153,0.3);
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
             border-radius: 999px;
             padding: 4px 12px;
-            color: #34D399;
+            color: #D1D5DB;
             font-size: 11px;
             font-weight: 700;
             margin-bottom: 12px;
@@ -462,7 +460,7 @@
 <body>
 
     {{-- ─── Sticky App Header ─── --}}
-    <header class="app-header">
+    <!-- <header class="app-header">
         <span class="header-title">{{ trans('sw.training_member_logs') }}</span>
         <div class="member-badge">
             @php $initials = mb_strtoupper(mb_substr($member->name ?? 'M', 0, 1)); @endphp
@@ -470,7 +468,7 @@
             <span class="member-name">{{ $member->name ?? '-' }}</span>
             <span class="member-code">#{{ $member->code ?? $member->id }}</span>
         </div>
-    </header>
+    </header> -->
 
     {{-- ─── Hero ─── --}}
     <div class="hero">
@@ -481,10 +479,10 @@
                 <span>🏋️</span>
                 <span>{{ $isArabic ? 'سجلات التدريب' : 'Training Logs' }}</span>
             </div>
-            <h1 class="hero-title">
+            <!-- <h1 class="hero-title">
                 {{ $isArabic ? 'كل سجلاتك' : 'Your Activity' }}<br>
                 {{ $isArabic ? 'في مكان واحد' : 'All in One Place' }}
-            </h1>
+            </h1> -->
             <p class="hero-sub">{{ $isArabic ? 'تتبع تقدمك وخططك وتقييماتك بكل سهولة.' : 'Track your progress, plans, and assessments with ease.' }}</p>
             @php
                 $totalLogs = collect($filters)->firstWhere('value', 'all')['count'] ?? 0;
