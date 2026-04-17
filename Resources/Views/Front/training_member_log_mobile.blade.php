@@ -3,376 +3,594 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0D1B2A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{{ $title }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    @if($isArabic)
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    @else
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    @endif
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* ─── Reset ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         :root {
-            --bg-1: #f3f7f2;
-            --bg-2: #e7eef9;
-            --surface: rgba(255, 255, 255, 0.88);
-            --surface-2: #ffffff;
-            --text: #10231f;
-            --muted: #5b706f;
-            --line: #d7e3e3;
-            --brand: #0d9f6e;
-            --brand-dark: #077855;
-            --chip: #eff5f4;
-            --chip-active: #0b8f64;
-            --chip-text: #305550;
-            --warning: #ffeecf;
-            --shadow: 0 22px 44px rgba(19, 35, 35, 0.12);
+            --bg:      #F2F5FB;
+            --surface: #FFFFFF;
+            --dark:    #0D1B2A;
+            --dark2:   #1A2C40;
+            --ink:     #111827;
+            --ink2:    #374151;
+            --muted:   #6B7280;
+            --border:  #E5E7EB;
+            --ff:      'Cairo', sans-serif;
+            --safe-b:  env(safe-area-inset-bottom, 16px);
         }
 
-        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
 
         body {
-            margin: 0;
-            min-height: 100vh;
-            color: var(--text);
-            direction: {{ $isArabic ? 'rtl' : 'ltr' }};
-            font-family: {{ $isArabic ? "'Cairo', sans-serif" : "'Space Grotesk', sans-serif" }};
-            background:
-                radial-gradient(1200px 520px at 10% -10%, #d7f6e6 0%, transparent 56%),
-                radial-gradient(900px 520px at 92% 2%, #d9e9ff 0%, transparent 58%),
-                linear-gradient(165deg, var(--bg-1) 0%, var(--bg-2) 100%);
+            font-family: var(--ff);
+            background: var(--bg);
+            color: var(--ink);
+            min-height: 100dvh;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .page {
-            max-width: 1080px;
-            margin: 0 auto;
-            padding: 18px 14px 26px;
-        }
+        /* ─── Type Color Tokens ─── */
+        .t-assessment { --tc:#7C3AED; --tc-bg:#F5F3FF; --tc-bd:#DDD6FE; }
+        .t-plan       { --tc:#1D4ED8; --tc-bg:#EFF6FF; --tc-bd:#BFDBFE; }
+        .t-medicine   { --tc:#BE123C; --tc-bg:#FFF1F2; --tc-bd:#FECDD3; }
+        .t-note       { --tc:#047857; --tc-bg:#ECFDF5; --tc-bd:#A7F3D0; }
+        .t-file       { --tc:#B45309; --tc-bg:#FFFBEB; --tc-bd:#FDE68A; }
+        .t-track      { --tc:#0369A1; --tc-bg:#F0F9FF; --tc-bd:#BAE6FD; }
+        .t-ai         { --tc:#6D28D9; --tc-bg:#F5F3FF; --tc-bd:#DDD6FE; }
+        .t-ai_plan    { --tc:#5B21B6; --tc-bg:#F5F3FF; --tc-bd:#DDD6FE; }
+        .t-activity   { --tc:#047857; --tc-bg:#ECFDF5; --tc-bd:#A7F3D0; }
 
-        .hero {
-            position: relative;
-            overflow: hidden;
-            border-radius: 24px;
-            padding: 20px 18px;
-            color: #f8fffd;
-            background: linear-gradient(130deg, #0f3942 0%, #0a7e66 44%, #0f9f74 100%);
-            box-shadow: var(--shadow);
-        }
-
-        .hero::before,
-        .hero::after {
-            content: "";
-            position: absolute;
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        .hero::before {
-            width: 180px;
-            height: 180px;
-            top: -60px;
-            inset-inline-end: -50px;
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .hero::after {
-            width: 120px;
-            height: 120px;
-            bottom: -40px;
-            inset-inline-start: -35px;
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .hero-head {
-            position: relative;
-            z-index: 2;
+        /* ─── Sticky App Header ─── */
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            background: var(--dark);
+            padding: 0 18px;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            flex-wrap: wrap;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+        }
+
+        .header-title {
+            color: #F1F5F9;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .member-badge {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 999px;
+            padding: 5px 12px 5px 8px;
+            color: #CBD5E1;
+            font-size: 12px;
+            font-weight: 600;
+            max-width: 170px;
+        }
+
+        .member-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #059669, #0EA5E9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 900;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .member-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .member-code {
+            color: #34D399;
+            font-weight: 800;
+            font-size: 11px;
+        }
+
+        /* ─── Hero ─── */
+        .hero {
+            background:
+                radial-gradient(ellipse 80% 60% at 80% -20%, rgba(5,150,105,0.25) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 10% 110%, rgba(14,165,233,0.18) 0%, transparent 60%),
+                linear-gradient(150deg, #0D1B2A 0%, #1A2C40 50%, #0F2C3A 100%);
+            padding: 28px 20px 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bubble-1 {
+            position: absolute;
+            top: -70px;
+            inset-inline-end: -50px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(5,150,105,0.12);
+            pointer-events: none;
+        }
+
+        .hero-bubble-2 {
+            position: absolute;
+            bottom: -60px;
+            inset-inline-start: -40px;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: rgba(14,165,233,0.10);
+            pointer-events: none;
+        }
+
+        .hero-inner {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(52,211,153,0.15);
+            border: 1px solid rgba(52,211,153,0.3);
+            border-radius: 999px;
+            padding: 4px 12px;
+            color: #34D399;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
         }
 
         .hero-title {
-            margin: 0;
-            font-size: clamp(22px, 5vw, 34px);
-            letter-spacing: 0.2px;
+            font-size: clamp(24px, 6.5vw, 38px);
+            font-weight: 900;
+            color: #F8FAFC;
+            line-height: 1.2;
+            letter-spacing: -0.3px;
         }
 
         .hero-sub {
-            margin: 6px 0 0;
+            margin-top: 8px;
             font-size: 14px;
-            color: rgba(248, 255, 253, 0.88);
+            color: rgba(248,250,252,0.6);
+            line-height: 1.8;
+            max-width: 340px;
         }
 
-        .member-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.24);
-            border-radius: 999px;
-            padding: 7px 14px;
-            background: rgba(255, 255, 255, 0.12);
-            font-size: 13px;
-        }
-
-        .filters-wrap {
-            margin-top: 14px;
-            padding: 12px;
-            border-radius: 18px;
-            border: 1px solid var(--line);
-            background: var(--surface);
-            backdrop-filter: blur(6px);
-        }
-
-        .filters-row {
+        .hero-stats {
+            margin-top: 18px;
             display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 2px;
-            scrollbar-width: thin;
-        }
-
-        .filters-row::-webkit-scrollbar { height: 6px; }
-
-        .chip {
-            text-decoration: none;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 9px 14px;
-            border-radius: 999px;
-            border: 1px solid #dbe7e6;
-            background: var(--chip);
-            color: var(--chip-text);
-            font-size: 13px;
-            font-weight: 700;
-            transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
-        }
-
-        .chip:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 16px rgba(8, 46, 39, 0.12);
-        }
-
-        .chip.active {
-            color: #fff;
-            border-color: var(--chip-active);
-            background: linear-gradient(120deg, var(--chip-active) 0%, #12af7f 100%);
-            box-shadow: 0 10px 18px rgba(10, 113, 80, 0.22);
-        }
-
-        .chip-count {
-            font-size: 12px;
-            padding: 2px 7px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.7);
-            color: #19443d;
-        }
-
-        .chip.active .chip-count {
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-        }
-
-        .cards {
-            margin-top: 14px;
-            display: grid;
-            gap: 10px;
-        }
-
-        .card {
-            text-decoration: none;
-            color: inherit;
-            border-radius: 18px;
-            border: 1px solid var(--line);
-            background: var(--surface-2);
-            box-shadow: 0 10px 26px rgba(22, 46, 47, 0.08);
-            padding: 14px;
-            display: block;
-            transition: transform .2s ease, box-shadow .2s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 16px 30px rgba(14, 39, 38, 0.14);
-        }
-
-        .card-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
             gap: 10px;
             flex-wrap: wrap;
         }
 
-        .tag {
+        .stat-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 7px 13px;
+            color: #E2E8F0;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .stat-pill .sp-icon { font-size: 15px; }
+
+        /* ─── Filters Strip ─── */
+        .filters-bar {
+            position: sticky;
+            top: 56px;
+            z-index: 150;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 0;
+        }
+
+        .filters-scroll {
+            display: flex;
+            gap: 7px;
+            overflow-x: auto;
+            padding: 0 16px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .filters-scroll::-webkit-scrollbar { display: none; }
+
+        .f-pill {
+            flex-shrink: 0;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 13px;
             border-radius: 999px;
-            padding: 6px 10px;
+            border: 1.5px solid #E5E7EB;
+            background: #FAFAFA;
+            color: #4B5563;
+            font-family: var(--ff);
             font-size: 12px;
             font-weight: 700;
-            border: 1px solid #cae7dc;
-            background: #f1fbf6;
-            color: #16684f;
+            transition: all 0.18s ease;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .meta {
-            text-align: {{ $isArabic ? 'left' : 'right' }};
+        .f-pill:active { opacity: 0.75; }
+
+        .f-pill.active {
+            background: var(--dark);
+            border-color: var(--dark);
+            color: #fff;
+        }
+
+        .f-pill .fi { font-size: 13px; }
+
+        .f-count {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.08);
+        }
+
+        .f-pill.active .f-count { background: rgba(255,255,255,0.18); }
+
+        /* ─── Cards Feed ─── */
+        .feed {
+            padding: 14px 14px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-bottom: calc(16px + var(--safe-b));
+        }
+
+        /* ─── Log Card ─── */
+        .log-card {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            background: var(--surface);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.07);
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .log-card:active {
+            transform: scale(0.985);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .card-stripe {
+            height: 3px;
+            background: var(--tc, #059669);
+        }
+
+        .card-inner {
+            padding: 14px 16px;
+        }
+
+        .card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .type-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 8px;
+            background: var(--tc-bg, #ECFDF5);
+            border: 1px solid var(--tc-bd, #A7F3D0);
+            color: var(--tc, #047857);
+            font-family: var(--ff);
             font-size: 12px;
-            color: var(--muted);
+            font-weight: 800;
         }
 
-        .summary {
+        .type-tag .ti { font-size: 13px; }
+
+        .card-date {
+            flex-shrink: 0;
+        }
+
+        [dir="rtl"] .card-date { text-align: left; }
+        [dir="ltr"] .card-date { text-align: right; }
+
+        .date-d {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .date-t {
+            display: block;
+            font-size: 10px;
+            color: #9CA3AF;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .card-summary {
             margin: 10px 0 12px;
-            color: #1e3634;
-            line-height: 1.85;
-            font-size: 14px;
+            font-size: 13.5px;
+            line-height: 1.8;
+            color: #374151;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
-        .card-foot {
+        .card-bottom {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding-top: 10px;
+            border-top: 1px solid #F3F4F6;
             gap: 10px;
         }
 
-        .action {
-            color: #235d50;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .more {
-            font-size: 13px;
-            color: var(--brand-dark);
+        .action-tag {
+            font-size: 11px;
             font-weight: 800;
+            color: var(--tc, #047857);
+            background: var(--tc-bg, #ECFDF5);
+            border-radius: 999px;
+            padding: 3px 10px;
+            white-space: nowrap;
         }
 
-        .empty {
-            margin-top: 14px;
-            border-radius: 18px;
-            border: 1px dashed #b7ceca;
-            background: var(--warning);
-            color: #6f5e2c;
-            text-align: center;
-            padding: 24px 14px;
+        .see-more {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--dark);
+            white-space: nowrap;
         }
 
-        .pagination-wrap {
-            margin-top: 14px;
-            border: 1px solid var(--line);
-            border-radius: 16px;
+        .arrow-circle {
+            width: 22px;
+            height: 22px;
+            background: #F1F5F9;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+        }
+
+        /* ─── Empty State ─── */
+        .empty-wrap {
             background: var(--surface);
-            padding: 8px;
-            overflow-x: auto;
+            border-radius: 20px;
+            border: 2px dashed #D1D5DB;
+            padding: 48px 24px;
+            text-align: center;
         }
 
-        .pagination-wrap .pagination {
+        .empty-emoji { font-size: 52px; display: block; margin-bottom: 14px; }
+
+        .empty-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+
+        .empty-body {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        /* ─── Pagination ─── */
+        .pager {
+            padding: 4px 0;
+        }
+
+        .pager .pagination {
             margin: 0;
             justify-content: center;
-            gap: 5px;
-            flex-wrap: nowrap;
-            min-width: max-content;
+            gap: 4px;
+            flex-wrap: wrap;
         }
 
-        .pagination-wrap .page-link {
+        .pager .page-link {
             border-radius: 10px;
-            color: #24564d;
-            border: 1px solid #d6e7e2;
-            background: #fff;
-            padding: 8px 11px;
+            color: var(--dark);
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            padding: 8px 13px;
             font-size: 13px;
+            font-family: var(--ff);
+            font-weight: 600;
         }
 
-        .pagination-wrap .page-item.active .page-link {
-            background: var(--brand);
-            border-color: var(--brand);
+        .pager .page-item.active .page-link {
+            background: var(--dark);
+            border-color: var(--dark);
             color: #fff;
         }
 
-        @media (min-width: 880px) {
-            .cards {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .card:nth-child(3n) {
-                grid-column: span 2;
-            }
-        }
-
-        @media (max-width: 540px) {
-            .page { padding-inline: 10px; }
-            .hero { border-radius: 20px; padding: 16px 14px; }
-            .filters-wrap { padding: 10px; }
-            .card { padding: 12px; }
+        .pager .page-item.disabled .page-link {
+            opacity: 0.4;
         }
     </style>
 </head>
 <body>
-    <main class="page">
-        <section class="hero">
-            <div class="hero-head">
-                <div>
-                    <h1 class="hero-title">{{ trans('sw.training_member_logs') }}</h1>
-                    <p class="hero-sub">{{ $isArabic ? 'كل سجلات العضو في مكان واحد مع تصفية حسب نوع النشاط.' : 'All member logs in one place, with quick filtering by activity type.' }}</p>
-                </div>
-                <div class="member-chip">
-                    <strong>{{ $member->name ?? '-' }}</strong>
-                    <span>#{{ $member->code ?? $member->id }}</span>
-                </div>
-            </div>
-        </section>
 
-        <section class="filters-wrap" aria-label="filters">
-            <div class="filters-row">
-                @foreach($filters as $filter)
-                    <a href="{{ $filter['url'] }}" class="chip {{ $filter['active'] ? 'active' : '' }}">
-                        <span>{{ $filter['label'] }}</span>
-                        <span class="chip-count">{{ $filter['count'] }}</span>
-                    </a>
-                @endforeach
+    {{-- ─── Sticky App Header ─── --}}
+    <header class="app-header">
+        <span class="header-title">{{ trans('sw.training_member_logs') }}</span>
+        <div class="member-badge">
+            @php $initials = mb_strtoupper(mb_substr($member->name ?? 'M', 0, 1)); @endphp
+            <div class="member-avatar">{{ $initials }}</div>
+            <span class="member-name">{{ $member->name ?? '-' }}</span>
+            <span class="member-code">#{{ $member->code ?? $member->id }}</span>
+        </div>
+    </header>
+
+    {{-- ─── Hero ─── --}}
+    <div class="hero">
+        <div class="hero-bubble-1"></div>
+        <div class="hero-bubble-2"></div>
+        <div class="hero-inner">
+            <div class="hero-eyebrow">
+                <span>🏋️</span>
+                <span>{{ $isArabic ? 'سجلات التدريب' : 'Training Logs' }}</span>
             </div>
-        </section>
+            <h1 class="hero-title">
+                {{ $isArabic ? 'كل سجلاتك' : 'Your Activity' }}<br>
+                {{ $isArabic ? 'في مكان واحد' : 'All in One Place' }}
+            </h1>
+            <p class="hero-sub">{{ $isArabic ? 'تتبع تقدمك وخططك وتقييماتك بكل سهولة.' : 'Track your progress, plans, and assessments with ease.' }}</p>
+            @php
+                $totalLogs = collect($filters)->firstWhere('value', 'all')['count'] ?? 0;
+            @endphp
+            <div class="hero-stats">
+                <span class="stat-pill">
+                    <span class="sp-icon">📊</span>
+                    <span>{{ $totalLogs }} {{ $isArabic ? 'سجل' : 'Logs' }}</span>
+                </span>
+                <span class="stat-pill">
+                    <span class="sp-icon">👤</span>
+                    <span>{{ $member->name ?? '-' }}</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {{-- ─── Filters ─── --}}
+    <nav class="filters-bar" aria-label="{{ $isArabic ? 'التصفية' : 'Filters' }}">
+        <div class="filters-scroll">
+            @php
+                $filterIcons = [
+                    'all'        => '🔍',
+                    'assessment' => '📋',
+                    'plan'       => '🏋️',
+                    'medicine'   => '💊',
+                    'note'       => '📝',
+                    'file'       => '📎',
+                    'track'      => '📊',
+                    'ai'         => '🤖',
+                    'ai_plan'    => '✨',
+                ];
+            @endphp
+            @foreach($filters as $filter)
+                <a href="{{ $filter['url'] }}" class="f-pill {{ $filter['active'] ? 'active' : '' }}">
+                    <span class="fi">{{ $filterIcons[$filter['value']] ?? '•' }}</span>
+                    <span>{{ $filter['label'] }}</span>
+                    <span class="f-count">{{ $filter['count'] }}</span>
+                </a>
+            @endforeach
+        </div>
+    </nav>
+
+    {{-- ─── Feed ─── --}}
+    <main class="feed">
+        @php
+            $typeIcons = [
+                'assessment' => '📋',
+                'plan'       => '🏋️',
+                'medicine'   => '💊',
+                'note'       => '📝',
+                'file'       => '📎',
+                'track'      => '📊',
+                'ai'         => '🤖',
+                'ai_plan'    => '✨',
+                'activity'   => '🎯',
+            ];
+        @endphp
 
         @if($logs->count() > 0)
-            <section class="cards">
-                @foreach($logs as $item)
-                    <a class="card" href="{{ $item['details_url'] }}">
-                        <div class="card-head">
-                            <div class="tag">{{ $item['type_label'] }}</div>
-                            <div class="meta">
-                                <div>{{ $item['date'] }}</div>
-                                <div>{{ $item['time'] }}</div>
+
+            @foreach($logs as $item)
+                @php
+                    $rawType  = $item['type'] ?? 'activity';
+                    $tClass   = 't-' . str_replace('_', '_', $rawType);
+                    $icon     = $typeIcons[$rawType] ?? '🎯';
+                @endphp
+                <a class="log-card {{ $tClass }}" href="{{ $item['details_url'] }}" aria-label="{{ $item['type_label'] }}">
+                    <div class="card-stripe"></div>
+                    <div class="card-inner">
+                        <div class="card-top">
+                            <div class="type-tag">
+                                <span class="ti">{{ $icon }}</span>
+                                <span>{{ $item['type_label'] }}</span>
+                            </div>
+                            <div class="card-date">
+                                <span class="date-d">{{ $item['date'] }}</span>
+                                <span class="date-t">{{ $item['time'] }}</span>
                             </div>
                         </div>
-                        <p class="summary">{{ $item['summary'] }}</p>
-                        <div class="card-foot">
-                            <span class="action">{{ $item['action_label'] }}</span>
-                            <span class="more">{{ $isArabic ? 'عرض التفاصيل' : 'View details' }}</span>
+                        <p class="card-summary">{{ $item['summary'] ?: ($isArabic ? 'لا يوجد وصف.' : 'No description available.') }}</p>
+                        <div class="card-bottom">
+                            <span class="action-tag">{{ $item['action_label'] }}</span>
+                            <span class="see-more">
+                                {{ $isArabic ? 'عرض التفاصيل' : 'View Details' }}
+                                <span class="arrow-circle">{{ $isArabic ? '←' : '→' }}</span>
+                            </span>
                         </div>
-                    </a>
-                @endforeach
-            </section>
+                    </div>
+                </a>
+            @endforeach
 
             @if($logs->hasPages())
-                <div class="pagination-wrap">
-                    {{ $logs->links() }}
-                </div>
+                <div class="pager">{{ $logs->links() }}</div>
             @endif
+
         @else
-            <section class="empty">
-                <h3 style="margin:0 0 8px; font-size:18px;">{{ $isArabic ? 'لا توجد سجلات حالياً' : 'No logs available yet' }}</h3>
-                <p style="margin:0; font-size:14px;">{{ $isArabic ? 'بمجرد إضافة تقييمات أو خطط أو قياسات ستظهر هنا.' : 'Once assessments, plans, notes, or tracks are added, they will appear here.' }}</p>
-            </section>
+
+            <div class="empty-wrap">
+                <span class="empty-emoji">📭</span>
+                <p class="empty-title">{{ $isArabic ? 'لا توجد سجلات حالياً' : 'No Logs Yet' }}</p>
+                <p class="empty-body">{{ $isArabic ? 'بمجرد إضافة تقييمات أو خطط أو قياسات ستظهر هنا.' : 'Once assessments, plans, notes or tracks are added, they will appear here.' }}</p>
+            </div>
+
         @endif
     </main>
+
 </body>
 </html>
