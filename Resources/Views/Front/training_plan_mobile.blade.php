@@ -12,21 +12,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     @php
-        $isArabic   = app()->getLocale() === 'ar';
-        $planTitle  = $assignment->title ?? $plan->title ?? trans('sw.training_plan');
-        $planTypeLabel = $isDietPlan ? trans('sw.plan_diet') : trans('sw.plan_training');
-        $planIcon   = $isDietPlan ? '🥗' : '🏋️';
-        $memberName = $member->name ?? '-';
-        $memberCode = $member->code ?? '-';
-        $fromDate   = !empty($assignment->from_date) ? \Carbon\Carbon::parse($assignment->from_date)->translatedFormat('d M Y') : null;
-        $toDate     = !empty($assignment->to_date)   ? \Carbon\Carbon::parse($assignment->to_date)->translatedFormat('d M Y')   : null;
+        $isArabic        = app()->getLocale() === 'ar';
+        $planTitle       = $assignment->title ?? $plan->title ?? trans('sw.training_plan');
+        $planTypeLabel   = $isDietPlan ? trans('sw.plan_diet') : trans('sw.plan_training');
+        $planIcon        = $isDietPlan ? '🥗' : '🏋️';
+        $memberName      = $member->name ?? '-';
+        $memberCode      = $member->code ?? '-';
+        $fromDate        = !empty($assignment->from_date) ? \Carbon\Carbon::parse($assignment->from_date)->translatedFormat('d M Y') : null;
+        $toDate          = !empty($assignment->to_date)   ? \Carbon\Carbon::parse($assignment->to_date)->translatedFormat('d M Y')   : null;
+        $stampDate       = !empty($assignment->created_at) ? \Carbon\Carbon::parse($assignment->created_at)->translatedFormat('d F Y') : ($fromDate ?? '');
+        $stampTime       = !empty($assignment->created_at) ? \Carbon\Carbon::parse($assignment->created_at)->format('H:i') : '';
         $assignmentWeight = $assignment->weight ?? null;
         $assignmentHeight = $assignment->height ?? null;
-        $notes      = trim((string)($assignment->notes ?? ''));
-        $detailsHtml = trim((string)($planDetailsHtml ?? ''));
-        $detailsText = trim(strip_tags($detailsHtml));
-        $hasHtmlDetails = $detailsHtml !== '' && $detailsHtml !== $detailsText;
-        $initials   = mb_strtoupper(mb_substr($memberName, 0, 1));
+        $notes           = trim((string)($assignment->notes ?? ''));
+        $detailsHtml     = trim((string)($planDetailsHtml ?? ''));
+        $detailsText     = trim(strip_tags($detailsHtml));
+        $hasHtmlDetails  = $detailsHtml !== '' && $detailsHtml !== $detailsText;
+
+        // Active / expired status
+        $now = now();
+        $isActive = true;
+        if ($toDate && \Carbon\Carbon::parse($assignment->to_date)->lt($now)) {
+            $isActive = false;
+        }
+        $statusLabel = $isActive
+            ? ($isArabic ? 'نشطة' : 'Active')
+            : ($isArabic ? 'منتهية' : 'Expired');
     @endphp
 
     <style>
@@ -57,74 +68,51 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ─── Sticky App Header ─── */
-        .app-header {
+        /* ─── Sticky Topbar ─── */
+        .topbar {
             position: sticky;
             top: 0;
             z-index: 200;
-            background: var(--dark);
-            padding: 0 18px;
             height: 56px;
+            background: var(--dark);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding: 0 16px;
             gap: 12px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
         }
 
         .back-btn {
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             color: #CBD5E1;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 700;
             font-family: var(--ff);
-            padding: 5px 10px;
-            border-radius: 9px;
+            padding: 6px 10px;
+            border-radius: 10px;
             background: rgba(255,255,255,0.07);
             border: 1px solid rgba(255,255,255,0.12);
-            flex-shrink: 0;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
 
         .back-btn:active { background: rgba(255,255,255,0.12); }
 
-        .header-title {
-            color: #F1F5F9;
-            font-size: 15px;
-            font-weight: 800;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .header-type-badge {
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.14);
-            border-radius: 999px;
-            padding: 4px 11px;
-            color: #D1D5DB;
+        .topbar-stamp {
             font-size: 11px;
-            font-weight: 700;
+            color: #94A3B8;
+            font-weight: 500;
+            text-align: end;
+            line-height: 1.5;
         }
 
         /* ─── Hero ─── */
         .hero {
-            background: linear-gradient(150deg, #18181B 0%, #27272A 50%, #18181B 100%);
+            background: linear-gradient(145deg, #18181B 0%, #27272A 55%, #18181B 100%);
             padding: 28px 20px 32px;
             position: relative;
             overflow: hidden;
@@ -132,12 +120,12 @@
 
         .hero-bubble-1 {
             position: absolute;
-            top: -70px;
-            inset-inline-end: -50px;
-            width: 200px;
-            height: 200px;
+            top: -80px;
+            inset-inline-end: -60px;
+            width: 220px;
+            height: 220px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.04);
+            background: rgba(255,255,255,0.08);
             pointer-events: none;
         }
 
@@ -148,39 +136,32 @@
             width: 160px;
             height: 160px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.03);
+            background: rgba(255,255,255,0.06);
             pointer-events: none;
         }
 
         .hero-inner { position: relative; z-index: 1; }
 
         .hero-icon-wrap {
-            width: 52px;
-            height: 52px;
-            border-radius: 15px;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
             background: rgba(255,255,255,0.08);
             border: 1px solid rgba(255,255,255,0.14);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 26px;
             margin-bottom: 14px;
         }
 
-        .hero-eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 999px;
-            padding: 4px 12px;
-            color: #D1D5DB;
-            font-size: 11px;
+        .hero-type-label {
+            font-size: 12px;
             font-weight: 700;
-            margin-bottom: 12px;
-            letter-spacing: 0.4px;
+            color: rgba(255,255,255,0.55);
             text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
         }
 
         .hero-title {
@@ -191,11 +172,25 @@
             letter-spacing: -0.2px;
         }
 
-        .hero-sub {
-            margin-top: 8px;
+        .hero-summary {
+            margin-top: 10px;
             font-size: 14px;
-            color: rgba(248,250,252,0.6);
-            line-height: 1.8;
+            color: rgba(248,250,252,0.65);
+            line-height: 1.85;
+        }
+
+        .hero-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 14px;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 999px;
+            padding: 5px 14px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
         }
 
         /* ─── Member Strip ─── */
@@ -205,9 +200,9 @@
             padding: 12px 18px;
             display: flex;
             align-items: center;
+            gap: 0;
             overflow-x: auto;
             scrollbar-width: none;
-            gap: 0;
         }
 
         .member-strip::-webkit-scrollbar { display: none; }
@@ -244,12 +239,11 @@
         }
 
         /* ─── Content Feed ─── */
-        .feed {
-            padding: 14px 14px 0;
+        .content {
+            padding: 14px 14px calc(20px + var(--safe-b));
             display: flex;
             flex-direction: column;
             gap: 12px;
-            padding-bottom: calc(24px + var(--safe-b));
             position: relative;
             z-index: 0;
             isolation: isolate;
@@ -308,6 +302,7 @@
             line-height: 1.95;
             color: var(--ink2);
             overflow-wrap: anywhere;
+            white-space: pre-wrap;
         }
 
         .desc-body p:first-child { margin-top: 0; }
@@ -325,46 +320,14 @@
             align-items: flex-start;
         }
 
-        .notes-icon {
-            font-size: 16px;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
+        .notes-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
 
         .notes-text {
             font-size: 13px;
-            line-height: 1.8;
+            line-height: 1.85;
             color: #78350F;
             white-space: pre-wrap;
             overflow-wrap: anywhere;
-        }
-
-        /* ─── Stat Grid ─── */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .stat-box {
-            background: #F8FAFC;
-            border: 1px solid #EEF2F7;
-            border-radius: 13px;
-            padding: 11px 12px;
-        }
-
-        .stat-box .sb-label {
-            font-size: 11px;
-            color: var(--muted);
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .stat-box .sb-value {
-            font-size: 15px;
-            font-weight: 800;
-            color: var(--ink);
-            word-break: break-word;
         }
 
         /* ─── Tasks ─── */
@@ -381,7 +344,7 @@
             display: flex;
             align-items: flex-start;
             gap: 10px;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
 
         .task-num {
@@ -422,26 +385,23 @@
             color: var(--muted);
         }
 
-        .empty-wrap .ei { font-size: 32px; display: block; margin-bottom: 8px; }
-
-        .empty-wrap p { font-size: 13px; }
+        .empty-wrap .ei { font-size: 36px; display: block; margin-bottom: 10px; }
+        .empty-wrap p   { font-size: 13px; line-height: 1.7; }
     </style>
 </head>
 <body>
 
-    {{-- ─── Sticky App Header ─── --}}
-    <header class="app-header">
-        <div class="header-left">
-            <button class="back-btn" onclick="history.back()" type="button">
-                <span>{{ $isArabic ? '→' : '←' }}</span>
-                <span>{{ $isArabic ? 'رجوع' : 'Back' }}</span>
-            </button>
-            <span class="header-title">{{ $planTitle }}</span>
-        </div>
-        <div class="header-type-badge">
-            <span>{{ $planIcon }}</span>
-            <span>{{ $planTypeLabel }}</span>
-        </div>
+    {{-- ─── Sticky Topbar ─── --}}
+    <header class="topbar">
+        <button class="back-btn" onclick="history.back()" type="button">
+            <span>{{ $isArabic ? '→' : '←' }}</span>
+            <span>{{ $isArabic ? 'رجوع' : 'Back' }}</span>
+        </button>
+        @if($stampDate)
+            <div class="topbar-stamp">
+                {{ $stampDate }}@if($stampTime)<br>{{ $stampTime }}@endif
+            </div>
+        @endif
     </header>
 
     {{-- ─── Hero ─── --}}
@@ -450,9 +410,18 @@
         <div class="hero-bubble-2"></div>
         <div class="hero-inner">
             <div class="hero-icon-wrap">{{ $planIcon }}</div>
-            <div class="hero-eyebrow">{{ $planTypeLabel }}</div>
+            <div class="hero-type-label">{{ $planTypeLabel }}</div>
             <h1 class="hero-title">{{ $planTitle }}</h1>
-            <p class="hero-sub">{{ $isArabic ? 'خطة مخصصة للعضو' : 'Assigned plan for' }} {{ $memberName }}</p>
+            <p class="hero-summary">
+                {{ $isArabic ? 'خطة مخصصة للعضو' : 'Assigned plan for' }} {{ $memberName }}
+                @if($fromDate && $toDate)
+                    &nbsp;·&nbsp; {{ $fromDate }} — {{ $toDate }}
+                @endif
+            </p>
+            <span class="hero-action">
+                <span>{{ $isActive ? '✔' : '✕' }}</span>
+                <span>{{ $statusLabel }}</span>
+            </span>
         </div>
     </div>
 
@@ -466,6 +435,11 @@
         <div class="ms-item">
             <span class="ms-label">{{ $isArabic ? 'الكود' : 'Code' }}</span>
             <span class="ms-value">#{{ $memberCode }}</span>
+        </div>
+        <div class="ms-divider"></div>
+        <div class="ms-item">
+            <span class="ms-label">{{ $isArabic ? 'النوع' : 'Type' }}</span>
+            <span class="ms-value">{{ $planTypeLabel }}</span>
         </div>
         @if($fromDate)
             <div class="ms-divider"></div>
@@ -497,8 +471,8 @@
         @endif
     </div>
 
-    {{-- ─── Feed ─── --}}
-    <main class="feed">
+    {{-- ─── Content Sections ─── --}}
+    <div class="content">
 
         {{-- Description --}}
         <div class="sec-card">
@@ -535,7 +509,7 @@
         <div class="sec-card">
             <div class="sec-header">
                 <div class="sec-icon">✅</div>
-                <span class="sec-title">{{ $isArabic ? 'المهام' : 'Tasks' }}</span>
+                <span class="sec-title">{{ $isArabic ? 'مهام الخطة' : 'Plan Tasks' }}</span>
                 @if($tasks->isNotEmpty())
                     <span class="sec-count">{{ $tasks->count() }}</span>
                 @endif
@@ -564,7 +538,7 @@
             </div>
         </div>
 
-    </main>
+    </div>
 
 </body>
 </html>
