@@ -25,6 +25,12 @@ use Modules\Software\Models\GymStoreOrderProduct;
 use Modules\Software\Models\GymStoreProduct;
 use Modules\Software\Models\GymSubscription;
 use Modules\Software\Models\GymTrainingMember;
+use Modules\Software\Models\GymTrainingMemberLog;
+use Modules\Software\Models\GymTrainingAssessment;
+use Modules\Software\Models\GymTrainingMedicine;
+use Modules\Software\Models\GymTrainingFile;
+use Modules\Software\Models\GymTrainingTrack;
+use Modules\Software\Models\GymAiRecommendation;
 use Modules\Software\Models\GymTrainingPlan;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserLog;
@@ -185,6 +191,423 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'planDetailsHtml' => $detailsHtml,
             'isDietPlan' => (int) ($assignment->type ?? $plan->type ?? 0) === TypeConstants::DIET_PLAN_TYPE,
         ]);
+    }
+
+    public function showTrainingMemberLogMobile(Request $request)
+    {
+        $lang = $this->resolveMobileLanguage($request);
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
+
+        if (!$currentUser) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $memberId = (int) $currentUser->id;
+
+        $memberModel = GymMember::find($memberId);
+        if (!$memberModel) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $selectedType = trim((string) $request->input('type', 'all'));
+        $allowedTypes = ['all', 'assessment', 'plan', 'medicine', 'note', 'file', 'track', 'ai', 'ai_plan'];
+        if (!in_array($selectedType, $allowedTypes, true)) {
+            $selectedType = 'all';
+        }
+
+        $logsQuery = GymTrainingMemberLog::query()
+            ->where('member_id', $memberId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        if ($selectedType !== 'all') {
+            $logsQuery->where('training_type', $selectedType);
+        }
+
+        $logs = $logsQuery->paginate(15)->appends($request->except('page'));
+
+        $cards = $logs->getCollection()->map(function (GymTrainingMemberLog $log) use ($memberId, $request, $lang) {
+            $details = $this->resolveMobileTrainingLogDetails($log, $lang);
+            $summary = $this->buildMobileLogSummary($log, $details, $lang);
+
+            return [
+                'id' => (int) $log->id,
+                'type' => (string) ($log->training_type ?? 'activity'),
+                'type_label' => $this->mobileTrainingTypeLabel((string) ($log->training_type ?? 'activity'), $lang),
+                'action_label' => $this->mobileActionLabel((string) ($log->action ?? 'updated'), $lang),
+                'summary' => $summary,
+                'date' => optional($log->created_at)->translatedFormat('d F Y') ?: '',
+                'time' => optional($log->created_at)->format('H:i') ?: '',
+                'details_url' => $this->buildMobileRouteWithToken('sw.training-member-log-mobile.detail', [
+                    'log' => (int) $log->id,
+                ], $request, $lang),
+            ];
+        });
+
+        $logs->setCollection($cards);
+
+        $countByType = GymTrainingMemberLog::query()
+            ->where('member_id', $memberId)
+            ->select('training_type', DB::raw('count(*) as total'))
+            ->groupBy('training_type')
+            ->pluck('total', 'training_type');
+
+        $filterTypes = ['all', 'assessment', 'plan', 'medicine', 'note', 'file', 'track', 'ai', 'ai_plan'];
+        $filters = collect($filterTypes)->map(function (string $type) use ($countByType, $selectedType, $memberId, $request, $lang) {
+            $total = $type === 'all' ? (int) $countByType->sum() : (int) ($countByType[$type] ?? 0);
+
+            return [
+                'value' => $type,
+                'label' => $type === 'all' ? (strtolower($lang) === 'ar' ? 'الكل' : 'All') : $this->mobileTrainingTypeLabel($type, $lang),
+                'count' => $total,
+                'active' => $selectedType === $type,
+                'url' => $this->buildMobileRouteWithToken('sw.training-member-log-mobile', [
+                    'type' => $type,
+                ], $request, $lang),
+            ];
+        })->all();
+
+        return view('software::Front.training_member_log_mobile', [
+            'title' => trans('sw.training_member_logs'),
+            'member' => $memberModel,
+            'memberId' => $memberId,
+            'logs' => $logs,
+            'filters' => $filters,
+            'selectedType' => $selectedType,
+            'lang' => $lang,
+            'isArabic' => strtolower($lang) === 'ar',
+        ]);
+    }
+
+    public function showTrainingMemberLogMobileDetail(Request $request, $log)
+    {
+        $lang = $this->resolveMobileLanguage($request);
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
+
+        if (!$currentUser) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $memberId = (int) $currentUser->id;
+
+        $memberModel = GymMember::find($memberId);
+        if (!$memberModel) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $logModel = GymTrainingMemberLog::query()
+            ->where('member_id', $memberId)
+            ->where('id', (int) $log)
+            ->first();
+
+        if (!$logModel) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
+
+        $details = $this->resolveMobileTrainingLogDetails($logModel, $lang);
+        $summary = $this->buildMobileLogSummary($logModel, $details, $lang);
+        $backUrl = $this->buildMobileRouteWithToken('sw.training-member-log-mobile', [
+            'type' => (string) ($logModel->training_type ?? 'all'),
+        ], $request, $lang);
+
+        return view('software::Front.training_member_log_mobile_detail', [
+            'title' => trans('sw.training_member_logs'),
+            'member' => $memberModel,
+            'memberId' => $memberId,
+            'log' => $logModel,
+            'details' => $details,
+            'summary' => $summary,
+            'typeLabel' => $this->mobileTrainingTypeLabel((string) ($logModel->training_type ?? 'activity'), $lang),
+            'actionLabel' => $this->mobileActionLabel((string) ($logModel->action ?? 'updated'), $lang),
+            'backUrl' => $backUrl,
+            'lang' => $lang,
+            'isArabic' => strtolower($lang) === 'ar',
+        ]);
+    }
+
+    private function resolveMobileLanguage(Request $request): string
+    {
+        $lang = trim((string) ($request->input('lang') ?: app()->getLocale() ?: env('DEFAULT_LANG', 'en')));
+        if (!in_array($lang, ['ar', 'en'], true)) {
+            $lang = env('DEFAULT_LANG', 'en');
+        }
+
+        app()->setLocale($lang);
+        Carbon::setLocale($lang);
+
+        return $lang;
+    }
+
+    private function buildMobileRouteWithToken(string $routeName, array $params, Request $request, string $lang): string
+    {
+        $token = trim((string) ($request->input('payment_link_token') ?: $request->input('token') ?: $request->bearerToken() ?: ''));
+        if ($token !== '') {
+            $params['token'] = $token;
+        }
+        $params['lang'] = $lang;
+
+        return route($routeName, $params);
+    }
+
+    private function resolveMobileTrainingLogDetails(GymTrainingMemberLog $log, string $lang): array
+    {
+        $meta = $this->parseTrainingLogMeta($log->meta);
+        $type = (string) ($log->training_type ?? 'activity');
+
+        if ($type === 'assessment') {
+            $assessment = GymTrainingAssessment::find((int) ($log->reference_id ?? 0));
+            $answers = $assessment
+                ? (is_array($assessment->answers) ? $assessment->answers : (json_decode((string) $assessment->answers, true) ?: []))
+                : [];
+
+            return [
+                'summary' => trim((string) ($assessment->notes ?? $log->notes ?? '')),
+                'notes' => (string) ($assessment->notes ?? ''),
+                'answers' => $answers,
+                'date' => optional($assessment?->created_at)->format('Y-m-d'),
+            ];
+        }
+
+        if ($type === 'plan') {
+            $memberPlanId = (int) ($log->reference_id ?: ($meta['member_plan_id'] ?? 0));
+            $planAssignment = $memberPlanId ? DB::table('sw_gym_training_members')->where('id', $memberPlanId)->first() : null;
+            $planId = (int) ($meta['plan_id'] ?? 0);
+            if ($planAssignment && !$planId) {
+                $planId = (int) ($planAssignment->training_plan_id ?? $planAssignment->diet_plan_id ?? $planAssignment->plan_id ?? 0);
+            }
+
+            $plan = $planId
+                ? GymTrainingPlan::with(['tasks' => function ($q) {
+                    $q->orderBy('order', 'asc')->orderBy('id', 'asc');
+                }])->find($planId)
+                : null;
+
+            $summary = trim((string) ($planAssignment->title ?? $plan->title ?? $log->notes ?? ''));
+            if ($summary === '') {
+                $summary = strtolower($lang) === 'ar' ? 'خطة تدريب' : 'Training Plan';
+            }
+
+            return [
+                'summary' => $summary,
+                'title' => (string) ($planAssignment->title ?? $plan->title ?? ''),
+                'notes' => (string) ($planAssignment->notes ?? ($meta['notes'] ?? '')),
+                'from_date' => $planAssignment->from_date ?? ($meta['from_date'] ?? null),
+                'to_date' => $planAssignment->to_date ?? ($meta['to_date'] ?? null),
+                'tasks' => collect($plan?->tasks ?? [])->map(function ($task) {
+                    return [
+                        'title' => (string) ($task->title ?? ''),
+                        'notes' => (string) ($task->content ?? ''),
+                    ];
+                })->values()->all(),
+                'plan_details' => (string) (
+                    $planAssignment->training_plan_details
+                    ?? $planAssignment->diet_plan_details
+                    ?? $planAssignment->plan_details
+                    ?? $plan->content
+                    ?? ''
+                ),
+                'member_plan_id' => $memberPlanId,
+            ];
+        }
+
+        if ($type === 'medicine') {
+            $medicineId = (int) ($log->reference_id ?: ($meta['medicine_id'] ?? 0));
+            $medicine = $medicineId ? GymTrainingMedicine::find($medicineId) : null;
+            $name = $medicine
+                ? ($medicine->{'name_' . $lang} ?? $medicine->name_en ?? $medicine->name_ar ?? $medicine->name ?? '')
+                : (string) ($meta['medicine_name'] ?? '');
+            $dose = (string) ($meta['dose'] ?? ($medicine->dose ?? ''));
+            $notes = (string) ($meta['notes'] ?? $log->notes ?? '');
+
+            return [
+                'summary' => trim(implode(' - ', array_filter([$name, $dose, $notes]))),
+                'name' => $name,
+                'dose' => $dose,
+                'notes' => $notes,
+            ];
+        }
+
+        if ($type === 'file') {
+            $file = $log->reference_id ? GymTrainingFile::find((int) $log->reference_id) : null;
+            $fileName = (string) ($file->file_name ?? $file->file_path ?? '');
+            $path = trim((string) ($meta['path'] ?? ''));
+            if ($path === '' && $fileName !== '') {
+                $path = asset('uploads/training_files/' . ltrim($fileName, '/'));
+            } elseif ($path !== '' && !preg_match('/^https?:\/\//i', $path)) {
+                $path = asset(ltrim($path, '/'));
+            }
+
+            return [
+                'summary' => (string) ($file->title ?? $fileName ?? $log->notes ?? ''),
+                'title' => (string) ($file->title ?? ''),
+                'file_name' => $fileName,
+                'path' => $path,
+            ];
+        }
+
+        if ($type === 'track') {
+            $track = $log->reference_id ? GymTrainingTrack::find((int) $log->reference_id) : null;
+
+            return [
+                'summary' => trim((string) ($log->notes ?: trans('sw.progress_measurement_added'))),
+                'measurements' => $track ? $this->mobileTrackMeasurements($track) : [],
+                'calculations' => $track ? $this->mobileTrackCalculations($track, GymMember::find((int) $log->member_id)) : [],
+            ];
+        }
+
+        if ($type === 'note') {
+            return [
+                'summary' => (string) ($log->notes ?? ''),
+                'note' => (string) ($log->notes ?? ''),
+            ];
+        }
+
+        if (in_array($type, ['ai', 'ai_plan'], true)) {
+            $ai = $log->reference_id ? GymAiRecommendation::find((int) $log->reference_id) : null;
+            $response = $ai && is_array($ai->ai_response) ? $ai->ai_response : [];
+
+            return [
+                'summary' => (string) ($response['summary'] ?? $response['title'] ?? $log->notes ?? trans('sw.ai_recommendation_generated')),
+                'title' => (string) ($response['title'] ?? ''),
+                'response' => $response,
+            ];
+        }
+
+        return [
+            'summary' => (string) ($log->notes ?? ''),
+            'meta' => $meta,
+        ];
+    }
+
+    private function parseTrainingLogMeta($meta): array
+    {
+        if (is_array($meta)) {
+            return $meta;
+        }
+
+        if (is_string($meta) && trim($meta) !== '') {
+            $decoded = json_decode($meta, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
+    private function buildMobileLogSummary(GymTrainingMemberLog $log, array $details, string $lang): string
+    {
+        $summary = trim((string) ($details['summary'] ?? $log->notes ?? ''));
+        if ($summary === '') {
+            $summary = trim(ucfirst(str_replace('_', ' ', (string) ($log->training_type ?? 'activity') . ' ' . (string) ($log->action ?? 'updated'))));
+        }
+
+        if (mb_strlen($summary) > 220) {
+            $summary = mb_substr($summary, 0, 220) . '...';
+        }
+
+        if (strtolower($lang) !== 'ar') {
+            return $summary;
+        }
+
+        return $summary;
+    }
+
+    private function mobileTrainingTypeLabel(string $type, string $lang): string
+    {
+        $isArabic = strtolower($lang) === 'ar';
+
+        return match ($type) {
+            'assessment' => $isArabic ? 'تقييم' : 'Assessment',
+            'plan' => $isArabic ? 'خطة' : 'Plan',
+            'medicine' => $isArabic ? 'دواء' : 'Medicine',
+            'note' => $isArabic ? 'ملاحظة' : 'Note',
+            'file' => $isArabic ? 'ملف' : 'File',
+            'track' => $isArabic ? 'قياس' : 'Track',
+            'ai', 'ai_plan' => $isArabic ? 'خطة ذكية' : 'AI Plan',
+            default => $isArabic ? 'نشاط' : 'Activity',
+        };
+    }
+
+    private function mobileActionLabel(string $action, string $lang): string
+    {
+        $isArabic = strtolower($lang) === 'ar';
+
+        return match ($action) {
+            'added' => $isArabic ? 'تمت الإضافة' : 'Added',
+            'assigned' => $isArabic ? 'تم الإسناد' : 'Assigned',
+            'uploaded' => $isArabic ? 'تم الرفع' : 'Uploaded',
+            'generated' => $isArabic ? 'تم الإنشاء' : 'Generated',
+            'updated' => $isArabic ? 'تم التحديث' : 'Updated',
+            default => ucfirst(str_replace('_', ' ', $action)),
+        };
+    }
+
+    private function mobileTrackMeasurements(GymTrainingTrack $track): array
+    {
+        $appendUnit = function ($value, string $unit): ?string {
+            if (is_null($value) || $value === '') {
+                return null;
+            }
+
+            return rtrim(rtrim((string) $value, '0'), '.') . ' ' . $unit;
+        };
+
+        return array_filter([
+            'weight' => $appendUnit($track->weight, 'kg'),
+            'height' => $appendUnit($track->height, 'cm'),
+            'bmi' => $track->bmi ? (string) round((float) $track->bmi, 2) : null,
+            'fat_percentage' => $track->fat_percentage ? (string) round((float) $track->fat_percentage, 2) . '%' : null,
+            'muscle_mass' => $appendUnit($track->muscle_mass, 'kg'),
+            'neck_circumference' => $appendUnit($track->neck_circumference, 'cm'),
+            'chest_circumference' => $appendUnit($track->chest_circumference, 'cm'),
+            'arm_circumference' => $appendUnit($track->arm_circumference, 'cm'),
+            'abdominal_circumference' => $appendUnit($track->abdominal_circumference, 'cm'),
+            'pelvic_circumference' => $appendUnit($track->pelvic_circumference, 'cm'),
+            'thigh_circumference' => $appendUnit($track->thigh_circumference, 'cm'),
+        ], function ($value) {
+            return !is_null($value) && $value !== '';
+        });
+    }
+
+    private function mobileTrackCalculations(GymTrainingTrack $track, ?GymMember $member): array
+    {
+        $weight = (float) ($track->weight ?? 0);
+        $height = (float) ($track->height ?? 0);
+        $fatPercentage = (float) ($track->fat_percentage ?? 0);
+
+        if ($weight <= 0 || $height <= 0) {
+            return [];
+        }
+
+        $heightMeters = $height / 100;
+        if ($heightMeters <= 0) {
+            return [];
+        }
+
+        $gender = (int) ($member->gender ?? 1);
+        $age = 30;
+        if (!empty($member->dob)) {
+            $age = Carbon::parse($member->dob)->age;
+        }
+
+        $bmr = $gender === 2
+            ? (10 * $weight + 6.25 * $height - 5 * $age - 161)
+            : (10 * $weight + 6.25 * $height - 5 * $age + 5);
+        $tdee = $bmr * 1.55;
+        $bmi = $weight / ($heightMeters * $heightMeters);
+
+        $result = [
+            'bmr' => round($bmr, 2) . ' kcal/day',
+            'tdee' => round($tdee, 2) . ' kcal/day',
+            'bmi' => round($bmi, 2),
+        ];
+
+        if ($fatPercentage > 0) {
+            $fatMass = ($weight * $fatPercentage) / 100;
+            $result['body_fat_mass'] = round($fatMass, 2) . ' kg';
+            $result['lean_body_mass'] = round($weight - $fatMass, 2) . ' kg';
+        }
+
+        return $result;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

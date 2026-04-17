@@ -101,6 +101,12 @@ Route::name('sw.store-mobile')
 Route::name('sw.training-plan-mobile')
     ->get('training-plan-mobile/{id}', 'Front\GymMobileSubscriptionFrontController@showTrainingPlanMobile');
 
+Route::name('sw.training-member-log-mobile')
+    ->get('training-member-log-mobile', 'Front\GymMobileSubscriptionFrontController@showTrainingMemberLogMobile');
+
+Route::name('sw.training-member-log-mobile.detail')
+    ->get('training-member-log-mobile/log/{log}', 'Front\GymMobileSubscriptionFrontController@showTrainingMemberLogMobileDetail');
+
 Route::name('sw.store-invoice-mobile.submit')
     ->post('store-invoice-mobile/submit', 'Front\GymMobileSubscriptionFrontController@storeInvoiceSubmit');
 

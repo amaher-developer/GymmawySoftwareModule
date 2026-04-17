@@ -865,7 +865,9 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $member_id = request('member_id');
         if($member_id){
             $member = GymMember::branch()->with(['member_subscription_info.subscription'])->where('code', $member_id)->first();
-            $member->member_subscription_info->expire_date_str = @Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
+            if($member && $member->member_subscription_info){
+                $member->member_subscription_info->expire_date_str = @Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
+            }
             return $member;
         }
         return [];
