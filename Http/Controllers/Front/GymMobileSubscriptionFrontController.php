@@ -307,7 +307,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $details = $this->resolveMobileTrainingLogDetails($logModel, $lang);
         $summary = $this->buildMobileLogSummary($logModel, $details, $lang);
         $backUrl = $this->buildMobileRouteWithToken('sw.training-member-log-mobile', [
-            'type' => (string) ($logModel->training_type ?? 'all'),
+            // 'type' => (string) ($logModel->training_type ?? 'all'),
+            'type' => 'all',
         ], $request, $lang);
 
         return view('software::Front.training_member_log_mobile_detail', [

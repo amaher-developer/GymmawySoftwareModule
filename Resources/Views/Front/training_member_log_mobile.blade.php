@@ -273,6 +273,9 @@
             flex-direction: column;
             gap: 10px;
             padding-bottom: calc(16px + var(--safe-b));
+            position: relative;
+            z-index: 0;
+            isolation: isolate;
         }
 
         /* ─── Log Card ─── */
