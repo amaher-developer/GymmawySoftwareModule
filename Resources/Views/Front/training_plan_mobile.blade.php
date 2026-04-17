@@ -3,378 +3,568 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#18181B">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{{ $title }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     @php
-        $isRtl = app()->getLocale() === 'ar';
-        $textAlign = $isRtl ? 'right' : 'left';
-        $planTitle = $assignment->title ?? $plan->title ?? trans('sw.training_plan');
+        $isArabic   = app()->getLocale() === 'ar';
+        $planTitle  = $assignment->title ?? $plan->title ?? trans('sw.training_plan');
         $planTypeLabel = $isDietPlan ? trans('sw.plan_diet') : trans('sw.plan_training');
+        $planIcon   = $isDietPlan ? '🥗' : '🏋️';
         $memberName = $member->name ?? '-';
         $memberCode = $member->code ?? '-';
-        $fromDate = !empty($assignment->from_date) ? \Carbon\Carbon::parse($assignment->from_date)->format('Y-m-d') : null;
-        $toDate = !empty($assignment->to_date) ? \Carbon\Carbon::parse($assignment->to_date)->format('Y-m-d') : null;
+        $fromDate   = !empty($assignment->from_date) ? \Carbon\Carbon::parse($assignment->from_date)->translatedFormat('d M Y') : null;
+        $toDate     = !empty($assignment->to_date)   ? \Carbon\Carbon::parse($assignment->to_date)->translatedFormat('d M Y')   : null;
         $assignmentWeight = $assignment->weight ?? null;
         $assignmentHeight = $assignment->height ?? null;
-        $notes = trim((string) ($assignment->notes ?? ''));
-        $detailsHtml = trim((string) ($planDetailsHtml ?? ''));
+        $notes      = trim((string)($assignment->notes ?? ''));
+        $detailsHtml = trim((string)($planDetailsHtml ?? ''));
         $detailsText = trim(strip_tags($detailsHtml));
         $hasHtmlDetails = $detailsHtml !== '' && $detailsHtml !== $detailsText;
+        $initials   = mb_strtoupper(mb_substr($memberName, 0, 1));
     @endphp
+
     <style>
+        /* ─── Reset ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         :root {
-            --bg: #f4f7fb;
-            --card: #ffffff;
-            --ink: #10233a;
-            --muted: #6b7a90;
-            --line: #dbe4ef;
-            --accent: #17b26a;
-            --accent-soft: #e8fff3;
-            --primary: #1f6feb;
-            --primary-soft: #ecf4ff;
-            --shadow: 0 14px 40px rgba(16, 35, 58, 0.08);
+            --bg:      #F2F5FB;
+            --surface: #FFFFFF;
+            --dark:    #18181B;
+            --dark2:   #27272A;
+            --ink:     #111827;
+            --ink2:    #374151;
+            --muted:   #6B7280;
+            --border:  #E5E7EB;
+            --ff:      'Cairo', sans-serif;
+            --safe-b:  env(safe-area-inset-bottom, 16px);
         }
 
-        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
 
         body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
-            background:
-                radial-gradient(circle at top, #ffffff 0%, #eef6ff 34%, var(--bg) 72%),
-                var(--bg);
+            font-family: var(--ff);
+            background: var(--bg);
             color: var(--ink);
-            direction: {{ $isRtl ? 'rtl' : 'ltr' }};
-            text-align: {{ $textAlign }};
-            min-height: 100vh;
+            min-height: 100dvh;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .page {
-            width: min(960px, 100%);
-            margin: 0 auto;
-            padding: 20px 14px 32px;
+        /* ─── Sticky App Header ─── */
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            background: var(--dark);
+            padding: 0 18px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
         }
 
-        .hero {
-            background: linear-gradient(135deg, #0f2745 0%, #1b5faa 100%);
-            color: #fff;
-            border-radius: 24px;
-            padding: 22px 18px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            position: relative;
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
         }
 
-        .hero::after {
-            content: "";
-            position: absolute;
-            inset: auto -40px -40px auto;
-            width: 180px;
-            height: 180px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 50%;
-        }
-
-        .badge {
+        .back-btn {
+            text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.14);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            gap: 5px;
+            color: #CBD5E1;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: var(--ff);
+            padding: 5px 10px;
+            border-radius: 9px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            flex-shrink: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .back-btn:active { background: rgba(255,255,255,0.12); }
+
+        .header-title {
+            color: #F1F5F9;
+            font-size: 15px;
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-type-badge {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
             border-radius: 999px;
-            padding: 8px 14px;
-            font-size: 12px;
+            padding: 4px 11px;
+            color: #D1D5DB;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* ─── Hero ─── */
+        .hero {
+            background: linear-gradient(150deg, #18181B 0%, #27272A 50%, #18181B 100%);
+            padding: 28px 20px 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bubble-1 {
+            position: absolute;
+            top: -70px;
+            inset-inline-end: -50px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.04);
+            pointer-events: none;
+        }
+
+        .hero-bubble-2 {
+            position: absolute;
+            bottom: -60px;
+            inset-inline-start: -40px;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            pointer-events: none;
+        }
+
+        .hero-inner { position: relative; z-index: 1; }
+
+        .hero-icon-wrap {
+            width: 52px;
+            height: 52px;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
             margin-bottom: 14px;
         }
 
-        .hero h1 {
-            margin: 0;
-            font-size: 28px;
-            line-height: 1.3;
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 999px;
+            padding: 4px 12px;
+            color: #D1D5DB;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
         }
 
-        .hero p {
-            margin: 10px 0 0;
-            color: rgba(255, 255, 255, 0.82);
+        .hero-title {
+            font-size: clamp(22px, 6vw, 34px);
+            font-weight: 900;
+            color: #F8FAFC;
+            line-height: 1.2;
+            letter-spacing: -0.2px;
+        }
+
+        .hero-sub {
+            margin-top: 8px;
             font-size: 14px;
+            color: rgba(248,250,252,0.6);
             line-height: 1.8;
-            max-width: 640px;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            gap: 14px;
-            margin-top: 16px;
+        /* ─── Member Strip ─── */
+        .member-strip {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            scrollbar-width: none;
+            gap: 0;
         }
 
-        .card {
-            grid-column: span 12;
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 22px;
-            box-shadow: var(--shadow);
-            padding: 18px;
+        .member-strip::-webkit-scrollbar { display: none; }
+
+        .ms-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex-shrink: 0;
+            padding: 0 16px;
         }
 
-        .card h2 {
-            margin: 0 0 14px;
-            font-size: 18px;
+        .ms-item:first-child { padding-inline-start: 0; }
+
+        .ms-divider {
+            width: 1px;
+            height: 32px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        .ms-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .ms-value {
+            font-size: 13px;
+            font-weight: 800;
             color: var(--ink);
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+        /* ─── Content Feed ─── */
+        .feed {
+            padding: 14px 14px 0;
+            display: flex;
+            flex-direction: column;
             gap: 12px;
+            padding-bottom: calc(24px + var(--safe-b));
+            position: relative;
+            z-index: 0;
+            isolation: isolate;
         }
 
-        .stat {
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-            border: 1px solid var(--line);
+        /* ─── Section Card ─── */
+        .sec-card {
+            background: var(--surface);
             border-radius: 18px;
-            padding: 14px;
+            border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.06);
+            overflow: hidden;
         }
 
-        .stat .label {
-            color: var(--muted);
-            font-size: 12px;
-            margin-bottom: 6px;
+        .sec-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 16px 11px;
+            border-bottom: 1px solid #F3F4F6;
         }
 
-        .stat .value {
+        .sec-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: #F1F5F9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+
+        .sec-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .sec-count {
+            margin-inline-start: auto;
+            font-size: 11px;
             font-weight: 700;
+            color: var(--muted);
+            background: #F3F4F6;
+            border-radius: 999px;
+            padding: 2px 9px;
+        }
+
+        .sec-body { padding: 14px 16px; }
+
+        /* ─── Description ─── */
+        .desc-body {
+            font-size: 14px;
+            line-height: 1.95;
+            color: var(--ink2);
+            overflow-wrap: anywhere;
+        }
+
+        .desc-body p:first-child { margin-top: 0; }
+        .desc-body p:last-child  { margin-bottom: 0; }
+
+        /* ─── Notes Box ─── */
+        .notes-box {
+            margin-top: 12px;
+            background: #FEFCE8;
+            border: 1px solid #FDE68A;
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .notes-icon {
             font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .notes-text {
+            font-size: 13px;
+            line-height: 1.8;
+            color: #78350F;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        /* ─── Stat Grid ─── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-box {
+            background: #F8FAFC;
+            border: 1px solid #EEF2F7;
+            border-radius: 13px;
+            padding: 11px 12px;
+        }
+
+        .stat-box .sb-label {
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .stat-box .sb-value {
+            font-size: 15px;
+            font-weight: 800;
             color: var(--ink);
             word-break: break-word;
         }
 
-        .summary {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
+        /* ─── Tasks ─── */
+        .tasks-list { display: flex; flex-direction: column; gap: 9px; }
+
+        .task-item {
+            border-radius: 14px;
+            border: 1px solid #EEF2F7;
+            background: #FAFBFF;
+            padding: 13px;
         }
 
-        .summary .box {
-            background: var(--primary-soft);
-            border: 1px solid #cfe1ff;
-            border-radius: 18px;
-            padding: 14px;
-        }
-
-        .summary .box.green {
-            background: var(--accent-soft);
-            border-color: #c5f0d9;
-        }
-
-        .summary .title {
-            color: var(--muted);
-            font-size: 12px;
+        .task-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
             margin-bottom: 6px;
         }
 
-        .summary .text {
-            font-size: 15px;
-            font-weight: 700;
-        }
-
-        .content-wrap {
-            background: #fbfcfe;
-            border: 1px dashed #cbd8e6;
-            border-radius: 18px;
-            padding: 16px;
-            line-height: 1.9;
-            color: #25374d;
-            overflow-wrap: anywhere;
-        }
-
-        .content-wrap p:first-child { margin-top: 0; }
-        .content-wrap p:last-child { margin-bottom: 0; }
-
-        .note {
-            margin-top: 14px;
-            background: #fff8e8;
-            border: 1px solid #f2dfab;
-            color: #7a5c13;
-            border-radius: 16px;
-            padding: 14px;
-            line-height: 1.8;
-        }
-
-        .tasks-list {
-            display: grid;
-            gap: 12px;
-        }
-
-        .task {
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            padding: 14px;
-            background: linear-gradient(180deg, #fff 0%, #f9fbfd 100%);
-        }
-
-        .task-top {
+        .task-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: var(--dark);
+            color: #fff;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .task-index {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: #fff;
-            display: inline-flex;
-            align-items: center;
             justify-content: center;
-            font-weight: 700;
+            font-size: 12px;
+            font-weight: 900;
             flex-shrink: 0;
+            margin-top: 1px;
         }
 
-        .task-name {
-            font-size: 15px;
-            font-weight: 700;
+        .task-title {
+            font-size: 14px;
+            font-weight: 800;
             color: var(--ink);
+            line-height: 1.4;
         }
 
         .task-notes {
-            color: #42556d;
-            line-height: 1.85;
-            font-size: 14px;
+            font-size: 13px;
+            color: #4B5563;
+            line-height: 1.8;
             white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            padding-inline-start: 36px;
         }
 
-        .empty {
-            border: 1px dashed var(--line);
-            border-radius: 18px;
-            padding: 22px 16px;
+        /* ─── Empty State ─── */
+        .empty-wrap {
             text-align: center;
+            padding: 28px 16px;
             color: var(--muted);
-            background: #fafcff;
         }
 
-        @media (min-width: 760px) {
-            .card.span-7 { grid-column: span 7; }
-            .card.span-5 { grid-column: span 5; }
-        }
+        .empty-wrap .ei { font-size: 32px; display: block; margin-bottom: 8px; }
 
-        @media (max-width: 640px) {
-            .page { padding-inline: 12px; }
-            .hero h1 { font-size: 22px; }
-            .summary,
-            .stats { grid-template-columns: 1fr; }
-        }
+        .empty-wrap p { font-size: 13px; }
     </style>
 </head>
 <body>
-    <div class="page">
-        <section class="hero">
-            <div class="badge">{{ $planTypeLabel }}</div>
-            <h1>{{ $planTitle }}</h1>
-            <p>{{ trans('sw.training_plan') }} {{ trans('sw.description') }} {{ $memberName }}</p>
-        </section>
 
-        <section class="grid">
-            <div class="card span-5">
-                <h2>{{ trans('sw.plan_title') }}</h2>
-                <div class="summary">
-                    <div class="box green">
-                        <div class="title">{{ trans('sw.plan_title') }}</div>
-                        <div class="text">{{ $planTitle }}</div>
-                    </div>
-                    <div class="box">
-                        <div class="title">{{ trans('sw.type') }}</div>
-                        <div class="text">{{ $planTypeLabel }}</div>
-                    </div>
-                </div>
+    {{-- ─── Sticky App Header ─── --}}
+    <header class="app-header">
+        <div class="header-left">
+            <button class="back-btn" onclick="history.back()" type="button">
+                <span>{{ $isArabic ? '→' : '←' }}</span>
+                <span>{{ $isArabic ? 'رجوع' : 'Back' }}</span>
+            </button>
+            <span class="header-title">{{ $planTitle }}</span>
+        </div>
+        <div class="header-type-badge">
+            <span>{{ $planIcon }}</span>
+            <span>{{ $planTypeLabel }}</span>
+        </div>
+    </header>
+
+    {{-- ─── Hero ─── --}}
+    <div class="hero">
+        <div class="hero-bubble-1"></div>
+        <div class="hero-bubble-2"></div>
+        <div class="hero-inner">
+            <div class="hero-icon-wrap">{{ $planIcon }}</div>
+            <div class="hero-eyebrow">{{ $planTypeLabel }}</div>
+            <h1 class="hero-title">{{ $planTitle }}</h1>
+            <p class="hero-sub">{{ $isArabic ? 'خطة مخصصة للعضو' : 'Assigned plan for' }} {{ $memberName }}</p>
+        </div>
+    </div>
+
+    {{-- ─── Member Strip ─── --}}
+    <div class="member-strip">
+        <div class="ms-item">
+            <span class="ms-label">{{ $isArabic ? 'الاسم' : 'Name' }}</span>
+            <span class="ms-value">{{ $memberName }}</span>
+        </div>
+        <div class="ms-divider"></div>
+        <div class="ms-item">
+            <span class="ms-label">{{ $isArabic ? 'الكود' : 'Code' }}</span>
+            <span class="ms-value">#{{ $memberCode }}</span>
+        </div>
+        @if($fromDate)
+            <div class="ms-divider"></div>
+            <div class="ms-item">
+                <span class="ms-label">{{ $isArabic ? 'من' : 'From' }}</span>
+                <span class="ms-value">{{ $fromDate }}</span>
             </div>
-
-            <div class="card span-7">
-                <h2>{{ trans('sw.member') }}</h2>
-                <div class="stats">
-                    <div class="stat">
-                        <div class="label">{{ trans('sw.name') }}</div>
-                        <div class="value">{{ $memberName }}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="label">{{ trans('sw.code') }}</div>
-                        <div class="value">{{ $memberCode }}</div>
-                    </div>
-                    @if($fromDate)
-                        <div class="stat">
-                            <div class="label">{{ trans('sw.from') }}</div>
-                            <div class="value">{{ $fromDate }}</div>
-                        </div>
-                    @endif
-                    @if($toDate)
-                        <div class="stat">
-                            <div class="label">{{ trans('sw.to') }}</div>
-                            <div class="value">{{ $toDate }}</div>
-                        </div>
-                    @endif
-                    @if(!empty($assignmentWeight))
-                        <div class="stat">
-                            <div class="label">{{ trans('sw.weight') }}</div>
-                            <div class="value">{{ $assignmentWeight }}</div>
-                        </div>
-                    @endif
-                    @if(!empty($assignmentHeight))
-                        <div class="stat">
-                            <div class="label">{{ trans('sw.height') }}</div>
-                            <div class="value">{{ $assignmentHeight }}</div>
-                        </div>
-                    @endif
-                </div>
+        @endif
+        @if($toDate)
+            <div class="ms-divider"></div>
+            <div class="ms-item">
+                <span class="ms-label">{{ $isArabic ? 'إلى' : 'To' }}</span>
+                <span class="ms-value">{{ $toDate }}</span>
             </div>
+        @endif
+        @if(!empty($assignmentWeight))
+            <div class="ms-divider"></div>
+            <div class="ms-item">
+                <span class="ms-label">{{ $isArabic ? 'الوزن' : 'Weight' }}</span>
+                <span class="ms-value">{{ $assignmentWeight }}</span>
+            </div>
+        @endif
+        @if(!empty($assignmentHeight))
+            <div class="ms-divider"></div>
+            <div class="ms-item">
+                <span class="ms-label">{{ $isArabic ? 'الطول' : 'Height' }}</span>
+                <span class="ms-value">{{ $assignmentHeight }}</span>
+            </div>
+        @endif
+    </div>
 
-            <div class="card span-12">
-                <h2>{{ trans('sw.description') }}</h2>
-                <div class="content-wrap">
-                    @if($detailsHtml !== '')
+    {{-- ─── Feed ─── --}}
+    <main class="feed">
+
+        {{-- Description --}}
+        <div class="sec-card">
+            <div class="sec-header">
+                <div class="sec-icon">📄</div>
+                <span class="sec-title">{{ $isArabic ? 'وصف الخطة' : 'Plan Description' }}</span>
+            </div>
+            <div class="sec-body">
+                @if($detailsHtml !== '')
+                    <div class="desc-body">
                         @if($hasHtmlDetails)
                             {!! $detailsHtml !!}
                         @else
                             {!! nl2br(e($detailsText)) !!}
                         @endif
-                    @else
-                        <div class="empty">{{ trans('sw.no_data') }}</div>
-                    @endif
-                </div>
+                    </div>
+                @else
+                    <div class="empty-wrap">
+                        <span class="ei">📭</span>
+                        <p>{{ $isArabic ? 'لا يوجد وصف لهذه الخطة.' : 'No description available for this plan.' }}</p>
+                    </div>
+                @endif
 
                 @if($notes !== '')
-                    <div class="note">
-                        <strong>{{ trans('sw.notes') }}:</strong>
-                        <div>{!! nl2br(e($notes)) !!}</div>
+                    <div class="notes-box">
+                        <span class="notes-icon">📌</span>
+                        <div class="notes-text">{{ $notes }}</div>
                     </div>
                 @endif
             </div>
+        </div>
 
-            <div class="card span-12">
-                <h2>{{ trans('sw.tasks') }}</h2>
-
+        {{-- Tasks --}}
+        <div class="sec-card">
+            <div class="sec-header">
+                <div class="sec-icon">✅</div>
+                <span class="sec-title">{{ $isArabic ? 'المهام' : 'Tasks' }}</span>
+                @if($tasks->isNotEmpty())
+                    <span class="sec-count">{{ $tasks->count() }}</span>
+                @endif
+            </div>
+            <div class="sec-body">
                 @if($tasks->isEmpty())
-                    <div class="empty">{{ trans('sw.no_data') }}</div>
+                    <div class="empty-wrap">
+                        <span class="ei">🗒️</span>
+                        <p>{{ $isArabic ? 'لا توجد مهام مضافة لهذه الخطة.' : 'No tasks added to this plan yet.' }}</p>
+                    </div>
                 @else
                     <div class="tasks-list">
                         @foreach($tasks as $index => $task)
-                            <article class="task">
-                                <div class="task-top">
-                                    <span class="task-index">{{ $index + 1 }}</span>
-                                    <div class="task-name">{{ $task['title'] !== '' ? $task['title'] : trans('sw.task') . ' ' . ($index + 1) }}</div>
+                            <div class="task-item">
+                                <div class="task-header">
+                                    <span class="task-num">{{ $index + 1 }}</span>
+                                    <span class="task-title">{{ $task['title'] !== '' ? $task['title'] : ($isArabic ? 'مهمة ' . ($index + 1) : 'Task ' . ($index + 1)) }}</span>
                                 </div>
-
                                 @if($task['notes'] !== '')
                                     <div class="task-notes">{!! nl2br(e($task['notes'])) !!}</div>
-                                @else
-                                    <div class="task-notes">{{ trans('sw.no_data') }}</div>
                                 @endif
-                            </article>
+                            </div>
                         @endforeach
                     </div>
                 @endif
             </div>
-        </section>
-    </div>
+        </div>
+
+    </main>
+
 </body>
 </html>
