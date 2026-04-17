@@ -207,7 +207,7 @@
 
         /* ─── Filters Strip ─── */
         .filters-bar {
-            position: sticky;
+            /* position: sticky; */
             top: 56px;
             z-index: 150;
             background: rgba(255,255,255,0.95);
