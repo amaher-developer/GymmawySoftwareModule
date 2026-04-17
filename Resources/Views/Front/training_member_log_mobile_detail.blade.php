@@ -512,6 +512,50 @@
             white-space: pre-wrap;
             overflow-wrap: anywhere;
         }
+
+        /* ─── Plan Description (HTML content) ─── */
+        .plan-desc {
+            font-size: 14px;
+            line-height: 1.95;
+            color: var(--ink2);
+            overflow-wrap: anywhere;
+        }
+
+        .plan-desc p:first-child { margin-top: 0; }
+        .plan-desc p:last-child  { margin-bottom: 0; }
+
+        /* ─── Plan Notes Box ─── */
+        .plan-notes-box {
+            margin-top: 0;
+            background: #FEFCE8;
+            border: 1px solid #FDE68A;
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .plan-notes-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+
+        .plan-notes-text {
+            font-size: 13px;
+            line-height: 1.85;
+            color: #78350F;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        /* ─── Task count badge ─── */
+        .sec-count {
+            margin-inline-start: auto;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            background: #F3F4F6;
+            border-radius: 999px;
+            padding: 2px 9px;
+        }
     </style>
 </head>
 <body>
@@ -577,6 +621,20 @@
         <span class="ms-label">{{ $isArabic ? 'النوع' : 'Type' }}</span>
         <span class="ms-value">{{ $typeLabel }}</span>
     </div>
+    @if($logType === 'plan' && !empty($details['from_date']))
+        <div class="ms-divider"></div>
+        <div class="ms-item">
+            <span class="ms-label">{{ $isArabic ? 'من' : 'From' }}</span>
+            <span class="ms-value">{{ \Carbon\Carbon::parse($details['from_date'])->translatedFormat('d M Y') }}</span>
+        </div>
+    @endif
+    @if($logType === 'plan' && !empty($details['to_date']))
+        <div class="ms-divider"></div>
+        <div class="ms-item">
+            <span class="ms-label">{{ $isArabic ? 'إلى' : 'To' }}</span>
+            <span class="ms-value">{{ \Carbon\Carbon::parse($details['to_date'])->translatedFormat('d M Y') }}</span>
+        </div>
+    @endif
 </div>
 
 {{-- ─── Content Sections ─── --}}
@@ -593,8 +651,8 @@
         </div>
     </div>
 
-    {{-- Notes --}}
-    @if(!empty($details['notes']) || !empty($details['note']))
+    {{-- Notes (non-plan types) --}}
+    @if($logType !== 'plan' && (!empty($details['notes']) || !empty($details['note'])))
         <div class="sec-card">
             <div class="sec-header">
                 <div class="sec-icon">📝</div>
@@ -626,12 +684,53 @@
         </div>
     @endif
 
+    {{-- Plan Description (HTML) --}}
+    @if($logType === 'plan' && !empty($details['plan_details']))
+        @php
+            $planDesc     = trim((string) $details['plan_details']);
+            $planDescText = trim(strip_tags($planDesc));
+            $planHasHtml  = $planDesc !== '' && $planDesc !== $planDescText;
+        @endphp
+        <div class="sec-card">
+            <div class="sec-header">
+                <div class="sec-icon">📄</div>
+                <span class="sec-title">{{ $isArabic ? 'وصف الخطة' : 'Plan Description' }}</span>
+            </div>
+            <div class="sec-body">
+                <div class="plan-desc">
+                    @if($planHasHtml)
+                        {!! $planDesc !!}
+                    @else
+                        {!! nl2br(e($planDescText)) !!}
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Plan Notes (styled box) --}}
+    @if($logType === 'plan' && !empty($details['notes']))
+        <div class="sec-card">
+            <div class="sec-header">
+                <div class="sec-icon">📌</div>
+                <span class="sec-title">{{ $isArabic ? 'ملاحظات الخطة' : 'Plan Notes' }}</span>
+            </div>
+            <div class="sec-body">
+                <div class="plan-notes-box">
+                    <span class="plan-notes-icon">📌</span>
+                    <div class="plan-notes-text">{{ $details['notes'] }}</div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Plan Tasks --}}
     @if(!empty($details['tasks']) && is_array($details['tasks']))
         <div class="sec-card">
             <div class="sec-header">
-                <div class="sec-icon">🏋️</div>
+                <div class="sec-icon">✅</div>
                 <span class="sec-title">{{ $isArabic ? 'مهام الخطة' : 'Plan Tasks' }}</span>
+                <span class="sec-count">{{ count($details['tasks']) }}</span>
             </div>
             <div class="sec-body">
                 <div class="tasks-list">
@@ -639,10 +738,10 @@
                         <div class="task-item">
                             <div class="task-title">
                                 <span class="task-bullet">{{ $i + 1 }}</span>
-                                <span>{{ $task['title'] ?? '-' }}</span>
+                                <span>{{ $task['title'] !== '' ? $task['title'] : ($isArabic ? 'مهمة ' . ($i + 1) : 'Task ' . ($i + 1)) }}</span>
                             </div>
                             @if(!empty($task['notes']))
-                                <div class="task-notes">{{ $task['notes'] }}</div>
+                                <div class="task-notes">{!! nl2br(e($task['notes'])) !!}</div>
                             @endif
                         </div>
                     @endforeach
