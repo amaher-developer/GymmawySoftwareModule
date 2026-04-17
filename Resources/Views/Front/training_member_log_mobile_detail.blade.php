@@ -462,6 +462,18 @@
             white-space: nowrap;
         }
 
+        .file-ext-badge {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            background: #F3F4F6;
+            border-radius: 5px;
+            padding: 2px 7px;
+        }
+
         /* ─── AI JSON Block ─── */
         .json-wrap {
             background: #0F2235;
@@ -857,23 +869,48 @@
 
     {{-- File --}}
     @if(!empty($details['path']))
+        @php
+            $fileUrl  = $details['path'];
+            $fileName = $details['file_name'] ?? basename(parse_url($fileUrl, PHP_URL_PATH));
+            $fileExt  = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $extIcons = [
+                'pdf'  => '📕', 'doc'  => '📘', 'docx' => '📘',
+                'xls'  => '📗', 'xlsx' => '📗', 'csv'  => '📗',
+                'zip'  => '🗜', 'rar'  => '🗜', 'mp4'  => '🎬',
+                'mp3'  => '🎵', 'jpg'  => '🖼', 'jpeg' => '🖼', 'png' => '🖼',
+            ];
+            $fileIcon = $extIcons[$fileExt] ?? '📎';
+        @endphp
         <div class="sec-card">
             <div class="sec-header">
-                <div class="sec-icon">📎</div>
+                <div class="sec-icon">{{ $fileIcon }}</div>
                 <span class="sec-title">{{ $isArabic ? 'الملف المرفق' : 'Attached File' }}</span>
             </div>
             <div class="sec-body">
                 <div class="file-card">
-                    <div class="file-icon-wrap">📎</div>
+                    <div class="file-icon-wrap">{{ $fileIcon }}</div>
                     <div class="file-info">
                         <div class="file-title">{{ $details['title'] ?? ($isArabic ? 'عنوان الملف' : 'File Title') }}</div>
-                        <div class="file-name">{{ $details['file_name'] ?? basename($details['path']) }}</div>
+                        <div class="file-name">{{ $fileName }}</div>
+                        @if($fileExt)
+                            <div class="file-ext-badge">{{ strtoupper($fileExt) }}</div>
+                        @endif
                     </div>
                 </div>
                 <div class="btn-row">
-                    <a class="btn-download btn-success" href="{{ $details['path'] }}" target="_blank">
-                        <span>⬇</span>
-                        <span>{{ $isArabic ? 'تحميل / فتح الملف' : 'Open / Download File' }}</span>
+                    {{--
+                        • No target="_blank" → WebView onNavigationRequest fires →
+                          Flutter intercepts and downloads natively.
+                        • download attribute → browser forces file download (same-origin).
+                        • onclick JS fallback → fetch-blob download for browsers that
+                          ignore the download attribute (e.g. Safari older versions).
+                    --}}
+                    <a class="btn-download btn-success"
+                       id="file-dl-btn"
+                       href="{{ $fileUrl }}"
+                       download="{{ $fileName }}">
+                        <span>⬇️</span>
+                        <span>{{ $isArabic ? 'تحميل الملف' : 'Download File' }}</span>
                     </a>
                 </div>
             </div>
@@ -904,5 +941,63 @@
     @endif
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('file-dl-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', function (e) {
+        var url      = btn.getAttribute('href');
+        var filename = btn.getAttribute('download') || 'download';
+
+        // ── PATH 1: Flutter WebView ──────────────────────────────────────
+        // Flutter injects a JS channel called "FlutterDownload".
+        // Send the URL + filename to Flutter and let Dio handle the download.
+        if (window.FlutterDownload) {
+            e.preventDefault();
+            window.FlutterDownload.postMessage(
+                JSON.stringify({ url: url, filename: filename })
+            );
+            return;
+        }
+
+        // ── PATH 2: Regular browser — fetch → blob ───────────────────────
+        // Avoids browser opening the file inline when Content-Disposition
+        // header is missing on the server.
+        if (window.fetch && url) {
+            e.preventDefault();
+            btn.style.opacity = '0.6';
+            btn.style.pointerEvents = 'none';
+
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (res) {
+                    if (!res.ok) throw new Error('not ok');
+                    return res.blob();
+                })
+                .then(function (blob) {
+                    var a      = document.createElement('a');
+                    a.href     = URL.createObjectURL(blob);
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(a.href);
+                })
+                .catch(function () {
+                    // fetch failed — navigate so any remaining interceptor fires
+                    window.location.href = url;
+                })
+                .finally(function () {
+                    btn.style.opacity = '';
+                    btn.style.pointerEvents = '';
+                });
+        }
+        // ── PATH 3: Fallback ─────────────────────────────────────────────
+        // No fetch, no Flutter → plain <a download="..."> handles it.
+    });
+});
+</script>
+
 </body>
 </html>
