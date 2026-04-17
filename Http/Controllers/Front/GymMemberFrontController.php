@@ -3259,7 +3259,12 @@ class GymMemberFrontController extends GymGenericFrontController
             $subscription = $memberSubscription->subscription;
         } else {
             // Support resending by invoice_id for links created via member-new-check-and-send-link.
-            $invoice = GymOnlinePaymentInvoice::with(['member', 'subscription'])->find($memberSubscriptionId);
+            $invoice = GymOnlinePaymentInvoice::with(['member', 'subscription'])
+                ->where('id', is_numeric($memberSubscriptionId) ? (int) $memberSubscriptionId : -1)
+                ->orWhere('payment_id', $memberSubscriptionId)
+                ->orWhere('transaction_id', $memberSubscriptionId)
+                ->orderBy('id', 'desc')
+                ->first();
             if (!$invoice || !$invoice->member || !$invoice->subscription) {
                 return response()->json(['success' => false, 'error' => 'Subscription not found'], 404);
             }
