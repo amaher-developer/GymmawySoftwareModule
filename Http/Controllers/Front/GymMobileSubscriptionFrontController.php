@@ -1093,6 +1093,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $invoice    = $this->createGenericInvoice($member, TypeConstants::TAMARA_TRANSACTION, $uniqueId, $type, $itemId);
         $errorRoute = $this->genericErrorRoute($type, $itemId);
 
+        $verifyUrl  = route('sw.tamara-mobile.verify', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $cancelUrl  = route('sw.tamara-mobile.cancel', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $failureUrl = route('sw.tamara-mobile.failure', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+
         [, , $currency] = $this->getTamaraCredentials();
         $tamara = new TamaraFrontController();
         $result = $tamara->createCheckoutSession([
@@ -1101,9 +1105,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'description'      => $itemName,
             'buyer'            => ['name' => $member['name'], 'phone' => $member['phone'], 'email' => $member['email'] ?? '', 'address' => $member['address'] ?? '', 'city' => env('TAMARA_CITY', 'Riyadh')],
             'order_reference'  => (string) $invoice->id,
-            'success_url'      => route('sw.tamara-mobile.verify',  ['invoice_id' => $uniqueId]),
-            'cancel_url'       => route('sw.tamara-mobile.cancel',  ['invoice_id' => $uniqueId]),
-            'failure_url'      => route('sw.tamara-mobile.failure', ['invoice_id' => $uniqueId]),
+            'success_url'      => $verifyUrl,
+            'cancel_url'       => $cancelUrl,
+            'failure_url'      => $failureUrl,
             'notification_url' => route('tamara.webhook'),
             'payment_type'     => $type . '_payment',
             'member_id'        => optional($this->currentMember)->id,
@@ -1133,14 +1137,20 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $invoice    = $this->createGenericInvoice($member, TypeConstants::PAYTABS_TRANSACTION, $uniqueId, $type, $itemId);
         $errorRoute = $this->genericErrorRoute($type, $itemId);
 
+        $verifyUrl  = route('sw.paytabs-mobile.verify', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $cancelUrl  = route('sw.paytabs-mobile.cancel', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $failureUrl = route('sw.paytabs-mobile.failure', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+
         $paytabs = new PayTabsFrontController();
         $result  = $paytabs->createCheckoutSession([
             'amount'          => round($member['amount'], 2),
             'description'     => $itemName,
             'buyer'           => ['name' => $member['name'], 'email' => $member['email'] ?: 'member@gym.com', 'phone' => $member['phone'], 'city' => '', 'address' => ''],
             'cart_id'         => (string) $invoice->id,
-            'return_url'      => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
-            'callback_url'    => route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId]),
+            'success_url'     => $verifyUrl,
+            'cancel_url'      => $cancelUrl,
+            'failure_url'     => $failureUrl,
+            'callback_url'    => $verifyUrl,
             'payment_type'    => $type . '_payment',
             'member_id'       => optional($this->currentMember)->id,
         ]);
@@ -1311,6 +1321,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         [, , $tamaraCurrency] = $this->getTamaraCredentials();
 
+        $verifyUrl  = route('sw.tamara-mobile.verify', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $cancelUrl  = route('sw.tamara-mobile.cancel', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $failureUrl = route('sw.tamara-mobile.failure', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+
         $tamara = new TamaraFrontController();
         $result = $tamara->createCheckoutSession([
             'amount'          => $totalAmount,
@@ -1324,9 +1338,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 'city'    => env('TAMARA_CITY', 'Riyadh'),
             ],
             'order_reference'    => (string) $invoice->id,
-            'success_url'        => route('sw.tamara-mobile.verify',  ['invoice_id' => $uniqueId]),
-            'cancel_url'         => route('sw.tamara-mobile.cancel',  ['invoice_id' => $uniqueId]),
-            'failure_url'        => route('sw.tamara-mobile.failure', ['invoice_id' => $uniqueId]),
+            'success_url'        => $verifyUrl,
+            'cancel_url'         => $cancelUrl,
+            'failure_url'        => $failureUrl,
             'notification_url'   => route('tamara.webhook'),
             'payment_type'       => 'member_subscription',
             'member_id'          => optional($this->currentMember)->id,
@@ -1389,6 +1403,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $ptSettings = \Modules\Generic\Models\Setting::first();
         $ptCurrency = $ptSettings ? ($ptSettings->payments['paytabs']['currency'] ?? 'SAR') : 'SAR';
 
+        $verifyUrl  = route('sw.paytabs-mobile.verify', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $cancelUrl  = route('sw.paytabs-mobile.cancel', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $failureUrl = route('sw.paytabs-mobile.failure', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+
         $paytabs = new PayTabsFrontController();
         $result  = $paytabs->createCheckoutSession([
             'cart_id'         => $uniqueId,
@@ -1404,10 +1422,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 'country' => env('PAYTABS_COUNTRY', 'SA'),
                 'zip'     => '00000',
             ],
-            'success_url'     => route('sw.paytabs-mobile.verify',  ['invoice_id' => $uniqueId]),
-            'cancel_url'      => route('sw.paytabs-mobile.cancel',  ['invoice_id' => $uniqueId]),
-            'failure_url'     => route('sw.paytabs-mobile.failure', ['invoice_id' => $uniqueId]),
-            'callback_url'    => route('paytabs.callback'),
+            'success_url'     => $verifyUrl,
+            'cancel_url'      => $cancelUrl,
+            'failure_url'     => $failureUrl,
+            'callback_url'    => $verifyUrl,
             'payment_type'    => 'member_subscription',
             'member_id'       => optional($this->currentMember)->id,
             'subscription_id' => $member['subscription_id'],
@@ -1543,20 +1561,49 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function tamaraVerify(Request $request)
     {
-        $invoiceId = $request->invoice_id;
+        $invoiceId = (string) (
+            $request->input('invoice_id')
+            ?? $request->input('invoiceId')
+            ?? $request->input('order_reference_id')
+            ?? $request->input('orderReferenceId')
+            ?? ''
+        );
         // Tamara callback params can vary in key naming/casing across environments.
         $paymentStatus = strtolower((string) (
             $request->input('paymentStatus')
             ?? $request->input('payment_status')
+            ?? $request->input('order_status')
             ?? $request->input('status')
             ?? ''
         ));
         $orderId = (string) ($request->input('orderId') ?? $request->input('order_id') ?? '');
 
-        $invoice = GymOnlinePaymentInvoice::with(['subscription' => fn($q) => $q->withTrashed()])
-            ->where('payment_id', $invoiceId)->first();
+        $invoiceQuery = GymOnlinePaymentInvoice::with(['subscription' => fn($q) => $q->withTrashed()]);
+        $invoice = null;
+
+        if ($invoiceId !== '') {
+            $invoice = (clone $invoiceQuery)
+                ->where('payment_id', $invoiceId)
+                ->orWhere('transaction_id', $invoiceId)
+                ->orWhere('id', is_numeric($invoiceId) ? (int) $invoiceId : -1)
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        if (!$invoice && $orderId !== '') {
+            $invoice = (clone $invoiceQuery)
+                ->where('transaction_id', $orderId)
+                ->orWhere('payment_id', $orderId)
+                ->orderByDesc('id')
+                ->first();
+        }
 
         if (!$invoice) {
+            Log::warning('Tamara Mobile verify: invoice not found', [
+                'invoice_id' => $invoiceId,
+                'order_id' => $orderId,
+                'params' => $request->all(),
+            ]);
             return redirect()->route('sw.mobile-payment.error');
         }
 
@@ -2987,6 +3034,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $invoice        = $this->createUpgradeInvoice($member, TypeConstants::TAMARA_TRANSACTION, $uniqueId);
         $errorRoute     = route('sw.upgrade-subscription-mobile', $this->mobileContextParams());
 
+        $verifyUrl  = route('sw.tamara-mobile.verify', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $cancelUrl  = route('sw.tamara-mobile.cancel', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $failureUrl = route('sw.tamara-mobile.failure', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+
         [, , $currency] = $this->getTamaraCredentials();
         $tamara = new TamaraFrontController();
         $result = $tamara->createCheckoutSession([
@@ -2995,9 +3046,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'description'      => $sub['name'],
             'buyer'            => ['name' => $member['name'], 'phone' => $member['phone'], 'email' => $member['email'], 'address' => $member['address'], 'city' => env('TAMARA_CITY', 'Riyadh')],
             'order_reference'  => (string) $invoice->id,
-            'success_url'      => route('sw.tamara-mobile.verify',  ['invoice_id' => $uniqueId]),
-            'cancel_url'       => route('sw.tamara-mobile.cancel',  ['invoice_id' => $uniqueId]),
-            'failure_url'      => route('sw.tamara-mobile.failure', ['invoice_id' => $uniqueId]),
+            'success_url'      => $verifyUrl,
+            'cancel_url'       => $cancelUrl,
+            'failure_url'      => $failureUrl,
             'notification_url' => route('tamara.webhook'),
             'payment_type'     => 'upgrade_subscription',
             'member_id'        => $this->currentMember->id,
@@ -3383,6 +3434,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $invoice        = $this->createPtInvoice($member, TypeConstants::TAMARA_TRANSACTION, $uniqueId);
         $errorRoute     = route('sw.pt-subscription-mobile', $this->mobileContextParams(['id' => $ptSub['id']]));
 
+        $verifyUrl  = route('sw.tamara-mobile.verify', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $cancelUrl  = route('sw.tamara-mobile.cancel', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $failureUrl = route('sw.tamara-mobile.failure', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+
         [, , $tamaraCurrency] = $this->getTamaraCredentials();
         $tamara = new TamaraFrontController();
         $result = $tamara->createCheckoutSession([
@@ -3391,9 +3446,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'description'      => $ptSub['name'],
             'buyer'            => ['name' => $member['name'], 'phone' => $member['phone'], 'email' => $member['email'] ?? '', 'address' => $member['address'] ?? '', 'city' => env('TAMARA_CITY', 'Riyadh')],
             'order_reference'  => (string) $invoice->id,
-            'success_url'      => route('sw.tamara-mobile.verify',  ['invoice_id' => $uniqueId]),
-            'cancel_url'       => route('sw.tamara-mobile.cancel',  ['invoice_id' => $uniqueId]),
-            'failure_url'      => route('sw.tamara-mobile.failure', ['invoice_id' => $uniqueId]),
+            'success_url'      => $verifyUrl,
+            'cancel_url'       => $cancelUrl,
+            'failure_url'      => $failureUrl,
             'notification_url' => route('tamara.webhook'),
             'payment_type'     => 'pt_subscription',
             'member_id'        => optional($this->currentMember)->id,

@@ -41,11 +41,11 @@ Route::name('sw.tabby-mobile.failure')
 
 // ── Tamara ────────────────────────────────────────────────────────────────────
 Route::name('sw.tamara-mobile.verify')
-    ->get('mobile-payment/tamara/verify', 'Front\GymMobileSubscriptionFrontController@tamaraVerify');
+    ->match(['GET', 'POST'], 'mobile-payment/tamara/verify', 'Front\GymMobileSubscriptionFrontController@tamaraVerify');
 Route::name('sw.tamara-mobile.cancel')
-    ->get('mobile-payment/tamara/cancel', 'Front\GymMobileSubscriptionFrontController@tamaraCancel');
+    ->match(['GET', 'POST'], 'mobile-payment/tamara/cancel', 'Front\GymMobileSubscriptionFrontController@tamaraCancel');
 Route::name('sw.tamara-mobile.failure')
-    ->get('mobile-payment/tamara/failure', 'Front\GymMobileSubscriptionFrontController@tamaraFailure');
+    ->match(['GET', 'POST'], 'mobile-payment/tamara/failure', 'Front\GymMobileSubscriptionFrontController@tamaraFailure');
 
 // ── PayTabs ───────────────────────────────────────────────────────────────────
 Route::name('sw.paytabs-mobile.verify')
