@@ -92,6 +92,39 @@
         .payment-option label { font-weight: bold; font-size: 14px; cursor: pointer; display: block; margin-bottom: 5px; }
         .payment-option img { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; }
         .payment-option .policy-msg { font-size: 11px; color: #666; }
+        .payment-option.payment-option-tabby {
+            display: block;
+            padding: 10px;
+        }
+        .payment-option-tabby .payment-option-head {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            width: 100%;
+        }
+        .payment-option-tabby .payment-option-head input[type="radio"] {
+            margin-top: 2px;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .payment-option-tabby .payment-option-head label {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+        }
+        .payment-option-tabby .payment-details {
+            width: 100%;
+            margin-top: 8px;
+            min-width: 0;
+        }
+        .tabby-widget-wrap {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
         #tabbyCard {
             padding-top: 10px;
             width: 100%;
@@ -139,6 +172,9 @@
         @media (max-width: 420px) {
             .payment-option {
                 padding: 10px;
+                gap: 8px;
+            }
+            .payment-option-tabby .payment-option-head {
                 gap: 8px;
             }
             .payment-option label {
@@ -233,15 +269,19 @@
         <h5 class="section-title">{{ trans('front.choose_payment_methods') }}:</h5>
 
         @if($tabbyEnabled)
-        <div class="payment-option">
-            <input type="radio" name="payment_method" value="2" id="tabby_m"
-                {{ old('payment_method') == '2' ? 'checked' : '' }}>
-            <div class="payment-details">
+        <div class="payment-option payment-option-tabby">
+            <div class="payment-option-head">
+                <input type="radio" name="payment_method" value="2" id="tabby_m"
+                    {{ old('payment_method') == '2' ? 'checked' : '' }}>
                 <label for="tabby_m">{{ trans('front.tabby_installment_msg') }}</label>
+            </div>
+            <div class="payment-details">
                 <img src="{{ asset('resources/assets/new_front/images/tabby-logo.webp') }}"
                      onerror="this.style.display='none'" alt="Tabby">
                 <span class="policy-msg">{{ trans('front.tabby_policy_msg') }}</span>
-                <div id="tabbyCard"></div>
+                <div class="tabby-widget-wrap">
+                    <div id="tabbyCard"></div>
+                </div>
             </div>
         </div>
         @endif
@@ -326,18 +366,49 @@
     @if($tabbyEnabled)
     <script src="https://checkout.tabby.ai/tabby-card.js"></script>
     <script>
-        var isNarrowMobile = window.matchMedia('(max-width: 480px)').matches;
-        new TabbyCard({
-            selector: '#tabbyCard',
-            currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
-            lang: '{{ app()->getLocale() }}',
-            price: {{ $priceWithVat }},
-            size: isNarrowMobile ? 'narrow' : 'wide',
-            theme: 'black',
-            header: false,
-            publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',
-            merchantCode: '{{ $mainSettings->payments["tabby"]["merchant_code"] ?? "" }}'
-        });
+        (function () {
+            var resizeTimer = null;
+
+            function tabbySize() {
+                return window.matchMedia('(max-width: 560px)').matches ? 'narrow' : 'wide';
+            }
+
+            function renderTabbyCard() {
+                if (!window.TabbyCard) return;
+
+                var container = document.getElementById('tabbyCard');
+                if (!container) return;
+
+                try {
+                    if (window._tabbyCard && typeof window._tabbyCard.destroy === 'function') {
+                        window._tabbyCard.destroy();
+                    }
+                } catch (e) {}
+
+                container.innerHTML = '';
+
+                window._tabbyCard = new TabbyCard({
+                    selector: '#tabbyCard',
+                    currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
+                    lang: '{{ app()->getLocale() }}',
+                    price: {{ $priceWithVat }},
+                    size: tabbySize(),
+                    theme: 'black',
+                    header: false,
+                    publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',
+                    merchantCode: '{{ $mainSettings->payments["tabby"]["merchant_code"] ?? "" }}'
+                });
+            }
+
+            window.addEventListener('load', function () {
+                setTimeout(renderTabbyCard, 80);
+            });
+
+            window.addEventListener('resize', function () {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(renderTabbyCard, 140);
+            });
+        })();
     </script>
     @endif
 
