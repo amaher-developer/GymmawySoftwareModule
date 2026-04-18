@@ -342,13 +342,31 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     private function buildMobileRouteWithToken(string $routeName, array $params, Request $request, string $lang): string
     {
-        $token = trim((string) ($request->input('payment_link_token') ?: $request->input('token') ?: $request->bearerToken() ?: ''));
-        if ($token !== '') {
-            $params['token'] = $token;
-        }
+        $params = $this->mobileContextParams($params, $request);
         $params['lang'] = $lang;
 
         return route($routeName, $params);
+    }
+
+    protected function mobileTokenParam(?Request $request = null): string
+    {
+        $request = $request ?: request();
+        $token = trim((string) ($request->input('payment_link_token') ?: $request->input('token') ?: $request->bearerToken() ?: ''));
+        return $token !== '' ? $token : 'null';
+    }
+
+    protected function mobileMemberIdParam(?Request $request = null): string
+    {
+        $request = $request ?: request();
+        $memberId = optional($this->currentMember)->id ?: $request->input('member_id');
+        return $memberId ? (string) $memberId : 'null';
+    }
+
+    protected function mobileContextParams(array $params = [], ?Request $request = null): array
+    {
+        $params['token'] = $this->mobileTokenParam($request);
+        $params['member_id'] = $this->mobileMemberIdParam($request);
+        return $params;
     }
 
     private function resolveMobileTrainingLogDetails(GymTrainingMemberLog $log, string $lang): array
@@ -895,7 +913,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 "{$type}_id"          => $itemId,
                 'activity_ids'        => $member['activity_ids'] ?? null,
                 'store_product_items' => $member['store_product_items'] ?? null,
-                'token'               => request('token'),
+                'token'               => $this->mobileTokenParam(),
+                'member_id'           => $this->mobileMemberIdParam(),
             ], fn($v) => $v !== null),
         ]);
     }
@@ -903,9 +922,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     protected function genericErrorRoute(string $type, int $itemId): string
     {
         if ($type === 'activity') {
-            return route('sw.activity-mobile', ['id' => $itemId, 'token' => request('token')]);
+            return route('sw.activity-mobile', $this->mobileContextParams(['id' => $itemId]));
         }
-        return route('sw.store-mobile', ['id' => $itemId, 'token' => request('token')]);
+        return route('sw.store-mobile', $this->mobileContextParams(['id' => $itemId]));
     }
 
     protected function initiateGenericTabby(string $type, int $itemId, string $itemName, array $member): string
@@ -1116,7 +1135,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'subscription_id'  => $member['subscription_id'],
         ]);
 
-        $errorRoute = route('sw.subscription-mobile', ['id' => $subscription['id'], 'token' => request('token')]);
+        $errorRoute = route('sw.subscription-mobile', $this->mobileContextParams(['id' => $subscription['id']]));
 
         if (!$result['success']) {
             \Session::flash('error', $result['error'] ?? trans('front.error_in_data'));
@@ -1194,7 +1213,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             ]],
         ]);
 
-        $errorRoute = route('sw.subscription-mobile', ['id' => $subscription['id'], 'token' => request('token')]);
+        $errorRoute = route('sw.subscription-mobile', $this->mobileContextParams(['id' => $subscription['id']]));
 
         if (!$result['success']) {
             \Session::flash('error', $result['error'] ?? trans('front.error_in_data'));
@@ -1266,7 +1285,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'subscription_id' => $member['subscription_id'],
         ]);
 
-        $errorRoute = route('sw.subscription-mobile', ['id' => $subscription['id'], 'token' => request('token')]);
+        $errorRoute = route('sw.subscription-mobile', $this->mobileContextParams(['id' => $subscription['id']]));
 
         if (!$result['success']) {
             \Session::flash('error', $result['error'] ?? trans('front.error_in_data'));
@@ -1678,7 +1697,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'response_code'   => ['joining_date' => $member['joining_date']],
         ]);
 
-        $errorRoute = route('sw.subscription-mobile', ['id' => $subscription['id'], 'token' => request('token')]);
+        $errorRoute = route('sw.subscription-mobile', $this->mobileContextParams(['id' => $subscription['id']]));
 
         // Build billing data from member info
         $nameParts   = explode(' ', $member['name'], 2);
@@ -2792,7 +2811,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     {
         $uniqueId   = uniqid();
         $invoice    = $this->createUpgradeInvoice($member, TypeConstants::TABBY_TRANSACTION, $uniqueId);
-        $errorRoute = route('sw.upgrade-subscription-mobile', ['token' => request('token')]);
+        $errorRoute = route('sw.upgrade-subscription-mobile', $this->mobileContextParams());
 
         $tabby  = new TabbyFrontController();
         $result = $tabby->createCheckoutSession([
@@ -2824,7 +2843,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $priceBeforeVat = round($member['amount'] - $member['vat'], 2);
         $uniqueId       = uniqid();
         $invoice        = $this->createUpgradeInvoice($member, TypeConstants::TAMARA_TRANSACTION, $uniqueId);
-        $errorRoute     = route('sw.upgrade-subscription-mobile', ['token' => request('token')]);
+        $errorRoute     = route('sw.upgrade-subscription-mobile', $this->mobileContextParams());
 
         [, , $currency] = $this->getTamaraCredentials();
         $tamara = new TamaraFrontController();
@@ -2857,11 +2876,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     {
         $uniqueId   = uniqid();
         $invoice    = $this->createUpgradeInvoice($member, TypeConstants::PAYTABS_TRANSACTION, $uniqueId);
-        $errorRoute = route('sw.upgrade-subscription-mobile', ['token' => request('token')]);
+        $errorRoute = route('sw.upgrade-subscription-mobile', $this->mobileContextParams());
 
-        $verifyUrl  = route('sw.paytabs-mobile.verify', ['invoice_id' => $uniqueId, 'token' => request('token')]);
-        $cancelUrl  = route('sw.paytabs-mobile.cancel', ['invoice_id' => $uniqueId, 'token' => request('token')]);
-        $failureUrl = route('sw.paytabs-mobile.failure', ['invoice_id' => $uniqueId, 'token' => request('token')]);
+        $verifyUrl  = route('sw.paytabs-mobile.verify', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $cancelUrl  = route('sw.paytabs-mobile.cancel', $this->mobileContextParams(['invoice_id' => $uniqueId]));
+        $failureUrl = route('sw.paytabs-mobile.failure', $this->mobileContextParams(['invoice_id' => $uniqueId]));
 
         $paytabs = new PayTabsFrontController();
         $result  = $paytabs->createCheckoutSession([
@@ -2891,7 +2910,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     {
         $uniqueId   = uniqid();
         $invoice    = $this->createUpgradeInvoice($member, TypeConstants::PAYMOB_TRANSACTION, $uniqueId);
-        $errorRoute = route('sw.upgrade-subscription-mobile', ['token' => request('token')]);
+        $errorRoute = route('sw.upgrade-subscription-mobile', $this->mobileContextParams());
 
         $parts       = explode(' ', $member['name'], 2);
         $billingData = [
@@ -3185,7 +3204,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $totalAmount = round($member['amount'], 2);
         $uniqueId    = uniqid();
         $invoice     = $this->createPtInvoice($member, TypeConstants::TABBY_TRANSACTION, $uniqueId);
-        $errorRoute  = route('sw.pt-subscription-mobile', ['id' => $ptSub['id'], 'token' => request('token')]);
+        $errorRoute  = route('sw.pt-subscription-mobile', $this->mobileContextParams(['id' => $ptSub['id']]));
 
         $tabby  = new TabbyFrontController();
         $result = $tabby->createCheckoutSession([
@@ -3220,7 +3239,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $priceBeforeVat = round($totalAmount - $member['vat'], 2);
         $uniqueId       = uniqid();
         $invoice        = $this->createPtInvoice($member, TypeConstants::TAMARA_TRANSACTION, $uniqueId);
-        $errorRoute     = route('sw.pt-subscription-mobile', ['id' => $ptSub['id'], 'token' => request('token')]);
+        $errorRoute     = route('sw.pt-subscription-mobile', $this->mobileContextParams(['id' => $ptSub['id']]));
 
         [, , $tamaraCurrency] = $this->getTamaraCredentials();
         $tamara = new TamaraFrontController();
@@ -3255,7 +3274,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $totalAmount = round($member['amount'], 2);
         $uniqueId    = uniqid();
         $invoice     = $this->createPtInvoice($member, TypeConstants::PAYTABS_TRANSACTION, $uniqueId);
-        $errorRoute  = route('sw.pt-subscription-mobile', ['id' => $ptSub['id'], 'token' => request('token')]);
+        $errorRoute  = route('sw.pt-subscription-mobile', $this->mobileContextParams(['id' => $ptSub['id']]));
 
         $paytabs = new PayTabsFrontController();
         $result  = $paytabs->createCheckoutSession([
@@ -3293,7 +3312,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $totalAmount = round($member['amount'], 2);
         $uniqueId    = uniqid();
         $invoice     = $this->createPtInvoice($member, TypeConstants::PAYMOB_TRANSACTION, $uniqueId);
-        $errorRoute  = route('sw.pt-subscription-mobile', ['id' => $ptSub['id'], 'token' => request('token')]);
+        $errorRoute  = route('sw.pt-subscription-mobile', $this->mobileContextParams(['id' => $ptSub['id']]));
 
         $nameParts   = explode(' ', $member['name'], 2);
         $billingData = [
@@ -3552,3 +3571,4 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         return view('software::Front.store_order_invoice_mobile', compact('title', 'invoice', 'products', 'storeItems', 'mainSettings'));
     }
 }
+

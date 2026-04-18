@@ -19,6 +19,7 @@
     @endphp
     <style>
         * { box-sizing: border-box; }
+        html, body { max-width: 100%; overflow-x: hidden; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f8f8f8;
@@ -95,6 +96,9 @@
         .payment-option label { font-weight: bold; font-size: 14px; cursor: pointer; display: block; margin-bottom: 5px; }
         .payment-option img { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; }
         .payment-option .policy-msg { font-size: 11px; color: #666; }
+        #tabbyCard { padding-top: 10px; width: 100%; max-width: 100%; overflow: hidden; min-width: 0; }
+        #tabbyCard > * { max-width: 100% !important; min-width: 0 !important; }
+        #tabbyCard iframe { width: 100% !important; max-width: 100% !important; min-width: 0 !important; display: block !important; }
 
         /* Guest form */
         .highlight-text { border-radius: 10px; border: 1px solid #ddd; padding: 10px; margin-bottom: 12px; }
@@ -175,8 +179,9 @@
     @if(!empty($hasActiveMainSubscription))
     <form method="post" action="{{ route('sw.pt-invoice-mobile.submit') }}" id="ptForm">
         {{ csrf_field() }}
-        <input type="hidden" name="payment_link_token" value="{{ $resolvedToken }}">
-        <input type="hidden" name="token"              value="{{ $resolvedToken }}">
+        <input type="hidden" name="payment_link_token" value="{{ $resolvedToken ?: 'null' }}">
+        <input type="hidden" name="token"              value="{{ $resolvedToken ?: 'null' }}">
+        <input type="hidden" name="member_id"          value="{{ optional($currentUser)->id ?: 'null' }}">
         <input type="hidden" name="pt_class_id"        id="hiddenClassId"        value="">
         <input type="hidden" name="pt_class_trainer_id" id="hiddenClassTrainerId" value="">
         <input type="hidden" name="amount"             id="hiddenAmount"         value="">
@@ -314,6 +319,7 @@
                 <label for="tabby_m">{{ trans('front.tabby_installment_msg') }}</label>
                 <img src="{{ asset('resources/assets/new_front/images/tabby-logo.webp') }}" onerror="this.style.display='none'" alt="Tabby">
                 <span class="policy-msg">{{ trans('front.tabby_policy_msg') }}</span>
+                <div id="tabbyCard"></div>
             </div>
         </div>
         @endif
@@ -388,6 +394,10 @@
     <script defer src="https://cdn.tamara.co/widget-v2/tamara-widget.js"></script>
     @endif
 
+    @if($tabbyEnabled)
+    <script src="https://checkout.tabby.ai/tabby-card.js"></script>
+    @endif
+
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastr@2.1.4/build/toastr.min.js"></script>
     <script>
@@ -395,6 +405,27 @@
         var selectedClassId    = null;
         var selectedTrainerId  = null;
         var selectedClassPrice = 0;
+        var tabbyCardInstance  = null;
+
+        function updateTabbyCard(price) {
+            if (typeof TabbyCard === 'undefined') return;
+            var cardEl = document.getElementById('tabbyCard');
+            if (!cardEl) return;
+            if (tabbyCardInstance && typeof tabbyCardInstance.destroy === 'function') {
+                tabbyCardInstance.destroy();
+            }
+            tabbyCardInstance = new TabbyCard({
+                selector: '#tabbyCard',
+                currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
+                lang: '{{ app()->getLocale() }}',
+                price: Number(price || 0),
+                size: window.matchMedia('(max-width: 560px)').matches ? 'narrow' : 'wide',
+                theme: 'black',
+                header: false,
+                publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',
+                merchantCode: '{{ $mainSettings->payments["tabby"]["merchant_code"] ?? "" }}'
+            });
+        }
 
         function selectClass(classId, priceWithVat) {
             // Deselect all
@@ -419,6 +450,7 @@
             document.getElementById('hiddenAmount').value = priceWithVat;
 
             updatePriceSummary(priceWithVat);
+            updateTabbyCard(priceWithVat);
             checkPayBtn();
         }
 

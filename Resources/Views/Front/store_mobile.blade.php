@@ -17,6 +17,7 @@
     @endphp
     <style>
         * { box-sizing: border-box; }
+        html, body { max-width: 100%; overflow-x: hidden; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; margin: 0; padding: 15px; direction: {{ $isRtl ? 'rtl' : 'ltr' }}; text-align: {{ $textAlign }}; color: #333; }
         .title { margin-bottom: 12px; font-size: 18px; }
         .price-box { background: #f5f5f5; border-radius: 8px; padding: 12px; margin-bottom: 12px; line-height: 1.8; color: #f97d04; font-size: 15px; }
@@ -31,13 +32,15 @@
         .qty-wrap { display: flex; align-items: center; gap: 6px; }
         .qty-wrap button { width: 26px; height: 26px; border: 1px solid #ddd; border-radius: 5px; background: #f5f5f5; font-size: 16px; cursor: pointer; line-height: 1; }
         .qty-wrap input[type="number"] { width: 38px; text-align: center; border: 1px solid #ddd; border-radius: 5px; padding: 3px; font-size: 14px; }
-        .payment-option { border-radius: 10px; border: 1px solid #f97d04; padding: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; }
+        .payment-option { border-radius: 10px; border: 1px solid #f97d04; padding: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; width: 100%; max-width: 100%; overflow: hidden; }
         .payment-option input[type="radio"] { margin-top: 4px; width: 20px; height: 20px; flex-shrink: 0; }
-        .payment-option .payment-details { flex: 1; }
+        .payment-option .payment-details { flex: 1; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
         .payment-option label { font-weight: bold; font-size: 14px; cursor: pointer; display: block; margin-bottom: 5px; }
         .payment-option img { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; }
         .payment-option .policy-msg { font-size: 11px; color: #666; }
-        #tabbyCard { padding-top: 10px; width: 100%; }
+        #tabbyCard { padding-top: 10px; width: 100%; max-width: 100%; overflow: hidden; min-width: 0; }
+        #tabbyCard > * { max-width: 100% !important; min-width: 0 !important; }
+        #tabbyCard iframe { width: 100% !important; max-width: 100% !important; min-width: 0 !important; display: block !important; }
         .btn-pay { width: 100%; padding: 14px; background: #f97d04; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-pay:disabled { background: #ccc; cursor: not-allowed; }
         .highlight-text { border-radius: 10px; border: 1px solid #ddd; padding: 10px; margin-bottom: 12px; }
@@ -61,7 +64,8 @@
     <form method="post" action="{{ route('sw.store-invoice-mobile.submit') }}" id="storeForm">
         {{ csrf_field() }}
         <input type="hidden" name="product_id" value="{{ $record->id }}">
-        <input type="hidden" name="token" value="{{ request('token') }}">
+        <input type="hidden" name="token" value="{{ request('payment_link_token') ?: request('token') ?: 'null' }}">
+        <input type="hidden" name="member_id" value="{{ optional($currentUser)->id ?: 'null' }}">
 
         @if(!$currentUser)
             <h5 class="section-title">{{ trans('front.register_info') }}:</h5>
@@ -116,6 +120,7 @@
                 <div class="payment-details">
                     <label for="tabby_s">{{ trans('front.tabby_installment_msg') }}</label>
                     <img src="{{ asset('resources/assets/new_front/images/tabby-logo.webp') }}" onerror="this.style.display='none'" alt="Tabby">
+                    <span class="policy-msg">{{ trans('front.tabby_policy_msg') }}</span>
                     <div id="tabbyCard"></div>
                 </div>
             </div>
@@ -127,6 +132,7 @@
                 <div class="payment-details">
                     <label for="tamara_s">{{ trans('front.tamara_installment_msg') }}</label>
                     <img src="https://cdn.tamara.co/assets/png/tamara-logo-badge-{{ app()->getLocale() == 'ar' ? 'ar' : 'en' }}.png" alt="Tamara">
+                    <span class="policy-msg">{{ trans('front.tamara_policy_msg') }}</span>
                 </div>
             </div>
         @endif
@@ -215,7 +221,7 @@
                 currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
                 lang: '{{ app()->getLocale() }}',
                 price: total,
-                size: 'wide', theme: 'black', header: false,
+                size: window.matchMedia('(max-width: 560px)').matches ? 'narrow' : 'wide', theme: 'black', header: false,
                 publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',
                 merchantCode: '{{ $mainSettings->payments["tabby"]["merchant_code"] ?? "" }}'
             });

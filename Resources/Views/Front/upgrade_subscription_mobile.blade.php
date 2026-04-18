@@ -20,6 +20,7 @@
     @endphp
     <style>
         * { box-sizing: border-box; }
+        html, body { max-width: 100%; overflow-x: hidden; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f5f5; margin: 0; padding: 15px;
@@ -152,7 +153,8 @@
 
     <form method="post" action="{{ route('sw.upgrade-invoice-mobile.submit') }}" id="upgradeForm">
         {{ csrf_field() }}
-        <input type="hidden" name="token"                value="{{ request('token') }}">
+        <input type="hidden" name="token"                value="{{ request('payment_link_token') ?: request('token') ?: 'null' }}">
+        <input type="hidden" name="member_id"            value="{{ optional($member)->id ?: optional($currentUser ?? null)->id ?: 'null' }}">
         <input type="hidden" name="old_subscription_id" value="{{ $activeSub->subscription_id }}">
         <input type="hidden" name="active_member_sub_id" value="{{ $activeSub->id }}">
         <input type="hidden" name="subscription_id"      id="hiddenSubId"    value="">
@@ -334,7 +336,7 @@
                 currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
                 lang: '{{ app()->getLocale() }}',
                 price: Number(price || 0),
-                size: 'wide',
+                size: window.matchMedia('(max-width: 560px)').matches ? 'narrow' : 'wide',
                 theme: 'black',
                 header: false,
                 publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',

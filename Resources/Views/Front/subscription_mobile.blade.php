@@ -224,7 +224,8 @@
         <input type="hidden" name="subscription_id" value="{{ $record['id'] }}">
         <input type="hidden" name="amount"          value="{{ $priceWithVat }}">
         <input type="hidden" name="vat_percentage"  value="{{ $vatPercentage }}">
-        <input type="hidden" name="token"           value="{{ request('token') }}">
+        <input type="hidden" name="token"           value="{{ request('payment_link_token') ?: request('token') ?: 'null' }}">
+        <input type="hidden" name="member_id"       value="{{ optional($currentUser)->id ?: 'null' }}">
 
         {{-- Guest registration fields --}}
         @if(!$currentUser)
