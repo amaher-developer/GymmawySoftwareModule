@@ -74,14 +74,19 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     public function showMobile($id)
     {
         $request = request();
-        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
+        $memberId = (int) ($request->input('member_id') ?: 0);
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request, false);
 
         Log::info('subscription-mobile member resolution', [
             'subscription_id' => (int) $id,
-            'query_member_id' => (int) ($request->input('member_id') ?: 0),
+            'query_member_id' => $memberId,
             'resolved_member_id' => (int) ($currentUser->id ?? 0),
             'has_token' => trim((string) ($request->input('payment_link_token') ?: $request->input('token') ?: $request->bearerToken() ?: '')) !== '',
         ]);
+
+        if ($memberId > 0 && !$currentUser) {
+            return redirect()->route('sw.mobile-payment.error');
+        }
 
         View::share('currentUser', $currentUser);
         $record = GymSubscription::where('id', $id)->first();
@@ -100,7 +105,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     {
         $request = request();
         $memberId = (int) ($request->input('member_id') ?: 0);
-        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request, false);
 
         // member_id is optional, but when provided it must resolve to a member.
         if ($memberId > 0 && !$currentUser) {
@@ -124,7 +129,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     {
         $request = request();
         $memberId = (int) ($request->input('member_id') ?: 0);
-        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request, false);
 
         // member_id is optional, but when provided it must resolve to a member.
         if ($memberId > 0 && !$currentUser) {
@@ -645,7 +650,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function invoiceSubmit(Request $request)
     {
-        $this->currentMember = $this->resolveMemberFromRequest($request);
+        $this->currentMember = $this->resolveMemberFromRequest($request, false);
 
         $subscriptionId = $request->input('subscription_id');
         $subscription   = GymSubscription::where('id', $subscriptionId)->first();
@@ -724,7 +729,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function activityInvoiceSubmit(Request $request)
     {
-        $this->currentMember = $this->resolveMemberFromRequest($request);
+        $this->currentMember = $this->resolveMemberFromRequest($request, false);
 
         // Support multiple selected activities
         $activityIds = array_values(array_filter(array_map('intval', (array) $request->input('activity_ids', []))));
@@ -795,7 +800,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function storeInvoiceSubmit(Request $request)
     {
-        $this->currentMember = $this->resolveMemberFromRequest($request);
+        $this->currentMember = $this->resolveMemberFromRequest($request, false);
 
         // store_items: array of {id, qty}
         $storeItemsRaw = (array) $request->input('store_items', []);
@@ -2117,7 +2122,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    protected function resolveMemberFromRequest(Request $request): ?GymMember
+    protected function resolveMemberFromRequest(Request $request, bool $allowTokenFallback = true): ?GymMember
     {
         // 1) If guard already resolved the member from Authorization header, use it directly.
         $guardMember = $request->user('api') ?: \Auth::guard('api')->user();
@@ -2132,7 +2137,12 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $requestedMember;
         }
 
-        // 3) Backward compatibility only: resolve from token if member_id is absent.
+        // 3) For payment-link strict mode, do not fallback to token.
+        if (!$allowTokenFallback) {
+            return null;
+        }
+
+        // 4) Backward compatibility only: resolve from token if member_id is absent.
         $rawToken = $request->input('payment_link_token')
             ?: $request->input('token')
             ?: $request->bearerToken();
@@ -2154,7 +2164,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             str_replace(' ', '+', $decoded),
         ])));
 
-        // 4) Legacy flow: map push token -> member.
+        // 5) Legacy flow: map push token -> member.
         $pushToken = DB::table('sw_gym_push_tokens')
             ->whereIn('token', $tokenCandidates)
             ->orderByDesc('id')
@@ -2167,7 +2177,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             }
         }
 
-        // 5) Legacy flow fallback: token may be app API token (hashed/plain in api_token).
+        // 6) Legacy flow fallback: token may be app API token (hashed/plain in api_token).
         foreach ($tokenCandidates as $plainToken) {
             $member = GymMember::where('api_token', hash('sha256', $plainToken))
                 ->orWhere('api_token', $plainToken)
@@ -3082,7 +3092,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         // Keep variable name for blade compatibility, but source from member_id.
         $hasToken = (int) ($request->input('member_id') ?: 0) > 0;
 
-        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
+        $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request, false);
 
         $hasActiveMainSubscription = false;
         if ($currentUser) {
@@ -3117,7 +3127,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function ptInvoiceSubmit(Request $request)
     {
-        $this->currentMember = $this->resolveMemberFromRequest($request);
+        $this->currentMember = $this->resolveMemberFromRequest($request, false);
 
         $ptClassId        = (int) $request->input('pt_class_id');
         $ptClassTrainerId = (int) $request->input('pt_class_trainer_id');
