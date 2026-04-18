@@ -99,11 +99,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     public function showActivityMobile($id)
     {
         $request = request();
-        $token = trim((string) $request->input('token', ''));
+        $memberId = (int) ($request->input('member_id') ?: 0);
         $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
 
-        // Token is optional, but when provided it must resolve to a member.
-        if ($token !== '' && !$currentUser) {
+        // member_id is optional, but when provided it must resolve to a member.
+        if ($memberId > 0 && !$currentUser) {
             return redirect()->route('sw.mobile-payment.error');
         }
 
@@ -123,11 +123,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     public function showStoreMobile($id)
     {
         $request = request();
-        $token = trim((string) $request->input('token', ''));
+        $memberId = (int) ($request->input('member_id') ?: 0);
         $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
 
-        // Token is optional, but when provided it must resolve to a member.
-        if ($token !== '' && !$currentUser) {
+        // member_id is optional, but when provided it must resolve to a member.
+        if ($memberId > 0 && !$currentUser) {
             return redirect()->route('sw.mobile-payment.error');
         }
 
@@ -2125,10 +2125,14 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $guardMember;
         }
 
+        // 2) Primary mobile-web resolver: member_id coming from payment links.
         $requestedMemberId = (int) ($request->input('member_id') ?: 0);
         $requestedMember = $requestedMemberId > 0 ? GymMember::find($requestedMemberId) : null;
+        if ($requestedMember) {
+            return $requestedMember;
+        }
 
-        // 2) Resolve from either query token (payment_link_token or legacy token) or bearer token.
+        // 3) Backward compatibility only: resolve from token if member_id is absent.
         $rawToken = $request->input('payment_link_token')
             ?: $request->input('token')
             ?: $request->bearerToken();
@@ -2150,7 +2154,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             str_replace(' ', '+', $decoded),
         ])));
 
-        // 3) Preferred mobile-web flow: map push token -> member.
+        // 4) Legacy flow: map push token -> member.
         $pushToken = DB::table('sw_gym_push_tokens')
             ->whereIn('token', $tokenCandidates)
             ->orderByDesc('id')
@@ -2163,33 +2167,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             }
         }
 
-        // 3.1) If member_id is provided, allow matching that member by either
-        // push token relation or API token (hashed/plain for backward compatibility).
-        if ($requestedMember) {
-            $hasPushToken = DB::table('sw_gym_push_tokens')
-                ->where('member_id', (int) $requestedMember->id)
-                ->whereIn('token', $tokenCandidates)
-                ->exists();
-
-            if ($hasPushToken) {
-                return $requestedMember;
-            }
-
-            foreach ($tokenCandidates as $plainToken) {
-                $matchedRequestedMember = GymMember::where('id', (int) $requestedMember->id)
-                    ->where(function ($q) use ($plainToken) {
-                        $q->where('api_token', hash('sha256', $plainToken))
-                            ->orWhere('api_token', $plainToken);
-                    })
-                    ->first();
-
-                if ($matchedRequestedMember) {
-                    return $matchedRequestedMember;
-                }
-            }
-        }
-
-        // 4) Fallback: token may be the app API bearer token (stored hashed in api_token).
+        // 5) Legacy flow fallback: token may be app API token (hashed/plain in api_token).
         foreach ($tokenCandidates as $plainToken) {
             $member = GymMember::where('api_token', hash('sha256', $plainToken))
                 ->orWhere('api_token', $plainToken)
@@ -2197,17 +2175,6 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             if ($member) {
                 return $member;
             }
-        }
-
-        // 5) Last-resort compatibility: if app passes member_id but token mapping is stale,
-        // still resolve member for read-only mobile web views.
-        if ($requestedMember) {
-            Log::warning('Mobile member resolved by member_id fallback', [
-                'member_id' => (int) $requestedMember->id,
-                'has_token' => true,
-                'path' => $request->path(),
-            ]);
-            return $requestedMember;
         }
 
         return null;
@@ -3112,8 +3079,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     public function showPtMobile($id)
     {
         $request = request();
-        $rawToken = trim((string) ($request->input('payment_link_token') ?: $request->input('token') ?: ''));
-        $hasToken = $rawToken !== '';
+        // Keep variable name for blade compatibility, but source from member_id.
+        $hasToken = (int) ($request->input('member_id') ?: 0) > 0;
 
         $this->currentMember = $currentUser = $this->resolveMemberFromRequest($request);
 
