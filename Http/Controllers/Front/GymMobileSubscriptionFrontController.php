@@ -13,6 +13,7 @@ use Modules\Generic\Http\Controllers\Front\PaymobFrontController;
 use Modules\Generic\Http\Controllers\Front\PayTabsFrontController;
 use Modules\Generic\Http\Controllers\Front\TabbyFrontController;
 use Modules\Generic\Http\Controllers\Front\TamaraFrontController;
+use Modules\Billing\Services\SwBillingService;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymActivity;
 use Modules\Software\Models\GymMember;
@@ -1984,6 +1985,28 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 // ── MoneyBox entry ─────────────────────────────────────────
                 $this->createMoneyBoxEntry($invoice, $member, $typeOfPayment, $memberSub->id);
 
+                // ── ZATCA Billing Invoice entry ─────────────────────────────
+                $vatAmount = (float) ($invoice->vat ?? 0);
+                $amountBeforeVat = (float) ($invoice->amount ?? 0);
+                if ($vatAmount <= 0 && $invoice->vat_percentage > 0) {
+                    // Calculate VAT from percentage if not already calculated
+                    $vatAmount = round(($amountBeforeVat * $invoice->vat_percentage) / 100, 2);
+                }
+                try {
+                    SwBillingService::createInvoiceFromMember(
+                        $member,
+                        $memberSub->id,
+                        $amountBeforeVat,
+                        $vatAmount
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('ZATCA billing invoice creation failed', [
+                        'member_id' => $member->id,
+                        'member_subscription_id' => $memberSub->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
                 return $memberSub;
             });
         } finally {
@@ -2955,6 +2978,28 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
                 $this->createMoneyBoxEntry($invoice, $member, TypeConstants::RenewMember, $newMemberSub->id);
 
+                // ── ZATCA Billing Invoice entry ─────────────────────────────
+                $vatAmount = (float) ($invoice->vat ?? 0);
+                $amountBeforeVat = (float) ($invoice->amount ?? 0);
+                if ($vatAmount <= 0 && $invoice->vat_percentage > 0) {
+                    // Calculate VAT from percentage if not already calculated
+                    $vatAmount = round(($amountBeforeVat * $invoice->vat_percentage) / 100, 2);
+                }
+                try {
+                    SwBillingService::createInvoiceFromMember(
+                        $member,
+                        $newMemberSub->id,
+                        $amountBeforeVat,
+                        $vatAmount
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('ZATCA billing invoice creation failed (upgrade)', [
+                        'member_id' => $member->id,
+                        'member_subscription_id' => $newMemberSub->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
                 $newMemberSub->is_upgrade = true;
                 return $newMemberSub;
             });
@@ -3403,6 +3448,27 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
                 $this->createUserLogEntry($notes, TypeConstants::CreateMoneyBoxAdd, $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)), $this->resolveBranchSettingId($member));
                 $this->createUserLogEntry($notes, TypeConstants::CreatePTMember, $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)), $this->resolveBranchSettingId($member));
+
+                // ── ZATCA Billing Invoice entry ─────────────────────────────
+                $vatAmount = (float) ($invoice->vat ?? 0);
+                $amountBeforeVat = (float) ($invoice->amount ?? 0);
+                if ($vatAmount <= 0 && $invoice->vat_percentage > 0) {
+                    // Calculate VAT from percentage if not already calculated
+                    $vatAmount = round(($amountBeforeVat * $invoice->vat_percentage) / 100, 2);
+                }
+                try {
+                    SwBillingService::createInvoiceFromPtMember(
+                        $ptMember,
+                        $amountBeforeVat,
+                        $vatAmount
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('ZATCA billing invoice creation failed (PT member)', [
+                        'pt_member_id' => $ptMember->id,
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
                 return $ptMember->id;
             });
