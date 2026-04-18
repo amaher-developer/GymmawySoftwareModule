@@ -116,7 +116,7 @@ class PTContentResource extends JsonResource
             "trainers"     => $this->_buildTrainers($lang),
             "is_payment"   => @env('APP_WEB_PAYMENT_PT_SUBSCRIPTION') == 1 ? 1 : 0,
             "payment_link" => @env('APP_WEB_PAYMENT_PT_SUBSCRIPTION') == 1
-                                ? route('sw.pt-subscription-mobile', ['id' => $this->id, 'lang' => $lang])
+                                ? @env('APP_URL').'/'.route('sw.pt-subscription-mobile', ['id' => $this->id, 'lang' => $lang])
                                 : "",
         ];
     }
