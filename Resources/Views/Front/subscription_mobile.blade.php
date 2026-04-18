@@ -76,11 +76,24 @@
             gap: 10px;
         }
         .payment-option input[type="radio"] { margin-top: 4px; width: 20px; height: 20px; flex-shrink: 0; }
-        .payment-option .payment-details { flex: 1; }
+        .payment-option .payment-details {
+            flex: 1;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         .payment-option label { font-weight: bold; font-size: 14px; cursor: pointer; display: block; margin-bottom: 5px; }
         .payment-option img { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; }
         .payment-option .policy-msg { font-size: 11px; color: #666; }
-        #tabbyCard { padding-top: 10px; width: 100%; }
+        #tabbyCard {
+            padding-top: 10px;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        #tabbyCard > * {
+            max-width: 100% !important;
+        }
         #tabbyCard div:first-child { background-color: #f5f5f5 !important; }
         .form-control {
             width: 100%;
@@ -107,6 +120,22 @@
         }
         .btn-pay:active { background: #e06c00; }
         ::placeholder { color: #bbb !important; }
+
+        @media (max-width: 420px) {
+            .payment-option {
+                padding: 10px;
+                gap: 8px;
+            }
+            .payment-option label {
+                font-size: 13px;
+                line-height: 1.35;
+            }
+            .payment-option .policy-msg {
+                display: block;
+                margin-top: 6px;
+                line-height: 1.35;
+            }
+        }
     </style>
 </head>
 <body>
@@ -282,12 +311,13 @@
     @if($tabbyEnabled)
     <script src="https://checkout.tabby.ai/tabby-card.js"></script>
     <script>
+        var isNarrowMobile = window.matchMedia('(max-width: 420px)').matches;
         new TabbyCard({
             selector: '#tabbyCard',
             currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
             lang: '{{ app()->getLocale() }}',
             price: {{ $priceWithVat }},
-            size: 'wide',
+            size: isNarrowMobile ? 'small' : 'wide',
             theme: 'black',
             header: false,
             publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',
