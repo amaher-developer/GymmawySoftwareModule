@@ -96,6 +96,16 @@
                 <span class="label">{{ trans('front.expire_date') }}</span>
                 <span class="value">{{ $ptMember->expire_date ? \Carbon\Carbon::parse($ptMember->expire_date)->format('Y-m-d') : '-' }}</span>
             </div>
+            @if(($ptMember->vat ?? 0) > 0)
+            <div class="invoice-row">
+                <span class="label">{{ trans('front.total_price') }} ({{ trans('front.excluding_vat') }})</span>
+                <span class="value">{{ number_format(($ptMember->paid_amount ?? 0) - ($ptMember->vat ?? 0), 2) }} {{ trans('front.pound_unit') }}</span>
+            </div>
+            <div class="invoice-row">
+                <span class="label">{{ trans('front.vat') }}@if(($ptMember->vat_percentage ?? 0) > 0) ({{ $ptMember->vat_percentage }}%)@endif</span>
+                <span class="value">{{ number_format($ptMember->vat ?? 0, 2) }} {{ trans('front.pound_unit') }}</span>
+            </div>
+            @endif
             <div class="invoice-row total-row">
                 <span class="label">{{ trans('global.total') }}</span>
                 <span class="value">{{ number_format($ptMember->paid_amount, 2) }} {{ trans('front.pound_unit') }}</span>

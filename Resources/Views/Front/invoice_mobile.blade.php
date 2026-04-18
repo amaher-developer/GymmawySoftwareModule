@@ -127,7 +127,7 @@
 
             <hr class="divider">
 
-            @if(isset($mainSettings->vat_details['vat_percentage']) && $mainSettings->vat_details['vat_percentage'] > 0)
+            @if(($invoice->vat ?? 0) > 0)
             <div class="invoice-row">
                 <span class="label">
                     {{ trans('front.total_price') }} ({{ trans('front.excluding_vat') }})
@@ -138,7 +138,7 @@
                 </span>
             </div>
             <div class="invoice-row">
-                <span class="label">{{ trans('front.vat') }} ({{ $mainSettings->vat_details['vat_percentage'] }}%)</span>
+                <span class="label">{{ trans('front.vat') }}@if($invoice->vat_percentage > 0) ({{ $invoice->vat_percentage }}%)@endif</span>
                 <span class="value">{{ number_format($invoice->vat ?? 0, 2) }} {{ trans('front.app_currency') }}</span>
             </div>
             @endif

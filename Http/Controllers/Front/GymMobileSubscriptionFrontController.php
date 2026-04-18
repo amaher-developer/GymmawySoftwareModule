@@ -1986,11 +1986,15 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $this->createMoneyBoxEntry($invoice, $member, $typeOfPayment, $memberSub->id);
 
                 // ── ZATCA Billing Invoice entry ─────────────────────────────
-                $vatAmount = (float) ($invoice->vat ?? 0);
-                $amountBeforeVat = (float) ($invoice->amount ?? 0);
-                if ($vatAmount <= 0 && $invoice->vat_percentage > 0) {
-                    // Calculate VAT from percentage if not already calculated
-                    $vatAmount = round(($amountBeforeVat * $invoice->vat_percentage) / 100, 2);
+                $totalAmount     = (float) ($invoice->amount ?? 0);
+                $vatAmount       = (float) ($invoice->vat ?? 0);
+                if ($vatAmount > 0) {
+                    $amountBeforeVat = round($totalAmount - $vatAmount, 2);
+                } elseif ((float) ($invoice->vat_percentage ?? 0) > 0) {
+                    $amountBeforeVat = round($totalAmount / (1 + $invoice->vat_percentage / 100), 2);
+                    $vatAmount       = round($totalAmount - $amountBeforeVat, 2);
+                } else {
+                    $amountBeforeVat = $totalAmount;
                 }
                 try {
                     SwBillingService::createInvoiceFromMember(
@@ -2542,6 +2546,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     protected function createMoneyBoxEntry(GymOnlinePaymentInvoice $invoice, GymMember $member, int $type, int $memberSubId): void
     {
+        if (GymMoneyBox::where('online_subscription_id', $invoice->id)->exists()) {
+            return;
+        }
+
         $lastBox     = GymMoneyBox::orderBy('id', 'desc')->first();
         $amountBefore = $lastBox ? (float) $lastBox->amount_before : 0;
         $operation   = $lastBox ? (int) $lastBox->operation : TypeConstants::Add;
@@ -2979,11 +2987,15 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $this->createMoneyBoxEntry($invoice, $member, TypeConstants::RenewMember, $newMemberSub->id);
 
                 // ── ZATCA Billing Invoice entry ─────────────────────────────
-                $vatAmount = (float) ($invoice->vat ?? 0);
-                $amountBeforeVat = (float) ($invoice->amount ?? 0);
-                if ($vatAmount <= 0 && $invoice->vat_percentage > 0) {
-                    // Calculate VAT from percentage if not already calculated
-                    $vatAmount = round(($amountBeforeVat * $invoice->vat_percentage) / 100, 2);
+                $totalAmount     = (float) ($invoice->amount ?? 0);
+                $vatAmount       = (float) ($invoice->vat ?? 0);
+                if ($vatAmount > 0) {
+                    $amountBeforeVat = round($totalAmount - $vatAmount, 2);
+                } elseif ((float) ($invoice->vat_percentage ?? 0) > 0) {
+                    $amountBeforeVat = round($totalAmount / (1 + $invoice->vat_percentage / 100), 2);
+                    $vatAmount       = round($totalAmount - $amountBeforeVat, 2);
+                } else {
+                    $amountBeforeVat = $totalAmount;
                 }
                 try {
                     SwBillingService::createInvoiceFromMember(
@@ -3408,6 +3420,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'amount_paid'        => $invoice->amount,
                     'paid_amount'        => $invoice->amount,
                     'amount_remaining'   => 0,
+                    'vat'                => (float) ($invoice->vat ?? 0),
+                    'vat_percentage'     => (int) ($invoice->vat_percentage ?? 0),
                     'payment_type'       => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
                     'is_active'          => 1,
                     'branch_setting_id'  => $member->branch_setting_id ?? null,
@@ -3450,11 +3464,15 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $this->createUserLogEntry($notes, TypeConstants::CreatePTMember, $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)), $this->resolveBranchSettingId($member));
 
                 // ── ZATCA Billing Invoice entry ─────────────────────────────
-                $vatAmount = (float) ($invoice->vat ?? 0);
-                $amountBeforeVat = (float) ($invoice->amount ?? 0);
-                if ($vatAmount <= 0 && $invoice->vat_percentage > 0) {
-                    // Calculate VAT from percentage if not already calculated
-                    $vatAmount = round(($amountBeforeVat * $invoice->vat_percentage) / 100, 2);
+                $totalAmount     = (float) ($invoice->amount ?? 0);
+                $vatAmount       = (float) ($invoice->vat ?? 0);
+                if ($vatAmount > 0) {
+                    $amountBeforeVat = round($totalAmount - $vatAmount, 2);
+                } elseif ((float) ($invoice->vat_percentage ?? 0) > 0) {
+                    $amountBeforeVat = round($totalAmount / (1 + $invoice->vat_percentage / 100), 2);
+                    $vatAmount       = round($totalAmount - $amountBeforeVat, 2);
+                } else {
+                    $amountBeforeVat = $totalAmount;
                 }
                 try {
                     SwBillingService::createInvoiceFromPtMember(

@@ -110,13 +110,12 @@
             @endif
 
             @php
-                $baseAmount = $invoice->amount ?? 0;
-                $vatAmount  = $vatPercentage > 0 ? round($baseAmount * $vatPercentage / (100 + $vatPercentage), 2) : 0;
+                $vatAmount = (float) ($invoice->vat ?? 0);
             @endphp
 
             @if($vatAmount > 0)
             <div class="invoice-row">
-                <span class="label">{{ trans('front.vat') }} ({{ $vatPercentage }}%)</span>
+                <span class="label">{{ trans('front.vat') }}@if(($invoice->vat_percentage ?? 0) > 0) ({{ $invoice->vat_percentage }}%)@endif</span>
                 <span class="value">{{ number_format($vatAmount, 2) }} {{ trans('front.pound_unit') }}</span>
             </div>
             @endif
