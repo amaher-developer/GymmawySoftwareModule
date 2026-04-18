@@ -287,8 +287,24 @@ class GymPTTrainerFrontController extends GymGenericFrontController
     public function update(GymPTTrainerRequest $request, $id)
     {
         $trainer =$this->TrainerRepository->withTrashed()->find($id);
+        $oldImage = $trainer ? $trainer->getRawOriginal('image') : null;
+        $removeImage = (bool) $request->input('avatar_remove');
+        $hasNewImage = $request->hasFile('image');
+
         $trainer_inputs = $this->prepare_inputs($request->except(['_token']));
+
+        // Explicit remove from edit form should clear DB image when no replacement is uploaded.
+        if ($removeImage && !$hasNewImage) {
+            $trainer_inputs['image'] = null;
+        }
+
         $trainer->update($trainer_inputs);
+
+        // Cleanup old files when image changed or removed.
+        // $newImage = $trainer->getRawOriginal('image');
+        // if ($oldImage && $oldImage !== $newImage) {
+        //     $this->deleteTrainerImageFiles($oldImage);
+        // }
 
         $notes = str_replace(':name', $trainer['name'], trans('sw.edit_activity'));
         $this->userLog($notes, TypeConstants::EditPTTrainer);
@@ -325,6 +341,8 @@ class GymPTTrainerFrontController extends GymGenericFrontController
 
     private function prepare_inputs($inputs)
     {
+        unset($inputs['avatar_remove']);
+
         $input_file = 'image';
         if (request()->hasFile($input_file)) {
             $file = request()->file($input_file);
@@ -357,6 +375,20 @@ class GymPTTrainerFrontController extends GymGenericFrontController
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
         }
         return $inputs;
+    }
+
+    private function deleteTrainerImageFiles(string $imageName): void
+    {
+        $originalPath = base_path(GymPTTrainer::$uploads_path . $imageName);
+        $thumbnailPath = base_path(GymPTTrainer::$thumbnails_uploads_path . $imageName);
+
+        if (File::exists($originalPath)) {
+            File::delete($originalPath);
+        }
+
+        if (File::exists($thumbnailPath)) {
+            File::delete($thumbnailPath);
+        }
     }
 
 
