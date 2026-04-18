@@ -768,10 +768,10 @@
                         ]);
                     @endphp
                     <div class="btn-row">
-                        <a class="btn-download btn-primary" href="{{ $planUrl }}">
+                        {{-- <a class="btn-download btn-primary" href="{{ $planUrl }}">
                             <span>📄</span>
                             <span>{{ $isArabic ? 'فتح الخطة الكاملة' : 'Open Full Plan' }}</span>
-                        </a>
+                        </a> --}}
                     </div>
                 @endif
             </div>
