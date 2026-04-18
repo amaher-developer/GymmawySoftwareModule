@@ -185,12 +185,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             ?? ''
         );
 
-        $tasks = collect($plan?->tasks ?? [])->map(function ($task) {
-            return [
-                'id' => (int) ($task->id ?? 0),
-                'title' => trim((string) ($task->title ?? '')),
-                'notes' => trim((string) ($task->content ?? '')),
-            ];
+        $tasks = collect($plan?->tasks ?? [])->map(function ($task) use ($lang) {
+            return $this->mapMobilePlanTask($task, $lang);
+        })->filter(function (array $task) {
+            return $task['title'] !== '' || $task['notes'] !== '';
         })->values();
 
         $title = (string) ($assignment->title ?? $plan->title ?? trans('sw.training_plan'));
@@ -404,10 +402,32 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         if ($type === 'plan') {
             $memberPlanId = (int) ($log->reference_id ?: ($meta['member_plan_id'] ?? 0));
-            $planAssignment = $memberPlanId ? DB::table('sw_gym_training_members')->where('id', $memberPlanId)->first() : null;
+            $logTrainingId = (int) ($log->training_id ?? 0);
+
+            $planAssignment = $memberPlanId
+                ? DB::table('sw_gym_training_members')->where('id', $memberPlanId)->first()
+                : null;
+
+            // Some environments/log writers store assignment id in training_id instead of reference_id.
+            if (!$planAssignment && $logTrainingId > 0) {
+                $planAssignment = DB::table('sw_gym_training_members')
+                    ->where('id', $logTrainingId)
+                    ->where('member_id', (int) $log->member_id)
+                    ->first();
+
+                if ($planAssignment) {
+                    $memberPlanId = (int) ($planAssignment->id ?? $memberPlanId);
+                }
+            }
+
             $planId = (int) ($meta['plan_id'] ?? 0);
             if ($planAssignment && !$planId) {
-                $planId = (int) ($planAssignment->training_plan_id ?? $planAssignment->diet_plan_id ?? $planAssignment->plan_id ?? 0);
+                $planId = (int) ($planAssignment->plan_id ?? $planAssignment->training_plan_id ?? $planAssignment->diet_plan_id ?? 0);
+            }
+
+            // If no assignment-linked plan id found, fallback to training_id as direct plan id.
+            if (!$planId && $logTrainingId > 0) {
+                $planId = $logTrainingId;
             }
 
             $plan = $planId
@@ -421,18 +441,27 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $summary = strtolower($lang) === 'ar' ? 'خطة تدريب' : 'Training Plan';
             }
 
+            $planTasks = collect($plan?->tasks ?? [])->map(function ($task) use ($lang) {
+                return $this->mapMobilePlanTask($task, $lang);
+            })->filter(function (array $task) {
+                return $task['title'] !== '' || $task['notes'] !== '';
+            });
+
+            if ($planTasks->isEmpty()) {
+                $planTasks = collect($this->extractMobilePlanTasksFromMeta($meta))->map(function ($task) use ($lang) {
+                    return $this->mapMobilePlanTask($task, $lang);
+                })->filter(function (array $task) {
+                    return $task['title'] !== '' || $task['notes'] !== '';
+                });
+            }
+
             return [
                 'summary' => $summary,
                 'title' => (string) ($planAssignment->title ?? $plan->title ?? ''),
                 'notes' => (string) ($planAssignment->notes ?? ($meta['notes'] ?? '')),
                 'from_date' => $planAssignment->from_date ?? ($meta['from_date'] ?? null),
                 'to_date' => $planAssignment->to_date ?? ($meta['to_date'] ?? null),
-                'tasks' => collect($plan?->tasks ?? [])->map(function ($task) {
-                    return [
-                        'title' => (string) ($task->title ?? ''),
-                        'notes' => (string) ($task->content ?? ''),
-                    ];
-                })->values()->all(),
+                'tasks' => $planTasks->values()->all(),
                 'plan_details' => (string) (
                     $planAssignment->training_plan_details
                     ?? $planAssignment->diet_plan_details
@@ -525,6 +554,91 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         return [];
+    }
+
+    private function extractMobilePlanTasksFromMeta(array $meta): array
+    {
+        $sources = [
+            $meta['tasks'] ?? null,
+            $meta['plan_tasks'] ?? null,
+            $meta['task_details'] ?? null,
+        ];
+
+        foreach ($sources as $source) {
+            if (is_array($source)) {
+                return $source;
+            }
+
+            if (is_string($source) && trim($source) !== '') {
+                $decoded = json_decode($source, true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
+        }
+
+        return [];
+    }
+
+    private function mapMobilePlanTask($task, string $lang): array
+    {
+        $isArabic = strtolower($lang) === 'ar';
+        $read = function ($key, $default = null) use ($task) {
+            if (is_array($task)) {
+                return $task[$key] ?? $default;
+            }
+
+            return $task->{$key} ?? $default;
+        };
+
+        $title = trim((string) (
+            $read('title')
+            ?? $read('name_' . $lang)
+            ?? $read('name_en')
+            ?? $read('name_ar')
+            ?? ''
+        ));
+
+        $description = trim((string) (
+            $read('description')
+            ?? $read('details')
+            ?? $read('content')
+            ?? ''
+        ));
+
+        $extra = [];
+        if ($read('day_name')) {
+            $extra[] = ($isArabic ? 'اليوم: ' : 'Day: ') . (string) $read('day_name');
+        }
+        if ($read('t_group')) {
+            $extra[] = ($isArabic ? 'المجموعة: ' : 'Group: ') . (string) $read('t_group');
+        }
+        if ($read('t_repeats')) {
+            $extra[] = ($isArabic ? 'التكرارات: ' : 'Repeats: ') . (string) $read('t_repeats');
+        }
+        if ($read('t_rest')) {
+            $extra[] = ($isArabic ? 'الراحة: ' : 'Rest: ') . (string) $read('t_rest');
+        }
+        if ($read('d_calories')) {
+            $extra[] = ($isArabic ? 'السعرات: ' : 'Calories: ') . (string) $read('d_calories');
+        }
+        if ($read('d_protein')) {
+            $extra[] = ($isArabic ? 'البروتين: ' : 'Protein: ') . (string) $read('d_protein');
+        }
+        if ($read('d_carb')) {
+            $extra[] = ($isArabic ? 'الكربوهيدرات: ' : 'Carb: ') . (string) $read('d_carb');
+        }
+        if ($read('d_fats')) {
+            $extra[] = ($isArabic ? 'الدهون: ' : 'Fats: ') . (string) $read('d_fats');
+        }
+
+        $notes = trim(implode("\n", array_filter([$description, implode("\n", $extra)])));
+
+        return [
+            'id' => (int) ($read('id', 0) ?: 0),
+            'title' => $title,
+            'notes' => $notes,
+        ];
     }
 
     private function buildMobileLogSummary(GymTrainingMemberLog $log, array $details, string $lang): string
