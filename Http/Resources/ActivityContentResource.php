@@ -25,7 +25,7 @@ class ActivityContentResource extends JsonResource
                 "content" => $this->content ? $this->content : '',
                 "is_payment" => @env('APP_WEB_PAYMENT_ACTIVITY') == 1 ? 1 : 0,
                 "payment_link" => @env('APP_WEB_PAYMENT_ACTIVITY') == 1
-                    ? @env('APP_URL').'/'.route('sw.activity-mobile', ['id' => $this->id, 'lang' => $this->lang])
+                    ? route('sw.activity-mobile', ['id' => $this->id, 'lang' => $this->lang])
                     : "",
             ];
     }
