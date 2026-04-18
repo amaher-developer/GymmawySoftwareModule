@@ -38,6 +38,10 @@
     @endphp
     <style>
         * { box-sizing: border-box; }
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #fff;
@@ -74,6 +78,9 @@
             display: flex;
             align-items: flex-start;
             gap: 10px;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
         }
         .payment-option input[type="radio"] { margin-top: 4px; width: 20px; height: 20px; flex-shrink: 0; }
         .payment-option .payment-details {
@@ -90,9 +97,17 @@
             width: 100%;
             max-width: 100%;
             overflow: hidden;
+            min-width: 0;
         }
         #tabbyCard > * {
             max-width: 100% !important;
+            min-width: 0 !important;
+        }
+        #tabbyCard iframe {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            display: block !important;
         }
         #tabbyCard div:first-child { background-color: #f5f5f5 !important; }
         .form-control {
@@ -311,13 +326,13 @@
     @if($tabbyEnabled)
     <script src="https://checkout.tabby.ai/tabby-card.js"></script>
     <script>
-        var isNarrowMobile = window.matchMedia('(max-width: 420px)').matches;
+        var isNarrowMobile = window.matchMedia('(max-width: 480px)').matches;
         new TabbyCard({
             selector: '#tabbyCard',
             currency: '{{ $mainSettings->payments["tabby"]["currency"] ?? "SAR" }}',
             lang: '{{ app()->getLocale() }}',
             price: {{ $priceWithVat }},
-            size: isNarrowMobile ? 'small' : 'wide',
+            size: isNarrowMobile ? 'narrow' : 'wide',
             theme: 'black',
             header: false,
             publicKey: '{{ $mainSettings->payments["tabby"]["public_key"] ?? "" }}',
