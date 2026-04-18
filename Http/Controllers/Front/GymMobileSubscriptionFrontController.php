@@ -1109,7 +1109,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'cancel_url'       => $cancelUrl,
             'failure_url'      => $failureUrl,
             'notification_url' => route('tamara.webhook'),
-            'payment_type'     => $type . '_payment',
+            'payment_type'     => 'mobile_' . $type,
             'member_id'        => optional($this->currentMember)->id,
             'items'            => [[
                 'title' => $itemName,
@@ -1342,7 +1342,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'cancel_url'         => $cancelUrl,
             'failure_url'        => $failureUrl,
             'notification_url'   => route('tamara.webhook'),
-            'payment_type'       => 'member_subscription',
+            'payment_type'       => 'mobile_member_subscription',
             'member_id'          => optional($this->currentMember)->id,
             'subscription_id'    => $member['subscription_id'],
             'items'              => [[
@@ -1644,6 +1644,28 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         ]);
 
         $isAuthorised = in_array($authoriseStatus, ['authorised', 'authorized', 'fully_captured', 'partially_captured'], true);
+
+        // If the authorise call returned an unexpected/empty status, fall back to checking
+        // order status directly — the webhook may have already captured the order.
+        if (!$isAuthorised && !$autoCaptured) {
+            $orderStatus       = $this->tamaraGetOrderStatus($tamaraOrderId);
+            $orderStatusStr    = strtolower((string) ($orderStatus['status'] ?? ''));
+            $isAuthorised      = in_array($orderStatusStr, ['authorised', 'authorized', 'fully_captured', 'partially_captured', 'approved', 'captured'], true);
+
+            Log::info('Tamara Mobile order status fallback', [
+                'order_status' => $orderStatusStr,
+                'is_authorised' => $isAuthorised,
+                'order_id' => $tamaraOrderId,
+            ]);
+
+            if ($isAuthorised) {
+                // Already captured; skip capture step below by treating as auto-captured.
+                $autoCaptured    = true;
+                $authoriseStatus = $orderStatusStr;
+                $authorise       = $orderStatus;
+            }
+        }
+
         if (!$isAuthorised && !$autoCaptured) {
             $invoice->status = TypeConstants::FAILURE;
             $invoice->response_code = array_merge((array) $invoice->response_code, [
@@ -1656,22 +1678,41 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         // Capture if authorised and not already auto-captured.
         if (in_array($authoriseStatus, ['authorised', 'authorized'], true) && !$autoCaptured) {
+            $captureItemTitle = optional($invoice->subscription)->name
+                ?: (string) (((array) $invoice->response_code)['subscription_name'] ?? 'Gym Subscription');
+
             $capture = $this->tamaraCapturePayment(
                 $tamaraOrderId,
                 number_format((float) $invoice->amount, 2, '.', ''),
-                [['title' => optional($invoice->subscription)->name, 'quantity' => 1,
+                [['title' => $captureItemTitle, 'quantity' => 1,
                   'unit_price' => $invoice->amount, 'total_amount' => $invoice->amount,
                   'reference_id' => (string) $invoice->id]]
             );
             Log::info('Tamara Mobile capture', ['capture' => $capture]);
 
             $captureStatus = strtolower((string) ($capture['status'] ?? ''));
-            if (!($capture['capture_id'] ?? null) && !in_array($captureStatus, ['fully_captured', 'partially_captured'], true)) {
+            $captureOk     = ($capture['capture_id'] ?? null)
+                || in_array($captureStatus, ['fully_captured', 'partially_captured'], true);
+
+            if (!$captureOk) {
+                // Capture failed — check if order was already fully captured (e.g., concurrent request).
+                $orderStatus    = $this->tamaraGetOrderStatus($tamaraOrderId);
+                $orderStatusStr = strtolower((string) ($orderStatus['status'] ?? ''));
+                $captureOk      = in_array($orderStatusStr, ['fully_captured', 'partially_captured', 'approved', 'captured'], true);
+
+                Log::info('Tamara Mobile capture failed, checking order status', [
+                    'order_status' => $orderStatusStr,
+                    'capture_ok'   => $captureOk,
+                    'order_id'     => $tamaraOrderId,
+                ]);
+            }
+
+            if (!$captureOk) {
                 $invoice->status = TypeConstants::FAILURE;
                 $invoice->response_code = array_merge((array) $invoice->response_code, [
-                    'tamara_verify' => $request->all(),
+                    'tamara_verify'   => $request->all(),
                     'tamara_authorise' => $authorise,
-                    'tamara_capture' => $capture,
+                    'tamara_capture'  => $capture,
                 ]);
                 $invoice->save();
                 return redirect()->route('sw.mobile-payment.error');
@@ -2227,6 +2268,21 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $response->json() ?? [];
         } catch (\Exception $e) {
             Log::error('Tamara Mobile authorise error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    protected function tamaraGetOrderStatus(string $orderId): array
+    {
+        [$token, $baseUrl] = array_slice($this->getTamaraCredentials(), 0, 2);
+
+        try {
+            $response = Http::withoutVerifying()
+                ->withToken($token)
+                ->get("{$baseUrl}/orders/{$orderId}");
+            return $response->json() ?? [];
+        } catch (\Exception $e) {
+            Log::error('Tamara Mobile getOrderStatus error: ' . $e->getMessage());
             return [];
         }
     }
@@ -3050,7 +3106,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'cancel_url'       => $cancelUrl,
             'failure_url'      => $failureUrl,
             'notification_url' => route('tamara.webhook'),
-            'payment_type'     => 'upgrade_subscription',
+            'payment_type'     => 'mobile_upgrade_subscription',
             'member_id'        => $this->currentMember->id,
             'subscription_id'  => $sub['id'],
             'items'            => [['title' => $sub['name'], 'description' => $sub['content'] ?? '', 'quantity' => 1, 'unit_price' => $priceBeforeVat, 'total_amount' => $member['amount'], 'reference_id' => (string) $invoice->id]],
@@ -3450,7 +3506,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'cancel_url'       => $cancelUrl,
             'failure_url'      => $failureUrl,
             'notification_url' => route('tamara.webhook'),
-            'payment_type'     => 'pt_subscription',
+            'payment_type'     => 'mobile_pt_subscription',
             'member_id'        => optional($this->currentMember)->id,
             'subscription_id'  => $ptSub['id'],
             'items'            => [['title' => $ptSub['name'], 'description' => $ptSub['content'] ?? '', 'quantity' => 1, 'unit_price' => $priceBeforeVat, 'total_amount' => $totalAmount, 'reference_id' => (string) $invoice->id]],
