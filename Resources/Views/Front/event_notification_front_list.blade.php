@@ -231,6 +231,12 @@
                                 <code class="me-2">#freeze_end_date</code>
                                 <code class="me-2">#membership_resume_date</code>
                                 <code class="me-2">#days_remaining</code><br class="d-block mt-1">
+                                <code class="me-2">#pt_membership_name</code>
+                                <code class="me-2">#pt_membership_start_date</code>
+                                <code class="me-2">#pt_membership_expire_date</code><br class="d-block mt-1">
+                                <code class="me-2">#pt_membership_amount_paid</code>
+                                <code class="me-2">#pt_membership_amount_remaining</code>
+                                <code class="me-2">#pt_days_remaining</code><br class="d-block mt-1">
                                 <code class="me-2">#setting_name</code>
                                 <code class="me-2">#setting_phone</code>
                             </div>
