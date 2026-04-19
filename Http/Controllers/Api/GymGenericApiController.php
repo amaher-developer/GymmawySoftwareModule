@@ -153,20 +153,42 @@ class GymGenericApiController extends GenericController
         $this->return['result']['current_attendance_count'] = $currentAttendance;
         $this->return['result']['is_capacity_available']   = $maxCapacity > 0 ? ($currentAttendance < $maxCapacity ? 1 : 0) : 1;
 
-        // Today's PT classes
-        $todayDayName = strtolower(Carbon::now()->format('l')); // e.g. "monday"
-        $todayPTClasses = GymPTClass::where('is_active', true)
-            ->where('is_mobile', 1)
-            ->with(['pt_subscription.pt_trainers'])
-            ->get()
-            ->filter(function ($class) use ($todayDayName) {
-                $schedule = $class->schedule ?? [];
-                foreach ($schedule as $slot) {
-                    $day = strtolower($slot['day'] ?? $slot['name'] ?? '');
-                    if ($day === $todayDayName) return true;
-                }
-                return false;
-            })->values();
+        // Today's PT classes – scoped to the logged-in member's active PT memberships
+        $todayDayOfWeek = (int) Carbon::now()->dayOfWeek; // 0=Sunday … 6=Saturday
+        $todayStr       = Carbon::today()->toDateString();
+        $authMember     = Auth::guard('api')->user();
+
+        $todayPTClasses = collect();
+        if ($authMember) {
+            $ptMemberIds = \Modules\Software\Models\GymPTMember::where('member_id', $authMember->id)
+                ->where(function ($q) use ($todayStr) {
+                    $q->whereDate('joining_date', '<=', $todayStr)
+                      ->whereDate('expire_date',  '>=', $todayStr);
+                })
+                ->pluck('class_id')
+                ->merge(
+                    \Modules\Software\Models\GymPTMember::where('member_id', $authMember->id)
+                        ->where(function ($q) use ($todayStr) {
+                            $q->whereDate('joining_date', '<=', $todayStr)
+                              ->whereDate('expire_date',  '>=', $todayStr);
+                        })
+                        ->pluck('pt_class_id')
+                )
+                ->filter()
+                ->unique();
+
+            if ($ptMemberIds->isNotEmpty()) {
+                $todayPTClasses = GymPTClass::where('is_active', true)
+                    ->whereIn('id', $ptMemberIds)
+                    ->with(['pt_subscription.pt_trainers'])
+                    ->get()
+                    ->filter(function ($class) use ($todayDayOfWeek) {
+                        $workDays = $class->schedule['work_days'] ?? [];
+                        $slot = $workDays[$todayDayOfWeek] ?? null;
+                        return $slot && !empty($slot['status']);
+                    })->values();
+            }
+        }
 
         $this->return['result']['is_today_pt_classes'] = $todayPTClasses->isNotEmpty() ? 1 : 0;
         $this->return['result']['today_pt_classes']    = $todayPTClasses->isNotEmpty() ? PTResource::collection($todayPTClasses) : [];
