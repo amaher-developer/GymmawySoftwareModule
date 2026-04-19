@@ -181,6 +181,7 @@ class NotificationService
         $ptExpireDate = null;
         $ptAmountPaid = 0;
         $ptAmountRemaining = 0;
+        $ptTrainerName = '';
 
         if ($membership instanceof GymMemberSubscription) {
             $member = $membership->member;
@@ -202,6 +203,15 @@ class NotificationService
             $ptExpireDate = $expireDate;
             $ptAmountPaid = $amountPaid;
             $ptAmountRemaining = $amountRemaining;
+
+            // Resolve PT trainer name
+            $ptTrainerName = '';
+            if ($membership->trainer) {
+                $ptTrainerName = @$membership->trainer->name ?? '';
+            } elseif ($membership->pt_trainer_id > 0) {
+                $ptTrainer = \Modules\Software\Models\GymPTTrainer::find($membership->pt_trainer_id);
+                $ptTrainerName = $ptTrainer?->name ?? '';
+            }
         }
 
         $dynamic_variables = [
@@ -220,6 +230,7 @@ class NotificationService
             '#pt_membership_start_date' => $ptStartDate ? Carbon::parse($ptStartDate)->addHours(12)->toDateString() : '',
             '#pt_membership_expire_date' => $ptExpireDate ? Carbon::parse($ptExpireDate)->toDateString() : '',
             '#pt_days_remaining' => $ptExpireDate ? Carbon::now()->diffInDays(Carbon::parse($ptExpireDate), false) : 0,
+            '#pt_trainer_name' => $ptTrainerName ?? '',
             '#setting_phone' => $setting->phone ?? '',
             '#setting_name' => $setting->name ?? '',
             '#days_remaining' => $expireDate ? Carbon::now()->diffInDays(Carbon::parse($expireDate), false) : 0,

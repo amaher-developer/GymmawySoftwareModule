@@ -236,7 +236,8 @@
                                 <code class="me-2">#pt_membership_expire_date</code><br class="d-block mt-1">
                                 <code class="me-2">#pt_membership_amount_paid</code>
                                 <code class="me-2">#pt_membership_amount_remaining</code>
-                                <code class="me-2">#pt_days_remaining</code><br class="d-block mt-1">
+                                <code class="me-2">#pt_days_remaining</code>
+                                <code class="me-2">#pt_trainer_name</code><br class="d-block mt-1">
                                 <code class="me-2">#setting_name</code>
                                 <code class="me-2">#setting_phone</code>
                             </div>
