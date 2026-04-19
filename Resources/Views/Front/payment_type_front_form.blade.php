@@ -77,11 +77,30 @@
                         <label class="required form-label">{{ trans('sw.name_in_english')}}</label>
                         <!--end::Label-->
                         <!--begin::Input-->
-                        <input type="text" name="name_en" class="form-control mb-2" 
-                               placeholder="{{ trans('sw.enter_name_in_english')}}" 
-                               value="{{ old('name_en', $payment_type->name_en) }}" 
+                        <input type="text" name="name_en" class="form-control mb-2"
+                               placeholder="{{ trans('sw.enter_name_in_english')}}"
+                               value="{{ old('name_en', $payment_type->name_en) }}"
                                id="name_en" required />
                         <!--end::Input-->
+                    </div>
+                    <!--end::Input group-->
+
+                    <!--begin::Input group-->
+                    <div class="mb-10 fv-row">
+                        <!--begin::Label-->
+                        <label class="form-label">{{ trans('sw.payment_gateway')}}</label>
+                        <span class="text-muted fs-7 ms-2">{{ trans('sw.payment_method_binding_hint', [], null) ?: '(' . trans('sw.optional') . ')' }}</span>
+                        <!--end::Label-->
+                        <!--begin::Select-->
+                        <select name="payment_method" class="form-select form-select-solid">
+                            <option value="">— {{ trans('sw.no_binding') ?: trans('sw.none') }} —</option>
+                            <option value="4"  @selected(old('payment_method', $payment_type->payment_method) == '4')>Tabby</option>
+                            <option value="5"  @selected(old('payment_method', $payment_type->payment_method) == '5')>Paymob</option>
+                            <option value="6"  @selected(old('payment_method', $payment_type->payment_method) == '6')>Tamara</option>
+                            <option value="8"  @selected(old('payment_method', $payment_type->payment_method) == '8')>PayTabs</option>
+                        </select>
+                        <!--end::Select-->
+                        <div class="text-muted fs-7 mt-2">{{ trans('sw.payment_method_binding_desc', [], null) ?: 'When a member pays via this gateway, this payment type will be used in records.' }}</div>
                     </div>
                     <!--end::Input group-->
                 </div>

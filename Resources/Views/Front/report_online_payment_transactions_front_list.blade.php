@@ -370,7 +370,16 @@
                                     <span class="fw-bold">{{ @$order->phone }}</span>
                                 </td>
                                 <td>
-                                    <span class="fw-bold">{{ @$order->subscription->name }}</span>
+                                    @php
+                                        $rc = (array) $order->response_code;
+                                        $membershipLabel = $order->subscription->name
+                                            ?? ($rc['subscription_name'] ?? null)
+                                            ?? (($order->invoice_type === 'pt_subscription') ? trans('sw.pt_subscription') : null)
+                                            ?? (($order->invoice_type === 'activity')        ? trans('sw.activity')         : null)
+                                            ?? (($order->invoice_type === 'store')           ? trans('sw.store_order')      : null)
+                                            ?? '—';
+                                    @endphp
+                                    <span class="fw-bold">{{ $membershipLabel }}</span>
                                 </td>
                                 <td class="text-center">
                                     <span class="fw-bold">{{ @$order->amount }}</span>
@@ -408,7 +417,16 @@
                                     <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
                                         @if($order->member_subscription_id)
                                             <!--begin::Invoice-->
-                                            <a href="{{route('sw.showOrderSubscription',$order->member_subscription_id)}}" class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
+                                            @php
+                                                $invoiceType = $order->invoice_type ?? 'subscription';
+                                                $invoiceRoute = match($invoiceType) {
+                                                    'pt_subscription' => route('sw.showOrderPTSubscription', $order->member_subscription_id),
+                                                    'activity'        => route('sw.showOrderSubscriptionNonMember', $order->member_subscription_id),
+                                                    'store'           => route('sw.showStoreOrder', $order->member_subscription_id),
+                                                    default           => route('sw.showOrderSubscription', $order->member_subscription_id),
+                                                };
+                                            @endphp
+                                            <a href="{{ $invoiceRoute }}" class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
                                                title="{{ trans('sw.invoice')}}">
                                                 <i class="ki-outline ki-document fs-2"></i>
                                             </a>

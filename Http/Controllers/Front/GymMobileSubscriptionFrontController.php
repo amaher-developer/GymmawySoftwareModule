@@ -2218,6 +2218,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 // ── Update invoice ─────────────────────────────────────────
                 $invoice->status                 = TypeConstants::SUCCESS;
                 $invoice->member_subscription_id = $memberSub->id;
+                $invoice->invoice_type           = 'subscription';
                 $invoice->save();
 
                 // ── MoneyBox entry ─────────────────────────────────────────
@@ -2523,8 +2524,12 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $result = [];
                 if (!empty($rc['is_activity'])) {
                     $result = $this->finalizeActivityMobileCheckout($lockedInvoice, $rc);
+                    $lockedInvoice->invoice_type           = 'activity';
+                    $lockedInvoice->member_subscription_id = $result['non_member_id'] ?? null;
                 } elseif (!empty($rc['is_store'])) {
                     $result = $this->finalizeStoreMobileCheckout($lockedInvoice, $rc);
+                    $lockedInvoice->invoice_type           = 'store';
+                    $lockedInvoice->member_subscription_id = $result['store_order_id'] ?? null;
                 }
 
                 $lockedInvoice->response_code = array_merge($rc, $result, ['generic_finalized' => true]);
@@ -3271,6 +3276,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
                 $invoice->status                 = TypeConstants::SUCCESS;
                 $invoice->member_subscription_id = $newMemberSub->id;
+                $invoice->invoice_type           = 'subscription';
                 $invoice->save();
 
                 $this->createMoneyBoxEntry($invoice, $member, TypeConstants::RenewMember, $newMemberSub->id);
@@ -3726,6 +3732,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
                 // Store pt_member_id for idempotency; reuse member_subscription_id column
                 $invoice->member_subscription_id = $ptMember->id;
+                $invoice->invoice_type           = 'pt_subscription';
                 $invoice->status                 = TypeConstants::SUCCESS;
                 $invoice->response_code          = array_merge($rc, ['pt_member_id' => $ptMember->id]);
                 $invoice->save();

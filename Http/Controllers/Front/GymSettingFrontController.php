@@ -440,6 +440,7 @@ class GymSettingFrontController extends GymGenericFrontController
     public function storePaymentType(GymPaymentTypeRequest $request)
     {
         $prepare_inputs = $this->prepare_inputs($request->except(['_token']));
+        $prepare_inputs['payment_method'] = $request->filled('payment_method') ? (int) $request->input('payment_method') : null;
         $payment_type = GymPaymentType::create($prepare_inputs);
         $payment_type->payment_id = $payment_type->id - 1;
         $payment_type->save();
@@ -466,6 +467,7 @@ class GymSettingFrontController extends GymGenericFrontController
     {
         $payment_type = GymPaymentType::withTrashed()->find($id);
         $prepare_inputs = $this->prepare_inputs($request->except(['_token']));
+        $prepare_inputs['payment_method'] = $request->filled('payment_method') ? (int) $request->input('payment_method') : null;
 //        $prepare_inputs['payment_id'] = $payment_type->id - 1;
         $payment_type->update($prepare_inputs);
 
