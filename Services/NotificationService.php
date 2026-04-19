@@ -12,6 +12,7 @@ use Modules\Software\Classes\WAUltramsg;
 use Modules\Software\Models\GymEventNotification;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberSubscription;
+use Modules\Software\Models\GymPTMember;
 
 class NotificationService
 {
@@ -26,12 +27,12 @@ class NotificationService
      * Send notification for a specific event
      *
      * @param string $eventCode The event code (new_member, renew_member, before_expired_member, expired_member, etc.)
-     * @param GymMemberSubscription $membership The member subscription
+    * @param mixed $membership The member subscription (regular or PT)
      * @param string|null $phone Override phone number (optional)
      * @param int|null $branchSettingId Branch setting ID (optional)
      * @return array Result with success status and messages
      */
-    public function sendEventNotification(string $eventCode, GymMemberSubscription $membership, ?string $phone = null, ?int $branchSettingId = null): array
+    public function sendEventNotification(string $eventCode, $membership, ?string $phone = null, ?int $branchSettingId = null): array
     {
         $result = [
             'success' => false,
@@ -53,7 +54,12 @@ class NotificationService
         }
 
         // Get member phone
-        $memberPhone = $phone ?? $membership->member->phone ?? null;
+        $member = null;
+        if ($membership instanceof GymMemberSubscription || $membership instanceof GymPTMember) {
+            $member = $membership->member;
+        }
+
+        $memberPhone = $phone ?? @$member->phone;
         if (!$memberPhone) {
             $result['message'] = 'No phone number available';
             return $result;
@@ -64,17 +70,17 @@ class NotificationService
 
         // Send SMS
         if ($this->mainSettings->active_sms && env('SMS_GATEWAY')) {
-            $result['sms_sent'] = $this->sendSMS($memberPhone, $msg, $membership->member->id ?? null);
+            $result['sms_sent'] = $this->sendSMS($memberPhone, $msg, @$member->id);
         }
 
         // Send WhatsApp via Ultramsg
         if ($this->mainSettings->active_wa && env('WA_GATEWAY') == 'ULTRA') {
-            $result['wa_sent'] = $this->sendWhatsAppUltra($memberPhone, $msg, $membership->member->id ?? null);
+            $result['wa_sent'] = $this->sendWhatsAppUltra($memberPhone, $msg, @$member->id);
         }
 
         // Send WhatsApp via WA Token
         if ($this->mainSettings->active_wa && env('WA_USER_TOKEN')) {
-            $result['wa_sent'] = $this->sendWhatsAppToken($memberPhone, $msg, $membership->member->id ?? null);
+            $result['wa_sent'] = $this->sendWhatsAppToken($memberPhone, $msg, @$member->id);
         }
 
         $result['success'] = $result['sms_sent'] || $result['wa_sent'];
@@ -158,25 +164,65 @@ class NotificationService
     /**
      * Replace dynamic variables in message
      */
-    public function dynamicMsg(string $msg = '', ?GymMemberSubscription $membership = null, ?Setting $setting = null): string
+    public function dynamicMsg(string $msg = '', $membership = null, ?Setting $setting = null): string
     {
         if (!$membership) {
             return $msg;
         }
 
+        $member = null;
+        $membershipName = '';
+        $startDate = null;
+        $expireDate = null;
+        $amountPaid = 0;
+        $amountRemaining = 0;
+        $ptMembershipName = '';
+        $ptStartDate = null;
+        $ptExpireDate = null;
+        $ptAmountPaid = 0;
+        $ptAmountRemaining = 0;
+
+        if ($membership instanceof GymMemberSubscription) {
+            $member = $membership->member;
+            $membershipName = @$membership->subscription->name;
+            $startDate = $membership->joining_date;
+            $expireDate = $membership->expire_date;
+            $amountPaid = $membership->amount_paid ?? 0;
+            $amountRemaining = $membership->amount_remaining ?? 0;
+        } elseif ($membership instanceof GymPTMember) {
+            $member = $membership->member;
+            $membershipName = @$membership->pt_subscription->name ?: @$membership->resolvedClass->name;
+            $startDate = $membership->joining_date ?? $membership->start_date;
+            $expireDate = $membership->expire_date ?? $membership->end_date;
+            $amountPaid = $membership->amount_paid ?? $membership->paid_amount ?? 0;
+            $amountRemaining = $membership->amount_remaining ?? 0;
+
+            $ptMembershipName = $membershipName;
+            $ptStartDate = $startDate;
+            $ptExpireDate = $expireDate;
+            $ptAmountPaid = $amountPaid;
+            $ptAmountRemaining = $amountRemaining;
+        }
+
         $dynamic_variables = [
-            '#member_name' => $membership->member->name ?? '',
-            '#member_code' => (int)($membership->member->code ?? 0),
-            '#member_phone' => $membership->member->phone ?? '',
-            '#membership_start_date' => $membership->joining_date ? Carbon::parse($membership->joining_date)->addHours(12)->toDateString() : '',
-            '#membership_expire_date' => $membership->expire_date ? Carbon::parse($membership->expire_date)->toDateString() : '',
+            '#member_name' => @$member->name ?? '',
+            '#member_code' => (int)(@$member->code ?? 0),
+            '#member_phone' => @$member->phone ?? '',
+            '#membership_start_date' => $startDate ? Carbon::parse($startDate)->addHours(12)->toDateString() : '',
+            '#membership_expire_date' => $expireDate ? Carbon::parse($expireDate)->toDateString() : '',
             '#membership_resume_date' => $membership->end_freeze_date ? Carbon::parse($membership->end_freeze_date)->toDateString() : '',
-            '#membership_amount_paid' => $membership->amount_paid ?? 0,
-            '#membership_amount_remaining' => $membership->amount_remaining ?? 0,
-            '#membership_name' => $membership->subscription->name ?? '',
+            '#membership_amount_paid' => $amountPaid,
+            '#membership_amount_remaining' => $amountRemaining,
+            '#membership_name' => $membershipName ?? '',
+            '#pt_membership_name' => $ptMembershipName ?? '',
+            '#pt_membership_amount_paid' => $ptAmountPaid,
+            '#pt_membership_amount_remaining' => $ptAmountRemaining,
+            '#pt_membership_start_date' => $ptStartDate ? Carbon::parse($ptStartDate)->addHours(12)->toDateString() : '',
+            '#pt_membership_expire_date' => $ptExpireDate ? Carbon::parse($ptExpireDate)->toDateString() : '',
+            '#pt_days_remaining' => $ptExpireDate ? Carbon::now()->diffInDays(Carbon::parse($ptExpireDate), false) : 0,
             '#setting_phone' => $setting->phone ?? '',
             '#setting_name' => $setting->name ?? '',
-            '#days_remaining' => $membership->expire_date ? Carbon::now()->diffInDays(Carbon::parse($membership->expire_date), false) : 0,
+            '#days_remaining' => $expireDate ? Carbon::now()->diffInDays(Carbon::parse($expireDate), false) : 0,
         ];
 
         foreach ($dynamic_variables as $key => $value) {

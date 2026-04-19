@@ -35,6 +35,7 @@ use Modules\Software\Models\GymAiRecommendation;
 use Modules\Software\Models\GymTrainingPlan;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserLog;
+use Modules\Software\Services\NotificationService;
 
 /**
  * GymMobileSubscriptionFrontController
@@ -2127,6 +2128,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
     protected function finalizeMobileCheckout(GymOnlinePaymentInvoice $invoice, string $joiningDate): ?GymMemberSubscription
     {
         $rc = (array) $invoice->response_code;
+        $notificationPayload = null;
 
         // Delegate to upgrade finalizer when flagged
         if (!empty($rc['is_upgrade'])) {
@@ -2157,7 +2159,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         DB::selectOne('SELECT GET_LOCK(?, 30) AS locked', [$lockKey]);
 
         try {
-            return DB::transaction(function () use ($invoice, $joiningDate, $subscription) {
+            $memberSub = DB::transaction(function () use ($invoice, $joiningDate, $subscription, &$notificationPayload) {
                 // Re-read with exclusive row lock
                 $invoice = GymOnlinePaymentInvoice::where('id', $invoice->id)->lockForUpdate()->first();
 
@@ -2169,6 +2171,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 // ── Resolve or create member ───────────────────────────────
                 $member        = null;
                 $typeOfPayment = TypeConstants::RenewMember;
+                $isNewMember   = false;
 
                 if ($invoice->member_id) {
                     $member = GymMember::find($invoice->member_id);
@@ -2190,6 +2193,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                         'dob'     => $invoice->dob,
                     ]);
                     $typeOfPayment = TypeConstants::CreateMember;
+                    $isNewMember = true;
                 }
 
                 // ── Create member subscription ─────────────────────────────
@@ -2250,8 +2254,26 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     ]);
                 }
 
+                $notificationPayload = [
+                    'event_code' => $isNewMember ? 'new_member' : 'renew_member',
+                    'membership' => $memberSub->loadMissing(['member', 'subscription']),
+                    'phone' => $member->phone ?? null,
+                    'branch_setting_id' => $this->resolveBranchSettingId($member),
+                ];
+
                 return $memberSub;
             });
+
+            if ($memberSub && $notificationPayload) {
+                $this->sendMembershipEventNotification(
+                    $notificationPayload['event_code'],
+                    $notificationPayload['membership'],
+                    $notificationPayload['phone'],
+                    $notificationPayload['branch_setting_id']
+                );
+            }
+
+            return $memberSub;
         } finally {
             DB::selectOne('SELECT RELEASE_LOCK(?)', [$lockKey]);
         }
@@ -3635,6 +3657,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $ptClassTrainerId = (int) ($rc['pt_class_trainer_id'] ?? 0);
         $ptSubscriptionId = (int) ($rc['pt_subscription_id'] ?? 0);
         $totalSessions    = (int) ($rc['pt_total_sessions'] ?? 0);
+        $notificationPayload = null;
 
         $ptClass = \Modules\Software\Models\GymPTClass::find($ptClassId);
         if (!$ptClass) {
@@ -3646,7 +3669,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         DB::selectOne('SELECT GET_LOCK(?, 30) AS locked', [$lockKey]);
 
         try {
-            return DB::transaction(function () use ($invoice, $joiningDate, $ptClass, $ptClassId, $ptClassTrainerId, $ptSubscriptionId, $totalSessions) {
+            $ptMemberId = DB::transaction(function () use ($invoice, $joiningDate, $ptClass, $ptClassId, $ptClassTrainerId, $ptSubscriptionId, $totalSessions, &$notificationPayload) {
                 $invoice = GymOnlinePaymentInvoice::where('id', $invoice->id)->lockForUpdate()->first();
 
                 // Idempotency: check if pt_member_id already set in response_code
@@ -3788,10 +3811,50 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     ]);
                 }
 
+                $notificationPayload = [
+                    'event_code' => 'new_pt_member',
+                    'membership' => $ptMember->loadMissing(['member', 'pt_subscription', 'class']),
+                    'phone' => $member->phone ?? null,
+                    'branch_setting_id' => $this->resolveBranchSettingId($member),
+                ];
+
                 return $ptMember->id;
             });
+
+            if ($ptMemberId && $notificationPayload) {
+                $this->sendMembershipEventNotification(
+                    $notificationPayload['event_code'],
+                    $notificationPayload['membership'],
+                    $notificationPayload['phone'],
+                    $notificationPayload['branch_setting_id']
+                );
+            }
+
+            return $ptMemberId;
         } finally {
             DB::selectOne('SELECT RELEASE_LOCK(?)', [$lockKey]);
+        }
+    }
+
+    protected function sendMembershipEventNotification(string $eventCode, $membership, ?string $phone = null, ?int $branchSettingId = null): void
+    {
+        try {
+            $notificationService = app(NotificationService::class);
+            $result = $notificationService->sendEventNotification($eventCode, $membership, $phone, $branchSettingId);
+
+            if (!$result['success']) {
+                Log::warning('Mobile event notification was not sent', [
+                    'event_code' => $eventCode,
+                    'message' => $result['message'] ?? null,
+                    'membership_id' => $membership->id ?? null,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Mobile event notification dispatch failed', [
+                'event_code' => $eventCode,
+                'membership_id' => $membership->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

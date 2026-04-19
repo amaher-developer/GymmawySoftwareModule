@@ -24,6 +24,7 @@ use Modules\Software\Repositories\GymPTMemberRepository;
 use Modules\Software\Services\PT\PTCommissionService;
 use Modules\Software\Services\PT\PTEnrollmentService;
 use Modules\Software\Services\PT\PTSessionService;
+use Modules\Software\Services\NotificationService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Carbon\Carbon;
@@ -436,6 +437,24 @@ class GymPTMemberFrontController extends GymGenericFrontController
         ]);
 
         $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+        try {
+            $member->loadMissing(['member', 'pt_subscription']);
+            $notifyPhone = @$member->member->phone ?: @$memberSubscription->phone;
+
+            (new NotificationService())->sendEventNotification(
+                'new_pt_member',
+                $member,
+                $notifyPhone,
+                @$member->branch_setting_id
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to send new_pt_member notification', [
+                'pt_member_id' => $member->id,
+                'member_id' => $member->member_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $this->processZatcaInvoiceForPtMember($member, (float) $amount_paid, (float) $vat, $moneyBox);
 
