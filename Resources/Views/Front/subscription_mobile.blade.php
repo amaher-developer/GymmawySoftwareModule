@@ -251,6 +251,16 @@
             <input type="hidden" name="gender"  value="{{ $currentUser->gender }}">
             <input type="hidden" name="dob"     value="{{ $currentUser->dob ? \Carbon\Carbon::parse($currentUser->dob)->format('Y-m-d') : '' }}">
             <input type="hidden" name="address" value="{{ $currentUser->address }}">
+            {{-- Show member identity to confirm who is paying --}}
+            <div style="background:#f0f7ff;border:1px solid #b8d4ef;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+                <div style="font-size:13px;color:#555;margin-bottom:4px;">{{ trans('front.member_name') }}</div>
+                <div style="font-size:15px;font-weight:600;color:#1a3a5c;">{{ $currentUser->name }}</div>
+                @if($currentUser->code)
+                <div style="font-size:12px;color:#777;margin-top:4px;">
+                    {{ trans('front.member_code') }}: <strong>{{ ltrim($currentUser->getRawOriginal('code') ?? $currentUser->code, '0') ?: '—' }}</strong>
+                </div>
+                @endif
+            </div>
         @endif
 
         {{-- Joining date --}}

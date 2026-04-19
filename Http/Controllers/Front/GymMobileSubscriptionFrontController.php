@@ -2176,6 +2176,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 if (!$member && $invoice->phone) {
                     $member = GymMember::where('phone', $invoice->phone)->first();
                 }
+                if (!$member && $invoice->email) {
+                    $member = GymMember::where('email', $invoice->email)->first();
+                }
                 if (!$member) {
                     $maxCode = str_pad(((int) GymMember::withTrashed()->max('code') + 1), 14, '0', STR_PAD_LEFT);
                     $member  = GymMember::create([
@@ -2209,7 +2212,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'amount_before_discount' => $subscription->price ?? 0,
                     'discount_value'         => $this->calculateDiscountValue($subscription),
                     'discount_type'          => $this->getDiscountType($subscription),
-                    'payment_type'           => TypeConstants::ONLINE_PAYMENT,
+                    'payment_type'           => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
                 ]);
 
                 // ── Update invoice ─────────────────────────────────────────
@@ -2341,11 +2344,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     protected function resolveMemberFromRequest(Request $request, bool $allowTokenFallback = true): ?GymMember
     {
-        // 1) If guard already resolved the member from Authorization header, use it directly.
-        $guardMember = $request->user('api') ?: \Auth::guard('api')->user();
-        if ($guardMember instanceof GymMember) {
-            return $guardMember;
-        }
+        
 
         // 2) Primary mobile-web resolver: member_id coming from payment links.
         $requestedMemberId = (int) ($request->input('member_id') ?: 0);
@@ -2402,6 +2401,12 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             if ($member) {
                 return $member;
             }
+        }
+
+        // 1) If guard already resolved the member from Authorization header, use it directly.
+        $guardMember = $request->user('api') ?: \Auth::guard('api')->user();
+        if ($guardMember instanceof GymMember) {
+            return $guardMember;
         }
 
         return null;
@@ -2560,7 +2565,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $branchSettingId = $this->resolveBranchSettingId($member);
-        $userId = $this->resolveSystemUserId($member, $branchSettingId);
+        $userId = null;
 
         $activitiesPayload = $activities->map(fn($a) => [
             'id'                   => (int) ($a->id ?? 0),
@@ -2588,7 +2593,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'amount_before_discount' => $totalBaseAmount,
             'discount_value'         => 0,
             'discount_type'          => 0,
-            'payment_type'           => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'payment_type'           => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
             'branch_setting_id'      => $branchSettingId,
         ];
 
@@ -2611,15 +2616,15 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'vat' => (float) ($invoice->vat ?? 0),
             'notes' => $notes,
             'type' => TypeConstants::CreateNonMember,
-            'payment_type' => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'payment_type' => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
             'branch_setting_id' => $branchSettingId,
-            'user_id' => $userId,
+            'user_id' => null,
             'non_member_subscription_id' => (int) $nonMember->id,
         ]);
 
-        $this->createUserLogEntry($notes, TypeConstants::CreateMoneyBoxAdd, $userId, $branchSettingId);
+        $this->createUserLogEntry($notes, TypeConstants::CreateMoneyBoxAdd, null, $branchSettingId);
         $memberNotes = str_replace(':name', (string) ($invoice->name ?? trans('sw.guest')), trans('sw.add_non_member'));
-        $this->createUserLogEntry($memberNotes, TypeConstants::CreateNonMember, $userId, $branchSettingId);
+        $this->createUserLogEntry($memberNotes, TypeConstants::CreateNonMember, null, $branchSettingId);
 
         return ['non_member_id' => (int) $nonMember->id];
     }
@@ -2647,7 +2652,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $branchSettingId = $this->resolveBranchSettingId($member);
-        $userId = $this->resolveSystemUserId($member, $branchSettingId);
+        $userId = null;
 
         $productsJson = [];
         $totalBaseAmount = 0;
@@ -2669,7 +2674,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'discount_value'         => 0,
             'discount_type'          => 0,
             'vat'                    => (float) ($invoice->vat ?? 0),
-            'payment_type'           => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'payment_type'           => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
             'payment_status'         => 'paid',
             'total_amount'           => (float) $invoice->amount,
             'branch_setting_id'      => $branchSettingId,
@@ -2715,14 +2720,14 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'vat'              => (float) ($invoice->vat ?? 0),
             'notes'            => $notes,
             'type'             => TypeConstants::CashSale,
-            'payment_type'     => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+            'payment_type'     => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
             'branch_setting_id'=> $branchSettingId,
-            'user_id'          => $userId,
+            'user_id'          => null,
             'store_order_id'   => (int) $order->id,
             'is_store_balance' => 0,
         ]);
 
-        $this->createUserLogEntry($notes, TypeConstants::CreateStoreOrder, $userId, $branchSettingId);
+        $this->createUserLogEntry($notes, TypeConstants::CreateStoreOrder, null, $branchSettingId);
 
         return ['store_order_id' => (int) $order->id, 'store_product_items' => $storeItems];
     }
@@ -2842,10 +2847,26 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'notes'                   => $notes,
             'member_id'               => $member->id,
             'type'                    => $type,
-            'payment_type'            => TypeConstants::ONLINE_PAYMENT,
+            'payment_type'            => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
             'member_subscription_id'  => $memberSubId,
             'online_subscription_id'  => $invoice->id,
         ]);
+    }
+
+    /**
+     * Resolve the sw_gym_payment_types.payment_id for a given gateway TypeConstant.
+     * Looks up a row whose payment_method column matches the gateway constant
+     * (e.g. Tabby=4, Paymob=5, Tamara=6, PayTabs=8).
+     * Falls back to ONLINE_PAYMENT (1) if no row is configured for this gateway.
+     */
+    protected function resolveGatewayPaymentTypeId(int $paymentMethod): int
+    {
+        static $cache = [];
+        if (!isset($cache[$paymentMethod])) {
+            $row = \Modules\Software\Models\GymPaymentType::where('payment_method', $paymentMethod)->first();
+            $cache[$paymentMethod] = $row ? (int) $row->payment_id : TypeConstants::ONLINE_PAYMENT;
+        }
+        return $cache[$paymentMethod];
     }
 
     protected function computeAmountAfter(float $amount, float $amountBefore, int $operation): float
@@ -3245,7 +3266,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'amount_before_discount' => $newSubscription->price ?? 0,
                     'discount_value'         => $this->calculateDiscountValue($newSubscription),
                     'discount_type'          => $this->getDiscountType($newSubscription),
-                    'payment_type'           => TypeConstants::ONLINE_PAYMENT,
+                    'payment_type'           => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
                 ]);
 
                 $invoice->status                 = TypeConstants::SUCCESS;
@@ -3694,7 +3715,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'amount_remaining'   => 0,
                     'vat'                => (float) ($invoice->vat ?? 0),
                     'vat_percentage'     => (int) ($invoice->vat_percentage ?? 0),
-                    'payment_type'       => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+                    'payment_type'       => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
                     'is_active'          => 1,
                     'branch_setting_id'  => $member->branch_setting_id ?? null,
                 ];
@@ -3726,14 +3747,14 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'vat' => (float) ($invoice->vat ?? 0),
                     'notes' => $notes,
                     'type' => TypeConstants::CreatePTMember,
-                    'payment_type' => (int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT),
+                    'payment_type' => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
                     'branch_setting_id' => $this->resolveBranchSettingId($member),
-                    'user_id' => $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)),
+                    'user_id' => null,
                     'member_pt_subscription_id' => (int) $ptMember->id,
                 ]);
 
-                $this->createUserLogEntry($notes, TypeConstants::CreateMoneyBoxAdd, $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)), $this->resolveBranchSettingId($member));
-                $this->createUserLogEntry($notes, TypeConstants::CreatePTMember, $this->resolveSystemUserId($member, $this->resolveBranchSettingId($member)), $this->resolveBranchSettingId($member));
+                $this->createUserLogEntry($notes, TypeConstants::CreateMoneyBoxAdd, null, $this->resolveBranchSettingId($member));
+                $this->createUserLogEntry($notes, TypeConstants::CreatePTMember, null, $this->resolveBranchSettingId($member));
 
                 // ── ZATCA Billing Invoice entry ─────────────────────────────
                 $totalAmount     = (float) ($invoice->amount ?? 0);
