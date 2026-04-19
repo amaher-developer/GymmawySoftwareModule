@@ -186,6 +186,16 @@
         <input type="hidden" name="pt_class_trainer_id" id="hiddenClassTrainerId" value="">
         <input type="hidden" name="amount"             id="hiddenAmount"         value="">
         <input type="hidden" name="vat_percentage"     value="{{ $vatPercentage }}">
+        
+        <div style="background:#f0f7ff;border:1px solid #b8d4ef;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+            <div style="font-size:13px;color:#555;margin-bottom:4px;">{{ trans('front.member_name') }}</div>
+            <div style="font-size:15px;font-weight:600;color:#1a3a5c;">{{ $currentUser->name }}</div>
+            @if($currentUser->code)
+            <div style="font-size:12px;color:#777;margin-top:4px;">
+                {{ trans('front.member_code') }}: <strong>{{ ltrim($currentUser->getRawOriginal('code') ?? $currentUser->code, '0') ?: '—' }}</strong>
+            </div>
+            @endif
+        </div>
 
         {{-- CLASS SELECTION --}}
         <h5 class="section-title">{{ trans('sw.pt_choose_class') }}</h5>
