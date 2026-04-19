@@ -154,11 +154,34 @@ class GymGenericApiController extends GenericController
         $this->return['result']['is_capacity_available']   = $maxCapacity > 0 ? ($currentAttendance < $maxCapacity ? 1 : 0) : 1;
 
         // Today's PT classes – scoped to the logged-in member's active PT memberships
+        // Today's PT classes – always return general classes; if logged in also return member's own
         $todayDayOfWeek = (int) Carbon::now()->dayOfWeek; // 0=Sunday … 6=Saturday
         $todayStr       = Carbon::today()->toDateString();
         $authMember     = Auth::guard('api')->user();
 
-        $todayPTClasses = collect();
+        // ── General: all active mobile PT classes scheduled for today (no trainer list) ──
+        $generalPTClasses = GymPTClass::where('is_active', true)
+            ->where('is_mobile', 1)
+            ->with(['pt_subscription'])
+            ->get()
+            ->map(function ($ptClass) use ($todayDayOfWeek) {
+                $workDays = $ptClass->schedule['work_days'] ?? [];
+                $slot = $workDays[$todayDayOfWeek] ?? null;
+                if (!$slot || empty($slot['status'])) return null;
+                $startTime = !empty($slot['start']) ? Carbon::parse($slot['start'])->format('g:i A') : null;
+                return [
+                    'id'         => $ptClass->id,
+                    'name'       => $ptClass->name ?? (@$ptClass->pt_subscription->name ?? '-'),
+                    'image'      => @$ptClass->pt_subscription->image ?? null,
+                    'start_time' => $startTime,
+                ];
+            })->filter()->values();
+
+        $this->return['result']['is_today_pt_classes'] = $generalPTClasses->isNotEmpty() ? 1 : 0;
+        $this->return['result']['today_pt_classes']    = $generalPTClasses->isNotEmpty() ? $generalPTClasses : [];
+
+        // ── Member-specific: member's own PT classes today with trainer & session info ──
+        $memberPTClasses = collect();
         if ($authMember) {
             $ptMembers = \Modules\Software\Models\GymPTMember::with([
                     'class.activeClassTrainers.trainer',
@@ -174,7 +197,7 @@ class GymGenericApiController extends GenericController
                 })
                 ->get();
 
-            $todayPTClasses = $ptMembers->map(function ($ptMember) use ($todayDayOfWeek) {
+            $memberPTClasses = $ptMembers->map(function ($ptMember) use ($todayDayOfWeek) {
                 $ptClass = $ptMember->class ?? $ptMember->legacyClass ?? null;
                 if (!$ptClass) return null;
 
@@ -212,7 +235,6 @@ class GymGenericApiController extends GenericController
                     'name'               => $ptClass->name ?? (@$ptClass->pt_subscription->name ?? '-'),
                     'image'              => @$ptClass->pt_subscription->image ?? null,
                     'start_time'         => $startTime,
-                    'trainers'           => $trainerList,
                     'trainer_name'       => !empty($trainerList) ? $trainerList[0]['name']  : '-',
                     'trainer_image'      => !empty($trainerList) ? $trainerList[0]['image'] : null,
                     'total_sessions'     => $totalSessions,
@@ -222,8 +244,8 @@ class GymGenericApiController extends GenericController
             })->filter()->values();
         }
 
-        $this->return['result']['is_today_pt_classes'] = $todayPTClasses->isNotEmpty() ? 1 : 0;
-        $this->return['result']['today_pt_classes']    = $todayPTClasses->isNotEmpty() ? $todayPTClasses : [];
+        $this->return['result']['is_my_today_pt_classes'] = $memberPTClasses->isNotEmpty() ? 1 : 0;
+        $this->return['result']['my_today_pt_classes']    = $memberPTClasses->isNotEmpty() ? $memberPTClasses : [];
 
         if(@request('device_token')) $this->updatePushToken();
         return $this->successResponse();
