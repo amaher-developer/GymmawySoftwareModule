@@ -160,38 +160,70 @@ class GymGenericApiController extends GenericController
 
         $todayPTClasses = collect();
         if ($authMember) {
-            $ptMemberIds = \Modules\Software\Models\GymPTMember::where('member_id', $authMember->id)
+            $ptMembers = \Modules\Software\Models\GymPTMember::with([
+                    'class.activeClassTrainers.trainer',
+                    'class.pt_subscription',
+                    'legacyClass.activeClassTrainers.trainer',
+                    'legacyClass.pt_subscription',
+                    'trainer',
+                ])
+                ->where('member_id', $authMember->id)
                 ->where(function ($q) use ($todayStr) {
                     $q->whereDate('joining_date', '<=', $todayStr)
                       ->whereDate('expire_date',  '>=', $todayStr);
                 })
-                ->pluck('class_id')
-                ->merge(
-                    \Modules\Software\Models\GymPTMember::where('member_id', $authMember->id)
-                        ->where(function ($q) use ($todayStr) {
-                            $q->whereDate('joining_date', '<=', $todayStr)
-                              ->whereDate('expire_date',  '>=', $todayStr);
-                        })
-                        ->pluck('pt_class_id')
-                )
-                ->filter()
-                ->unique();
+                ->get();
 
-            if ($ptMemberIds->isNotEmpty()) {
-                $todayPTClasses = GymPTClass::where('is_active', true)
-                    ->whereIn('id', $ptMemberIds)
-                    ->with(['pt_subscription.pt_trainers'])
-                    ->get()
-                    ->filter(function ($class) use ($todayDayOfWeek) {
-                        $workDays = $class->schedule['work_days'] ?? [];
-                        $slot = $workDays[$todayDayOfWeek] ?? null;
-                        return $slot && !empty($slot['status']);
-                    })->values();
-            }
+            $todayPTClasses = $ptMembers->map(function ($ptMember) use ($todayDayOfWeek) {
+                $ptClass = $ptMember->class ?? $ptMember->legacyClass ?? null;
+                if (!$ptClass) return null;
+
+                $workDays = $ptClass->schedule['work_days'] ?? [];
+                $slot = $workDays[$todayDayOfWeek] ?? null;
+                if (!$slot || empty($slot['status'])) return null;
+
+                $startTime = !empty($slot['start']) ? Carbon::parse($slot['start'])->format('g:i A') : null;
+
+                // Collect trainers
+                $trainers = $ptClass->activeClassTrainers ?? collect([]);
+                $trainerList = [];
+                if ($trainers->isNotEmpty()) {
+                    foreach ($trainers as $ct) {
+                        if (@$ct->trainer) {
+                            $trainerList[] = [
+                                'name'  => $ct->trainer->name  ?? '-',
+                                'image' => $ct->trainer->image ?? null,
+                            ];
+                        }
+                    }
+                } elseif ($ptMember->trainer) {
+                    $trainerList[] = [
+                        'name'  => $ptMember->trainer->name  ?? '-',
+                        'image' => $ptMember->trainer->image ?? null,
+                    ];
+                }
+
+                $totalSessions     = (int)($ptMember->total_sessions     ?? $ptMember->classes ?? 0);
+                $remainingSessions = (int)($ptMember->remaining_sessions ?? 0);
+                $usedSessions      = $totalSessions - $remainingSessions;
+
+                return [
+                    'id'                 => $ptClass->id,
+                    'name'               => $ptClass->name ?? (@$ptClass->pt_subscription->name ?? '-'),
+                    'image'              => @$ptClass->pt_subscription->image ?? null,
+                    'start_time'         => $startTime,
+                    'trainers'           => $trainerList,
+                    'trainer_name'       => !empty($trainerList) ? $trainerList[0]['name']  : '-',
+                    'trainer_image'      => !empty($trainerList) ? $trainerList[0]['image'] : null,
+                    'total_sessions'     => $totalSessions,
+                    'used_sessions'      => $usedSessions >= 0 ? $usedSessions : 0,
+                    'remaining_sessions' => $remainingSessions,
+                ];
+            })->filter()->values();
         }
 
         $this->return['result']['is_today_pt_classes'] = $todayPTClasses->isNotEmpty() ? 1 : 0;
-        $this->return['result']['today_pt_classes']    = $todayPTClasses->isNotEmpty() ? PTResource::collection($todayPTClasses) : [];
+        $this->return['result']['today_pt_classes']    = $todayPTClasses->isNotEmpty() ? $todayPTClasses : [];
 
         if(@request('device_token')) $this->updatePushToken();
         return $this->successResponse();
