@@ -2375,7 +2375,20 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         if ($requestedMember) {
             return $requestedMember;
         }
+        
+        /* note: remove this condition after relase new version of mobile app with payment-link token support, to prevent fallback to token when member_id is absent in payment links. */
 
+        
+        $rawToken = @$request->input('token');
+        if (!$rawToken) {
+            return null;
+        }
+
+        
+        // 3) For payment-link strict mode, do not fallback to token.
+        if (!$allowTokenFallback) {
+            return null;
+        }
 
         // 4) Backward compatibility only: resolve from token if member_id is absent.
         $rawToken = $request->input('payment_link_token')
@@ -2385,10 +2398,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return null;
         }
         
-        // 3) For payment-link strict mode, do not fallback to token.
-        if (!$allowTokenFallback) {
-            return null;
-        }
+        
 
         $rawToken = trim((string) preg_replace('/^Bearer\s+/i', '', (string) $rawToken));
         if ($rawToken === '') {
