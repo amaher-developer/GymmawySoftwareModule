@@ -155,5 +155,60 @@ class GymPTApiController extends GymGenericApiController
 
         return $this->successResponse();
     }
+
+    public function previousPTSubscriptions()
+    {
+        $member_id = @Auth::guard('api')->user()->id;
+
+        $ptMembers = GymPTMember::with([
+                'pt_subscription',
+                'class.activeClassTrainers.trainer',
+                'legacyClass',
+                'trainer',
+            ])
+            ->where('member_id', $member_id)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $result = [];
+        foreach ($ptMembers as $ptMember) {
+            $subscriptionName = @$ptMember->pt_subscription->name ?? '-';
+            $ptClass = $ptMember->class ?? $ptMember->legacyClass ?? null;
+            $className = @$ptClass->name ?? '-';
+
+            $trainerNames = [];
+            $trainers = @$ptClass ? $ptClass->activeClassTrainers : collect([]);
+            if ($trainers && $trainers->isNotEmpty()) {
+                foreach ($trainers as $ct) {
+                    if (@$ct->trainer->name) $trainerNames[] = $ct->trainer->name;
+                }
+            } elseif (@$ptMember->trainer->name) {
+                $trainerNames[] = $ptMember->trainer->name;
+            }
+
+            $startDate = $ptMember->start_date
+                ?? ($ptMember->joining_date ? \Carbon\Carbon::parse($ptMember->joining_date) : null);
+            $endDate = $ptMember->end_date
+                ?? ($ptMember->expire_date ? \Carbon\Carbon::parse($ptMember->expire_date) : null);
+
+            $result[] = [
+                'id'                 => $ptMember->id,
+                'subscription_name'  => $subscriptionName,
+                'class_name'         => $className,
+                'trainer_names'      => implode(', ', $trainerNames) ?: '-',
+                'total_sessions'     => (int)($ptMember->total_sessions ?? $ptMember->classes ?? 0),
+                'remaining_sessions' => (int)($ptMember->remaining_sessions ?? 0),
+                'price'              => number_format((float)($ptMember->price ?? $ptMember->paid_amount ?? 0), 2),
+                'amount_paid'        => number_format((float)($ptMember->paid_amount ?? 0), 2),
+                'start_date'         => $startDate ? $startDate->translatedFormat('d F Y') : '-',
+                'end_date'           => $endDate   ? $endDate->translatedFormat('d F Y')   : '-',
+                'status'             => $ptMember->status_name ?? '-',
+                'status_value'       => $ptMember->status ?? 0,
+            ];
+        }
+
+        $this->return['result']['pt_subscriptions'] = $result;
+        return $this->successResponse();
+    }
 }
 

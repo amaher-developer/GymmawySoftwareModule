@@ -121,7 +121,8 @@ class GymGenericApiController extends GenericController
         $category_with_subscription = GymCategory::with(['subscriptions' => function ($q) {
             $q->limit(10);
         }])->where('is_subscription', true)->get();
-
+        
+        
 
         $this->return['result']['is_new_notifications'] =  rand(0,1);
         $this->return['result']['welcome_member'] =  $app_welcome_member;
@@ -144,6 +145,31 @@ class GymGenericApiController extends GenericController
         $this->return['result']['is_category_with_subscription'] =  1;
         $this->return['result']['category_with_subscription'] =  $category_with_subscription ?  CategoryWithSubscriptionResource::collection($category_with_subscription) : '';
 
+        // Gym capacity: max allowed vs current attendees in the last hour
+        $capacitySetting = $this->SettingRepository->select('app_max_capacity_num')->first();
+        $maxCapacity = (int)(@$capacitySetting->app_max_capacity_num ?? 0);
+        $currentAttendance = GymMemberAttendee::where('created_at', '>=', Carbon::now()->subHour())->count();
+        $this->return['result']['app_max_capacity_num']    = $maxCapacity;
+        $this->return['result']['current_attendance_count'] = $currentAttendance;
+        $this->return['result']['is_capacity_available']   = $maxCapacity > 0 ? ($currentAttendance < $maxCapacity ? 1 : 0) : 1;
+
+        // Today's PT classes
+        $todayDayName = strtolower(Carbon::now()->format('l')); // e.g. "monday"
+        $todayPTClasses = GymPTClass::where('is_active', true)
+            ->where('is_mobile', 1)
+            ->with(['pt_subscription.pt_trainers'])
+            ->get()
+            ->filter(function ($class) use ($todayDayName) {
+                $schedule = $class->schedule ?? [];
+                foreach ($schedule as $slot) {
+                    $day = strtolower($slot['day'] ?? $slot['name'] ?? '');
+                    if ($day === $todayDayName) return true;
+                }
+                return false;
+            })->values();
+
+        $this->return['result']['is_today_pt_classes'] = $todayPTClasses->isNotEmpty() ? 1 : 0;
+        $this->return['result']['today_pt_classes']    = $todayPTClasses->isNotEmpty() ? PTResource::collection($todayPTClasses) : [];
 
         if(@request('device_token')) $this->updatePushToken();
         return $this->successResponse();
