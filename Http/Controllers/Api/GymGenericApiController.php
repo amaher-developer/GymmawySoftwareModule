@@ -162,18 +162,21 @@ class GymGenericApiController extends GenericController
         // ── General: all active mobile PT classes scheduled for today (no trainer list) ──
         $generalPTClasses = GymPTClass::where('is_active', true)
             ->where('is_mobile', 1)
-            ->with(['pt_subscription'])
+            ->with(['pt_subscription', 'activeClassTrainers.trainer'])
             ->get()
             ->map(function ($ptClass) use ($todayDayOfWeek) {
                 $workDays = $ptClass->schedule['work_days'] ?? [];
                 $slot = $workDays[$todayDayOfWeek] ?? null;
                 if (!$slot || empty($slot['status'])) return null;
                 $startTime = !empty($slot['start']) ? Carbon::parse($slot['start'])->format('g:i A') : null;
+                $firstTrainer = @$ptClass->activeClassTrainers ? $ptClass->activeClassTrainers->first() : null;
                 return [
                     'id'         => $ptClass->id,
                     'name'       => $ptClass->name ?? (@$ptClass->pt_subscription->name ?? '-'),
                     'image'      => @$ptClass->pt_subscription->image ?? null,
                     'start_time' => $startTime,
+                    'trainer_name'  => @$firstTrainer->trainer->name ?? '-',
+                    'trainer_image' => @$firstTrainer->trainer->image ?? null,
                 ];
             })->filter()->values();
 
