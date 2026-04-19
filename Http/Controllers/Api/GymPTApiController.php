@@ -164,6 +164,7 @@ class GymPTApiController extends GymGenericApiController
                 'pt_subscription',
                 'class.activeClassTrainers.trainer',
                 'legacyClass',
+            'classTrainer.trainer',
                 'trainer',
             ])
             ->where('member_id', $member_id)
@@ -176,14 +177,16 @@ class GymPTApiController extends GymGenericApiController
             $ptClass = $ptMember->class ?? $ptMember->legacyClass ?? null;
             $className = @$ptClass->name ?? '-';
 
+            // Prefer the reserved trainer on this membership, then fallback to class trainers.
+            $reservedTrainerName = @$ptMember->classTrainer->trainer->name ?: @$ptMember->trainer->name;
             $trainerNames = [];
-            $trainers = @$ptClass ? $ptClass->activeClassTrainers : collect([]);
-            if ($trainers && $trainers->isNotEmpty()) {
-                foreach ($trainers as $ct) {
-                    if (@$ct->trainer->name) $trainerNames[] = $ct->trainer->name;
+            if ($reservedTrainerName) {
+                $trainerNames[] = $reservedTrainerName;
+            } else {
+                $trainers = @$ptClass ? $ptClass->activeClassTrainers : collect([]);
+                if ($trainers && $trainers->isNotEmpty() && @$trainers->first()->trainer->name) {
+                    $trainerNames[] = $trainers->first()->trainer->name;
                 }
-            } elseif (@$ptMember->trainer->name) {
-                $trainerNames[] = $ptMember->trainer->name;
             }
 
             $startDate = $ptMember->start_date
