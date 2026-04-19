@@ -2367,7 +2367,11 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     protected function resolveMemberFromRequest(Request $request, bool $allowTokenFallback = true): ?GymMember
     {
-        
+        /* note: remove this line after relase new version of mobile app with payment-link token support, to prevent fallback to token when member_id is absent in payment links. */
+        $allowTokenFallback = true;
+        $rawToken = @$request->input('token');
+        $request->merge(['payment_link_token' => $rawToken]);
+        /* end note */
 
         // 2) Primary mobile-web resolver: member_id coming from payment links.
         $requestedMemberId = (int) ($request->input('member_id') ?: 0);
@@ -2375,8 +2379,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         if ($requestedMember) {
             return $requestedMember;
         }
-        
-        
+
         // 3) For payment-link strict mode, do not fallback to token.
         if (!$allowTokenFallback) {
             return null;
@@ -2386,16 +2389,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $rawToken = $request->input('payment_link_token')
             ?: $request->input('token')
             ?: $request->bearerToken();
-
-        /* note: remove this line after relase new version of mobile app with payment-link token support, to prevent fallback to token when member_id is absent in payment links. */
-        $rawToken = @$request->input('token');
-        /* end note */
-
         if (!$rawToken) {
             return null;
         }
-        
-        
 
         $rawToken = trim((string) preg_replace('/^Bearer\s+/i', '', (string) $rawToken));
         if ($rawToken === '') {
