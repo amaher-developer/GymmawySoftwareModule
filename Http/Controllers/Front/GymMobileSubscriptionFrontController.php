@@ -2376,16 +2376,17 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $requestedMember;
         }
 
-        // 3) For payment-link strict mode, do not fallback to token.
-        if (!$allowTokenFallback) {
-            return null;
-        }
 
         // 4) Backward compatibility only: resolve from token if member_id is absent.
         $rawToken = $request->input('payment_link_token')
             ?: $request->input('token')
             ?: $request->bearerToken();
         if (!$rawToken) {
+            return null;
+        }
+        
+        // 3) For payment-link strict mode, do not fallback to token.
+        if (!$allowTokenFallback) {
             return null;
         }
 
