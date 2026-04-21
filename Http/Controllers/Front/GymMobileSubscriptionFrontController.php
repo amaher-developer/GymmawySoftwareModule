@@ -2886,15 +2886,31 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     /**
      * Resolve the sw_gym_payment_types.payment_id for a given gateway TypeConstant.
-     * Looks up a row whose payment_method column matches the gateway constant
-     * (e.g. Tabby=4, Paymob=5, Tamara=6, PayTabs=8).
+        * Supports multi-binding via sw_gym_payment_type_methods (payment_type_id + payment_method),
+        * then falls back to legacy single-column binding on sw_gym_payment_types.payment_method.
      * Falls back to ONLINE_PAYMENT (1) if no row is configured for this gateway.
      */
     protected function resolveGatewayPaymentTypeId(int $paymentMethod): int
     {
         static $cache = [];
         if (!isset($cache[$paymentMethod])) {
-            $row = \Modules\Software\Models\GymPaymentType::where('payment_method', $paymentMethod)->first();
+            $row = null;
+
+            if (Schema::hasTable('sw_gym_payment_type_methods')) {
+                $paymentTypeId = DB::table('sw_gym_payment_type_methods')
+                    ->where('payment_method', $paymentMethod)
+                    ->orderBy('id')
+                    ->value('payment_type_id');
+
+                if ($paymentTypeId) {
+                    $row = \Modules\Software\Models\GymPaymentType::where('id', (int) $paymentTypeId)->first();
+                }
+            }
+
+            // Backward compatibility: old single binding column.
+            if (!$row) {
+                $row = \Modules\Software\Models\GymPaymentType::where('payment_method', $paymentMethod)->first();
+            }
             $cache[$paymentMethod] = $row ? (int) $row->payment_id : TypeConstants::ONLINE_PAYMENT;
         }
         return $cache[$paymentMethod];

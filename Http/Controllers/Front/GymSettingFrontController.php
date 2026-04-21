@@ -20,6 +20,8 @@ use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymSaleChannel;
 use Modules\Software\Models\GymStoreGroup;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -434,16 +436,31 @@ class GymSettingFrontController extends GymGenericFrontController
     public function createPaymentType()
     {
         $title = trans('sw.payment_type_add');
-        return view('software::Front.payment_type_front_form', ['payment_type' => new GymPaymentType(),'title'=>$title]);
+        return view('software::Front.payment_type_front_form', [
+            'payment_type' => new GymPaymentType(),
+            'title' => $title,
+            'gatewayMethods' => $this->availablePaymentMethods(),
+            'selectedPaymentMethods' => [],
+        ]);
     }
 
     public function storePaymentType(GymPaymentTypeRequest $request)
     {
         $prepare_inputs = $this->prepare_inputs($request->except(['_token']));
-        $prepare_inputs['payment_method'] = $request->filled('payment_method') ? (int) $request->input('payment_method') : null;
+
+        $selectedPaymentMethods = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('payment_methods', [])))));
+        if (empty($selectedPaymentMethods) && $request->filled('payment_method')) {
+            $selectedPaymentMethods = [(int) $request->input('payment_method')];
+        }
+
+        // Keep backward compatibility with existing single-column binding.
+        $prepare_inputs['payment_method'] = !empty($selectedPaymentMethods) ? $selectedPaymentMethods[0] : null;
+
         $payment_type = GymPaymentType::create($prepare_inputs);
         $payment_type->payment_id = $payment_type->id - 1;
         $payment_type->save();
+
+        $this->syncPaymentTypeMethods((int) $payment_type->id, $selectedPaymentMethods);
         
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
@@ -460,16 +477,31 @@ class GymSettingFrontController extends GymGenericFrontController
     {
         $payment_type = GymPaymentType::withTrashed()->find($id);
         $title = trans('sw.payment_type_edit');
-        return view('software::Front.payment_type_front_form', ['payment_type' => $payment_type,'title'=>$title]);
+
+        return view('software::Front.payment_type_front_form', [
+            'payment_type' => $payment_type,
+            'title' => $title,
+            'gatewayMethods' => $this->availablePaymentMethods(),
+            'selectedPaymentMethods' => $this->getPaymentTypeMethodIds($payment_type),
+        ]);
     }
 
     public function updatePaymentType(GymPaymentTypeRequest $request, $id)
     {
         $payment_type = GymPaymentType::withTrashed()->find($id);
         $prepare_inputs = $this->prepare_inputs($request->except(['_token']));
-        $prepare_inputs['payment_method'] = $request->filled('payment_method') ? (int) $request->input('payment_method') : null;
+
+        $selectedPaymentMethods = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('payment_methods', [])))));
+        if (empty($selectedPaymentMethods) && $request->filled('payment_method')) {
+            $selectedPaymentMethods = [(int) $request->input('payment_method')];
+        }
+
+        // Keep backward compatibility with existing single-column binding.
+        $prepare_inputs['payment_method'] = !empty($selectedPaymentMethods) ? $selectedPaymentMethods[0] : null;
 //        $prepare_inputs['payment_id'] = $payment_type->id - 1;
         $payment_type->update($prepare_inputs);
+
+        $this->syncPaymentTypeMethods((int) $payment_type->id, $selectedPaymentMethods);
 
         $notes = str_replace(':name', $payment_type['name'], trans('sw.edit_payment_type'));
         $this->userLog($notes, TypeConstants::EditPaymentType);
@@ -502,6 +534,63 @@ class GymSettingFrontController extends GymGenericFrontController
             'type' => 'success'
         ]);
         return redirect(route('sw.listPaymentType'));
+    }
+
+    private function availablePaymentMethods(): array
+    {
+        return [
+            TypeConstants::TABBY_TRANSACTION => 'Tabby',
+            TypeConstants::PAYMOB_TRANSACTION => 'Paymob',
+            TypeConstants::TAMARA_TRANSACTION => 'Tamara',
+            TypeConstants::PAYTABS_TRANSACTION => 'PayTabs',
+        ];
+    }
+
+    private function getPaymentTypeMethodIds(?GymPaymentType $paymentType): array
+    {
+        if (!$paymentType) {
+            return [];
+        }
+
+        if (Schema::hasTable('sw_gym_payment_type_methods')) {
+            $methods = DB::table('sw_gym_payment_type_methods')
+                ->where('payment_type_id', (int) $paymentType->id)
+                ->pluck('payment_method')
+                ->map(fn($v) => (int) $v)
+                ->values()
+                ->all();
+
+            if (!empty($methods)) {
+                return $methods;
+            }
+        }
+
+        return $paymentType->payment_method ? [(int) $paymentType->payment_method] : [];
+    }
+
+    private function syncPaymentTypeMethods(int $paymentTypeId, array $paymentMethods): void
+    {
+        if (!Schema::hasTable('sw_gym_payment_type_methods')) {
+            return;
+        }
+
+        DB::table('sw_gym_payment_type_methods')
+            ->where('payment_type_id', $paymentTypeId)
+            ->delete();
+
+        if (empty($paymentMethods)) {
+            return;
+        }
+
+        $rows = [];
+        foreach ($paymentMethods as $method) {
+            $rows[] = [
+                'payment_type_id' => $paymentTypeId,
+                'payment_method' => (int) $method,
+            ];
+        }
+
+        DB::table('sw_gym_payment_type_methods')->insert($rows);
     }
 
 

@@ -92,15 +92,19 @@
                         <span class="text-muted fs-7 ms-2">{{ trans('sw.payment_method_binding_hint', [], null) ?: '(' . trans('sw.optional') . ')' }}</span>
                         <!--end::Label-->
                         <!--begin::Select-->
-                        <select name="payment_method" class="form-select form-select-solid">
-                            <option value="">— {{ trans('sw.no_binding') ?: trans('sw.none') }} —</option>
-                            <option value="4"  @selected(old('payment_method', $payment_type->payment_method) == '4')>Tabby</option>
-                            <option value="5"  @selected(old('payment_method', $payment_type->payment_method) == '5')>Paymob</option>
-                            <option value="6"  @selected(old('payment_method', $payment_type->payment_method) == '6')>Tamara</option>
-                            <option value="8"  @selected(old('payment_method', $payment_type->payment_method) == '8')>PayTabs</option>
+                        @php
+                            $selectedMethods = collect(old('payment_methods', $selectedPaymentMethods ?? []))
+                                ->map(fn($v) => (string) $v)
+                                ->values()
+                                ->all();
+                        @endphp
+                        <select name="payment_methods[]" class="form-select form-select-solid" multiple data-control="select2" data-placeholder="{{ trans('sw.select') }}">
+                            @foreach(($gatewayMethods ?? []) as $methodId => $methodLabel)
+                                <option value="{{ $methodId }}" @selected(in_array((string) $methodId, $selectedMethods, true))>{{ $methodLabel }}</option>
+                            @endforeach
                         </select>
                         <!--end::Select-->
-                        <div class="text-muted fs-7 mt-2">{{ trans('sw.payment_method_binding_desc', [], null) ?: 'When a member pays via this gateway, this payment type will be used in records.' }}</div>
+                        <div class="text-muted fs-7 mt-2">{{ trans('sw.payment_method_binding_desc', [], null) ?: 'Select one or more gateways. Any payment from selected gateways will be recorded with this payment type.' }}</div>
                     </div>
                     <!--end::Input group-->
                 </div>
