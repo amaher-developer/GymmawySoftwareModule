@@ -39,10 +39,14 @@
         .current-card .meta-row { display: flex; gap: 18px; margin-top: 8px; font-size: 13px; color: #666; }
         .current-card .meta-row span { display: flex; align-items: center; gap: 4px; }
         .badge-active {
-            display: inline-block; background: #e6f4ea; color: #1a7a2e;
+            display: inline-block;
             border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 600;
             margin-{{ $sideStart }}: 8px; vertical-align: middle;
         }
+        .badge-status-active { background: #e6f4ea; color: #1a7a2e; }
+        .badge-status-frozen { background: #e8f0ff; color: #2256a8; }
+        .badge-status-coming { background: #fff5e8; color: #a25b00; }
+        .badge-status-expired { background: #fdecec; color: #9f2a2a; }
 
         /* ── Section title ── */
         .section-title {
@@ -135,8 +139,16 @@
     <div class="current-card">
         <div class="label">{{ trans('sw.upgrade_current_subscription') }}</div>
         <div class="sub-name">
+            @php
+                [$statusLabel, $statusClass] = match ((int) ($activeSub->status ?? 0)) {
+                    \Modules\Software\Classes\TypeConstants::Freeze => [trans('sw.frozen'), 'badge-status-frozen'],
+                    \Modules\Software\Classes\TypeConstants::Coming => [trans('sw.coming'), 'badge-status-coming'],
+                    \Modules\Software\Classes\TypeConstants::Expired => [trans('sw.expire'), 'badge-status-expired'],
+                    default => [trans('sw.active'), 'badge-status-active'],
+                };
+            @endphp
             {{ optional($activeSub->subscription)->name }}
-            <span class="badge-active">{{ trans('sw.active') }}</span>
+            <span class="badge-active {{ $statusClass }}">{{ $statusLabel }}</span>
         </div>
         <div class="meta-row">
             <span>📅 {{ \Carbon\Carbon::parse($activeSub->joining_date)->format('Y-m-d') }}</span>
