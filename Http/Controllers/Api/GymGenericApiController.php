@@ -191,6 +191,7 @@ class GymGenericApiController extends GenericController
                     'class.pt_subscription',
                     'legacyClass.activeClassTrainers.trainer',
                     'legacyClass.pt_subscription',
+                    'classTrainer.trainer',
                     'trainer',
                 ])
                 ->where('member_id', $authMember->id)
@@ -210,23 +211,37 @@ class GymGenericApiController extends GenericController
 
                 $startTime = !empty($slot['start']) ? Carbon::parse($slot['start'])->format('g:i A') : null;
 
-                // Collect trainers
-                $trainers = $ptClass->activeClassTrainers ?? collect([]);
                 $trainerList = [];
-                if ($trainers->isNotEmpty()) {
-                    foreach ($trainers as $ct) {
-                        if (@$ct->trainer) {
-                            $trainerList[] = [
-                                'name'  => $ct->trainer->name  ?? '-',
-                                'image' => $ct->trainer->image ?? null,
-                            ];
-                        }
-                    }
-                } elseif ($ptMember->trainer) {
+
+                // 1) Prefer the trainer explicitly assigned to this PT member.
+                if ($ptMember->trainer) {
                     $trainerList[] = [
                         'name'  => $ptMember->trainer->name  ?? '-',
                         'image' => $ptMember->trainer->image ?? null,
                     ];
+                }
+
+                // 2) If available, use class-trainer assignment for this member.
+                if (empty($trainerList) && @$ptMember->classTrainer && @$ptMember->classTrainer->trainer) {
+                    $trainerList[] = [
+                        'name'  => $ptMember->classTrainer->trainer->name  ?? '-',
+                        'image' => $ptMember->classTrainer->trainer->image ?? null,
+                    ];
+                }
+
+                // 3) Fallback to active class trainers.
+                if (empty($trainerList)) {
+                    $trainers = $ptClass->activeClassTrainers ?? collect([]);
+                    if ($trainers->isNotEmpty()) {
+                        foreach ($trainers as $ct) {
+                            if (@$ct->trainer) {
+                                $trainerList[] = [
+                                    'name'  => $ct->trainer->name  ?? '-',
+                                    'image' => $ct->trainer->image ?? null,
+                                ];
+                            }
+                        }
+                    }
                 }
 
                 $totalSessions     = (int)($ptMember->total_sessions     ?? $ptMember->classes ?? 0);
