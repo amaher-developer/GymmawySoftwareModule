@@ -2980,9 +2980,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 TypeConstants::Expired,
             ])
             ->orderByRaw('CASE status
-                WHEN ' . TypeConstants::Active . ' THEN 1
+                WHEN ' . TypeConstants::Coming . ' THEN 1
                 WHEN ' . TypeConstants::Freeze . ' THEN 2
-                WHEN ' . TypeConstants::Coming . ' THEN 3
+                WHEN ' . TypeConstants::Active . ' THEN 3
                 WHEN ' . TypeConstants::Expired . ' THEN 4
                 ELSE 5 END')
             ->orderBy('id', 'desc')
@@ -3001,12 +3001,18 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             ->orderBy('price', 'asc')
             ->get();
 
+        // Calculate days already consumed from the current subscription's joining date until today
+        $usedDays = 0;
+        if ($activeSub->joining_date) {
+            $usedDays = max(0, (int) Carbon::parse($activeSub->joining_date)->diffInDays(Carbon::now()));
+        }
+
         $vatPercentage   = @$this->mainSettings->vat_details['vat_percentage'] ?? 0;
         $title           = trans('sw.upgrade_subscription_title');
         $mainSettings    = $this->mainSettings;
 
         return view('software::Front.upgrade_subscription_mobile', compact(
-            'title', 'member', 'activeSub', 'upgrades', 'currentPrice', 'vatPercentage', 'mainSettings'
+            'title', 'member', 'activeSub', 'upgrades', 'currentPrice', 'vatPercentage', 'mainSettings', 'usedDays'
         ));
     }
 
@@ -3270,35 +3276,69 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $member = GymMember::find($invoice->member_id);
                 if (!$member) return null;
 
-                // Expire the old active subscription immediately
-                if ($activeMemberSubId) {
-                    GymMemberSubscription::where('id', $activeMemberSubId)
+                // Load the existing active subscription to update
+                $activeMemberSub = $activeMemberSubId
+                    ? GymMemberSubscription::where('id', $activeMemberSubId)
                         ->where('member_id', $member->id)
-                        ->update(['expire_date' => Carbon::now()->toDateString(), 'status' => TypeConstants::Expired]);
+                        ->lockForUpdate()
+                        ->first()
+                    : null;
+
+                // Calculate days already consumed (joining_date → today)
+                $today    = Carbon::now();
+                $usedDays = 0;
+                if ($activeMemberSub && $activeMemberSub->joining_date) {
+                    $usedDays = max(0, (int) Carbon::parse($activeMemberSub->joining_date)->diffInDays($today));
                 }
 
-                // Create new subscription starting today
-                $joining    = Carbon::parse($joiningDate);
-                $periodDays = (int) ($newSubscription->period ?? 0);
-                $expire     = (clone $joining)->addDays(max($periodDays, 0));
+                // Remaining period = new subscription period minus already-used days (minimum 1 day)
+                $periodDays    = (int) ($newSubscription->period ?? 0);
+                $remainingDays = $usedDays > 0 ? max(1, $periodDays - $usedDays) : max(1, $periodDays);
+                $expire        = $today->copy()->addDays($remainingDays);
 
-                $newMemberSub = GymMemberSubscription::create([
-                    'subscription_id'        => $newSubscription->id,
-                    'member_id'              => $member->id,
-                    'workouts'               => $newSubscription->workouts ?? 0,
-                    'amount_paid'            => $invoice->amount,
-                    'vat'                    => $invoice->vat,
-                    'vat_percentage'         => $invoice->vat_percentage,
-                    'joining_date'           => $joining->toDateTimeString(),
-                    'expire_date'            => $expire->toDateTimeString(),
-                    'status'                 => TypeConstants::Active,
-                    'freeze_limit'           => $newSubscription->freeze_limit ?? 0,
-                    'number_times_freeze'    => $newSubscription->number_times_freeze ?? 0,
-                    'amount_before_discount' => $newSubscription->price ?? 0,
-                    'discount_value'         => $this->calculateDiscountValue($newSubscription),
-                    'discount_type'          => $this->getDiscountType($newSubscription),
-                    'payment_type'           => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
-                ]);
+                $newPaymentType = $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT));
+
+                if ($activeMemberSub) {
+                    // Update the existing subscription in-place
+                    $activeMemberSub->subscription_id        = $newSubscription->id;
+                    $activeMemberSub->workouts               = $newSubscription->workouts ?? 0;
+                    $activeMemberSub->amount_paid            = $invoice->amount;
+                    $activeMemberSub->vat                    = $invoice->vat;
+                    $activeMemberSub->vat_percentage         = $invoice->vat_percentage;
+                    $activeMemberSub->expire_date            = $expire->toDateTimeString();
+                    $activeMemberSub->status                 = TypeConstants::Active;
+                    $activeMemberSub->freeze_limit           = $newSubscription->freeze_limit ?? 0;
+                    $activeMemberSub->number_times_freeze    = $newSubscription->number_times_freeze ?? 0;
+                    $activeMemberSub->amount_before_discount = $newSubscription->price ?? 0;
+                    $activeMemberSub->discount_value         = $this->calculateDiscountValue($newSubscription);
+                    $activeMemberSub->discount_type          = $this->getDiscountType($newSubscription);
+                    $activeMemberSub->payment_type           = $newPaymentType;
+                    $activeMemberSub->save();
+
+                    $newMemberSub = $activeMemberSub;
+                } else {
+                    // Fallback: no active sub found — create a fresh one
+                    $joining      = Carbon::parse($joiningDate);
+                    $expireFallback = (clone $joining)->addDays(max(1, $periodDays));
+
+                    $newMemberSub = GymMemberSubscription::create([
+                        'subscription_id'        => $newSubscription->id,
+                        'member_id'              => $member->id,
+                        'workouts'               => $newSubscription->workouts ?? 0,
+                        'amount_paid'            => $invoice->amount,
+                        'vat'                    => $invoice->vat,
+                        'vat_percentage'         => $invoice->vat_percentage,
+                        'joining_date'           => $joining->toDateTimeString(),
+                        'expire_date'            => $expireFallback->toDateTimeString(),
+                        'status'                 => TypeConstants::Active,
+                        'freeze_limit'           => $newSubscription->freeze_limit ?? 0,
+                        'number_times_freeze'    => $newSubscription->number_times_freeze ?? 0,
+                        'amount_before_discount' => $newSubscription->price ?? 0,
+                        'discount_value'         => $this->calculateDiscountValue($newSubscription),
+                        'discount_type'          => $this->getDiscountType($newSubscription),
+                        'payment_type'           => $newPaymentType,
+                    ]);
+                }
 
                 $invoice->status                 = TypeConstants::SUCCESS;
                 $invoice->member_subscription_id = $newMemberSub->id;

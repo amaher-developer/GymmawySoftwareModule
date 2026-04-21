@@ -186,6 +186,7 @@
             $diffWithVat       = max(0, round($discountedWithVat - $currentWithVat, 2));
             $diffBase          = $vatPct > 0 ? round($diffWithVat / (1 + $vatPct / 100), 2) : $diffWithVat;
             $diffVat           = round($diffWithVat - $diffBase, 2);
+            $effectiveDays     = max(1, (int) $plan->period - (int) $usedDays);
         @endphp
         <div class="plan-card" id="planCard{{ $plan->id }}"
              onclick="selectPlan({{ $plan->id }}, {{ $discountedWithVat }}, {{ $diffWithVat }}, {{ $diffBase }}, {{ $diffVat }}, '{{ addslashes($plan->name) }}', {{ $planPrice }})">
@@ -194,7 +195,12 @@
                 <div class="plan-radio-dot"><div class="plan-radio-dot-inner"></div></div>
                 <div class="plan-info">
                     <div class="plan-name">{{ $plan->name }}</div>
-                    <div class="plan-period">{{ $plan->period }} {{ trans('sw.day_2') }}</div>
+                    <div class="plan-period">
+                        {{ $effectiveDays }} {{ trans('sw.day_2') }}
+                        @if($usedDays > 0)
+                            <span style="color:#aaa;font-size:11px;">({{ $plan->period }} - {{ $usedDays }} {{ trans('sw.day_2') }})</span>
+                        @endif
+                    </div>
                 </div>
                 <div class="plan-price-col">
                     <div class="plan-price">{{ number_format($discountedWithVat, 2) }}</div>
@@ -222,6 +228,12 @@
                     <span>{{ trans('sw.upgrade_difference_price') }}</span>
                     <span>{{ number_format($diffWithVat, 2) }} {{ $currency }}</span>
                 </div>
+                @if($usedDays > 0)
+                <div class="diff-row" style="color:#888;font-size:12px;margin-top:4px;border-top:1px solid #f5d9b6;padding-top:6px;">
+                    <span>{{ trans('sw.upgrade_effective_days') }}</span>
+                    <span>{{ $effectiveDays }} {{ trans('sw.day_2') }}</span>
+                </div>
+                @endif
             </div>
         </div>
         @endforeach
