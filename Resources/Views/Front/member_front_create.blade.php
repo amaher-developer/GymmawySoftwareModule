@@ -79,6 +79,16 @@
     <!--begin::Member Create Form-->
     <form method="post" action="" class="form" enctype="multipart/form-data">
         {{csrf_field()}}
+
+        @if ($errors->any())
+            <div class="alert alert-danger mb-7">
+                <ul class="mb-0 ps-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         
         <div class="row g-7">
             <!-- begin::Left Column - Basic Information -->

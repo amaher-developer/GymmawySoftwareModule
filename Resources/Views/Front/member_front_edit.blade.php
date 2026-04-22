@@ -81,6 +81,16 @@
     <!--begin::Member Edit Form-->
     <form method="post" action="" class="form d-flex flex-column flex-lg-row" enctype="multipart/form-data">
         {{csrf_field()}}
+
+        @if ($errors->any())
+            <div class="alert alert-danger mb-7 w-100">
+                <ul class="mb-0 ps-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         
         <!--begin::Main column-->
         <div class="d-flex flex-column flex-row-fluid gap-7 gap-lg-10">

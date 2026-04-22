@@ -14,6 +14,7 @@ class GymMemberRequest extends FormRequest
      */
     public function authorize()
     {
+        //return auth('sw')->check();
         return true;
     }
 

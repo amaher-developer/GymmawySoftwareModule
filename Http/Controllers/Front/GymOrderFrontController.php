@@ -79,7 +79,7 @@ class GymOrderFrontController extends GymGenericFrontController
 
     public function show($id)
     {
-        $order = GymMoneyBox::branch()->with(['member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
+        $order = GymMoneyBox::branch()->with(['swInvoice', 'member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
         $transaction_value = 1;
         if(in_array($order->type, [TypeConstants::DeleteMember, TypeConstants::DeleteStoreOrder, TypeConstants::DeleteNonMember, TypeConstants::DeletePTMember, TypeConstants::DeleteSubscription, TypeConstants::DeleteStorePurchaseOrder]))
         {
@@ -122,8 +122,23 @@ class GymOrderFrontController extends GymGenericFrontController
             // Convert absolute path to relative path for asset() function
             $qr_img_invoice = str_replace(base_path(), '', $qr_img_invoice);
         }
+        // Load ZATCA invoice via any FK path
+        $zatcaInvoice = $order->swInvoice;
+        if (!$zatcaInvoice && $order->member_subscription_id) {
+            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('member_subscription_id', $order->member_subscription_id)->first();
+        }
+        if (!$zatcaInvoice && $order->non_member_subscription_id) {
+            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('non_member_id', $order->non_member_subscription_id)->first();
+        }
+        if (!$zatcaInvoice && $order->store_order_id) {
+            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('store_order_id', $order->store_order_id)->first();
+        }
+        if (!$zatcaInvoice && $order->member_pt_subscription_id) {
+            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('member_pt_subscription_id', $order->member_pt_subscription_id)->first();
+        }
+
         $payment_types = GymPaymentType::get();
-        return view('software::Front.order_front_show', ['title_details' => $title_details,'order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'payment_types' => $payment_types]);
+        return view('software::Front.order_front_show', ['title_details' => $title_details,'order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'payment_types' => $payment_types, 'zatcaInvoice' => $zatcaInvoice]);
     }
 
 

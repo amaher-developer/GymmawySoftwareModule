@@ -1492,6 +1492,8 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     public function reportZatcaInvoices()
     {
+        $this->limit = 50;
+        
         if (!config('sw_billing.zatca_enabled')) {
             abort(404);
         }
@@ -1499,108 +1501,144 @@ class GymUserLogFrontController extends GymGenericFrontController
         $title = trans('sw.zatca_invoices_report');
         $search_query = request()->query();
 
-        $this->request_array = ['number', 'status', 'type', 'from', 'to', 'buyer', 'source', 'search'];
-        $request_array = $this->request_array;
-        foreach ($request_array as $item) {
+        $this->request_array = ['search', 'from', 'to', 'has_zatca', 'type'];
+        foreach ($this->request_array as $item) {
             $$item = request()->has($item) ? request()->$item : null;
         }
 
-        $invoicesQuery = SwBillingInvoice::query()
-            ->with([
-                'moneyBox.member',
-                'storeOrder.member',
-                'nonMember',
-                'member',
-                'memberSubscription',
-                'ptMember',
-            ])
-            ->orderByDesc('created_at');
-
-        if ($from) {
-            $invoicesQuery->whereDate('created_at', '>=', Carbon::parse($from)->toDateString());
-        }
-
-        if ($to) {
-            $invoicesQuery->whereDate('created_at', '<=', Carbon::parse($to)->toDateString());
-        }
-
-        if ($status) {
-            $invoicesQuery->where('zatca_status', $status);
-        }
-
-        if ($type) {
-            $invoicesQuery->where('invoice_type', $type);
-        }
-
-        if ($number) {
-            $invoicesQuery->where('invoice_number', 'like', '%' . $number . '%');
-        }
-
-        if ($buyer) {
-            $invoicesQuery->where(function ($query) use ($buyer) {
-                $query->where('buyer_name', 'like', '%' . $buyer . '%')
-                    ->orWhere('buyer_tax_number', 'like', '%' . $buyer . '%');
+        // EXISTS subquery: detect if money box has any linked ZATCA invoice
+        $hasInvoiceSubquery = \Modules\Billing\Models\SwBillingInvoice::selectRaw('1')
+            ->whereColumn('sw_billing_invoices.money_box_id', 'sw_gym_money_boxes.id')
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.member_subscription_id')
+                  ->whereColumn('sw_billing_invoices.member_subscription_id', 'sw_gym_money_boxes.member_subscription_id');
+            })
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.non_member_subscription_id')
+                  ->whereColumn('sw_billing_invoices.non_member_id', 'sw_gym_money_boxes.non_member_subscription_id');
+            })
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.store_order_id')
+                  ->whereColumn('sw_billing_invoices.store_order_id', 'sw_gym_money_boxes.store_order_id');
+            })
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.member_pt_subscription_id')
+                  ->whereColumn('sw_billing_invoices.member_pt_subscription_id', 'sw_gym_money_boxes.member_pt_subscription_id');
             });
-        }
 
-        if ($source) {
-            $invoicesQuery->where(function ($query) use ($source) {
-                switch ($source) {
-                    case 'money_box':
-                        $query->whereNotNull('money_box_id');
-                        break;
-                    case 'store_order':
-                        $query->whereNotNull('store_order_id');
-                        break;
-                    case 'non_member':
-                        $query->whereNotNull('non_member_id');
-                        break;
-                    case 'member':
-                        $query->where(function ($subQuery) {
-                            $subQuery->whereNotNull('member_subscription_id')
-                                ->orWhereNotNull('member_id');
-                        });
-                        break;
-                    case 'pt_member':
-                        $query->whereNotNull('member_pt_subscription_id');
-                        break;
-                }
-            });
-        }
-
-        if ($search) {
-            $invoicesQuery->where(function ($query) use ($search) {
-                $query->where('invoice_number', 'like', '%' . $search . '%')
-                    ->orWhere('buyer_name', 'like', '%' . $search . '%')
-                    ->orWhere('buyer_tax_number', 'like', '%' . $search . '%')
-                    ->orWhere('zatca_uuid', 'like', '%' . $search . '%');
-            });
-        }
-
-        $invoices = $invoicesQuery->paginate($this->limit)->onEachSide(1);
-        $total = $invoices->total();
-
-        $statuses = SwBillingInvoice::select('zatca_status')->distinct()->pluck('zatca_status')->filter()->values();
-        $types = SwBillingInvoice::select('invoice_type')->distinct()->pluck('invoice_type')->filter()->values();
-        $sources = [
-            'money_box' => trans('sw.source_money_box'),
-            'store_order' => trans('sw.source_store_order'),
-            'non_member' => trans('sw.source_non_member'),
-            'member' => trans('sw.source_member'),
-            'pt_member' => trans('sw.source_pt_member'),
+        // Income-only types (same as tax report)
+        $incomeTypes = [
+            TypeConstants::CreateMember, TypeConstants::RenewMember,
+            TypeConstants::CreateSubscription,
+            TypeConstants::CreateNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity,
+            TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::CreatePTSubscription,
+            TypeConstants::CreateStoreOrder,
+            TypeConstants::CreateMoneyBoxAdd,
         ];
 
+        $ordersQuery = GymMoneyBox::branch()
+            ->with(['swInvoice', 'member', 'member_subscription.member', 'non_member_subscription', 'store_order', 'member_pt_subscription'])
+            ->whereIn('type', $incomeTypes)
+            ->where('operation', 0)
+            ->where('vat', '>', 0)
+            ->orderByDesc('id');
+
+        if ($from) {
+            $ordersQuery->whereDate('created_at', '>=', Carbon::parse($from)->toDateString());
+        }
+        if ($to) {
+            $ordersQuery->whereDate('created_at', '<=', Carbon::parse($to)->toDateString());
+        }
+        if ($search) {
+            $ordersQuery->where(function ($q) use ($search) {
+                $q->where('notes', 'like', '%' . $search . '%')
+                  ->orWhere('amount', '=', (float)$search)
+                  ->orWhere('id', '=', (int)$search);
+            });
+        }
+        if ($type) {
+            $ordersQuery->where('type', $type);
+        }
+        if ($has_zatca !== null && $has_zatca !== '') {
+            if ($has_zatca == '1') {
+                $ordersQuery->whereExists($hasInvoiceSubquery);
+            } else {
+                $ordersQuery->whereNotExists($hasInvoiceSubquery);
+            }
+        }
+
+        $records    = $ordersQuery->paginate($this->limit)->onEachSide(1);
+        $total      = $records->total();
+        $withZatca  = GymMoneyBox::branch()->whereIn('type', $incomeTypes)->where('operation', 0)->where('vat', '>', 0)->whereExists($hasInvoiceSubquery)->count();
+        $withoutZatca = GymMoneyBox::branch()->whereIn('type', $incomeTypes)->where('operation', 0)->where('vat', '>', 0)->whereNotExists($hasInvoiceSubquery)->count();
+
+        // Build per-row invoice map: check all FK paths in bulk
+        $moneyBoxIds        = $records->pluck('id');
+        $memberSubIds       = $records->pluck('member_subscription_id')->filter()->unique()->values();
+        $nonMemberSubIds    = $records->pluck('non_member_subscription_id')->filter()->unique()->values();
+        $storeOrderIds      = $records->pluck('store_order_id')->filter()->unique()->values();
+        $ptSubIds           = $records->pluck('member_pt_subscription_id')->filter()->unique()->values();
+
+        $allInvoices = \Modules\Billing\Models\SwBillingInvoice::where(function ($q) use (
+            $moneyBoxIds, $memberSubIds, $nonMemberSubIds, $storeOrderIds, $ptSubIds
+        ) {
+            $q->whereIn('money_box_id', $moneyBoxIds);
+            if ($memberSubIds->isNotEmpty())    $q->orWhereIn('member_subscription_id', $memberSubIds);
+            if ($nonMemberSubIds->isNotEmpty()) $q->orWhereIn('non_member_id', $nonMemberSubIds);
+            if ($storeOrderIds->isNotEmpty())   $q->orWhereIn('store_order_id', $storeOrderIds);
+            if ($ptSubIds->isNotEmpty())        $q->orWhereIn('member_pt_subscription_id', $ptSubIds);
+        })->get();
+
+        // Map money_box_id → invoice; prefer the eager-loaded direct relation, fall back to FK search
+        $invoicesByMoneyBox = collect();
+        foreach ($records as $row) {
+            $inv = $row->swInvoice  // direct hasOne via money_box_id (already eager-loaded)
+                ?? $allInvoices->firstWhere('money_box_id', $row->id)
+                ?? ($row->member_subscription_id     ? $allInvoices->firstWhere('member_subscription_id', $row->member_subscription_id) : null)
+                ?? ($row->non_member_subscription_id ? $allInvoices->firstWhere('non_member_id', $row->non_member_subscription_id) : null)
+                ?? ($row->store_order_id             ? $allInvoices->firstWhere('store_order_id', $row->store_order_id) : null)
+                ?? ($row->member_pt_subscription_id  ? $allInvoices->firstWhere('member_pt_subscription_id', $row->member_pt_subscription_id) : null);
+            if ($inv) {
+                $invoicesByMoneyBox->put($row->id, $inv);
+            }
+        }
+
         return view('software::Front.report_zatca_invoices_front_list', compact(
-            'title',
-            'search_query',
-            'invoices',
-            'statuses',
-            'types',
-            'sources',
-            'total'
+            'title', 'search_query', 'records', 'total', 'withZatca', 'withoutZatca', 'invoicesByMoneyBox'
         ));
     }
 
+
+    public function bulkGenerateZatca(\Illuminate\Http\Request $request)
+    {
+        if (!config('sw_billing.zatca_enabled')) {
+            return response()->json(['success' => false, 'message' => trans('sw.zatca_disabled')], 403);
+        }
+
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json(['success' => false, 'message' => trans('sw.no_invoices_selected')], 422);
+        }
+
+        $moneyBoxes = GymMoneyBox::whereIn('id', $ids)->get();
+        $success = 0;
+        $failed = 0;
+
+        foreach ($moneyBoxes as $moneyBox) {
+            if (\Modules\Billing\Services\SwBillingService::forceGenerateForMoneyBox($moneyBox)) {
+                $success++;
+            } else {
+                $failed++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'generated' => $success,
+            'failed' => $failed,
+            'message' => trans('sw.zatca_bulk_result', ['success' => $success, 'failed' => $failed]),
+        ]);
+    }
 
     public function reportStoreList(){
         $title = trans('sw.store_report');

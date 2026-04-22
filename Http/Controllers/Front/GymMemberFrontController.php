@@ -619,10 +619,32 @@ class GymMemberFrontController extends GymGenericFrontController
 
         try {
             SwBillingService::createInvoiceFromMoneyBox($moneyBox);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Failed to process ZATCA invoice for member money box', [
                 'money_box_id' => $moneyBox->id,
                 'member_id' => $moneyBox->member_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    protected function createZatcaInvoiceForMember(GymMember $member, int $memberSubscriptionId, float $amountPaid, float $vatAmount, ?GymMoneyBox $moneyBox = null): void
+    {
+        if (!config('sw_billing.zatca_enabled') || !config('sw_billing.auto_invoice')) {
+            return;
+        }
+
+        $settings = SwBillingService::getSettings();
+        if (empty($settings['sections']['members'])) {
+            return;
+        }
+
+        try {
+            SwBillingService::createInvoiceFromMember($member, $memberSubscriptionId, $amountPaid, $vatAmount, $moneyBox);
+        } catch (\Throwable $e) {
+            Log::error('Failed to process ZATCA member invoice', [
+                'member_id' => $member->id,
+                'member_subscription_id' => $memberSubscriptionId,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -742,7 +764,9 @@ class GymMemberFrontController extends GymGenericFrontController
                     'error' => $e->getMessage()
                 ]);
 
-                return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+                return redirect(route('sw.createMember'))->withErrors([
+                    'general' => trans('sw.error_in_data'),
+                ]);
             }
 
             if (!$member || !$member_subscription) {
@@ -750,7 +774,9 @@ class GymMemberFrontController extends GymGenericFrontController
                     'subscription_id' => $request->subscription_id,
                     'phone' => $request->phone,
                 ]);
-                return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+                return redirect(route('sw.createMember'))->withErrors([
+                    'general' => trans('sw.error_in_data'),
+                ]);
             }
 
             $notes = trans('sw.member_moneybox_add_msg',
@@ -770,6 +796,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
             $this->createZatcaInvoiceForMoneyBox($moneyBox);
+            $this->createZatcaInvoiceForMember($member, $member_subscription, $amount_paid, $vat, $moneyBox);
 
             $notes = str_replace(':name', $member_inputs['name'], trans('sw.add_member'));
             $this->userLog($notes, TypeConstants::CreateMember);
@@ -2745,7 +2772,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $notes = $notes . ' - ' . trans('sw.vat_added');
         }
 
-        GymMoneyBox::create([
+        $renewMoneyBox = GymMoneyBox::create([
             'user_id' => Auth::guard('sw')->user()->id
             , 'amount' => @$request->amount_paid
             , 'vat' => @$vat
@@ -2758,6 +2785,9 @@ class GymMemberFrontController extends GymGenericFrontController
             , 'member_subscription_id' => @$member_subscription
             , 'branch_setting_id' => @$this->user_sw->branch_setting_id
         ]);
+
+        $this->createZatcaInvoiceForMoneyBox($renewMoneyBox);
+        $this->createZatcaInvoiceForMember($member, $member_subscription, $amount_paid, $vat, $renewMoneyBox);
 
         $this->userLog($notes, TypeConstants::RenewMember);
         

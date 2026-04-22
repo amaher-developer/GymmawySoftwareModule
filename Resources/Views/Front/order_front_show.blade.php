@@ -309,6 +309,91 @@
                             </div>
                         </div>
                         <!--end::Signature Section-->
+
+                        {{-- ZATCA Invoice Info --}}
+                        @if(config('sw_billing.zatca_enabled'))
+                        <div class="d-flex flex-column gap-3">
+                            <div class="separator"></div>
+                            <div class="fw-bold fs-5 d-flex align-items-center gap-2">
+                                <i class="ki-outline ki-receipt-square fs-4 text-primary"></i>
+                                {{ trans('sw.zatca_invoice') }}
+                            </div>
+                            @if($zatcaInvoice)
+                                @php
+                                    $hasQr = !empty($zatcaInvoice->zatca_qr_code);
+                                    $qrSrc = $zatcaInvoice->zatca_qr_code;
+                                    if ($hasQr && !\Illuminate\Support\Str::startsWith($qrSrc, 'data:image')) {
+                                        $qrSrc = 'data:image/png;base64,' . $qrSrc;
+                                    }
+                                @endphp
+                                <div class="d-flex flex-wrap align-items-start gap-7">
+                                    <div class="d-flex flex-column gap-2 fs-6">
+                                        <div>
+                                            <span class="text-muted">{{ trans('sw.invoice_number') }}: </span>
+                                            <span class="fw-bold">{{ $zatcaInvoice->invoice_number }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">{{ trans('sw.status') }}: </span>
+                                            @php
+                                                $statusClass = match($zatcaInvoice->zatca_status) {
+                                                    'generated','approved' => 'badge-light-success',
+                                                    'pending'              => 'badge-light-warning',
+                                                    'failed','error'       => 'badge-light-danger',
+                                                    default                => 'badge-light-primary',
+                                                };
+                                            @endphp
+                                            <span class="badge {{ $statusClass }} fw-bold">
+                                                {{ ucfirst(str_replace('_', ' ', $zatcaInvoice->zatca_status ?? '')) }}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">{{ trans('sw.total_amount') }}: </span>
+                                            <span class="fw-bold">{{ number_format($zatcaInvoice->total_amount, 2) }} {{ trans('sw.app_currency') }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">{{ trans('sw.vat_amount') }}: </span>
+                                            <span class="fw-bold">{{ number_format($zatcaInvoice->vat_amount, 2) }} {{ trans('sw.app_currency') }}</span>
+                                        </div>
+                                        @if($zatcaInvoice->zatca_sent_at)
+                                        <div>
+                                            <span class="text-muted">{{ trans('sw.sent_at') }}: </span>
+                                            <span class="fw-bold">{{ $zatcaInvoice->zatca_sent_at->format('Y-m-d H:i') }}</span>
+                                        </div>
+                                        @endif
+                                        @if(!$hasQr)
+                                        <div class="mt-2 hidden-print">
+                                            <button type="button" class="btn btn-sm btn-light-primary btn-generate-zatca"
+                                                    data-id="{{ $order->id }}"
+                                                    data-url="{{ route('sw.bulkGenerateZatca') }}">
+                                                <i class="ki-outline ki-electricity fs-6 me-1"></i>
+                                                {{ trans('sw.generate_zatca') }}
+                                            </button>
+                                        </div>
+                                        @endif
+                                    </div>
+                                    @if($hasQr)
+                                    <div class="d-flex flex-column align-items-center gap-1">
+                                        <img src="{{ $qrSrc }}" alt="ZATCA QR" style="width:100px;height:100px;object-fit:contain;">
+                                        <span class="text-muted fs-8">{{ trans('sw.zatca_qr') }}</span>
+                                    </div>
+                                    @endif
+                                </div>
+                            @else
+                                <div class="d-flex align-items-center gap-3 hidden-print">
+                                    <span class="badge badge-light-danger fw-bold">
+                                        <i class="ki-outline ki-cross-circle fs-6 me-1"></i>{{ trans('sw.no_zatca') }}
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-light-primary btn-generate-zatca"
+                                            data-id="{{ $order->id }}"
+                                            data-url="{{ route('sw.bulkGenerateZatca') }}">
+                                        <i class="ki-outline ki-electricity fs-6 me-1"></i>
+                                        {{ trans('sw.generate_zatca') }}
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                        @endif
+                        {{-- End ZATCA Invoice Info --}}
                     </div>
                     <!--end::Wrapper-->
                 </div>
@@ -348,7 +433,39 @@
 
 @endsection
 @section('sub_scripts')
+@if(config('sw_billing.zatca_enabled'))
+<script>
+jQuery(document).ready(function ($) {
+    $(document).on('click', '.btn-generate-zatca', function () {
+        const $btn  = $(this);
+        const id    = $btn.data('id');
+        const url   = $btn.data('url');
+        const orig  = $btn.html();
 
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>{{ trans('sw.generating') }}');
+
+        $.ajax({
+            url: url,
+            method: 'POST',
+            data: { ids: [id], _token: '{{ csrf_token() }}' },
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire({ icon: 'success', title: '{{ trans('admin.done') }}', text: res.message, timer: 2500, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire({ icon: 'error', title: '{{ trans('sw.error') }}', text: res.message });
+                    $btn.prop('disabled', false).html(orig);
+                }
+            },
+            error: function () {
+                Swal.fire({ icon: 'error', title: '{{ trans('sw.error') }}', text: '{{ trans('sw.error') }}' });
+                $btn.prop('disabled', false).html(orig);
+            }
+        });
+    });
+});
+</script>
+@endif
 @endsection
 
 
