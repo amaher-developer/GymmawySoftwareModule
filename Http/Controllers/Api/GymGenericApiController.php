@@ -265,6 +265,10 @@ class GymGenericApiController extends GenericController
         $this->return['result']['is_my_today_pt_classes'] = $memberPTClasses->isNotEmpty() ? 1 : 0;
         $this->return['result']['my_today_pt_classes']    = $memberPTClasses->isNotEmpty() ? $memberPTClasses : [];
 
+        // Feature-toggle flags driven by environment keys
+        $this->return['result']['hide_count_members'] = (int) env('HIDE_COUNT_MEMBERS', 0);
+        $this->return['result']['hide_upgrade']        = (int) env('HIDE_UPGRADE', 0);
+
         if(@request('device_token')) $this->updatePushToken();
         return $this->successResponse();
     }
