@@ -56,6 +56,10 @@ class MemberResource extends JsonResource
                 'freeze_check' => @$freeze_check,
                 'freeze_limit' => (int)(@$this->member_subscription_info->freeze_limit ?? 0),
                 'number_times_freeze' => (int)(@$this->member_subscription_info->number_times_freeze ?? 0),
+                'start_freeze_date' => @$this->member_subscription_info->getRawOriginal('start_freeze_date'),
+                'end_freeze_date' => @$this->member_subscription_info->getRawOriginal('end_freeze_date'),
+                'max_extension_days' => (int)(@$this->member_subscription_info->max_extension_days ?? 0),
+                'max_freeze_extension_sum' => (int)(@$this->member_subscription_info->max_freeze_extension_sum ?? 0),
                 'loyalty_points' => (int)($this->loyalty_points_balance ?? 0),
                 'attendees' => @$this->member_attendees,
             ];
