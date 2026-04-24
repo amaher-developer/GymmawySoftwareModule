@@ -11,10 +11,7 @@ class GymActivityApiController extends GymGenericApiController
 {
     public function activities(){
         $activities = GymActivity::orderBy("id", "desc");
-        if(@request('device_type'))
-            $activities = $activities->where('is_mobile', 1);
-        else
-            $activities = $activities->where('is_web', 1);
+        $activities = $activities->where('is_mobile', 1);
         $activities = $activities->paginate($this->limit);
         $this->getPaginateAttribute($activities);
         $this->return['result']['activities'] =  $activities ?  ActivityResource::collection($activities) : [];
