@@ -2066,6 +2066,52 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('deleteGroupDiscount', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
                                             </div>
+
+                                            <!-- Money Box Types Permissions -->
+                                            <div class="col-lg-12 mt-4">
+                                                <h5 class="mb-3">{{ trans('sw.money_box_types') }}</h5>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createMoneyBoxType"
+                                                                            @if(@in_array('createMoneyBoxType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editMoneyBoxType"
+                                                                            @if(@in_array('editMoneyBoxType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteMoneyBoxType"
+                                                                            @if(@in_array('deleteMoneyBoxType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
+                                            </div>
+
+                                            <!-- Payment Types Permissions -->
+                                            <div class="col-lg-12 mt-4">
+                                                <h5 class="mb-3">{{ trans('sw.payment_types') }}</h5>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="createPaymentType"
+                                                                            @if(@in_array('createPaymentType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.add') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="editPaymentType"
+                                                                            @if(@in_array('editPaymentType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.edit') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deletePaymentType"
+                                                                            @if(@in_array('deletePaymentType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.delete') }}</span></label>
+                                            </div>
                                         </div>
                                     </div>
                                     <!--end::Settings Tab-->
