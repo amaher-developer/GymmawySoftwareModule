@@ -2073,6 +2073,12 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="listMoneyBoxType"
+                                                                            @if(@in_array('listMoneyBoxType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="createMoneyBoxType"
                                                                             @if(@in_array('createMoneyBoxType', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.add') }}</span></label>
@@ -2093,6 +2099,12 @@ if(!isset($permission_group->permissions)){
                                             <!-- Payment Types Permissions -->
                                             <div class="col-lg-12 mt-4">
                                                 <h5 class="mb-3">{{ trans('sw.payment_types') }}</h5>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listPaymentType"
+                                                                            @if(@in_array('listPaymentType', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.list') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
