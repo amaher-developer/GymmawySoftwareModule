@@ -6,8 +6,8 @@
     $showSettingsMenu = $isSuperUser
         || isset($permissionsMap['listUser'])
         || isset($permissionsMap['listPTTrainer'])
-        || isset($permissionsMap['listPaymentType'])
-        || isset($permissionsMap['listMoneyBoxType'])
+        || isset($permissionsMap['createPaymentType']) || isset($permissionsMap['editPaymentType']) || isset($permissionsMap['deletePaymentType'])
+        || isset($permissionsMap['createMoneyBoxType']) || isset($permissionsMap['editMoneyBoxType']) || isset($permissionsMap['deleteMoneyBoxType'])
         || isset($permissionsMap['listGroupDiscount'])
         || isset($permissionsMap['listSaleChannel'])
         || isset($permissionsMap['listBlockMember'])
@@ -1637,7 +1637,7 @@
                 </div>
             @endif
             
-            @if ($swUser && (isset($permissionsMap['listPaymentType']) || $isSuperUser))
+            @if ($swUser && (isset($permissionsMap['createPaymentType']) || isset($permissionsMap['editPaymentType']) || isset($permissionsMap['deletePaymentType']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
@@ -1654,7 +1654,7 @@
             @endif
 
 
-            @if ($swUser && (isset($permissionsMap['listMoneyBoxType']) || $isSuperUser))
+            @if ($swUser && (isset($permissionsMap['createMoneyBoxType']) || isset($permissionsMap['editMoneyBoxType']) || isset($permissionsMap['deleteMoneyBoxType']) || $isSuperUser))
                 <!--begin:Menu item-->
                 <div class="menu-item">
                     <!--begin:Menu link-->
