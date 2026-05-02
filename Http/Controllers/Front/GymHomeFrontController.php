@@ -378,7 +378,7 @@ class GymHomeFrontController extends GymGenericFrontController
 
         $earnings = ($revenues - $expenses);
 
-        $money_box_daily = @$money_box[0] ? $money_box[0] : GymMoneyBox::orderBy('id', 'desc')->first();
+        $money_box_daily = @$money_box[0] ? $money_box[0] : GymMoneyBox::branch()->orderBy('id', 'desc')->first();
 //        $money_box = GymMoneyBox::branch()->orderBy('id', 'desc')->first();
 
         $money_box_now = @GymMoneyBoxFrontController::amountAfter($money_box_daily['amount'], $money_box_daily['amount_before'], $money_box_daily['operation']);
