@@ -47,7 +47,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         $title = trans('sw.training_member_logs');
 
         // Get all members for selection
-        $query = GymMember::where('sw_gym_members.branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
+        $query = GymMember::branch();
 
         // Search filter
         if ($request->has('q') && $request->q) {
@@ -99,7 +99,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         }
 
         $members = $query->orderBy('sw_gym_members.id', 'desc')->paginate(20)->appends($request->except('page'));
-        $total = GymMember::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->count();
+        $total = GymMember::branch()->count();
 
         return view('software::Front.training_member_log_list', compact('title', 'members', 'total'));
     }
@@ -111,9 +111,7 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
     {
         $title = trans('sw.training_member_management');
         
-        $member = GymMember::where('id', $memberId)
-            ->where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
-            ->firstOrFail();
+        $member = GymMember::branch()->where('id', $memberId)->firstOrFail();
 
         // Get logs with related data
         $logs = GymTrainingMemberLog::where('member_id', $memberId)
@@ -138,14 +136,14 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
             ->get();
 
         // Get all plans for selection
-        $allPlans = GymTrainingPlan::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
+        $allPlans = GymTrainingPlan::branch()
             ->select('id', 'title', 'type')
             ->orderBy('title')
             ->get();
 
         // Get all medicines for selection
-        $allMedicines = GymTrainingMedicine::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
-            ->where('status', 1) // Only active medicines
+        $allMedicines = GymTrainingMedicine::branch()
+            ->where('status', 1)
             ->select('id', 'name_ar', 'name_en')
             ->orderBy('name_en')
             ->get();

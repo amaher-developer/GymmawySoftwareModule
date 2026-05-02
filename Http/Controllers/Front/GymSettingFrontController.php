@@ -144,7 +144,7 @@ class GymSettingFrontController extends GymGenericFrontController
             'type' => 'success'
         ]);
         
-        return redirect(route('sw.editSetting',1));
+        return redirect(route('sw.editSetting'));
     }
 
     public function editIntegrations()
@@ -406,11 +406,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $payment_types = GymPaymentType::onlyTrashed()->orderBy('id', 'DESC');
+            $payment_types = GymPaymentType::branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $payment_types = GymPaymentType::orderBy('id', 'DESC');
+            $payment_types = GymPaymentType::branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -475,7 +475,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function editPaymentType($id)
     {
-        $payment_type = GymPaymentType::withTrashed()->find($id);
+        $payment_type = GymPaymentType::branch()->withTrashed()->find($id);
         $title = trans('sw.payment_type_edit');
 
         return view('software::Front.payment_type_front_form', [
@@ -488,7 +488,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function updatePaymentType(GymPaymentTypeRequest $request, $id)
     {
-        $payment_type = GymPaymentType::withTrashed()->find($id);
+        $payment_type = GymPaymentType::branch()->withTrashed()->find($id);
         $prepare_inputs = $this->prepare_inputs($request->except(['_token']));
 
         $selectedPaymentMethods = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('payment_methods', [])))));
@@ -516,7 +516,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function destroyPaymentType($id)
     {
-        $payment_type = GymPaymentType::withTrashed()->find($id);
+        $payment_type = GymPaymentType::branch()->withTrashed()->find($id);
         if($payment_type->trashed())
         {
             $payment_type->restore();
@@ -712,11 +712,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $sale_channels = GymSaleChannel::onlyTrashed()->orderBy('id', 'DESC');
+            $sale_channels = GymSaleChannel::branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $sale_channels = GymSaleChannel::orderBy('id', 'DESC');
+            $sale_channels = GymSaleChannel::branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -818,11 +818,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $money_box_types = GymMoneyBoxType::onlyTrashed()->orderBy('operation_type', 'DESC');
+            $money_box_types = GymMoneyBoxType::branch()->onlyTrashed()->orderBy('operation_type', 'DESC');
         }
         else
         {
-            $money_box_types = GymMoneyBoxType::orderBy('operation_type', 'DESC');
+            $money_box_types = GymMoneyBoxType::branch()->orderBy('operation_type', 'DESC');
         }
 
         //apply filters
@@ -936,11 +936,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $store_groups = GymStoreGroup::onlyTrashed()->orderBy('id', 'DESC');
+            $store_groups = GymStoreGroup::branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $store_groups = GymStoreGroup::orderBy('id', 'DESC');
+            $store_groups = GymStoreGroup::branch()->orderBy('id', 'DESC');
         }
 
         //apply filters

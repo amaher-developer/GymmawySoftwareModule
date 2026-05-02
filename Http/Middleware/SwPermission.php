@@ -96,6 +96,12 @@ class SwPermission
         // Cache user in helper to avoid repeated Auth calls in models
         CurrentSwUser::set($user);
 
+        // Store branch ID in session so it is available before this middleware runs
+        // (e.g. in controller constructors triggered by InitializeUser middleware)
+        if ($user) {
+            $request->session()->put('sw_current_branch_id', $user->branch_setting_id ?? 1);
+        }
+
         // If no user is authenticated, allow to continue (other middleware will handle auth)
         if (!$user) {
             return $next($request);

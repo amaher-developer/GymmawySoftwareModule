@@ -76,7 +76,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $logs = $this->UserLogRepository->with(['user']);
+        $logs = $this->UserLogRepository->branch()->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
 

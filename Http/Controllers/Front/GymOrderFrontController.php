@@ -57,7 +57,7 @@ class GymOrderFrontController extends GymGenericFrontController
     {
         $title = trans('global.gym_orders');
 
-        $gymorders = $this->GymOrderRepository->whereHas('member',function ($q){
+        $gymorders = $this->GymOrderRepository->branch()->whereHas('member',function ($q){
             $q->where('user_id', $this->user->id);
         })->orderBy('id', 'DESC');
 

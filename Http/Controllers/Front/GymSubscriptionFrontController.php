@@ -53,11 +53,11 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $subscriptions = $this->GymSubscriptionRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $subscriptions = $this->GymSubscriptionRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $subscriptions = $this->GymSubscriptionRepository->orderBy('id', 'DESC');
+            $subscriptions = $this->GymSubscriptionRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -83,7 +83,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     }
 
     function exportExcel(){
-        $records = $this->GymSubscriptionRepository->get();
+        $records = $this->GymSubscriptionRepository->branch()->get();
         $this->fileName = 'subscriptions-' . Carbon::now()->toDateTimeString();
 
 //        $title = trans('sw.memberships');
@@ -132,7 +132,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     }
 
     function exportPDF(){
-        $records = $this->GymSubscriptionRepository->get();
+        $records = $this->GymSubscriptionRepository->branch()->get();
         $this->fileName = 'subscriptions-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name', 'price', 'period', 'workouts', 'freeze_limit', 'number_times_freeze'];
@@ -264,7 +264,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $subscription = $this->GymSubscriptionRepository->with('activities')->withTrashed()->find($id);
+        $subscription = $this->GymSubscriptionRepository->branch()->with('activities')->withTrashed()->find($id);
         $title = trans('sw.subscription_edit');
         $activities = GymActivity::branch()->get();
         $categories = GymCategory::branch()->where('is_subscription', true)->get();

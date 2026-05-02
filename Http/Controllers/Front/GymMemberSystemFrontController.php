@@ -30,7 +30,7 @@ class GymMemberSystemFrontController extends GymGenericFrontController
     {
 
         $title = trans('global.members');
-            $members = $this->GymMemberSystemRepository->where('gym_id', @$this->current_gym_id)->orderBy('id', 'DESC');
+            $members = $this->GymMemberSystemRepository->branch()->where('gym_id', @$this->current_gym_id)->orderBy('id', 'DESC');
             $total = $members->count();
 
         return view('software::Front.user.member_front_list', compact('title', 'total'));

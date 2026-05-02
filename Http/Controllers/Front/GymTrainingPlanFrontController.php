@@ -23,7 +23,7 @@ class GymTrainingPlanFrontController extends GymGenericFrontController
     {
         $title = trans('sw.training_plans');
         
-        $query = GymTrainingPlan::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1);
+        $query = GymTrainingPlan::branch();
 
         // Search filter
         if ($request->has('q') && $request->q) {
@@ -40,7 +40,7 @@ class GymTrainingPlanFrontController extends GymGenericFrontController
         }
 
         $plans = $query->latest()->paginate(20)->appends($request->except('page'));
-        $total = GymTrainingPlan::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->count();
+        $total = GymTrainingPlan::branch()->count();
 
         return view('software::Front.training_plan_list', compact('title', 'plans', 'total'));
     }
@@ -52,7 +52,7 @@ class GymTrainingPlanFrontController extends GymGenericFrontController
     {
         $title = trans('sw.add_training_plan');
         $plan = new GymTrainingPlan();
-        $categories = GymSubscriptionCategory::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->get();
+        $categories = GymSubscriptionCategory::branch()->get();
         
         return view('software::Front.training_plan_form', compact('title', 'plan', 'categories'));
     }
@@ -115,9 +115,8 @@ class GymTrainingPlanFrontController extends GymGenericFrontController
     public function edit($id)
     {
         $title = trans('sw.edit_training_plan');
-        $plan = GymTrainingPlan::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
-            ->findOrFail($id);
-        $categories = GymSubscriptionCategory::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)->get();
+        $plan = GymTrainingPlan::branch()->findOrFail($id);
+        $categories = GymSubscriptionCategory::branch()->get();
         $tasks = GymTrainingTask::where('plan_id', $id)->orderBy('order')->get();
         
         return view('software::Front.training_plan_form', compact('title', 'plan', 'categories', 'tasks'));
@@ -128,8 +127,7 @@ class GymTrainingPlanFrontController extends GymGenericFrontController
      */
     public function update(GymTrainingPlanRequest $request, $id)
     {
-        $plan = GymTrainingPlan::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
-            ->findOrFail($id);
+        $plan = GymTrainingPlan::branch()->findOrFail($id);
         
         $inputs = $request->all();
         $plan->update($inputs);
@@ -184,8 +182,7 @@ class GymTrainingPlanFrontController extends GymGenericFrontController
      */
     public function destroy($id)
     {
-        $plan = GymTrainingPlan::where('branch_setting_id', $this->user_sw->branch_setting_id ?? 1)
-            ->findOrFail($id);
+        $plan = GymTrainingPlan::branch()->findOrFail($id);
         
         $name = $plan->title;
         

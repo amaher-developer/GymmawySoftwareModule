@@ -38,6 +38,7 @@ class LoyaltyTransactionFrontController extends GymGenericFrontController
         $title = trans('sw.loyalty_transactions_list');
         
         $transactions = $this->loyaltyTransactionRepository
+            ->branch()
             ->with(['member', 'rule', 'campaign', 'creator'])
             ->orderBy('id', 'DESC');
 
@@ -70,9 +71,9 @@ class LoyaltyTransactionFrontController extends GymGenericFrontController
 
         // Get statistics
         $stats = [
-            'total_earned' => LoyaltyTransaction::where('type', 'earn')->sum('points'),
-            'total_redeemed' => abs(LoyaltyTransaction::where('type', 'redeem')->sum('points')),
-            'total_manual' => LoyaltyTransaction::where('type', 'manual')->sum('points'),
+            'total_earned' => LoyaltyTransaction::branch()->where('type', 'earn')->sum('points'),
+            'total_redeemed' => abs(LoyaltyTransaction::branch()->where('type', 'redeem')->sum('points')),
+            'total_manual' => LoyaltyTransaction::branch()->where('type', 'manual')->sum('points'),
         ];
 
         if ($this->limit) {

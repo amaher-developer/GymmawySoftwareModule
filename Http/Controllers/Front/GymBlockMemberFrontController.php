@@ -45,11 +45,11 @@ class GymBlockMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $members = $this->BlockMemberRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $members = $this->BlockMemberRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $members = $this->BlockMemberRepository->orderBy('id', 'DESC');
+            $members = $this->BlockMemberRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters

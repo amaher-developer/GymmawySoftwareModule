@@ -44,11 +44,11 @@ class GymActivityFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $activities = $this->ActivityRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $activities = $this->ActivityRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $activities = $this->ActivityRepository->orderBy('id', 'DESC');
+            $activities = $this->ActivityRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters

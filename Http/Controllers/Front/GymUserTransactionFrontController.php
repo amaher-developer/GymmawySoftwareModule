@@ -32,11 +32,11 @@ class GymUserTransactionFrontController extends GymGenericFrontController
         
         if(request('trashed'))
         {
-            $transactions = $this->TransactionRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $transactions = $this->TransactionRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $transactions = $this->TransactionRepository->orderBy('id', 'DESC');
+            $transactions = $this->TransactionRepository->branch()->orderBy('id', 'DESC');
         }
 
         // Apply filters

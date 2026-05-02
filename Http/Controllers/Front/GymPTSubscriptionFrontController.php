@@ -39,11 +39,11 @@ class GymPTSubscriptionFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $subscriptions = $this->SubscriptionRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $subscriptions = $this->SubscriptionRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $subscriptions = $this->SubscriptionRepository->orderBy('id', 'DESC');
+            $subscriptions = $this->SubscriptionRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters

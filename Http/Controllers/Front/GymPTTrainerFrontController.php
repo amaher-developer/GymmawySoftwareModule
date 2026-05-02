@@ -406,11 +406,9 @@ class GymPTTrainerFrontController extends GymGenericFrontController
             ? Carbon::parse($to)->endOfDay()
             : $rangeStart->copy()->addWeek();
 
-        $trainerAssignments = GymPTClassTrainer::with(['class', 'trainer'])
+        $trainerAssignments = GymPTClassTrainer::branch()
+            ->with(['class', 'trainer'])
             ->where('is_active', true)
-            ->when($branchId, function ($query, $branchId) {
-                $query->where('branch_setting_id', $branchId);
-            })
             ->when($pt_class_id, function ($query) use ($pt_class_id) {
                 $query->where('class_id', $pt_class_id);
             })

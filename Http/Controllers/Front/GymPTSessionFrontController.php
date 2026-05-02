@@ -64,7 +64,7 @@ class GymPTSessionFrontController extends GymGenericFrontController
         $statusFilter = $request->input('status');
 
         // Optimize: Add eager loading for class.pt_subscription to prevent lazy loading
-        $trainerAssignments = GymPTClassTrainer::with([
+        $trainerAssignments = GymPTClassTrainer::branch()->with([
             'class' => function($q) {
                 $q->select('id', 'name_ar', 'name_en', 'pt_subscription_id', 'schedule');
             },
@@ -76,9 +76,6 @@ class GymPTSessionFrontController extends GymGenericFrontController
             }
         ])
             ->where('is_active', true)
-            ->when($branchId, function ($query, $branchId) {
-                $query->where('branch_setting_id', $branchId);
-            })
             ->when($classFilter, function ($query) use ($classFilter) {
                 $query->where('class_id', $classFilter);
             })

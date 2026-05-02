@@ -18,10 +18,10 @@ class GymMoneyBoxType extends GenericModel
     public static $uploads_path='uploads/gymorders/';
     public static $thumbnails_uploads_path='uploads/gymorders/thumbnails/';
 
-//    public function scopeBranch($query)
-//    {
-//        return $query->where('branch_setting_id', parent::getCurrentBranchId());
-//    }
+    public function scopeBranch($query)
+    {
+        return $query->where('branch_setting_id', parent::getCurrentBranchId());
+    }
 
 
     public function getNameAttribute()

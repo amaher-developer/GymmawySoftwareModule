@@ -31,9 +31,9 @@ class LoyaltyCampaignFrontController extends GymGenericFrontController
         $title = trans('sw.loyalty_campaigns_list');
         
         if (request('trashed')) {
-            $campaigns = $this->loyaltyCampaignRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $campaigns = LoyaltyCampaign::onlyTrashed()->branch()->orderBy('id', 'DESC');
         } else {
-            $campaigns = $this->loyaltyCampaignRepository->orderBy('start_date', 'DESC');
+            $campaigns = LoyaltyCampaign::branch()->orderBy('start_date', 'DESC');
         }
 
         // Apply filters

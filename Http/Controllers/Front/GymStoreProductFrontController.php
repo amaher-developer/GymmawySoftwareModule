@@ -48,11 +48,11 @@ class GymStoreProductFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $products = $this->StoreProductRepository->with(['store_category', 'category'])->onlyTrashed()->orderBy('id', 'DESC');
+            $products = $this->StoreProductRepository->branch()->with(['store_category', 'category'])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $products = $this->StoreProductRepository->with(['store_category', 'category'])->orderBy('id', 'DESC');
+            $products = $this->StoreProductRepository->branch()->with(['store_category', 'category'])->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -78,7 +78,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
 
     function exportExcel(){
-        $records = $this->StoreProductRepository->get();
+        $records = $this->StoreProductRepository->branch()->get();
         $this->fileName = 'store_products-' . Carbon::now()->toDateTimeString();
 
 //        $title = trans('sw.store_products');
@@ -130,8 +130,8 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
         $title = trans('sw.store_products');
         $customPaper = array(0,0,550,750);
-        
-        // Try mPDF for better Arabic support
+                
+                // Try mPDF for better Arabic support
         if ($this->lang == 'ar') {
             try {
                 $mpdf = new Mpdf([
@@ -446,7 +446,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
             if($vendor_is_vat){
                 $vat = $this->calculateVat($amount);
             }
-            $product = GymStoreProduct::where('id', $product_id)->first();
+            $product = GymStoreProduct::branch()->where('id', $product_id)->first();
 
             $product->quantity = (int)$product->quantity + $quantity;
             $product->save();

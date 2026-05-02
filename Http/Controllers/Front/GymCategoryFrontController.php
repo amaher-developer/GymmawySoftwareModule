@@ -44,11 +44,11 @@ class GymCategoryFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $categories = $this->CategoryRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $categories = $this->CategoryRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $categories = $this->CategoryRepository->orderBy('id', 'DESC');
+            $categories = $this->CategoryRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters

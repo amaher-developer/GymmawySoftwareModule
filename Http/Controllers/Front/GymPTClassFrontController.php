@@ -48,13 +48,13 @@ class GymPTClassFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $classes = $this->ClassRepository->with(['pt_subscription' => function($q){
+            $classes = $this->ClassRepository->branch()->with(['pt_subscription' => function($q){
                 $q->withTrashed();
             }])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $classes = $this->ClassRepository->with(['pt_subscription' => function($q){
+            $classes = $this->ClassRepository->branch()->with(['pt_subscription' => function($q){
                 $q->withTrashed();
             }])->orderBy('id', 'DESC');
         }

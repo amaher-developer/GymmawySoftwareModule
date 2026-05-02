@@ -30,11 +30,11 @@ class GymUserPermissionFrontController extends GymGenericFrontController
         
         if(request('trashed'))
         {
-            $permissions = $this->PermissionRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $permissions = $this->PermissionRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $permissions = $this->PermissionRepository->orderBy('id', 'DESC');
+            $permissions = $this->PermissionRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
