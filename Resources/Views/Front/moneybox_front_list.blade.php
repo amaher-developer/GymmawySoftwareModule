@@ -382,7 +382,10 @@
                                         <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
                                             @if(in_array('editPaymentTypeOrderMoneybox', (array)$swUser->permissions) || $swUser->is_super_user)
                                                 <a data-target="#modalEdit" data-toggle="modal" href="#"
-                                                   id="{{@$order->id}}" payment_type="{{@$order->payment_type}}" style="cursor: pointer;"
+                                                   id="{{@$order->id}}"
+                                                   payment_type="{{@$order->payment_type}}"
+                                                   data-created_at="{{ $order->created_at ? $order->created_at->format('Y-m-d\TH:i') : '' }}"
+                                                   style="cursor: pointer;"
                                                    class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
                                                    title="{{ trans('sw.edit')}}">
                                                     <i class="ki-outline ki-pencil fs-2"></i>
@@ -598,25 +601,33 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content modal-content-demo">
                 <div class="modal-header">
-                    <h6 class="modal-title">{{ trans('sw.payment_type')}}</h6>
+                    <h6 class="modal-title">{{ trans('sw.edit')}}</h6>
                     <button aria-label="Close" class="close" data-dismiss="modal" type="button"><span
                             aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div id="modalEditResult"></div>
                     <form id="form_edit" action="" method="GET">
-                        <div class="row">
-                            <label class="form-group col-lg-3" style="padding-top: 5px;">{{ trans('sw.payment_type')}}</label>
-                            <div class="form-group col-lg-6">
+                        <div class="row g-3">
+                            <div class="col-lg-12">
+                                <label class="form-label fw-semibold">{{ trans('sw.payment_type')}}</label>
                                 <select class="form-control" name="payment_type" id="payment_type">
                                     @foreach($payment_types as $payment_type)
                                         <option id="payment_type_{{$payment_type->payment_id}}" value="{{$payment_type->payment_id}}">{{$payment_type->name}}</option>
                                     @endforeach
                                 </select>
-                            </div><!-- end pay qty  -->
-                            <div class="form-group  col-lg-3">
-                            <button class="btn ripple btn-primary rounded-3 " id="form_edit_btn"
-                                    type="submit">{{ trans('admin.submit')}}</button></div>
+                            </div>
+                            <div class="col-lg-12">
+                                <label class="form-label fw-semibold">{{ trans('sw.date')}}</label>
+                                <input type="datetime-local" class="form-control" name="created_at" id="edit_created_at"
+                                       min="{{ now()->subMonth()->format('Y-m-d\TH:i') }}"
+                                       max="{{ now()->format('Y-m-d\TH:i') }}">
+                            </div>
+                            <div class="col-lg-12 d-flex justify-content-end pt-2">
+                                <button class="btn btn-primary" id="form_edit_btn" type="submit">
+                                    {{ trans('admin.submit')}}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -693,54 +704,51 @@
 
         $(document).on('click', 'a[data-target="#modalEdit"]', function (e) {
             var that = $(this);
-            var attr_id = that.attr('id');
+            var attr_id    = that.attr('id');
             var payment_type = that.attr('payment_type');
-            
-            // Validate that we have the required attributes
-            if (!attr_id || !payment_type) {
-                console.error('Missing id or payment_type attribute');
+            var created_at   = that.data('created_at');
+
+            if (!attr_id) {
+                console.error('Missing id attribute');
                 return;
             }
-            
-            var paymentTypeSelect = document.getElementById("payment_type_"+payment_type);
+
+            var paymentTypeSelect = document.getElementById("payment_type_" + payment_type);
             if (paymentTypeSelect) {
                 paymentTypeSelect.selected = true;
             }
-            
+
+            $('#edit_created_at').val(created_at || '');
             $('#modalEditResult').hide();
             $('#edit_id').remove();
-            $('#form_edit').append('<input value="' + attr_id + '"  id="edit_id" name="edit_id"  hidden>');
+            $('#form_edit').append('<input value="' + attr_id + '" id="edit_id" name="edit_id" hidden>');
         });
+
         $(document).on('click', '#form_edit_btn', function (event) {
             event.preventDefault();
-            var id = $('#edit_id').val();
+            var id           = $('#edit_id').val();
             var payment_type = $('#payment_type').val();
-            
-            // Validate that both values are present
+            var created_at   = $('#edit_created_at').val();
+
             if (!id || !payment_type) {
-                $('#modalEditResult').show();
-                $('#modalEditResult').html('<div class="alert alert-danger">{{ trans('admin.operation_failed')}}: Missing required data</div>');
-                console.error('Missing id or payment_type. id:', id, 'payment_type:', payment_type);
+                $('#modalEditResult').show().html('<div class="alert alert-danger">{{ trans('admin.operation_failed')}}: Missing required data</div>');
                 return;
             }
-            
-            $('#modalEditResult').show();
+
+            $('#modalEditResult').show().html('<div class="alert alert-secondary">...</div>');
             $.ajax({
                 url: '{{route('sw.editPaymentTypeOrderMoneybox')}}',
                 cache: false,
                 type: 'GET',
                 dataType: 'text',
-                data: {id: id, payment_type: payment_type},
+                data: {id: id, payment_type: payment_type, created_at: created_at},
                 success: function (response) {
                     if (response == '1' || response.trim() == '1') {
                         $('#modalEditResult').html('<div class="alert alert-success">{{ trans('admin.successfully_paid')}}</div>');
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
+                        setTimeout(function() { location.reload(); }, 1000);
                     } else {
                         $('#modalEditResult').html('<div class="alert alert-danger">' + response + '</div>');
                     }
-
                 },
                 error: function (request, error) {
                     swal("Operation failed", "Something went wrong.", "error");
@@ -748,7 +756,6 @@
                     console.error("Error: " + JSON.stringify(error));
                 }
             });
-
         });
 
 

@@ -1207,6 +1207,12 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('downloadPlanPDF', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.download_plan_pdf') }}</span></label>
                                             </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="deleteTrainingMemberLog"
+                                                                            @if(@in_array('deleteTrainingMemberLog', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('admin.delete') }} {{ trans('sw.training_member_log') }}</span></label>
+                                            </div>
 
                                         </div>
                                     </div>

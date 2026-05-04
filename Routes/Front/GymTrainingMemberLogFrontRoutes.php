@@ -39,6 +39,10 @@ Route::prefix('training/member-log')
         Route::name('sw.addMemberTrainingNote')
             ->post('{member}/note', 'Front\GymTrainingMemberLogFrontController@addNote');
 
+        // Delete training member log entry
+        Route::name('sw.deleteTrainingMemberLog')
+            ->get('{log}/delete', 'Front\GymTrainingMemberLogFrontController@deleteLog');
+
         // Generate AI recommendations - create permission
         Route::name('sw.generateMemberAiPlan')
             ->post('{member}/ai', 'Front\GymTrainingMemberLogFrontController@generateAi');

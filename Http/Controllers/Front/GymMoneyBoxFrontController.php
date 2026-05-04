@@ -643,46 +643,89 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     }
 
     public function editPaymentTypeOrder(){
-        $id = request('id');
+        $id           = request('id');
         $payment_type = request('payment_type');
-        
+        $created_at   = request('created_at');
+
         // Validate required parameters
         if (empty($id) || (empty($payment_type) && ($payment_type != 0))) {
             return trans('admin.operation_failed');
         }
-        
-        // Convert to integers
-        $id = (int)$id;
+
+        $id           = (int)$id;
         $payment_type = (int)$payment_type;
-        // Validate that payment_type is a valid positive integer
+
         if ($payment_type < 0) {
             return trans('admin.operation_failed');
         }
-        
-        // Get authenticated user and branch_setting_id
+
         $user = Auth::guard('sw')->user();
         if (!$user) {
             return trans('admin.operation_failed');
         }
         $branch_setting_id = $user->branch_setting_id ?? 1;
-        
-        // Find the order - use branch_setting_id directly to ensure it works
+
         $order = GymMoneyBox::where('branch_setting_id', $branch_setting_id)
             ->where('id', $id)
             ->first();
-        
-        if($order){
+
+        if ($order) {
             $order->payment_type = $payment_type;
+
+            $doRebuild      = false;
+            $rebuildStartId = 0;
+            $rebuildPrevAmt = 0;
+
+            if (!empty($created_at)) {
+                try {
+                    $newDate = \Carbon\Carbon::parse($created_at);
+
+                    if ($newDate->isFuture() || $newDate->lessThan(now()->subMonth())) {
+                        return trans('admin.operation_failed');
+                    }
+
+                    $order->created_at = $newDate;
+
+                    // Find the last record that was created before the day before the new date.
+                    // Everything from that point forward needs its amount_before recalculated.
+                    $dayBefore = $newDate->copy()->subDay()->startOfDay();
+
+                    $prevRecord = GymMoneyBox::where('branch_setting_id', $branch_setting_id)
+                        ->where('id', '!=', $order->id)
+                        ->where('created_at', '<', $dayBefore)
+                        ->orderBy('created_at', 'desc')
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if ($prevRecord) {
+                        $rebuildStartId = $prevRecord->id;
+                        $rebuildPrevAmt = self::amountAfter(
+                            round($prevRecord->amount, 2),
+                            round($prevRecord->amount_before, 2),
+                            $prevRecord->operation
+                        );
+                    }
+
+                    $doRebuild = true;
+                } catch (\Throwable $e) {
+                    // ignore invalid date — keep original created_at
+                }
+            }
+
             $order->save();
 
+            if ($doRebuild) {
+                $this->rebuildMoneyboxFromId($rebuildStartId, $rebuildPrevAmt);
+            }
+
             session()->flash('sweet_flash_message', [
-                'title' => trans('admin.done'),
+                'title'   => trans('admin.done'),
                 'message' => trans('admin.successfully_processed'),
-                'type' => 'success'
+                'type'    => 'success',
             ]);
             return '1';
         }
-        
+
         return trans('admin.operation_failed');
     }
 

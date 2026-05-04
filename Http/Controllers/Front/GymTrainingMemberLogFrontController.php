@@ -1526,5 +1526,20 @@ PROMPT;
             ], 500);
         }
     }
+
+    public function deleteLog($id)
+    {
+        $log = GymTrainingMemberLog::branch()->findOrFail($id);
+        $memberId = $log->member_id;
+        $log->delete();
+
+        session()->flash('sweet_flash_message', [
+            'title'   => trans('admin.done'),
+            'message' => trans('admin.successfully_deleted'),
+            'type'    => 'success',
+        ]);
+
+        return redirect()->route('sw.showTrainingMemberLog', $memberId);
+    }
 }
 
