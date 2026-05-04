@@ -2,6 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
+use Modules\Software\Classes\GymSwInvoiceHelper;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymTrainingMemberLog;
@@ -341,56 +342,66 @@ class GymTrainingMemberLogFrontController extends GymGenericFrontController
         // Handle payment if provided (optional)
         $moneyBoxId = null;
         $paymentMeta = [];
-        
+
         if ($request->amount_paid && $request->amount_paid > 0) {
-            $price = $request->price ?? 0;
-            $discount = $request->discount ?? 0;
-            $vat = $request->vat ?? 0;
-            $total = $request->total ?? $price;
-            $amountPaid = $request->amount_paid;
-            
-            $gymMoneyBox = GymMoneyBox::branch()->orderBy('created_at','desc')->first();
-            $amount_before = GymMoneyBoxFrontController::amountAfter((float)@$gymMoneyBox->amount, (float)@$gymMoneyBox->amount_before, @$gymMoneyBox->operation);
-         
+            $price      = (float) ($request->price ?? 0);
+            $discount   = (float) ($request->discount ?? 0);
+            $vat        = (float) ($request->vat ?? 0);
+            $total      = (float) ($request->total ?? $price);
+            $amountPaid = (float) $request->amount_paid;
+
+            $gymMoneyBox   = GymMoneyBox::branch()->orderBy('created_at', 'desc')->first();
+            $amount_before = GymMoneyBoxFrontController::amountAfter(
+                (float) @$gymMoneyBox->amount,
+                (float) @$gymMoneyBox->amount_before,
+                (int)   @$gymMoneyBox->operation
+            );
+
+            // Create invoice first so we can link it on the money box
+            $invoiceId = GymSwInvoiceHelper::forTrainingPlan(
+                (int) $memberId,
+                $price,
+                $discount,
+                $vat,
+                $amountPaid,
+                $this->user_sw->branch_setting_id ?? null
+            );
+
+            // Build money box payload using only columns that exist in the table
+            $moneyBoxColumns = \Schema::getColumnListing('sw_gym_money_boxes');
             $moneyBoxData = [
                 'branch_setting_id' => $this->user_sw->branch_setting_id ?? 1,
-                'user_id' => $this->user_sw->id,
-                'member_id' => $memberId,
-                'training_plan_id' => $memberPlanId, // FK to sw_gym_training_members
-                'operation' => 0, // 0 = addition (income)
-                'amount' => $amountPaid,
-                'amount_before' => $amount_before, // Starting balance (for income operations)
-                'price' => $price,
-                'discount' => $discount,
-                'vat' => $vat,
-                'total' => $total,
-                'payment_type' => $request->payment_type ?? 0,
-                'notes' => trans('sw.training_plan_payment') . ': ' . $plan->title,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'user_id'           => $this->user_sw->id,
+                'member_id'         => $memberId,
+                'training_plan_id'  => $memberPlanId,
+                'operation'         => 0,
+                'amount'            => $amountPaid,
+                'amount_before'     => $amount_before,
+                'price'             => $price,
+                'discount'          => $discount,
+                'vat'               => $vat,
+                'total'             => $total,
+                'payment_type'      => $request->payment_type ?? 0,
+                'notes'             => trans('sw.training_plan_payment') . ': ' . $plan->title,
+                'invoice_id'        => $invoiceId,
             ];
-            
-            // Check for optional money box columns
-            $moneyBoxColumns = \Schema::getColumnListing('sw_gym_money_boxes');
-            $finalMoneyBoxData = [];
-            foreach ($moneyBoxData as $key => $value) {
-                if (in_array($key, $moneyBoxColumns)) {
-                    $finalMoneyBoxData[$key] = $value;
-                }
-            }
-            
-            $moneyBoxId = \DB::table('sw_gym_money_boxes')->insertGetId($finalMoneyBoxData);
-            
+
+            $filteredData = array_intersect_key($moneyBoxData, array_flip($moneyBoxColumns));
+
+            // Use Eloquent create so observers and timestamps fire correctly
+            $createdBox = GymMoneyBox::create($filteredData);
+            $moneyBoxId = $createdBox->id;
 
             // Store payment details in meta
             $paymentMeta = [
-                'price' => $price,
-                'discount' => $discount,
-                'vat' => $vat,
-                'total' => $total,
-                'amount_paid' => $amountPaid,
+                'price'        => $price,
+                'discount'     => $discount,
+                'vat'          => $vat,
+                'total'        => $total,
+                'amount_paid'  => $amountPaid,
                 'payment_type' => $request->payment_type,
                 'money_box_id' => $moneyBoxId,
+                'invoice_id'   => $invoiceId,
             ];
         }
 

@@ -6,6 +6,10 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Factory;
 use Modules\Software\Console\NotifyPTClassesTomorrow;
+use Modules\Software\Models\GymMoneyBox;
+use Modules\Software\Models\GymSwInvoice;
+use Modules\Software\Observers\GymMoneyBoxObserver;
+use Modules\Software\Observers\GymSwInvoiceObserver;
 
 class SoftwareServiceProvider extends ServiceProvider
 {
@@ -32,6 +36,8 @@ class SoftwareServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
         $this->registerAuthGuard();
         $this->commands([NotifyPTClassesTomorrow::class]);
+        GymSwInvoice::observe(GymSwInvoiceObserver::class);
+        GymMoneyBox::observe(GymMoneyBoxObserver::class);
    
     }
     

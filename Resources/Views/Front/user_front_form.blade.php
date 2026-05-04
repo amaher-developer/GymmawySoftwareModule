@@ -164,17 +164,16 @@
                         <!--end::Input-->
                     </div>
                     <!--end::Input group-->
-{{--            <div class="form-group col-md-12">--}}
-{{--                <label class="col-md-3  control-label">{{ trans('sw.branch')}} <span class="required"></span></label>--}}
-{{--                <div class="col-md-9">--}}
-{{--                    <select id="branch_setting_id" name="branch_setting_id" class="form-control select2" required>--}}
-{{--                        <option value="">{{ trans('sw.choose')}}...</option>--}}
-{{--                        @foreach($branches as $branch)--}}
-{{--                        <option value="{{$branch->id}}" @if($branch->id == old('branch_setting_id', @$user->branch_setting_id)) selected="" @endif>{{$branch->name}}</option>--}}
-{{--                        @endforeach--}}
-{{--                    </select>--}}
-{{--                </div>--}}
-{{--            </div>--}}
+                    @if(($swUser->is_super_user ?? false) && count($branches) > 1)
+                    <div class="mb-10 fv-row">
+                        <label class="required form-label">{{ trans('sw.branch') }}</label>
+                        <select name="branch_setting_id" class="form-control">
+                            @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}" @selected($branch->id == old('branch_setting_id', $user->branch_setting_id ?? $swUser->branch_setting_id))>{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
                     <!--begin::Section: Basic Information-->
                     <div class="separator separator-dashed my-10"></div>
                     <div class="mb-10">

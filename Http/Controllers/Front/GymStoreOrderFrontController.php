@@ -2,6 +2,8 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
+use Illuminate\Support\Facades\Log;
+use Modules\Software\Classes\GymSwInvoiceHelper;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Exports\RecordsExport;
@@ -54,14 +56,14 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         if(request('trashed'))
         {
             // Optimize: Add eager loading for member relation to prevent lazy loading
-            $orders = $this->StoreOrderRepository->with(['order_product.product', 'member' => function($q) {
+            $orders = $this->StoreOrderRepository->branch()->with(['order_product.product', 'member' => function($q) {
                 $q->select('id', 'name', 'phone');
             }])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
             // Optimize: Add eager loading for member relation to prevent lazy loading
-            $orders = $this->StoreOrderRepository->with([
+            $orders = $this->StoreOrderRepository->branch()->with([
                 'order_product.product' => function($q){
 //                $q->withTrashed();
                 },
@@ -626,6 +628,8 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $member->save();
 
         }
+        $swSaleInvoiceId = GymSwInvoiceHelper::forStoreOrder($order, $this->user_sw->branch_setting_id ?? null);
+
         // ACCOUNTING RULE: Only create Money Box entry for cash sales (NOT when using store balance)
         // When using store balance (is_store_balance = 1 or 2), the money was already recorded when wallet was topped up
         // Creating Money Box here would double-count the revenue
@@ -647,6 +651,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
                 , 'store_order_id' => $order_id
                 , 'is_store_balance' => 0
+                , 'invoice_id' => $swSaleInvoiceId
             ]);
         //}
         // When is_store_balance = 1 (prepaid) or 2 (postpaid/debt):
@@ -654,36 +659,6 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         // - Member credit is deducted
         // - NO Money Box entry (cash flow already recorded when wallet was topped up, or will be recorded when debt is paid)
         $this->userLog($notes, TypeConstants::CreateStoreOrder);
-
-        // ✅ Create ZATCA Invoice if enabled (Phase 2)
-        if (config('sw_billing.zatca_enabled') && config('sw_billing.auto_invoice')) {
-            try {
-                \Log::info('Attempting to create ZATCA invoice', [
-                    'order_id' => $order->id,
-                    'zatca_enabled' => config('sw_billing.zatca_enabled'),
-                    'auto_invoice' => config('sw_billing.auto_invoice'),
-                ]);
-                
-                $invoice = \Modules\Billing\Services\SwBillingService::createInvoiceFromStoreOrder($order);
-                
-                // if ($invoice) {
-                //     \Log::info('ZATCA invoice created successfully', [
-                //         'invoice_id' => $invoice->id,
-                //         'order_id' => $order->id,
-                //     ]);
-                // } else {
-                //     \Log::warning('ZATCA invoice creation returned null', [
-                //         'order_id' => $order->id,
-                //     ]);
-                // }
-            } catch (\Exception $e) {
-                \Log::error('Failed to create ZATCA invoice for store order', [
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-        }
 
         return redirect(route('sw.createStoreOrderPOS'));
     }
@@ -895,6 +870,9 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
                     , 'store_order_id' => @$order->id
                 ]);
+
+                GymSwInvoiceHelper::refundStoreOrder($order, $amount, $this->user_sw->branch_setting_id ?? null);
+
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
                 
                 

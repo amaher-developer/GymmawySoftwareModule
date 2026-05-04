@@ -2,6 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
+use Modules\Software\Classes\GymSwInvoiceHelper;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Exports\RecordsExport;
 use Modules\Software\Http\Requests\GymStoreOrderRequest;
@@ -51,11 +52,11 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $orders = $this->StoreOrderVendorRepository->with(['product', function ($q){$q->withTrashed();}])->onlyTrashed()->orderBy('id', 'DESC');
+            $orders = $this->StoreOrderVendorRepository->branch()->with(['product', function ($q){$q->withTrashed();}])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $orders = $this->StoreOrderVendorRepository->with(['product'=>function($q){
+            $orders = $this->StoreOrderVendorRepository->branch()->with(['product'=>function($q){
                 $q->withTrashed();
             }])->orderBy('id', 'DESC');
         }
@@ -288,19 +289,23 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
                     $amount = (float)\request('amount');
                 }
                 if($amount > 0){
-                    $notes = trans('sw.store_purchase_order_delete', ['id' => $order->id,'amount' => $amount]);
+                    $vatPct = (float) ($this->mainSettings->vat_details['vat_percentage'] ?? 0);
+                    $notes  = trans('sw.store_purchase_order_delete', ['id' => $order->id, 'amount' => $amount]);
                     GymMoneyBox::create([
-                        'user_id' => Auth::guard('sw')->user()->id
-                        , 'amount' => $amount
-                        , 'vat' => ((@$amount * (@$this->mainSettings->vat_details['vat_percentage'] / 100)) / (1 + (@$this->mainSettings->vat_details['vat_percentage'] / 100)))
-                        , 'operation' => TypeConstants::Add
-                        , 'amount_before' => $amount_after
-                        , 'notes' => $notes
-                        , 'type' => TypeConstants::DeleteStorePurchaseOrder
-                        , 'member_id' => @$order->member_id
-                        , 'payment_type' => intval($order->payment_type)
+                        'user_id'          => Auth::guard('sw')->user()->id
+                        , 'amount'         => $amount
+                        , 'vat'            => round(($amount * ($vatPct / 100)) / (1 + ($vatPct / 100)), 2)
+                        , 'operation'      => TypeConstants::Add
+                        , 'amount_before'  => $amount_after
+                        , 'notes'          => $notes
+                        , 'type'           => TypeConstants::DeleteStorePurchaseOrder
+                        , 'member_id'      => @$order->member_id
+                        , 'payment_type'   => intval($order->payment_type)
                         , 'branch_setting_id' => @$this->user_sw->branch_setting_id
                     ]);
+
+                    GymSwInvoiceHelper::refundVendorOrder($order, $amount, $vatPct, $this->user_sw->branch_setting_id ?? null);
+
                         $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
                 }
             }

@@ -6,6 +6,7 @@ use Modules\Generic\Classes\Constants;
 use Modules\Generic\Models\Setting;
 use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
 use Modules\Software\Imports\MembersSubscriptionsImport;
+use Modules\Software\Classes\GymSwInvoiceHelper;
 use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Classes\SMSFactory;
 use Modules\Software\Services\TabbyPaymentService;
@@ -1104,7 +1105,7 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
 
-        return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+        return redirect(route('sw.createMember'))->withErrors(['general' => trans('sw.subscription_required')]);
 
     }
     public function dynamicMsg($msg = '', $membership = null, $setting = null)
@@ -1600,19 +1601,31 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($this->mainSettings->vat_details['vat_percentage']) {
                 $notes = $notes . ' - ' . trans('sw.vat_added');
             }
+
+            $diffVat = round($price_diff * ((float) (@$this->mainSettings->vat_details['vat_percentage'] ?? 0) / 100), 2);
+
+            $invoiceId = GymSwInvoiceHelper::forSubscriptionEdit(
+                (int) $member_subscription->member->id,
+                (int) $member_subscription->id,
+                $price_diff,
+                $diffVat,
+                $operation,
+                $this->user_sw->branch_setting_id ?? null
+            );
+
             $moneyBoxAdjustment = GymMoneyBox::create([
-                'user_id' => Auth::guard('sw')->user()->id
-                , 'amount' => @$price_diff
-//                , 'vat' => @$vat
-                , 'vat' => (@$price_diff * (@$this->mainSettings->vat_details['vat_percentage'] / 100))
-                , 'operation' => $operation
-                , 'amount_before' => $amount_after
-                , 'notes' => $notes
-                , 'type' => TypeConstants::EditMember
-                , 'member_id' => @$member_subscription->member->id
-                , 'payment_type' => $payment_type
-                , 'member_subscription_id' => @$member_subscription->id
-                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                'user_id'              => Auth::guard('sw')->user()->id
+                , 'amount'             => $price_diff
+                , 'vat'                => $diffVat
+                , 'operation'          => $operation
+                , 'amount_before'      => $amount_after
+                , 'notes'              => $notes
+                , 'type'               => TypeConstants::EditMember
+                , 'member_id'          => $member_subscription->member->id
+                , 'payment_type'       => $payment_type
+                , 'member_subscription_id' => $member_subscription->id
+                , 'branch_setting_id'  => @$this->user_sw->branch_setting_id
+                , 'invoice_id'         => $invoiceId
             ]);
             $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
         }
@@ -2116,7 +2129,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
             $notes = trans('sw.member_moneybox_remain_msg', ['subscription' => @$memberInfo->subscription->name, 'member' => $memberInfo->member->name, 'amount_paid' => $amountPaid, 'amount_remaining' => number_format($memberInfo->amount_remaining, 2)]);
 
-            GymMoneyBox::create([
+            $remainingMoneyBox = GymMoneyBox::create([
                 'user_id' => Auth::guard('sw')->user()->id
                 , 'amount' => @abs((float)$amountPaid)
                 , 'operation' => $amountPaid > 0 ? TypeConstants::Add : TypeConstants::Sub
@@ -2128,6 +2141,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'member_subscription_id' => @$memberInfo->id
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
             ]);
+
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
             return 1;

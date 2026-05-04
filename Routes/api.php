@@ -85,3 +85,25 @@ Route::name('sw.ptClassActiveMemberAjax')
 foreach (File::allFiles(__DIR__ . '/Api') as $route) {
 require_once $route->getPathname();
 }
+
+// ── GymSw Invoice routes ──────────────────────────────────────────────────────
+Route::prefix('gym-sw-invoices')->middleware(['api'])->group(function () {
+    Route::name('gymSw.invoices.index')
+        ->get('/',                   'Api\GymSwInvoiceController@index');
+    Route::name('gymSw.invoices.storeSales')
+        ->post('sales',              'Api\GymSwInvoiceController@storeSales');
+    Route::name('gymSw.invoices.storePurchase')
+        ->post('purchase',           'Api\GymSwInvoiceController@storePurchase');
+    Route::name('gymSw.invoices.memberInvoices')
+        ->get('member/{memberId}',   'Api\GymSwInvoiceController@memberInvoices');
+    Route::name('gymSw.invoices.show')
+        ->get('{id}',                'Api\GymSwInvoiceController@show');
+    Route::name('gymSw.invoices.creditNote')
+        ->post('{id}/credit-note',   'Api\GymSwInvoiceController@storeCreditNote');
+    Route::name('gymSw.invoices.cancel')
+        ->post('{id}/cancel',        'Api\GymSwInvoiceController@cancel');
+    Route::name('gymSw.invoices.pdf')
+        ->get('{id}/pdf',            'Api\GymSwInvoiceController@downloadPdf');
+    Route::name('gymSw.invoices.payment')
+        ->patch('{id}/payment',      'Api\GymSwInvoiceController@recordPayment');
+});

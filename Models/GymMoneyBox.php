@@ -71,6 +71,12 @@ class GymMoneyBox extends GenericModel
         return $this->hasOne(\Modules\Billing\Models\SwBillingInvoice::class, 'money_box_id');
     }
 
+    /** Invoice this payment entry is linked to. */
+    public function invoice()
+    {
+        return $this->belongsTo(GymSwInvoice::class, 'invoice_id');
+    }
+
     public function getOperationNameAttribute()
     {
         $operation = $this->getRawOriginal('operation');
