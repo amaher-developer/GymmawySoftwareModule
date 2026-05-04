@@ -16,9 +16,6 @@ return new class extends Migration
             $table->string('prefix', 10);
 
             $table->unsignedInteger('branch_setting_id')->nullable()->index();
-            $table->foreign('branch_setting_id')
-                ->references('id')->on('settings')
-                ->onDelete('set null');
 
             $table->unsignedInteger('member_id')->nullable()->index();
             $table->unsignedInteger('supplier_id')->nullable()->index();
