@@ -15,6 +15,7 @@ class GymMoneyBoxObserver
 {
     public function created(GymMoneyBox $moneyBox): void
     {
+        if (round((float) $moneyBox->amount, 2) <= 0) return;
         if ($moneyBox->invoice_id) return;
         if ($moneyBox->is_store_balance) return;
 

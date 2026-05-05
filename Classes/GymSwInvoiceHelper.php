@@ -33,6 +33,8 @@ class GymSwInvoiceHelper
             $subtotal  = round((float) ($order->amount_before_discount ?? 0) - (float) ($order->discount_value ?? 0), 2);
             $total     = round($subtotal + $vatAmount, 2);
 
+            if ($total <= 0) return null;
+
             $invoice = (new GymSwInvoiceService())->createSalesInvoice([
                 'member_id'         => $order->member_id ?? null,
                 'subtotal'          => $subtotal,
@@ -128,6 +130,8 @@ class GymSwInvoiceHelper
             $subtotal = round($price - $discount, 2);
             $total    = round($subtotal + $vatAmount, 2);
 
+            if ($total <= 0) return null;
+
             $invoice = (new GymSwInvoiceService())->createSalesInvoice([
                 'member_id'         => $memberId,
                 'subtotal'          => $subtotal,
@@ -173,6 +177,8 @@ class GymSwInvoiceHelper
         ?int   $branchSettingId = null
     ): ?int {
         try {
+            if (round($amount, 2) <= 0) return null;
+
             $subtotal = round($amount - $vatAmount, 2);
             $service  = new GymSwInvoiceService();
 

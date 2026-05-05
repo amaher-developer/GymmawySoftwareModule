@@ -19,6 +19,7 @@ class GymSwInvoiceService
 
     private function resolveStatus(float $amountPaid, float $total): string
     {
+        if ($total <= 0)           return 'paid';
         if ($amountPaid <= 0)      return 'draft';
         if ($amountPaid >= $total) return 'paid';
         return 'partial';
