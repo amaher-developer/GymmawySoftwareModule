@@ -20,7 +20,7 @@ class GymMoneyBoxType extends GenericModel
 
     public function scopeBranch($query)
     {
-        return $query->where('branch_setting_id', parent::getCurrentBranchId());
+        return $query;
     }
 
 
