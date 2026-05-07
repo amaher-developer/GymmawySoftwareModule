@@ -38,7 +38,6 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         parent::__construct();
         $this->limit = 5;
         $this->GymMoneyBoxRepository = new GymMoneyBoxRepository(new Application);
-        $this->GymMoneyBoxRepository = $this->GymMoneyBoxRepository->branch();
     }
 
 

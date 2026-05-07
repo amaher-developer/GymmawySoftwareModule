@@ -32,7 +32,6 @@ class GymBlockMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->BlockMemberRepository=new GymBlockMemberRepository(new Application);
-        $this->BlockMemberRepository=$this->BlockMemberRepository->branch();
     }
 
 

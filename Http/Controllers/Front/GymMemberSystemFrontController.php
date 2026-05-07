@@ -22,7 +22,6 @@ class GymMemberSystemFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->GymMemberSystemRepository = new GymMemberSystemRepository(new Application);
-        $this->GymMemberSystemRepository = $this->GymMemberSystemRepository->branch();
     }
 
 

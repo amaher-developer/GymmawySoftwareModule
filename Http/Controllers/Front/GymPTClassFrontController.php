@@ -32,7 +32,6 @@ class GymPTClassFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->ClassRepository=new GymPTClassRepository(new Application);
-        $this->ClassRepository=$this->ClassRepository->branch();
 
         $this->classTrainerHasScheduleColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'schedule');
         $this->classTrainerHasDateFromColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'date_from');

@@ -35,7 +35,6 @@ class GymStoreProductFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreProductRepository=new GymStoreProductRepository(new Application);
-        $this->StoreProductRepository=$this->StoreProductRepository->branch();
         $this->imageManager = new ImageManager(new Driver());
     }
 

@@ -34,7 +34,6 @@ class GymUserFrontController extends GymGenericFrontController
         parent::__construct();
 
         $this->GymUserRepository = new GymUserRepository(new Application);
-        $this->GymUserRepository = $this->GymUserRepository->branch();
         $this->imageManager = new ImageManager(new Driver());
     }
 

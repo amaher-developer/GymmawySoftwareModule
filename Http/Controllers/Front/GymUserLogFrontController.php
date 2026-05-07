@@ -60,10 +60,10 @@ class GymUserLogFrontController extends GymGenericFrontController
         parent::__construct();
         $this->imageManager = new ImageManager(new Driver());
 
-        $this->UserLogRepository = (new GymUserLogRepository(new Application))->branch();
-        $this->MemberAttendeeRepository = (new GymMemberAttendeeRepository(new Application))->branch();
-        $this->UserAttendeeRepository = (new GymUserAttendeeRepository(new Application))->branch();
-        $this->GymMoneyBoxRepository = (new GymMoneyBoxRepository(new Application))->branch();
+        $this->UserLogRepository = (new GymUserLogRepository(new Application));
+        $this->MemberAttendeeRepository = (new GymMemberAttendeeRepository(new Application));
+        $this->UserAttendeeRepository = (new GymUserAttendeeRepository(new Application));
+        $this->GymMoneyBoxRepository = (new GymMoneyBoxRepository(new Application));
     }
 
 
@@ -106,7 +106,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     public function reportRenewMemberList(){
         $title = trans('sw.logs_renew');
         $search_query = request()->query();
-        $logs = $this->UserLogRepository->with(['user'])->where('type', 1)->orderBy('id', 'DESC');
+        $logs = $this->UserLogRepository->branch()->with(['user'])->where('type', 1)->orderBy('id', 'DESC');
         $logs = $logs->paginate($this->limit)->onEachSide(1);
         $total = $logs->total();
 

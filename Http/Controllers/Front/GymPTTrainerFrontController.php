@@ -43,7 +43,6 @@ class GymPTTrainerFrontController extends GymGenericFrontController
         parent::__construct();
         $this->imageManager = new ImageManager(new Driver());
         $this->TrainerRepository=new GymPTTrainerRepository(new Application);
-        $this->TrainerRepository=$this->TrainerRepository->branch();
         $this->commissionService = app(PTCommissionService::class);
         $this->sessionService = app(PTSessionService::class);
     }

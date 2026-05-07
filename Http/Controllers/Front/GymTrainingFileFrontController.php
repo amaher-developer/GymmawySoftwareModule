@@ -30,7 +30,6 @@ class GymTrainingFileFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->TrainingFileRepository=new GymTrainingFileRepository(new Application);
-        $this->TrainingFileRepository=$this->TrainingFileRepository->branch();
     }
 
 

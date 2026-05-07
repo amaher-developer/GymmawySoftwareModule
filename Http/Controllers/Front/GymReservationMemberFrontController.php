@@ -30,7 +30,7 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->ReservationMemberRepository=new GymReservationMemberRepository(new Application);
-        $this->ReservationMemberRepository=$this->ReservationMemberRepository->branch()->reservation();
+        $this->ReservationMemberRepository=$this->ReservationMemberRepository->reservation();
     }
 
 

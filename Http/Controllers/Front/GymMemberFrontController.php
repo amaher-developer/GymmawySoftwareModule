@@ -80,7 +80,6 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->limit = 5;
         $this->keys = ['code', 'image', 'name', 'phone', 'address', 'member_subscription'];
         $this->MemberRepository = new GymMemberRepository(new Application);
-        $this->MemberRepository = $this->MemberRepository->branch();
     }
 
     public function showProfile($id)

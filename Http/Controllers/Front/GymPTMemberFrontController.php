@@ -55,7 +55,6 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $this->sessionService = $sessionService;
         $this->commissionService = $commissionService;
         $this->MemberRepository=new GymPTMemberRepository(new Application);
-        $this->MemberRepository=$this->MemberRepository->branch();
     }
 
 

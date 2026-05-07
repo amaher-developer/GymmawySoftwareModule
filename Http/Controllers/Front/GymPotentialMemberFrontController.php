@@ -36,7 +36,6 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         parent::__construct();
 
         $this->PotentialMemberRepository=new GymPotentialMemberRepository(new Application);
-        $this->PotentialMemberRepository=$this->PotentialMemberRepository->branch();
         $this->imageManager = new ImageManager(new Driver());
     }
 

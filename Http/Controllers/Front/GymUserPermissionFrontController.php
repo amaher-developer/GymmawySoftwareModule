@@ -18,7 +18,6 @@ class GymUserPermissionFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->PermissionRepository = new GymUserPermissionRepository(new Application);
-        $this->PermissionRepository = $this->PermissionRepository->branch();
     }
 
     public function index()

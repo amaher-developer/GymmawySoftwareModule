@@ -47,7 +47,6 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->NonMemberRepository=new GymNonMemberRepository(new Application);
-        $this->NonMemberRepository=$this->NonMemberRepository->branch();
     }
 
 

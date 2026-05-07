@@ -25,8 +25,6 @@ class GymReservationFrontController extends GymGenericFrontController
         $this->ReservationRepository =
             new GymReservationRepository(new Application);
 
-        $this->ReservationRepository =
-            $this->ReservationRepository->branch();
     }
 
     public function index()

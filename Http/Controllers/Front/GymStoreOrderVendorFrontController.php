@@ -40,7 +40,6 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreOrderVendorRepository=new GymStoreOrderVendorRepository(new Application);
-        $this->StoreOrderVendorRepository=$this->StoreOrderVendorRepository->branch();
     }
 
 

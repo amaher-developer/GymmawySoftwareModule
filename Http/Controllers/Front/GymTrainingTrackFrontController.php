@@ -30,7 +30,6 @@ class GymTrainingTrackFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->TrainingTrackRepository=new GymTrainingTrackRepository(new Application);
-        $this->TrainingTrackRepository=$this->TrainingTrackRepository->branch();
     }
 
 

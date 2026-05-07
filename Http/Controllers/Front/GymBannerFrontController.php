@@ -30,7 +30,6 @@ class GymBannerFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->BannerRepository=new GymBannerRepository(new Application);
-        $this->BannerRepository=$this->BannerRepository->branch();
     }
 
 

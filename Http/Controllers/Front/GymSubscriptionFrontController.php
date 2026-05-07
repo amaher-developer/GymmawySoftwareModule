@@ -39,7 +39,6 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         parent::__construct();
         $this->imageManager = new ImageManager(new Driver());
         $this->GymSubscriptionRepository = new GymSubscriptionRepository(new Application);
-        $this->GymSubscriptionRepository = $this->GymSubscriptionRepository->branch();
 
 
     }

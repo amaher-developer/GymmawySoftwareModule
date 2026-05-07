@@ -20,7 +20,6 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->TransactionRepository = new GymUserTransactionRepository(new Application);
-        $this->TransactionRepository = $this->TransactionRepository->branch();
     }
 
     public function index()

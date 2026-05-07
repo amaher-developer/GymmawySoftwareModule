@@ -49,7 +49,6 @@ class GymOrderFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->GymOrderRepository = new GymOrderRepository(new Application);
-        $this->GymOrderRepository = $this->GymOrderRepository->branch();
     }
 
 
