@@ -1938,7 +1938,7 @@ class GymUserLogFrontController extends GymGenericFrontController
                 $orders->whereIn('type', $types);
             }else {
                 $orders->whereIn('type', [
-                    TypeConstants::CreateMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription
+                    TypeConstants::CreateMember, TypeConstants::EditMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription
                     , TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity
 //                , TypeConstants::CreateMemberPayAmountRemainingForm
                     , TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::DeletePTMember, TypeConstants::CreatePTSubscription, TypeConstants::DeletePTSubscription
