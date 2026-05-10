@@ -3434,7 +3434,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
         $ptSubscription = \Modules\Software\Models\GymPTSubscription::with([
             'classes' => function ($q) {
-                $q->where('is_active', true)->with(['activeClassTrainers.trainer']);
+                $q->where('is_active', true)->where('is_mobile', true)->with(['activeClassTrainers.trainer']);
             }
         ])->find($id);
 
