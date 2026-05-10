@@ -92,7 +92,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         View::share('currentUser', $currentUser);
         $record = GymSubscription::where('id', $id)->first();
 
-        if (!$record) {
+        if (!$record || !$record->is_mobile) {
             return abort(404);
         }
 
@@ -114,7 +114,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $record = GymActivity::find((int) $id);
-        if (!$record) {
+        if (!$record || !$record->is_mobile) {
             return abort(404);
         }
 
@@ -138,7 +138,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         $record = GymStoreProduct::find((int) $id);
-        if (!$record) {
+        if (!$record || !$record->is_mobile) {
             return abort(404);
         }
 
@@ -3438,7 +3438,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             }
         ])->find($id);
 
-        if (!$ptSubscription) {
+        if (!$ptSubscription || !$ptSubscription->is_mobile) {
             return abort(404);
         }
 
