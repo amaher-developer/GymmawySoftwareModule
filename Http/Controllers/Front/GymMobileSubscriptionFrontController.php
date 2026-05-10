@@ -3438,7 +3438,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             }
         ])->find($id);
 
-        if (!$ptSubscription || !$ptSubscription->is_mobile) {
+        if (!$ptSubscription) {
             return abort(404);
         }
 
