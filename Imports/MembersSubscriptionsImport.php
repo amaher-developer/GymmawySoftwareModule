@@ -171,7 +171,7 @@ class MembersSubscriptionsImport implements ToCollection, WithHeadingRow
         // Generate member code if not provided
         $memberCode = $row['member_code'] ?? null;
         if (!$memberCode) {
-            $maxCode = GymMember::withTrashed()->max('code');
+            $maxCode = GymMember::branch()->withTrashed()->max('code');
             $memberCode = str_pad(((int)$maxCode + 1), 12, '0', STR_PAD_LEFT);
         }
 

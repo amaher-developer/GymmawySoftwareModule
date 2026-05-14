@@ -578,7 +578,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $channels = GymSaleChannel::branch()->get();
         $users = GymUser::branch()->get();
         $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
-        $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
+        $maxId = str_pad((GymMember::branch()->withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         $billingSettings = SwBillingService::getSettings();
         $payment_types = GymPaymentType::branch()->get();
         //        $this->mainSettings->last_barcode_number = $this->mainSettings->last_barcode_number + 1;

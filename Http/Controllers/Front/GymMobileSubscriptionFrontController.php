@@ -2183,7 +2183,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     $member = GymMember::where('email', $invoice->email)->first();
                 }
                 if (!$member) {
-                    $maxCode = str_pad(((int) GymMember::withTrashed()->max('code') + 1), 14, '0', STR_PAD_LEFT);
+                    $maxCode = str_pad(((int) GymMember::branch()->withTrashed()->max('code') + 1), 14, '0', STR_PAD_LEFT);
                     $member  = GymMember::create([
                         'code'    => $maxCode,
                         'name'    => $invoice->name,
@@ -3747,7 +3747,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     $member = GymMember::where('phone', $invoice->phone)->first();
                 }
                 if (!$member) {
-                    $maxCode = str_pad(((int) GymMember::withTrashed()->max('code') + 1), 14, '0', STR_PAD_LEFT);
+                    $maxCode = str_pad(((int) GymMember::branch()->withTrashed()->max('code') + 1), 14, '0', STR_PAD_LEFT);
                     $member  = GymMember::create([
                         'code'    => $maxCode,
                         'name'    => $invoice->name,
