@@ -15,11 +15,14 @@ return new class extends Migration
         $indexes = collect(DB::select('SHOW INDEX FROM sw_gym_members'))
             ->pluck('Key_name');
 
-        if ($indexes->contains('sw_gym_members_code_unique')) {
-            Schema::table('sw_gym_members', function (Blueprint $table) {
+        Schema::table('sw_gym_members', function (Blueprint $table) use ($indexes) {
+            if ($indexes->contains('sw_gym_members_code_unique')) {
                 $table->dropUnique('sw_gym_members_code_unique');
-            });
-        }
+            }
+            if ($indexes->contains('code')) {
+                $table->dropIndex('code');
+            }
+        });
     }
 
     /**
