@@ -55,12 +55,20 @@ class GymMemberRequest extends FormRequest
             'code' => [
                 'nullable',
                 'numeric',
-                Rule::unique('sw_gym_members')->ignore($memberId),
+                Rule::unique('sw_gym_members')
+                    ->ignore($memberId)
+                    ->where(function ($query) use ($branchId) {
+                        return $query->where('branch_setting_id', $branchId);
+                    }),
             ],
             'fp_id' => [
                 'nullable',
                 'numeric',
-                Rule::unique('sw_gym_members')->ignore($memberId),
+                Rule::unique('sw_gym_members')
+                    ->ignore($memberId)
+                    ->where(function ($query) use ($branchId) {
+                        return $query->where('branch_setting_id', $branchId);
+                    }),
             ],
             'address'=> 'required',
             'additional_info' => 'nullable|string',
