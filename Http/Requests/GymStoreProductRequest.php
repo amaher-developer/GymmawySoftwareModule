@@ -3,6 +3,8 @@
 namespace Modules\Software\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Modules\Generic\Models\GenericModel;
 use Modules\Software\Models\GymStoreProduct;
 
 class GymStoreProductRequest extends FormRequest
@@ -38,17 +40,23 @@ class GymStoreProductRequest extends FormRequest
             ?? request('product_id')
             ?? request('id');
 
-        $codeRule = 'required|string|max:191|unique:sw_gym_store_products,code';
-        if ($productId) {
-            $codeRule .= ',' . intval($productId);
-        }
+        $branchId = GenericModel::getCurrentBranchId();
 
         return [
             'name_ar' => 'required',
             'name_en' => 'required',
             'price' => 'required',
             'sku' => 'nullable|string|max:191',
-            'code' => $codeRule,
+            'code' => [
+                'required',
+                'string',
+                'max:191',
+                Rule::unique('sw_gym_store_products', 'code')
+                    ->ignore($productId ? intval($productId) : null)
+                    ->where(function ($query) use ($branchId) {
+                        return $query->where('branch_setting_id', $branchId);
+                    }),
+            ],
 //            'quantity' => 'required',
             'image' => 'mimes:jpeg,jpg,png,gif|max:500',
             'content_ar' => 'max:250',
