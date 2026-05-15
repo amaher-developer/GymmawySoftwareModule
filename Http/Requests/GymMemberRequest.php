@@ -33,6 +33,12 @@ class GymMemberRequest extends FormRequest
             $checkDeletePhone->phone = $checkDeletePhone->phone.'-'.time();
             $checkDeletePhone->save();
         }
+        // check if this phone already deleted we change number to add this number again to us with out effect on order and flow
+        $checkDeleteCode = GymMember::branch()->where('code', request('code'))->onlyTrashed()->first();
+        if($checkDeleteCode){
+            $checkDeleteCode->code = '0';
+            $checkDeleteCode->save();
+        }
         $phone = $code = $fp_id = '';
         if(request('member')) $phone = ',phone,'.intval(request('member'));
         $branchId = GenericModel::getCurrentBranchId();
