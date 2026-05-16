@@ -242,8 +242,8 @@ $notesBorder = $isAr ? 'border-right' : 'border-left';
         text-align: {{ $isAr ? 'right' : 'left' }};
     }
     .qr-section img {
-        width: 70px;
-        height: 70px;
+        width: 180px;
+        height: 180px;
     }
     .qr-label {
         font-size: 9px;
@@ -430,7 +430,7 @@ $notesBorder = $isAr ? 'border-right' : 'border-left';
 @if($invoice->zatcaBillingInvoice && $invoice->zatcaBillingInvoice->zatca_qr_code)
 <div class="qr-section">
     <img src="data:image/png;base64,{{ $invoice->zatcaBillingInvoice->zatca_qr_code }}"
-         alt="ZATCA QR Code" width="70" height="70">
+         alt="ZATCA QR Code" width="180" height="180">
     <div class="qr-label">{{ $t['qr_label'] }}</div>
 </div>
 @endif
