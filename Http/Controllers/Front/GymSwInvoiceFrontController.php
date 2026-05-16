@@ -30,7 +30,7 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
         if ($request->filled('date_from')) $query->whereDate('issued_at', '>=', $request->date_from);
         if ($request->filled('date_to'))   $query->whereDate('issued_at', '<=', $request->date_to);
 
-        $invoices = $query->latest()->paginate(20);
+        $invoices = $query->with('zatcaBillingInvoice')->latest()->paginate(20);
 
         $title = trans('sw.invoices');
         return view('software::gym_sw_invoices.index', compact('invoices', 'title'));
@@ -38,7 +38,7 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
 
     public function show(int $id)
     {
-        $invoice = GymSwInvoice::with(['member', 'moneyBoxes', 'statusLogs', 'originalInvoice', 'creditNotes', 'zatcaBillingInvoice'])->findOrFail($id);
+        $invoice = GymSwInvoice::with(['member', 'moneyBoxes.pay_type', 'statusLogs', 'originalInvoice', 'creditNotes', 'zatcaBillingInvoice'])->findOrFail($id);
         $title   = $invoice->invoice_number;
         return view('software::gym_sw_invoices.show', compact('invoice', 'title'));
     }
@@ -130,6 +130,7 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
                     $billing->total_amount             = (float) $invoice->total;
                     $billing->buyer_name               = $member?->name ?? 'عميل';
                     $billing->buyer_tax_number         = $member?->national_id ?? null;
+                    $billing->created_at               = $invoice->issued_at ?? now();
                     $billing->save();
 
                     $invoice->zatca_billing_invoice_id = $billing->id;
@@ -189,6 +190,7 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
                 $billing->total_amount             = (float) $invoice->total;
                 $billing->buyer_name               = $member?->name ?? 'عميل';
                 $billing->buyer_tax_number         = $member?->national_id ?? null;
+                $billing->created_at               = $invoice->issued_at ?? now();
                 $billing->save();
 
                 $invoice->zatca_billing_invoice_id = $billing->id;

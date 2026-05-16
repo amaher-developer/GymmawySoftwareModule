@@ -169,6 +169,12 @@
                             <i class="ki-outline ki-calendar fs-6 me-1"></i>
                             {{ trans('sw.issued_at') }}
                         </th>
+                        @if(config('sw_billing.zatca_enabled'))
+                        <th class="min-w-80px text-center">
+                            <i class="ki-outline ki-shield-tick fs-6 me-1"></i>
+                            ZATCA
+                        </th>
+                        @endif
                         <th class="min-w-100px text-end">
                             <i class="ki-outline ki-setting-2 fs-6 me-1"></i>
                             {{ trans('admin.actions') }}
@@ -243,6 +249,29 @@
                                 {{ $invoice->issued_at ? $invoice->issued_at->format('Y-m-d') : '—' }}
                             </span>
                         </td>
+                        @if(config('sw_billing.zatca_enabled'))
+                        <td class="text-center">
+                            @if($zatcaEligible)
+                            @php
+                                $zatcaStatus = $invoice->zatcaBillingInvoice?->zatca_phase2_status;
+                                $zatcaSent   = in_array($zatcaStatus, ['REPORTED', 'CLEARED', 'WARNING']);
+                            @endphp
+                            @if($zatcaSent)
+                                <span title="{{ $zatcaStatus }}">
+                                    <i class="ki-outline ki-shield-tick fs-2 text-success"></i>
+                                </span>
+                            @else
+                                <button type="button"
+                                        class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm btn-zatca-submit"
+                                        data-id="{{ $invoice->id }}"
+                                        data-url="{{ route('sw.gymSwInvoices.submitZatca', $invoice->id) }}"
+                                        title="{{ trans('sw.zatca_submit') }}">
+                                    <i class="ki-outline ki-shield-tick fs-2 text-gray-400"></i>
+                                </button>
+                            @endif
+                            @endif
+                        </td>
+                        @endif
                         <td class="text-end">
                             <div class="d-flex justify-content-end gap-1">
                                 <a href="{{ route('sw.gymSwInvoices.show', $invoice->id) }}"
@@ -255,15 +284,6 @@
                                    target="_blank" title="{{ trans('sw.download_pdf') }}">
                                     <i class="ki-outline ki-file-down fs-2"></i>
                                 </a>
-                                @if(config('sw_billing.zatca_enabled') && $zatcaEligible)
-                                <button type="button"
-                                        class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm btn-zatca-submit"
-                                        data-id="{{ $invoice->id }}"
-                                        data-url="{{ route('sw.gymSwInvoices.submitZatca', $invoice->id) }}"
-                                        title="{{ trans('sw.zatca_submit') }}">
-                                    <i class="ki-outline ki-shield-tick fs-2"></i>
-                                </button>
-                                @endif
                             </div>
                         </td>
                     </tr>

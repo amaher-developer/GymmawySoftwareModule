@@ -303,11 +303,24 @@
 
                 <!--begin::QR code-->
                 @if($zatca->zatca_qr_code)
-                <div class="text-center mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-3">
                     <img src="data:image/png;base64,{{ $zatca->zatca_qr_code }}"
-                         alt="ZATCA QR" style="width:160px;height:160px;"
-                         class="border rounded p-2">
-                    <div class="text-muted fs-8 mt-1">{{ trans('sw.zatca_qr_code') }}</div>
+                         alt="ZATCA QR" style="width:72px;height:72px;"
+                         class="border rounded p-1">
+                    <div class="d-flex flex-column gap-1 ms-3">
+                        <button type="button"
+                                class="btn btn-sm btn-light-primary"
+                                data-bs-toggle="modal" data-bs-target="#modalZatcaQr">
+                            <i class="ki-outline ki-eye fs-6"></i>
+                            {{ trans('sw.zatca_qr_code') }}
+                        </button>
+                        <a href="data:image/png;base64,{{ $zatca->zatca_qr_code }}"
+                           download="zatca-qr-{{ $zatca->invoice_number }}.png"
+                           class="btn btn-sm btn-light-success">
+                            <i class="ki-outline ki-cloud-download fs-6"></i>
+                            {{ trans('sw.download') }}
+                        </a>
+                    </div>
                 </div>
                 @endif
                 <!--end::QR code-->
@@ -380,29 +393,103 @@
         <!--begin::Payments-->
         @if($invoice->moneyBoxes->isNotEmpty())
         <div class="card card-flush">
-            <div class="card-header align-items-center py-5">
+            <div class="card-header align-items-center py-5 gap-2 flex-wrap">
                 <div class="card-title">
-                    <i class="ki-outline ki-wallet fs-2 me-3 text-success"></i>
+                    <i class="ki-outline ki-wallet fs-2 me-2 text-success"></i>
                     <span class="fs-5 fw-semibold text-gray-900">{{ trans('sw.payments') }}</span>
                 </div>
+                <div class="card-toolbar">
+                    <span class="badge badge-light-success fs-8 px-3">
+                        {{ $invoice->moneyBoxes->count() }}
+                        {{ trans('sw.transactions') }}
+                    </span>
+                </div>
             </div>
-            <div class="card-body pt-0">
+            <div class="card-body pt-2 pb-4 px-4 px-md-6">
+
                 @foreach($invoice->moneyBoxes as $mb)
-                <div class="d-flex align-items-center justify-content-between py-3
-                    {{ !$loop->last ? 'border-bottom border-dashed' : '' }}">
-                    <div class="d-flex align-items-center">
-                        <div class="symbol symbol-35px me-3">
-                            <div class="symbol-label bg-light-success">
-                                <i class="ki-outline ki-dollar fs-4 text-success"></i>
+                @php
+                    $isCredit  = ((int) $mb->getRawOriginal('operation')) === 0;
+                    $payMethod = $mb->pay_type?->name ?? trans('sw.cash');
+                    $colorCls  = $isCredit ? 'success' : 'danger';
+                    $icon      = $isCredit ? 'ki-arrow-down-left' : 'ki-arrow-up-right';
+                    $sign      = $isCredit ? '+' : '−';
+                @endphp
+                <div class="py-4 {{ !$loop->last ? 'border-bottom border-dashed' : '' }}">
+
+                    <!--begin::Row-->
+                    <div class="d-flex align-items-start gap-3">
+
+                        <!--begin::Icon-->
+                        <div class="symbol symbol-40px flex-shrink-0">
+                            <div class="symbol-label bg-light-{{ $colorCls }}">
+                                <i class="ki-outline {{ $icon }} fs-3 text-{{ $colorCls }}"></i>
                             </div>
                         </div>
-                        <span class="text-muted fw-semibold fs-7">
-                            {{ $mb->created_at ? $mb->created_at->format('Y-m-d') : '—' }}
-                        </span>
+                        <!--end::Icon-->
+
+                        <!--begin::Info-->
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-1 flex-wrap">
+                                <span class="fw-bold text-gray-800 fs-6 text-break">
+                                    {{ $payMethod }}
+                                </span>
+                                <span class="fw-bolder fs-5 text-nowrap text-{{ $colorCls }}">
+                                    {{ $sign }}{{ number_format($mb->amount, 2) }}
+                                </span>
+                            </div>
+
+                            @if($mb->notes)
+                            <div class="text-muted fs-8 mb-1 text-break">{{ $mb->notes }}</div>
+                            @endif
+
+                            <div class="d-flex align-items-center flex-wrap gap-2 mt-1">
+                                <span class="text-muted fs-8 text-nowrap">
+                                    <i class="ki-outline ki-calendar fs-8 me-1"></i>
+                                    {{ $mb->created_at?->format('Y-m-d H:i') ?? '—' }}
+                                </span>
+                                @if($mb->getRawOriginal('vat') > 0)
+                                <span class="text-muted fs-8 text-nowrap">
+                                    <i class="ki-outline ki-percentage fs-8 me-1"></i>
+                                    {{ trans('sw.vat') }}: {{ number_format($mb->vat, 2) }}
+                                </span>
+                                @endif
+                                <span class="badge badge-light-{{ $colorCls }} fs-9 py-1 px-2">
+                                    @if($isCredit) {{ trans('sw.addition') }}
+                                    @else {{ trans('sw.withdraw') }}
+                                    @endif
+                                </span>
+                                <a href="{{ route('sw.showOrder', $mb->id) }}"
+                                   class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm ms-auto flex-shrink-0"
+                                   title="{{ trans('sw.view') }}" target="_blank">
+                                    <i class="ki-outline ki-eye fs-4"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <!--end::Info-->
+
                     </div>
-                    <span class="fw-bold text-success fs-6">{{ number_format($mb->amount, 2) }}</span>
+                    <!--end::Row-->
+
                 </div>
                 @endforeach
+
+                <!--begin::Totals-->
+                <div class="d-flex justify-content-between align-items-center pt-4 mt-1 border-top border-gray-200 flex-wrap gap-2">
+                    <span class="fw-semibold text-gray-600 fs-7">{{ trans('sw.amount_paid') }}</span>
+                    <span class="fw-bolder text-success fs-4">
+                        {{ number_format($invoice->moneyBoxes->where('operation', 0)->sum('amount'), 2) }}
+                    </span>
+                </div>
+                @if($invoice->moneyBoxes->where('operation', '!=', 0)->isNotEmpty())
+                <div class="d-flex justify-content-between align-items-center pt-2 flex-wrap gap-2">
+                    <span class="fw-semibold text-gray-600 fs-7">{{ trans('sw.withdraw') }}</span>
+                    <span class="fw-bolder text-danger fs-6">
+                        −{{ number_format($invoice->moneyBoxes->where('operation', '!=', 0)->sum('amount'), 2) }}
+                    </span>
+                </div>
+                @endif
+
             </div>
         </div>
         @endif
@@ -411,6 +498,36 @@
     </div>
     <!--end::Sidebar-->
 
+@if(config('sw_billing.zatca_enabled') && isset($zatca) && $zatca?->zatca_qr_code)
+<!--begin::QR modal-->
+<div class="modal fade" id="modalZatcaQr" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+        <div class="modal-content">
+            <div class="modal-header py-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="ki-outline ki-shield-tick fs-4 text-primary me-2"></i>
+                    ZATCA QR — {{ $zatca->invoice_number }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-8">
+                <img src="data:image/png;base64,{{ $zatca->zatca_qr_code }}"
+                     alt="ZATCA QR Code"
+                     style="width:260px;height:260px;image-rendering:pixelated;"
+                     class="border rounded p-2 mb-4">
+                <div class="text-muted fs-8 mb-6">{{ trans('sw.zatca_qr_code') }}</div>
+                <a href="data:image/png;base64,{{ $zatca->zatca_qr_code }}"
+                   download="zatca-qr-{{ $zatca->invoice_number }}.png"
+                   class="btn btn-primary btn-sm">
+                    <i class="ki-outline ki-cloud-download fs-6 me-1"></i>
+                    {{ trans('admin.download') }}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<!--end::QR modal-->
+@endif
 </div>
 @endsection
 
