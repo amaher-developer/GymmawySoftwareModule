@@ -22,11 +22,11 @@
         width: 100%;
     }
     .header table { width: 100%; border-collapse: collapse; }
-    .header td { vertical-align: middle; }
+    .header td { vertical-align: middle; color: #ffffff; }
     .header .branch-name  { font-size: 20px; font-weight: bold; color: #ffffff; }
-    .header .invoice-title { font-size: 14px; margin-top: 4px; color: #cde; }
+    .header .invoice-title { font-size: 14px; margin-top: 4px; color: #ffffff; }
     .header .invoice-number { font-size: 22px; font-weight: bold; color: #ffffff; text-align: left; }
-    .header .invoice-date   { font-size: 12px; color: #cde; text-align: left; }
+    .header .invoice-date   { font-size: 12px; color: #ffffff; text-align: left; }
 
     /* ── Status badges ── */
     .badge {
@@ -91,17 +91,24 @@
 
     /* ── QR code ── */
     .qr-section {
+        padding: 8px 24px 0;
         text-align: center;
-        padding: 10px 24px 0;
     }
-    .qr-section img {
-        width: 110px;
-        height: 110px;
-    }
+    /* ── QR code ── */
+.qr-section {
+    padding: 8px 24px 0;
+    text-align: center;
+}
+
+.qr-section img {
+    width: 60px !important;
+    height: 60px !important;
+    display: inline-block;
+}
     .qr-label {
-        font-size: 10px;
-        color: #888;
-        margin-top: 4px;
+        font-size: 9px;
+        color: #999;
+        margin-top: 3px;
     }
 
     /* ── Notes ── */
@@ -281,7 +288,9 @@
 {{-- ── ZATCA QR code ────────────────────────────────────────────────── --}}
 @if($invoice->zatcaBillingInvoice && $invoice->zatcaBillingInvoice->zatca_qr_code)
 <div class="qr-section">
-    <img src="data:image/png;base64,{{ $invoice->zatcaBillingInvoice->zatca_qr_code }}" alt="ZATCA QR Code">
+    <img src="data:image/png;base64,{{ $invoice->zatcaBillingInvoice->zatca_qr_code }}" alt="ZATCA QR Code" width="180"
+    height="180"
+    style="width:180px;height:180px;">
     <div class="qr-label">رمز الاستجابة السريعة - هيئة الزكاة والضريبة والجمارك</div>
 </div>
 @endif
