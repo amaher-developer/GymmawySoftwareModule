@@ -228,7 +228,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $user = request('user');
         $search = request('search');
         $subscription = request('subscription');
-        $records = $this->GymMoneyBoxRepository->with(['user', 'member_subscription.pay_type', 'pay_type'])
+        $records = $this->GymMoneyBoxRepository->branch()->with(['user', 'member_subscription.pay_type', 'pay_type'])
             ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))
             ->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'))
             ->when(((isset($subscription)) &&(!is_null($subscription))), function ($query) use ($subscription) {
@@ -314,7 +314,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $user = request('user');
         $search = request('search');
 
-        $sorders = $this->GymMoneyBoxRepository->with(['user'])
+        $sorders = $this->GymMoneyBoxRepository->branch()->with(['user'])
                     ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))
                     ->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'))
                     ->when(((isset($subscription)) &&(!is_null($subscription))), function ($query) use ($subscription) {
