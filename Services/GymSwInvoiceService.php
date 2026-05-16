@@ -217,9 +217,12 @@ class GymSwInvoiceService
 
         $settings = Setting::find($invoice->branch_setting_id);
 
+        $lang = app()->getLocale() === 'ar' ? 'ar' : 'en';
+
         $html = view('software::gym_sw_invoices.pdf', [
             'invoice'  => $invoice,
             'settings' => $settings,
+            'lang'     => $lang,
         ])->render();
 
         $mpdf = new \Mpdf\Mpdf([
@@ -235,7 +238,7 @@ class GymSwInvoiceService
             'default_font_size' => 11,
         ]);
 
-        $mpdf->SetDirectionality('rtl');
+        $mpdf->SetDirectionality($lang === 'ar' ? 'rtl' : 'ltr');
         $mpdf->WriteHTML($html);
 
         $relativePath = 'gym_sw_invoices/' . $invoice->invoice_number . '.pdf';
