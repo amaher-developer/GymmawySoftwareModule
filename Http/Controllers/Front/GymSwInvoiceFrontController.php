@@ -116,28 +116,8 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
                     continue;
                 }
 
-                $billing = $invoice->zatcaBillingInvoice;
-
-                if (!$billing) {
-                    $member  = $invoice->member;
-                    $billing = new SwBillingInvoice();
-                    $billing->invoice_number           = $invoice->invoice_number;
-                    $billing->invoice_type             = $invoice->type === 'credit_note' ? 'credit_note' : 'simplified';
-                    $billing->reference_invoice_number = $invoice->originalInvoice->invoice_number ?? null;
-                    $billing->member_id                = $invoice->member_id;
-                    $billing->amount                   = (float) $invoice->subtotal;
-                    $billing->vat_amount               = (float) $invoice->vat_amount;
-                    $billing->total_amount             = (float) $invoice->total;
-                    $billing->buyer_name               = $member?->name ?? 'عميل';
-                    $billing->buyer_tax_number         = $member?->national_id ?? null;
-                    $billing->created_at               = $invoice->issued_at ?? now();
-                    $billing->save();
-
-                    $invoice->zatca_billing_invoice_id = $billing->id;
-                    $invoice->saveQuietly();
-                }
-
-                $result = ZatcaPhase2Service::signAndSubmit($billing);
+                $billing = $this->resolveOrCreateBillingInvoice($invoice);
+                $result  = ZatcaPhase2Service::signAndSubmit($billing);
 
                 if ($result['success']) {
                     $success++;
@@ -168,36 +148,15 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
             return response()->json(['success' => false, 'message' => trans('sw.zatca_disabled')], 403);
         }
 
-        $invoice = GymSwInvoice::with(['member', 'zatcaBillingInvoice'])->findOrFail($id);
+        $invoice = GymSwInvoice::with(['member', 'zatcaBillingInvoice', 'originalInvoice'])->findOrFail($id);
 
         if (!in_array($invoice->type, ['sales', 'credit_note'])) {
             return response()->json(['success' => false, 'message' => trans('sw.zatca_not_applicable')], 422);
         }
 
         try {
-            // Re-use existing SwBillingInvoice or create a new one
-            $billing = $invoice->zatcaBillingInvoice;
-
-            if (!$billing) {
-                $member  = $invoice->member;
-                $billing = new SwBillingInvoice();
-                $billing->invoice_number           = $invoice->invoice_number;
-                $billing->invoice_type             = $invoice->type === 'credit_note' ? 'credit_note' : 'simplified';
-                $billing->reference_invoice_number = $invoice->originalInvoice->invoice_number ?? null;
-                $billing->member_id                = $invoice->member_id;
-                $billing->amount                   = (float) $invoice->subtotal;
-                $billing->vat_amount               = (float) $invoice->vat_amount;
-                $billing->total_amount             = (float) $invoice->total;
-                $billing->buyer_name               = $member?->name ?? 'عميل';
-                $billing->buyer_tax_number         = $member?->national_id ?? null;
-                $billing->created_at               = $invoice->issued_at ?? now();
-                $billing->save();
-
-                $invoice->zatca_billing_invoice_id = $billing->id;
-                $invoice->saveQuietly();
-            }
-
-            $result = ZatcaPhase2Service::signAndSubmit($billing);
+            $billing = $this->resolveOrCreateBillingInvoice($invoice);
+            $result  = ZatcaPhase2Service::signAndSubmit($billing);
 
             if ($result['success']) {
                 return response()->json([
@@ -206,7 +165,7 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
                     'message' => trans('sw.zatca_submitted_successfully'),
                 ]);
             }
-
+dd($result);
             return response()->json([
                 'success' => false,
                 'status'  => $result['status'],
@@ -221,5 +180,46 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Return the linked SwBillingInvoice, falling back to an existing row by
+     * invoice_number (repairs a broken FK), or creating a fresh record.
+     * Repairs the zatca_billing_invoice_id link if it was missing.
+     */
+    private function resolveOrCreateBillingInvoice(GymSwInvoice $invoice): SwBillingInvoice
+    {
+        // 1. Already linked via FK
+        if ($invoice->zatcaBillingInvoice) {
+            return $invoice->zatcaBillingInvoice;
+        }
+
+        // 2. Orphaned row — link was never saved back (e.g. previous exception)
+        $existing = SwBillingInvoice::where('invoice_number', $invoice->invoice_number)->first();
+        if ($existing) {
+            $invoice->zatca_billing_invoice_id = $existing->id;
+            $invoice->saveQuietly();
+            return $existing;
+        }
+
+        // 3. Brand new
+        $member  = $invoice->member;
+        $billing = new SwBillingInvoice();
+        $billing->invoice_number           = $invoice->invoice_number;
+        $billing->invoice_type             = $invoice->type === 'credit_note' ? 'credit_note' : 'simplified';
+        $billing->reference_invoice_number = $invoice->originalInvoice->invoice_number ?? null;
+        $billing->member_id                = $invoice->member_id;
+        $billing->amount                   = (float) $invoice->subtotal;
+        $billing->vat_amount               = (float) $invoice->vat_amount;
+        $billing->total_amount             = (float) $invoice->total;
+        $billing->buyer_name               = $member?->name ?? 'عميل';
+        $billing->buyer_tax_number         = $member?->national_id ?? null;
+        $billing->created_at               = $invoice->issued_at ?? now();
+        $billing->save();
+
+        $invoice->zatca_billing_invoice_id = $billing->id;
+        $invoice->saveQuietly();
+
+        return $billing;
     }
 }
