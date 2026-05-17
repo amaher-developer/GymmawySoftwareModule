@@ -996,7 +996,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-        $subscriptions = GymSubscription::get();
+        $subscriptions = GymSubscription::branch()->get();
         $revenues = ($sorders->where('operation', 0)->sum('amount'));
         $expenses = ($sorders->where('operation', 1)->sum('amount'));
 
