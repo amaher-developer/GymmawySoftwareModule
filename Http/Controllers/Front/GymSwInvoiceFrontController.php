@@ -165,7 +165,7 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
                     'message' => trans('sw.zatca_submitted_successfully'),
                 ]);
             }
-dd($result);
+
             return response()->json([
                 'success' => false,
                 'status'  => $result['status'],
