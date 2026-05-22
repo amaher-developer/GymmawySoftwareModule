@@ -7,6 +7,16 @@ Route::prefix('gym-sw-invoices')
         Route::name('sw.gymSwInvoices.index')
             ->get('/', 'Front\GymSwInvoiceFrontController@index');
 
+        Route::group(['defaults' => ['permission' => 'exportInvoicesReportExcel']], function () {
+            Route::name('sw.gymSwInvoices.exportExcel')
+                ->get('/excel', 'Front\GymSwInvoiceFrontController@exportExcel');
+        });
+
+        Route::group(['defaults' => ['permission' => 'exportInvoicesReportPDF']], function () {
+            Route::name('sw.gymSwInvoices.exportReportPDF')
+                ->get('/report-pdf', 'Front\GymSwInvoiceFrontController@exportReportPDF');
+        });
+
         Route::name('sw.gymSwInvoices.show')
             ->get('{id}', 'Front\GymSwInvoiceFrontController@show');
 

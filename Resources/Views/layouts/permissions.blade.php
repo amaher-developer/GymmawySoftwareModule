@@ -1751,6 +1751,29 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                         </div>
 
+                                        {{-- Invoices Report --}}
+                                        <hr class="perm-hr"/>
+                                        <div class="perm-section-title">
+                                            <i class="ki-outline ki-bill"></i> {{ trans('sw.invoices_report') }}
+                                        </div>
+                                        <div class="row pt-2 pb-2">
+                                            <div class="col-lg-3">
+                                                <label class="ckbox"><input name="permissions[]" value="gymSwInvoices.index"
+                                                    @if(@in_array('gymSwInvoices.index', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.list_invoices') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportInvoicesReportExcel"
+                                                    @if(@in_array('exportInvoicesReportExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.excel_export') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportInvoicesReportPDF"
+                                                    @if(@in_array('exportInvoicesReportPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.pdf_export') }}</span></label>
+                                            </div>
+                                        </div>
+
                                         {{-- Customer Balances Report --}}
                                         <hr class="perm-hr"/>
                                         <div class="perm-section-title">

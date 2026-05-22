@@ -3,11 +3,15 @@
 namespace Modules\Software\Http\Controllers\Front;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Modules\Billing\Models\SwBillingInvoice;
 use Modules\Billing\Services\ZatcaPhase2Service;
+use Modules\Software\Exports\GymSwInvoicesReportExport;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymSwInvoice;
 use Modules\Software\Services\GymSwInvoiceService;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Mpdf\Mpdf;
 use Illuminate\Support\Facades\Log;
 
 class GymSwInvoiceFrontController extends GymGenericFrontController
@@ -22,8 +26,10 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
 
     public function index(Request $request)
     {
-        $query = GymSwInvoice::branch();
+        $allInvoices = $this->buildFilteredCollection($request);
+        $insights    = $this->calculateInsights($allInvoices);
 
+        $query = GymSwInvoice::branch();
         if ($request->filled('type'))      $query->where('type', $request->type);
         if ($request->filled('status'))    $query->where('status', $request->status);
         if ($request->filled('member_id')) $query->where('member_id', $request->member_id);
@@ -33,7 +39,109 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
         $invoices = $query->with('zatcaBillingInvoice')->latest()->paginate(20);
 
         $title = trans('sw.invoices');
-        return view('software::gym_sw_invoices.index', compact('invoices', 'title'));
+        return view('software::gym_sw_invoices.index', compact('invoices', 'insights', 'title'));
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $allInvoices = $this->buildFilteredCollection($request);
+        $insights    = $this->calculateInsights($allInvoices);
+
+        $data = [
+            'insights'   => $insights,
+            'invoices'   => $allInvoices,
+            'date_from'  => $request->date_from,
+            'date_to'    => $request->date_to,
+        ];
+
+        $fileName = 'invoices-report-' . now()->format('Y-m-d') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new GymSwInvoicesReportExport(['data' => $data, 'lang' => $this->lang, 'settings' => $this->mainSettings]),
+            $fileName
+        );
+    }
+
+    public function exportReportPDF(Request $request)
+    {
+        $allInvoices = $this->buildFilteredCollection($request);
+        $insights    = $this->calculateInsights($allInvoices);
+
+        $data = [
+            'insights'  => $insights,
+            'invoices'  => $allInvoices,
+            'date_from' => $request->date_from,
+            'date_to'   => $request->date_to,
+        ];
+
+        $title    = trans('sw.invoices_report');
+        $fileName = 'invoices-report-' . now()->format('Y-m-d');
+
+        if ($this->lang === 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode'             => 'utf-8',
+                    'format'           => 'A4',
+                    'orientation'      => 'P',
+                    'margin_left'      => 15,
+                    'margin_right'     => 15,
+                    'margin_top'       => 16,
+                    'margin_bottom'    => 16,
+                    'default_font'     => 'dejavusans',
+                    'default_font_size'=> 10,
+                ]);
+
+                $html = view('software::Front.gym_sw_invoices_report_pdf', compact('data', 'title'))->render();
+                $mpdf->WriteHTML($html);
+
+                return response($mpdf->Output($fileName . '.pdf', 'D'), 200, [
+                    'Content-Type'        => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $fileName . '.pdf"',
+                ]);
+            } catch (\Exception $e) {
+                Log::error('mPDF failed for invoices report: ' . $e->getMessage());
+            }
+        }
+
+        $pdf = PDF::loadView('software::Front.gym_sw_invoices_report_pdf', compact('data', 'title'))
+            ->setPaper([0, 0, 595, 842], 'portrait')
+            ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans']);
+
+        return $pdf->download($fileName . '.pdf');
+    }
+
+    private function buildFilteredCollection(Request $request, array $columns = ['id', 'invoice_number', 'type', 'status', 'total', 'amount_paid', 'issued_at']): Collection
+    {
+        $query = GymSwInvoice::branch()->select($columns);
+
+        if ($request->filled('type'))      $query->where('type', $request->type);
+        if ($request->filled('status'))    $query->where('status', $request->status);
+        if ($request->filled('member_id')) $query->where('member_id', $request->member_id);
+        if ($request->filled('date_from')) $query->whereDate('issued_at', '>=', $request->date_from);
+        if ($request->filled('date_to'))   $query->whereDate('issued_at', '<=', $request->date_to);
+
+        return $query->latest()->get();
+    }
+
+    private function calculateInsights(Collection $invoices): array
+    {
+        return [
+            'total_count'     => $invoices->count(),
+            'total_amount'    => $invoices->sum('total'),
+            'total_paid'      => $invoices->sum('amount_paid'),
+            'total_remaining' => $invoices->sum('amount_remaining'),
+            'by_type' => [
+                'sales'       => ['count' => $invoices->where('type', 'sales')->count(),       'amount' => $invoices->where('type', 'sales')->sum('total')],
+                'purchase'    => ['count' => $invoices->where('type', 'purchase')->count(),    'amount' => $invoices->where('type', 'purchase')->sum('total')],
+                'credit_note' => ['count' => $invoices->where('type', 'credit_note')->count(), 'amount' => $invoices->where('type', 'credit_note')->sum('total')],
+            ],
+            'by_status' => [
+                'draft'     => ['count' => $invoices->where('status', 'draft')->count(),     'amount' => $invoices->where('status', 'draft')->sum('total')],
+                'partial'   => ['count' => $invoices->where('status', 'partial')->count(),   'amount' => $invoices->where('status', 'partial')->sum('total')],
+                'paid'      => ['count' => $invoices->where('status', 'paid')->count(),      'amount' => $invoices->where('status', 'paid')->sum('total')],
+                'cancelled' => ['count' => $invoices->where('status', 'cancelled')->count(), 'amount' => $invoices->where('status', 'cancelled')->sum('total')],
+            ],
+        ];
     }
 
     public function show(int $id)

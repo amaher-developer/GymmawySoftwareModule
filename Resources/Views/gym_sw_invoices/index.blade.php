@@ -15,6 +15,10 @@
 
 @section('styles')
     <link rel="stylesheet" type="text/css" href="{{ asset('/') }}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
+    <style>
+        .insight-card { transition: transform 0.2s ease-in-out; }
+        .insight-card:hover { transform: translateY(-2px); }
+    </style>
 @endsection
 
 @section('page_body')
@@ -42,6 +46,39 @@
             </div>
             <!--end::Bulk action toolbar-->
             @endif
+
+            <!--begin::Export-->
+            @if((count(array_intersect((array)$swUser->permissions, ['exportInvoicesReportExcel', 'exportInvoicesReportPDF'])) > 0) || $swUser->is_super_user)
+            <div class="m-0">
+                <button class="btn btn-sm btn-flex btn-light-primary"
+                        data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                    <i class="ki-outline ki-exit-down fs-6"></i>
+                    {{ trans('sw.download') }}
+                </button>
+                <div class="menu menu-sub menu-sub-dropdown w-200px" data-kt-menu="true">
+                    @if(in_array('exportInvoicesReportExcel', (array)$swUser->permissions) || $swUser->is_super_user)
+                    <div class="menu-item px-3">
+                        <a href="{{ route('sw.gymSwInvoices.exportExcel', request()->query()) }}"
+                           class="menu-link px-3">
+                            <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                            {{ trans('sw.excel_export') }}
+                        </a>
+                    </div>
+                    @endif
+                    @if(in_array('exportInvoicesReportPDF', (array)$swUser->permissions) || $swUser->is_super_user)
+                    <div class="menu-item px-3">
+                        <a href="{{ route('sw.gymSwInvoices.exportReportPDF', request()->query()) }}"
+                           class="menu-link px-3">
+                            <i class="ki-outline ki-file-down fs-6 me-2"></i>
+                            {{ trans('sw.pdf_export') }}
+                        </a>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+            <!--end::Export-->
+
             <button type="button" class="btn btn-sm btn-flex btn-light-primary"
                     data-bs-toggle="collapse" data-bs-target="#kt_invoices_filter_collapse">
                 <i class="ki-outline ki-filter fs-6"></i>
@@ -111,19 +148,163 @@
         </div>
         <!--end::Filter-->
 
-        <!--begin::Total count-->
-        <div class="d-flex align-items-center mb-5">
-            <div class="symbol symbol-50px me-5">
-                <div class="symbol-label bg-light-primary">
-                    <i class="ki-outline ki-bill fs-2x text-primary"></i>
+        <!--begin::Insights-->
+        <!--begin::Summary cards row 1-->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card insight-card h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="card-body p-5">
+                        <div class="d-flex align-items-center">
+                            <div class="symbol symbol-50px me-4">
+                                <div class="symbol-label bg-white bg-opacity-20">
+                                    <i class="ki-outline ki-bill fs-2x text-white"></i>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <span class="fs-7 fw-semibold text-white opacity-75">{{ trans('sw.total_invoices') }}</span>
+                                <span class="fs-1 fw-bold text-white">{{ $insights['total_count'] }}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="d-flex flex-column">
-                <span class="fs-6 fw-semibold text-gray-900">{{ trans('admin.total_count') }}</span>
-                <span class="fs-2 fw-bold text-primary">{{ $invoices->total() }}</span>
+            <div class="col-md-3">
+                <div class="card insight-card h-100" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    <div class="card-body p-5">
+                        <div class="d-flex align-items-center">
+                            <div class="symbol symbol-50px me-4">
+                                <div class="symbol-label bg-white bg-opacity-20">
+                                    <i class="ki-outline ki-dollar fs-2x text-white"></i>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <span class="fs-7 fw-semibold text-white opacity-75">{{ trans('sw.total') }}</span>
+                                <span class="fs-1 fw-bold text-white">{{ number_format($insights['total_amount'], 2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light-success insight-card h-100">
+                    <div class="card-body p-5">
+                        <div class="d-flex align-items-center">
+                            <div class="symbol symbol-50px me-4">
+                                <div class="symbol-label bg-success">
+                                    <i class="ki-outline ki-check-circle fs-2x text-white"></i>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <span class="fs-7 fw-semibold text-gray-800">{{ trans('sw.amount_paid') }}</span>
+                                <span class="fs-1 fw-bold text-success">{{ number_format($insights['total_paid'], 2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light-danger insight-card h-100">
+                    <div class="card-body p-5">
+                        <div class="d-flex align-items-center">
+                            <div class="symbol symbol-50px me-4">
+                                <div class="symbol-label bg-danger">
+                                    <i class="ki-outline ki-time fs-2x text-white"></i>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <span class="fs-7 fw-semibold text-gray-800">{{ trans('sw.amount_remaining') }}</span>
+                                <span class="fs-1 fw-bold text-danger">{{ number_format($insights['total_remaining'], 2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <!--end::Total count-->
+        <!--end::Summary cards row 1-->
+
+        <!--begin::By type + by status row-->
+        <div class="row g-4 mb-5">
+            <!--begin::By type-->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body p-5">
+                        <h5 class="fw-bold text-gray-900 mb-4">
+                            <i class="ki-outline ki-category fs-5 me-2"></i>
+                            {{ trans('sw.invoices_by_type') }}
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-4">
+                                <div class="card bg-light-success text-center p-3">
+                                    <span class="fs-2 fw-bold text-success">{{ $insights['by_type']['sales']['count'] }}</span>
+                                    <span class="fs-7 text-gray-700">{{ trans('sw.sales') }}</span>
+                                    <span class="fs-8 text-muted">{{ number_format($insights['by_type']['sales']['amount'], 2) }}</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="card bg-light-info text-center p-3">
+                                    <span class="fs-2 fw-bold text-info">{{ $insights['by_type']['purchase']['count'] }}</span>
+                                    <span class="fs-7 text-gray-700">{{ trans('sw.purchase') }}</span>
+                                    <span class="fs-8 text-muted">{{ number_format($insights['by_type']['purchase']['amount'], 2) }}</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="card bg-light-warning text-center p-3">
+                                    <span class="fs-2 fw-bold text-warning">{{ $insights['by_type']['credit_note']['count'] }}</span>
+                                    <span class="fs-7 text-gray-700">{{ trans('sw.credit_note') }}</span>
+                                    <span class="fs-8 text-muted">{{ number_format($insights['by_type']['credit_note']['amount'], 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--end::By type-->
+
+            <!--begin::By status-->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body p-5">
+                        <h5 class="fw-bold text-gray-900 mb-4">
+                            <i class="ki-outline ki-information-5 fs-5 me-2"></i>
+                            {{ trans('sw.invoices_by_status') }}
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-3">
+                                <div class="card bg-light-secondary text-center p-3">
+                                    <span class="fs-2 fw-bold text-gray-700">{{ $insights['by_status']['draft']['count'] }}</span>
+                                    <span class="fs-7 text-gray-700">{{ trans('sw.draft') }}</span>
+                                    <span class="fs-8 text-muted">{{ number_format($insights['by_status']['draft']['amount'], 2) }}</span>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card bg-light-warning text-center p-3">
+                                    <span class="fs-2 fw-bold text-warning">{{ $insights['by_status']['partial']['count'] }}</span>
+                                    <span class="fs-7 text-gray-700">{{ trans('sw.partial') }}</span>
+                                    <span class="fs-8 text-muted">{{ number_format($insights['by_status']['partial']['amount'], 2) }}</span>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card bg-light-success text-center p-3">
+                                    <span class="fs-2 fw-bold text-success">{{ $insights['by_status']['paid']['count'] }}</span>
+                                    <span class="fs-7 text-gray-700">{{ trans('sw.paid') }}</span>
+                                    <span class="fs-8 text-muted">{{ number_format($insights['by_status']['paid']['amount'], 2) }}</span>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card bg-light-danger text-center p-3">
+                                    <span class="fs-2 fw-bold text-danger">{{ $insights['by_status']['cancelled']['count'] }}</span>
+                                    <span class="fs-7 text-gray-700">{{ trans('sw.cancelled') }}</span>
+                                    <span class="fs-8 text-muted">{{ number_format($insights['by_status']['cancelled']['amount'], 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--end::By status-->
+        </div>
+        <!--end::By type + by status row-->
+        <!--end::Insights-->
 
         @if($invoices->count() > 0)
         <!--begin::Table-->
