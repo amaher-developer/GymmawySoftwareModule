@@ -862,9 +862,9 @@
         )) ||
         $isSuperUser
     ))
-<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*') || Request::is(($lang ?? 'ar') . '/gym-sw-invoices*')) show @endif">
     <!--begin:Menu link-->
-    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*') || Request::is(($lang ?? 'ar') . '/gym-sw-invoices*')) show @endif">
         <span class="menu-icon">
             <i class="ki-outline ki-graph-up  fs-2"></i>
         </span>
