@@ -2,16 +2,13 @@
 
 namespace Modules\Software\Repositories;
 
-use Illuminate\Container\Container as Application;
 use Modules\Generic\Repositories\GenericRepository;
 use Modules\Software\Models\GymStoreCategory;
 
 class GymStoreCategoryRepository extends GenericRepository
 {
-    public function __construct(Application $app)
+    public function model()
     {
-        parent::__construct($app);
-        $this->model = new GymStoreCategory();
+        return GymStoreCategory::class;
     }
 }
-
