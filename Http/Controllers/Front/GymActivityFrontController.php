@@ -315,7 +315,7 @@ class GymActivityFrontController extends GymGenericFrontController
                         ];
                     }
                 }
-                $inputs['reservation_details'] = json_encode($reservationDetails);
+                $inputs['reservation_details'] = $reservationDetails;
             } else {
                 // No active days - set to null
                 $inputs['reservation_details'] = null;
