@@ -240,7 +240,7 @@
                                         @endif
                                         @if(@$member->notes)
                                             <div class="text-muted fs-7">
-                                                <span class="badge badge-light-info" style="cursor: pointer;" data-target="#pt_subscription_notes_{{$member->id}}" data-toggle="modal">
+                                                <span class="badge badge-light-info" style="cursor: pointer;" data-bs-target="#nonmember_notes_{{$member->id}}" data-bs-toggle="modal">
                                                     <i class="ki-outline ki-information-5 fs-6 me-1"></i> {{ trans('sw.notes')}}
                                                 </span>
                                             </div>
@@ -806,6 +806,34 @@
     </div>
     <!--end::Quick Booking Modal-->
     @endif
+
+    <!-- Notes Modals -->
+    @foreach($members as $member)
+        @if($member->notes)
+        <div class="modal fade" id="nonmember_notes_{{$member->id}}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="ki-outline ki-information-5 fs-4 me-2 text-info"></i>
+                            {{ trans('sw.notes') }} - {{ $member->name }}
+                        </h5>
+                        <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
+                            <i class="ki-outline ki-cross fs-1"></i>
+                        </div>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-gray-700 fs-6">{{ $member->notes }}</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('sw.close') }}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+    @endforeach
+    <!-- End Notes Modals -->
 
     <!-- start modal pay non-member -->
     <div class="modal" id="modalPayNonMember">
