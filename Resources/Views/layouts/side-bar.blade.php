@@ -839,7 +839,7 @@
         isset($permissionsMap['listMoneyBox']) ||
         isset($permissionsMap['salesReport']) ||
         isset($permissionsMap['customerBalancesReport']) ||
-        isset($permissionsMap['reportMoneyboxTax']) ||
+        isset($permissionsMap['listSwInvoices']) ||
         isset($permissionsMap['reportZatcaInvoices']) ||
         isset($permissionsMap['reportRenewMemberList']) ||
         isset($permissionsMap['reportExpireMemberList']) ||
@@ -923,16 +923,16 @@
             <!--end:Menu item-->
         @endif
 
-    @if ($swUser && (isset($permissionsMap['reportMoneyboxTax']) || $isSuperUser))
+    @if ($swUser && (isset($permissionsMap['listSwInvoices']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
-            <a class="menu-link   @if (Request::is(($lang ?? 'ar') . '/user/log/moneybox-tax')) active @endif"
-                href="{{ route('sw.reportMoneyboxTax') . '?from=' . date('m/d/Y') . '&' . 'to=' . date('m/d/Y') }}">
+            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/gym-sw-invoices*')) active @endif"
+                href="{{ route('sw.gymSwInvoices.index') }}">
                 <span class="menu-bullet">
                     <span class="bullet bullet-dot"></span>
                 </span>
-                <span class="menu-title">{{ trans('sw.moneybox_tax') }}</span>
+                <span class="menu-title">{{ trans('sw.invoices_report') }}</span>
             </a>
             <!--end:Menu link-->
         </div>

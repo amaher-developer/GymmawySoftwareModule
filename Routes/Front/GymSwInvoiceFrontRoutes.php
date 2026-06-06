@@ -4,8 +4,10 @@ Route::prefix('gym-sw-invoices')
     ->middleware(['auth:sw', 'sw_permission'])
     ->group(function () {
 
-        Route::name('sw.gymSwInvoices.index')
-            ->get('/', 'Front\GymSwInvoiceFrontController@index');
+        Route::group(['defaults' => ['permission' => 'listSwInvoices']], function () {
+            Route::name('sw.gymSwInvoices.index')
+                ->get('/', 'Front\GymSwInvoiceFrontController@index');
+        });
 
         Route::group(['defaults' => ['permission' => 'exportInvoicesReportExcel']], function () {
             Route::name('sw.gymSwInvoices.exportExcel')
@@ -26,9 +28,11 @@ Route::prefix('gym-sw-invoices')
         Route::name('sw.gymSwInvoices.pdf')
             ->get('{id}/pdf', 'Front\GymSwInvoiceFrontController@pdf');
 
-        Route::name('sw.gymSwInvoices.submitZatca')
-            ->post('{id}/zatca', 'Front\GymSwInvoiceFrontController@submitZatca');
+        Route::group(['defaults' => ['permission' => 'submitZatcaInvoice']], function () {
+            Route::name('sw.gymSwInvoices.submitZatca')
+                ->post('{id}/zatca', 'Front\GymSwInvoiceFrontController@submitZatca');
 
-        Route::name('sw.gymSwInvoices.bulkSubmitZatca')
-            ->post('bulk-zatca', 'Front\GymSwInvoiceFrontController@bulkSubmitZatca');
+            Route::name('sw.gymSwInvoices.bulkSubmitZatca')
+                ->post('bulk-zatca', 'Front\GymSwInvoiceFrontController@bulkSubmitZatca');
+        });
     });
