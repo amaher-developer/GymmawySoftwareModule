@@ -411,8 +411,13 @@
                                     ];
                                 @endphp
                                 
+                                @php
+                                    $rdWorkDays = (is_array($activity->reservation_details['work_days'] ?? null)) ? $activity->reservation_details['work_days'] : [];
+                                    foreach ($rdWorkDays as $k => $v) { if (!is_array($v)) $rdWorkDays[$k] = []; }
+                                @endphp
                                 @foreach($weekDays as $day)
-                                <tr class="day-row @if(!@$activity->reservation_details['work_days'][$day['index']]['status']) disabled-row @endif" data-day-row="{{ $day['index'] }}">
+                                @php $dayData = $rdWorkDays[$day['index']] ?? []; @endphp
+                                <tr class="day-row @if(!($dayData['status'] ?? false)) disabled-row @endif" data-day-row="{{ $day['index'] }}">
                                     <td class="text-center">
                                         <input type="checkbox" 
                                                name="reservation_details[work_days][{{ $day['index'] }}][status]"
@@ -420,20 +425,20 @@
                                                value="1"
                                                class="form-check-input day-checkbox"
                                                data-day="{{ $day['index'] }}"
-                                               @if(@$activity->reservation_details['work_days'][$day['index']]['status']) checked @endif>
+                                               @if($dayData['status'] ?? false) checked @endif>
                                     </td>
                                     <td>
                                         <strong>{{ trans('sw.' . $day['trans'])}}</strong>
                                     </td>
                                     <td>
                                         <div class="input-group time-input-wrapper">
-                                            <input type="time" 
+                                            <input type="time"
                                                    name="reservation_details[work_days][{{ $day['index'] }}][start]"
                                                    id="day_start_{{ $day['index'] }}"
-                                                   value="{{@$activity->reservation_details['work_days'][$day['index']]['start']}}"
+                                                   value="{{ $dayData['start'] ?? '' }}"
                                                    class="form-control time-input"
                                                    data-day="{{ $day['index'] }}"
-                                                   @if(!@$activity->reservation_details['work_days'][$day['index']]['status']) disabled @endif>
+                                                   @if(!($dayData['status'] ?? false)) disabled @endif>
                                             <span class="input-group-text">
                                                 <i class="fa fa-clock-o"></i>
                                                             </span>
@@ -441,13 +446,13 @@
                                     </td>
                                     <td>
                                         <div class="input-group time-input-wrapper">
-                                            <input type="time" 
+                                            <input type="time"
                                                    name="reservation_details[work_days][{{ $day['index'] }}][end]"
                                                    id="day_end_{{ $day['index'] }}"
-                                                   value="{{@$activity->reservation_details['work_days'][$day['index']]['end']}}"
+                                                   value="{{ $dayData['end'] ?? '' }}"
                                                    class="form-control time-input"
                                                    data-day="{{ $day['index'] }}"
-                                                   @if(!@$activity->reservation_details['work_days'][$day['index']]['status']) disabled @endif>
+                                                   @if(!($dayData['status'] ?? false)) disabled @endif>
                                             <span class="input-group-text">
                                                 <i class="fa fa-clock-o"></i>
                                                             </span>
