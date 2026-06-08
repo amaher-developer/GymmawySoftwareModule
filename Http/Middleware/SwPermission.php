@@ -162,6 +162,7 @@ class SwPermission
             , 'reservation.events', 'reservation.slots', 'reservation.checkOverlap', 'reservation.ajaxCreate', 'reservation.ajaxUpdate', 'reservation.ajaxGet'
             , 'reservation.confirm', 'reservation.cancel', 'reservation.attend', 'reservation.missed'
             , 'getMembersBySearch', 'updateEventNotificationMessage'
+            , 'phonesByAjax', 'phonesByAjaxWAUltra', 'phonesByAjaxWA'
         ];
         
         // Merge permissions once
