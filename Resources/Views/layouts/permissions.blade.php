@@ -1880,6 +1880,21 @@ if(!isset($permission_group->permissions)){
                                                     @if(@in_array('exportPTSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
                                                     type="checkbox"> <span>{{ trans('sw.export_pdf_pt_subscription_member_report') }}</span></label>
                                             </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="reportFreezeMemberList"
+                                                    @if(@in_array('reportFreezeMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.freeze_members_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportFreezeMemberExcel"
+                                                    @if(@in_array('exportFreezeMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_freeze_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportFreezeMemberPDF"
+                                                    @if(@in_array('exportFreezeMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_freeze_member_report') }}</span></label>
+                                            </div>
                                         </div>
 
                                         {{-- Attendance Reports --}}
