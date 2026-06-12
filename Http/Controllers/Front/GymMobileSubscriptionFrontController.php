@@ -2199,7 +2199,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 // ── Create member subscription ─────────────────────────────
                 $joining    = Carbon::parse($joiningDate);
                 $periodDays = (int) ($subscription->period ?? 0);
-                $expire     = (clone $joining)->addDays(max($periodDays, 0));
+                $expire     = (clone $joining)->addDays(max($periodDays - 1, 0));
 
                 $memberSub = GymMemberSubscription::create([
                     'subscription_id'        => $invoice->subscription_id,
@@ -3335,7 +3335,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 } else {
                     // Fallback: no active sub found — create a fresh one
                     $joining      = Carbon::parse($joiningDate);
-                    $expireFallback = (clone $joining)->addDays(max(1, $periodDays));
+                    $expireFallback = (clone $joining)->addDays(max(0, $periodDays - 1));
 
                     $newMemberSub = GymMemberSubscription::create([
                         'subscription_id'        => $newSubscription->id,

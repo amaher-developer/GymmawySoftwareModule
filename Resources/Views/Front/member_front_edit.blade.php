@@ -917,7 +917,7 @@
                         //     period = 0;
 
                         var start_attr = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
-                        d.setDate(d.getDate() + parseInt(period));
+                        d.setDate(d.getDate() + (parseInt(period) > 0 ? parseInt(period) - 1 : 0));
                         var expire_attr = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
                         var membership_selected = '';
                             if(data.membership[i]['id'] == data.member_membership['subscription_id']){
@@ -1283,7 +1283,7 @@
     function setCustomExpireDate(joining_date, period){
         let valid_days = parseInt(period);
         let end_date = new Date(joining_date); // pass start date here
-        end_date.setDate(end_date.getDate() + valid_days);
+        end_date.setDate(end_date.getDate() + (valid_days > 0 ? valid_days - 1 : 0));
         $('#expire_date_membership').val(  end_date.getFullYear() + '-' + ((end_date.getMonth() + 1) < 10 ? '0' + (end_date.getMonth() + 1) : (end_date.getMonth() + 1)) + '-' + end_date.getDate() );
     }
 

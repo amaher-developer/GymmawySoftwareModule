@@ -709,7 +709,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'max_extension_days' => $subscription->max_extension_days,
                         'max_freeze_extension_sum' => $subscription->max_freeze_extension_sum,
                         'joining_date' => $member_inputs['joining_date'] ? Carbon::parse($member_inputs['joining_date']) : Carbon::now(),
-                        'expire_date' => $member_inputs['expire_date'] ? Carbon::parse($member_inputs['expire_date']) : Carbon::now()->addDays($subscription->period),
+                        'expire_date' => $member_inputs['expire_date'] ? Carbon::parse($member_inputs['expire_date']) : Carbon::parse($member_inputs['joining_date'])->addDays($subscription->period - 1),
                         'amount_remaining' => (($subscription->price - $amount_paid - @$discount_value) + (($subscription->price - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100))),
                         'amount_paid' => (float)($amount_paid),
                         'discount_value' => (float)$discount_value,
@@ -1446,7 +1446,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $invitations = (int)@$request->invitations;
         $notes = @(string)$request->notes;
         $joining_date = Carbon::parse(@$request->joining_date)->toDateString();
-        $expire_date = @$request->expire_date ? Carbon::parse(@$request->expire_date)->toDateString() : Carbon::now()->addDays((int)$subscription->period)->toDateString();
+        $expire_date = @$request->expire_date ? Carbon::parse(@$request->expire_date)->toDateString() : Carbon::parse($joining_date)->addDays((int)$subscription->period - 1)->toDateString();
 
         if ($member_subscription->subscription_id == $subscription_id) {
             $get_subscription_price = $member_subscription->amount_before_discount;
@@ -2533,6 +2533,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $member = $member->first();
         $status = false;
         $renew_status = true;
+        $coming_status = false;
         if ($member) {
             if ($member->member_subscription_info) {
                 $currentDate = Carbon::now()->toDateString();
@@ -2551,7 +2552,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'status' => false,
                         'renew_status' => true
                     ], 200);
-                }                
+                }
 
                 if (($member->member_subscription_info->workouts_per_day > 0) && ($member->member_attendees_count >= $member->member_subscription_info->workouts_per_day)) {
                     $msg = trans('sw.workouts_per_day_msg', ['visits' => $member->member_attendees_count, 'classes' => $member->member_subscription_info->workouts_per_day]);
@@ -2604,6 +2605,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 if((Carbon::parse($member->member_subscription_info->joining_date)->toDateString() > Carbon::now()->toDateString()) && ($checkForMemberVisits)){
                     $msg = trans('sw.membership_not_coming');
                     $status = true;
+                    $coming_status = true;
                 }elseif (($expireDate >= $currentDate) && ($checkForMemberVisits)) {
                     if (!$enquiry) {
                         $member->member_subscription_info->increment('visits');
@@ -2633,7 +2635,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 
                 // loyalty_points_formatted is automatically appended by GymMember model
                 
-                return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status, 'renew_status' => $renew_status], 200);
+                return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status, 'renew_status' => $renew_status, 'coming_status' => $coming_status], 200);
             } else {
                 return Response::json(['member' => $member, 'status' => $status, 'renew_status' => $renew_status], 200);
             }
@@ -2718,7 +2720,8 @@ class GymMemberFrontController extends GymGenericFrontController
         }
         $member_id = @$membership ? @$membership->member_id : @$request->member_id;
         $member = $this->MemberRepository->with(['member_subscription_info'])->withTrashed()->find($member_id);
-        $expire_date = @$request->custom_expire_date ? Carbon::parse(@$request->custom_expire_date)->toDateString() : Carbon::now()->addDays((int)$subscription->period)->toDateString();
+        $start_date = $custom_start_date ?? Carbon::now()->toDateString();
+        $expire_date = @$request->custom_expire_date ? Carbon::parse(@$request->custom_expire_date)->toDateString() : Carbon::parse($start_date)->addDays((int)$subscription->period - 1)->toDateString();
 
         $other_subscriptions = GymMemberSubscription::branch()->
         where(function ($query) use ($custom_start_date, $expire_date) {
@@ -2751,7 +2754,7 @@ class GymMemberFrontController extends GymGenericFrontController
             'vat_percentage' => $vat_percentage,
             'number_times_freeze' => $subscription->number_times_freeze,
             'freeze_limit' => $subscription->freeze_limit,
-            'joining_date' => $custom_start_date ?? Carbon::now()->toDateString(),
+            'joining_date' => $start_date,
             'expire_date' => $expire_date,
             'amount_remaining' => $amount_remaining,
             'amount_paid' => $amount_paid,
@@ -3114,7 +3117,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $amount_total       = round($subscription->price - $discount_value + $vat, 2);
         $expire_date        = $custom_expire_date
             ? Carbon::parse($custom_expire_date)->toDateString()
-            : Carbon::now()->addDays((int) $subscription->period)->toDateString();
+            : Carbon::parse($custom_start_date)->addDays((int) $subscription->period - 1)->toDateString();
 
         $member_id = @$membership ? @$membership->member_id : @$request->member_id;
         $member    = $this->MemberRepository->withTrashed()->find($member_id);

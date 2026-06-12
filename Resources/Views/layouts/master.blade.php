@@ -1152,6 +1152,7 @@
     var trans_membership_expired = '{{trans('sw.membership_expired')}}';
     var trans_membership_expired_with_date = '{{trans('sw.membership_expired_with_date', ['date' => trans('sw.expire_date')])}}';
     var trans_scan_status_success = '{{trans('sw.scan_status_success')}}';
+    var trans_scan_status_not_allowed = '{{trans('sw.scan_status_not_allowed')}}';
     var trans_scan_status_error = '{{trans('sw.scan_status_error')}}';
     var trans_scan_status_warning = '{{trans('sw.scan_status_warning')}}';
     var default_avatar_image = '{{asset('uploads/settings/default.jpg')}}';
@@ -1306,7 +1307,7 @@
     function setCustomExpireDate(joining_date, period) {
         let valid_days = parseInt(period);
         let end_date = new Date(joining_date); // pass start date here
-        end_date.setDate(end_date.getDate() + valid_days);
+        end_date.setDate(end_date.getDate() + (valid_days > 0 ? valid_days - 1 : 0));
         $('#customExpireDate').val(end_date.getFullYear() + '-' + ((end_date.getMonth() + 1) < 10 ? '0' + (end_date.getMonth() + 1) : (end_date.getMonth() + 1)) + '-' + end_date.getDate());
     }
 

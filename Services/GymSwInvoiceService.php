@@ -131,6 +131,25 @@ class GymSwInvoiceService
         });
     }
 
+    /**
+     * Sync an invoice's amount_paid to an authoritative running total (e.g.
+     * a subscription's amount_paid), rather than adding a delta. Prevents the
+     * invoice from drifting when an earlier payment was never linked to it.
+     */
+    public function syncAmountPaid(GymSwInvoice $invoice, float $totalPaid, ?GymMoneyBox $moneyBox = null): void
+    {
+        DB::transaction(function () use ($invoice, $totalPaid, $moneyBox) {
+            $invoice->amount_paid = round($totalPaid, 2);
+            $invoice->status      = $this->resolveStatus((float) $invoice->amount_paid, (float) $invoice->total);
+            $invoice->save();
+
+            if ($moneyBox && ! $moneyBox->invoice_id) {
+                $moneyBox->invoice_id = $invoice->id;
+                $moneyBox->saveQuietly();
+            }
+        });
+    }
+
     // ── Credit notes ─────────────────────────────────────────────────────────
 
     /**

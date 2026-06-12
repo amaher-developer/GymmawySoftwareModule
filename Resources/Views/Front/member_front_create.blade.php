@@ -265,7 +265,7 @@
                                     @foreach($subscriptions as $subscription)
                                         @php
                                             $periodDays = is_numeric($subscription->period) ? (int)$subscription->period : 0;
-                                            $defaultExpire = \Carbon\Carbon::now()->addDays($periodDays)->toDateString();
+                                            $defaultExpire = \Carbon\Carbon::now()->addDays($periodDays > 0 ? $periodDays - 1 : 0)->toDateString();
                                         @endphp
                                         <option value="{{$subscription->id}}"
                                                 price="{{$subscription->price}}"
@@ -735,7 +735,7 @@
         function setCustomExpireDate(joining_date, period){
             let valid_days = parseInt(period);
             let end_date = new Date(joining_date); // pass start date here
-            end_date.setDate(end_date.getDate() + valid_days);
+            end_date.setDate(end_date.getDate() + (valid_days > 0 ? valid_days - 1 : 0));
             $('#editCustomExpireDate').val(  end_date.getFullYear() + '-' + ((end_date.getMonth() + 1) < 10 ? '0' + (end_date.getMonth() + 1) : (end_date.getMonth() + 1)) + '-' + end_date.getDate() );
         }
 
