@@ -28,6 +28,7 @@ class GymMember extends GenericModel
     protected $casts = [
         'loyalty_points_balance' => 'integer',
         'last_points_update' => 'datetime',
+        'qr_token_expires_at' => 'datetime',
     ];
     
     /**

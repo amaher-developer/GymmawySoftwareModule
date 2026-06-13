@@ -13,6 +13,7 @@
 
     Route::post('member_login', 'Api\GymGenericApiController@login')->middleware('api');
     Route::post('member_info', 'Api\GymGenericApiController@memberInfo')->middleware('auth:api');
+    Route::post('member_qr_token', 'Api\GymGenericApiController@memberQrToken')->middleware('auth:api');
     Route::post('member_block', 'Api\GymGenericApiController@memberBlock')->middleware('auth:api');
     Route::post('attendances', 'Api\GymGenericApiController@attendances')->middleware('auth:api');
     Route::post('previous-subscriptions', 'Api\GymGenericApiController@previousSubscriptions')->middleware('auth:api');

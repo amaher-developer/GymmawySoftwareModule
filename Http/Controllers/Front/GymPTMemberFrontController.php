@@ -1225,7 +1225,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
                 $context['class_trainer_id'] = $decoded['class_trainer_id'] ?? null;
                 if (isset($decoded['timestamp'])) {
                     $context['session_date'] = Carbon::createFromTimestamp($decoded['timestamp'])
-                        ->timezone(config('app.timezone'));
+                        ->timezone(app_setting_value('timezone', config('app.timezone')));
                 }
             }
         }
@@ -1273,8 +1273,8 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return [$sessionDateUtc->copy(), $sessionDateUtc->copy()];
         }
 
-        $localStart = $sessionDateUtc->copy()->timezone(config('app.timezone'))->startOfDay();
-        $localEnd = $sessionDateUtc->copy()->timezone(config('app.timezone'))->endOfDay();
+        $localStart = $sessionDateUtc->copy()->timezone(app_setting_value('timezone', config('app.timezone')))->startOfDay();
+        $localEnd = $sessionDateUtc->copy()->timezone(app_setting_value('timezone', config('app.timezone')))->endOfDay();
 
         return [
             $localStart->copy()->timezone('UTC'),

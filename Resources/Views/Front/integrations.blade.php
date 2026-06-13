@@ -471,6 +471,42 @@
                             </h3>
                         </div>
                         <div class="card-body">
+                            @php
+                                $countryCodeVal = $appConfig['country_code'] ?? env('APP_COUNTRY_CODE');
+                                $currencyArVal = $appConfig['currency_ar'] ?? env('APP_CURRENCY_AR');
+                                $currencyEnVal = $appConfig['currency_en'] ?? env('APP_CURRENCY_EN');
+                                $timezoneVal = $appConfig['timezone'] ?? env('APP_TIMEZONE');
+                                $timezoneDbVal = $appConfig['timezone_db'] ?? env('APP_TIMEZONE_DB');
+
+                                $countryCodeOptions = [
+                                    '966' => 'Saudi Arabia (+966)',
+                                    '20' => 'Egypt (+20)',
+                                    '971' => 'UAE (+971)',
+                                    '965' => 'Kuwait (+965)',
+                                    '974' => 'Qatar (+974)',
+                                    '973' => 'Bahrain (+973)',
+                                    '968' => 'Oman (+968)',
+                                    '962' => 'Jordan (+962)',
+                                    '961' => 'Lebanon (+961)',
+                                    '964' => 'Iraq (+964)',
+                                    '212' => 'Morocco (+212)',
+                                    '213' => 'Algeria (+213)',
+                                    '216' => 'Tunisia (+216)',
+                                    '218' => 'Libya (+218)',
+                                    '249' => 'Sudan (+249)',
+                                ];
+
+                                $currencyArOptions = ['ريال', 'ر.س', 'ج.م', 'جنيه', 'درهم', 'دينار', 'ليرة'];
+                                $currencyEnOptions = ['SAR', 'rial', 'EGP', 'AED', 'KWD', 'QAR', 'BHD', 'OMR', 'JOD', 'USD', 'EUR'];
+
+                                $timezoneOptions = [
+                                    'Asia/Riyadh', 'Africa/Cairo', 'Asia/Dubai', 'Asia/Kuwait', 'Asia/Qatar',
+                                    'Asia/Bahrain', 'Asia/Muscat', 'Asia/Amman', 'Asia/Beirut', 'Asia/Baghdad',
+                                    'Africa/Casablanca', 'UTC',
+                                ];
+
+                                $timezoneDbOptions = ['+00:00', '+01:00', '+02:00', '+03:00', '+04:00', '+05:00'];
+                            @endphp
                             <div class="row mb-5">
                                 <div class="col-md-6 fv-row">
                                     <label class="form-label">{{ trans('sw.app_url') }}</label>
@@ -481,40 +517,60 @@
                                 </div>
                                 <div class="col-md-6 fv-row">
                                     <label class="form-label">{{ trans('sw.app_country_code') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[country_code]"
-                                           value="{{ $appConfig['country_code'] ?? '' }}"
-                                           placeholder="2">
+                                    <select class="form-select form-select-solid" name="app_config[country_code]">
+                                        @foreach($countryCodeOptions as $value => $label)
+                                            <option value="{{ $value }}" {{ (string)$countryCodeVal === (string)$value ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                        @if($countryCodeVal !== null && $countryCodeVal !== '' && !array_key_exists((string)$countryCodeVal, $countryCodeOptions))
+                                            <option value="{{ $countryCodeVal }}" selected>{{ $countryCodeVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                             </div>
                             <div class="row mb-5">
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_currency_ar') }}</label>
-                                    <input type="text" class="form-control form-control-solid" dir="rtl"
-                                           name="app_config[currency_ar]"
-                                           value="{{ $appConfig['currency_ar'] ?? '' }}"
-                                           placeholder="ريال">
+                                    <select class="form-select form-select-solid" dir="rtl" name="app_config[currency_ar]">
+                                        @foreach($currencyArOptions as $option)
+                                            <option value="{{ $option }}" {{ $currencyArVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($currencyArVal !== null && $currencyArVal !== '' && !in_array($currencyArVal, $currencyArOptions))
+                                            <option value="{{ $currencyArVal }}" selected>{{ $currencyArVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_currency_en') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[currency_en]"
-                                           value="{{ $appConfig['currency_en'] ?? '' }}"
-                                           placeholder="rial">
+                                    <select class="form-select form-select-solid" name="app_config[currency_en]">
+                                        @foreach($currencyEnOptions as $option)
+                                            <option value="{{ $option }}" {{ $currencyEnVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($currencyEnVal !== null && $currencyEnVal !== '' && !in_array($currencyEnVal, $currencyEnOptions))
+                                            <option value="{{ $currencyEnVal }}" selected>{{ $currencyEnVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_timezone') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[timezone]"
-                                           value="{{ $appConfig['timezone'] ?? '' }}"
-                                           placeholder="Asia/Riyadh">
+                                    <select class="form-select form-select-solid" name="app_config[timezone]">
+                                        @foreach($timezoneOptions as $option)
+                                            <option value="{{ $option }}" {{ $timezoneVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($timezoneVal !== null && $timezoneVal !== '' && !in_array($timezoneVal, $timezoneOptions))
+                                            <option value="{{ $timezoneVal }}" selected>{{ $timezoneVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_timezone_db') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[timezone_db]"
-                                           value="{{ $appConfig['timezone_db'] ?? '' }}"
-                                           placeholder="+03:00">
+                                    <select class="form-select form-select-solid" name="app_config[timezone_db]">
+                                        @foreach($timezoneDbOptions as $option)
+                                            <option value="{{ $option }}" {{ $timezoneDbVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($timezoneDbVal !== null && $timezoneDbVal !== '' && !in_array($timezoneDbVal, $timezoneDbOptions))
+                                            <option value="{{ $timezoneDbVal }}" selected>{{ $timezoneDbVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                             </div>
                             <div class="row mb-5">

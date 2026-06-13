@@ -145,6 +145,44 @@
                     </div>
                     <!--end::Identification Code-->
 
+                    <!--begin::Device Binding-->
+                    @if(@$mainSettings->enable_device_binding)
+                    <div class="row mb-5">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.device_binding')}}</label>
+                        <div class="col-md-9">
+                            @if(@$member->device_id)
+                                <span class="badge bg-light-success text-success me-3">{{ trans('sw.device_linked')}}</span>
+                                @if(in_array('resetMemberDevice', (array)$swUser->permissions) || $swUser->is_super_user)
+                                    <a href="{{route('sw.resetMemberDevice', $member->id)}}" class="btn btn-sm btn-light-danger"
+                                       onclick="return confirm('{{ trans('sw.reset_device_confirm')}}')">
+                                        {{ trans('sw.reset_device')}}
+                                    </a>
+                                @endif
+                            @else
+                                <span class="badge bg-light-secondary text-muted">{{ trans('sw.device_not_linked')}}</span>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Device Binding-->
+
+                    <!--begin::Account Status-->
+                    @if(@$member->is_blocked)
+                    <div class="row mb-5">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.account_status')}}</label>
+                        <div class="col-md-9">
+                            <span class="badge bg-light-danger text-danger me-3">{{ trans('sw.account_blocked')}}</span>
+                            @if(in_array('unblockMember', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <a href="{{route('sw.unblockMember', $member->id)}}" class="btn btn-sm btn-light-success"
+                                   onclick="return confirm('{{ trans('sw.unblock_member_confirm')}}')">
+                                    {{ trans('sw.unblock_member')}}
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Account Status-->
+
                     <!--begin::Fingerprint-->
                     @if(@env('APP_ZK_GATE') == true)
                     <div class="row mb-5">

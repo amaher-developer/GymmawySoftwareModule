@@ -220,7 +220,7 @@ class GymPTSessionFrontController extends GymGenericFrontController
             }
         }
 
-        $slot = Carbon::createFromTimestamp($decoded['timestamp'])->timezone(config('app.timezone'));
+        $slot = Carbon::createFromTimestamp($decoded['timestamp'])->timezone(app_setting_value('timezone', config('app.timezone')));
         $slotUtc = $slot->copy()->setTimezone('UTC');
 
         $attendeeQuery = GymPTMemberAttendee::with([

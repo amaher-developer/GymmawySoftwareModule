@@ -326,6 +326,7 @@ class GymGenericApiController extends GenericController
         $phone = request('phone');
         $code = request('code');
         $device_token = request('device_token');
+        $device_id = request('device_id');
 
         if (!$this->validateApiRequest(['phone', 'code', 'device_type'])) return $this->response;
 
@@ -342,10 +343,17 @@ class GymGenericApiController extends GenericController
             if($member->is_blocked){
                 return $this->falseResponse(trans('sw.block_account_msg'));
             }else {
+                $enable_device_binding = $this->SettingRepository->select('enable_device_binding')->first()->enable_device_binding;
+                if($enable_device_binding && $device_id && $member->device_id && ($member->device_id != $device_id)){
+                    return $this->falseResponse(trans('sw.device_already_linked'));
+                }
+
                 $token = Str::random(60);
-                $member->forceFill([
-                    'api_token' => hash('sha256', $token),
-                ])->save();
+                $forceFill = ['api_token' => hash('sha256', $token)];
+                if($enable_device_binding && $device_id && !$member->device_id){
+                    $forceFill['device_id'] = $device_id;
+                }
+                $member->forceFill($forceFill)->save();
 
                 $this->return['result']['token'] = $token;
                 $this->return['result']['member'] = new MemberResource($member);
@@ -354,6 +362,35 @@ class GymGenericApiController extends GenericController
             }
         }
         return $this->falseResponse(trans('auth.invalid_login'));
+    }
+
+    public function memberQrToken()
+    {
+        $member = GymMember::find(@Auth::guard('api')->user()->id);
+        if(!$member){
+            return $this->falseResponse(trans('auth.invalid_login'));
+        }
+
+        // If the member already has a non-expired token, return it instead of generating a new one
+        if($member->qr_token && $member->qr_token_expires_at && Carbon::now()->lt($member->qr_token_expires_at)){
+            $this->return['result']['qr_token'] = $member->qr_token;
+            $this->return['result']['expires_in'] = Carbon::now()->diffInSeconds($member->qr_token_expires_at, false);
+
+            return $this->successResponse();
+        }
+
+        $expiry_seconds = (int) ($this->SettingRepository->select('qr_expiry_seconds')->first()->qr_expiry_seconds ?: 60);
+
+        $token = Str::random(40);
+        $member->forceFill([
+            'qr_token' => $token,
+            'qr_token_expires_at' => Carbon::now()->addSeconds($expiry_seconds),
+        ])->save();
+
+        $this->return['result']['qr_token'] = $token;
+        $this->return['result']['expires_in'] = $expiry_seconds;
+
+        return $this->successResponse();
     }
     public function memberBlock(){
         $member = GymMember::where(['id' => @Auth::guard('api')->user()->id])->first();
@@ -472,7 +509,7 @@ class GymGenericApiController extends GenericController
     public function get_settings()
     {
         // Select only columns that exist + JSON columns (social_media contains all social links)
-        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select('phone', 'support_email', 'address_ar', 'address_en', 'latitude', 'longitude', 'social_media', 'ios_version', 'android_version', 'terms_ar', 'terms_en')->first());
+        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select('phone', 'support_email', 'address_ar', 'address_en', 'latitude', 'longitude', 'social_media', 'ios_version', 'android_version', 'terms_ar', 'terms_en', 'enable_dynamic_qr', 'qr_expiry_seconds')->first());
         return $this->return;
     }
 

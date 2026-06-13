@@ -1427,6 +1427,44 @@ class GymMemberFrontController extends GymGenericFrontController
         return redirect(route('sw.listMember'));
     }
 
+    public function resetDevice($id)
+    {
+        $member = GymMember::withTrashed()->find($id);
+        if (!$member) {
+            abort(404);
+        }
+
+        $member->device_id = null;
+        $member->save();
+
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('sw.device_reset_success'),
+            'type' => 'success'
+        ]);
+
+        return redirect()->back();
+    }
+
+    public function unblockMember($id)
+    {
+        $member = GymMember::withTrashed()->find($id);
+        if (!$member) {
+            abort(404);
+        }
+
+        $member->is_blocked = 0;
+        $member->save();
+
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('sw.member_unblocked_success'),
+            'type' => 'success'
+        ]);
+
+        return redirect()->back();
+    }
+
     public function memberSubscriptionEdit(Request $request)
     {
 
@@ -2475,9 +2513,22 @@ class GymMemberFrontController extends GymGenericFrontController
     }
     public function memberAttendees(Request $request)
     {
-        $code = preg_replace("/[^0-9]/", "", $request->code);
         $enquiry = intval($request->enquiry);
         $msg = '';
+
+        if (@$this->mainSettings->enable_dynamic_qr && !$enquiry) {
+            $qrMember = GymMember::where('qr_token', $request->code)->first();
+            if (!$qrMember || !$qrMember->qr_token_expires_at || Carbon::now()->gt($qrMember->qr_token_expires_at)) {
+                return Response::json([
+                    'msg' => trans('sw.qr_code_expired'),
+                    'status' => false,
+                    'renew_status' => false
+                ], 200);
+            }
+            $code = $qrMember->code;
+        } else {
+            $code = preg_replace("/[^0-9]/", "", $request->code);
+        }
 
         $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
             $q->withTrashed();

@@ -33,6 +33,18 @@ Route::prefix('member')
         // Delete member - delete permission
         Route::name('sw.deleteMember')
             ->get('{member}/delete', 'Front\GymMemberFrontController@destroy');
+
+        // Reset member device binding - dedicated permission
+        Route::group(['defaults' => ['permission' => 'resetMemberDevice']], function () {
+            Route::name('sw.resetMemberDevice')
+                ->get('{id}/reset-device', 'Front\GymMemberFrontController@resetDevice');
+        });
+
+        // Unblock member account - dedicated permission
+        Route::group(['defaults' => ['permission' => 'unblockMember']], function () {
+            Route::name('sw.unblockMember')
+                ->get('{id}/unblock', 'Front\GymMemberFrontController@unblockMember');
+        });
         Route::name('sw.deleteMemberSubscription')
             ->get('subscription/{subscription}/delete', 'Front\GymMemberFrontController@destroySubscription');
 

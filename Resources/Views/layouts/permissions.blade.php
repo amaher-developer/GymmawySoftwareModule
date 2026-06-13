@@ -609,6 +609,18 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="resetMemberDevice"
+                                                                            @if(@in_array('resetMemberDevice', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.reset_device')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="unblockMember"
+                                                                            @if(@in_array('unblockMember', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.unblock_member')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="listBlockMember"
                                                                             @if(@in_array('listBlockMember', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.list')}}</span> <small>({{ trans('sw.block_list') }})</small></label>

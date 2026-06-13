@@ -77,7 +77,7 @@ class GymSettingFrontController extends GymGenericFrontController
         $setting_inputs = $this->prepare_inputs($request->only(['name_ar', 'name_en', 'facebook', 'twitter', 'instagram',  'tiktok',  'snapchat', 'youtube', 'address_ar', 'address_en',
             'latitude', 'longitude', 'phone', 'support_email', 'meta_keywords_ar', 'meta_keywords_en', 'meta_description_ar', 'meta_description_en',
             'about_ar', 'about_en', 'terms_ar', 'terms_en', 'sms_username', 'sms_email', 'sms_sms_sender_id'
-            , 'images', 'vat_details', 'reservation_details']));
+            , 'images', 'vat_details', 'reservation_details', 'enable_dynamic_qr', 'qr_expiry_seconds', 'enable_device_binding']));
 
         $billingInput = $request->input('billing');
         if ($billingInput !== null) {
