@@ -356,6 +356,7 @@
                 let vat = 0;
                 @if(@$mainSettings->vat_details['vat_percentage'])
                     vat = price_after_discount * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+                    vat = parseFloat(vat.toFixed(2));
                 @endif
                 let total_with_vat = price_after_discount + vat;
 

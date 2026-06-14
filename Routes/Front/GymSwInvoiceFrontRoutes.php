@@ -22,8 +22,10 @@ Route::prefix('gym-sw-invoices')
         Route::name('sw.gymSwInvoices.show')
             ->get('{id}', 'Front\GymSwInvoiceFrontController@show');
 
-        Route::name('sw.gymSwInvoices.cancel')
-            ->post('{id}/cancel', 'Front\GymSwInvoiceFrontController@cancel');
+        Route::group(['defaults' => ['permission' => 'cancelSwInvoice']], function () {
+            Route::name('sw.gymSwInvoices.cancel')
+                ->post('{id}/cancel', 'Front\GymSwInvoiceFrontController@cancel');
+        });
 
         Route::name('sw.gymSwInvoices.pdf')
             ->get('{id}/pdf', 'Front\GymSwInvoiceFrontController@pdf');

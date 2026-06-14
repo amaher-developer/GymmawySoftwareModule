@@ -759,6 +759,12 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('listSwInvoices', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.invoices_report')}}</span></label>
                                             </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="cancelSwInvoice"
+                                                                            @if(@in_array('cancelSwInvoice', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.cancel_invoice')}}</span></label>
+                                            </div>
                                             @if(config('sw_billing.zatca_enabled'))
                                                 <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                     <label class="ckbox"><input name="permissions[]"

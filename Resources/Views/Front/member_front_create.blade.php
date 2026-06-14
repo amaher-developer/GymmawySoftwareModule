@@ -688,6 +688,7 @@
 
             @if(@$mainSettings->vat_details['vat_percentage'])
                 vat = (parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+                vat = parseFloat(vat.toFixed(2));
             @endif
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount) + vat;
 
@@ -709,6 +710,7 @@
             let vat = 0;
             @if(@$mainSettings->vat_details['vat_percentage'])
                 vat = selectedMembershipPrice * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+                vat = parseFloat(vat.toFixed(2));
             @endif
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice + vat).toFixed(2);
             $('#myTotal').text("{{ trans('sw.price')}} = " + parseFloat(selectedMembershipPrice).toFixed(2)).css('text-decoration', 'unset');
@@ -749,6 +751,7 @@
             let selectedMembershipPriceWithVat = 0;
             @if(@$mainSettings->vat_details['vat_percentage'])
                 vat = selectedMembershipPrice * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+                vat = parseFloat(vat.toFixed(2));
             @endif
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice + vat).toFixed(2);
 
@@ -786,6 +789,7 @@
 
             @if(@$mainSettings->vat_details['vat_percentage'])
                 vat = (parseFloat(price) - parseFloat(discount_value)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+                vat = parseFloat(vat.toFixed(2));
             @endif
                 priceWithVat = parseFloat(price - discount_value + vat);
             // let create_amount_remaining = $('#create_amount_remaining').val();

@@ -490,7 +490,7 @@
 
             @if(@$mainSettings->vat_details['vat_percentage'])
                 vat = ( price - discount_value ) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
-                vat = Number(vat);
+                vat = Number(vat.toFixed(2));
             @endif
 
             priceWithVat =  Number(price) + Number(vat) - Number(discount_value);

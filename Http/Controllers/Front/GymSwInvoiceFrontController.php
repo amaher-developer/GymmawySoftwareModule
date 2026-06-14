@@ -6,12 +6,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Modules\Billing\Models\SwBillingInvoice;
 use Modules\Billing\Services\ZatcaPhase2Service;
+use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Exports\GymSwInvoicesReportExport;
 use Modules\Software\Models\GymMember;
+use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymSwInvoice;
 use Modules\Software\Services\GymSwInvoiceService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class GymSwInvoiceFrontController extends GymGenericFrontController
@@ -153,9 +156,21 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
 
     public function cancel(int $id)
     {
-        $invoice = GymSwInvoice::findOrFail($id);
+        $invoice = GymSwInvoice::with('zatcaBillingInvoice')->findOrFail($id);
 
         if ($invoice->status === 'cancelled') {
+            return redirect()->route('sw.gymSwInvoices.show', $id);
+        }
+
+        // Once an invoice has been successfully reported/cleared to ZATCA, it can no
+        // longer be cancelled — it must be reversed via a credit/debit note instead.
+        if ($invoice->zatcaBillingInvoice && $invoice->zatcaBillingInvoice->zatca_status === 'generated') {
+            session()->flash('sweet_flash_message', [
+                'title'   => trans('sw.error'),
+                'message' => trans('sw.invoice_cancel_blocked_zatca'),
+                'type'    => 'error',
+            ]);
+
             return redirect()->route('sw.gymSwInvoices.show', $id);
         }
 
@@ -163,7 +178,7 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
         // We create the CN now so it can be submitted to ZATCA when integration is enabled.
         if ($invoice->type === 'sales') {
             try {
-                $this->service->createCreditNote($invoice, [
+                $creditNote = $this->service->createCreditNote($invoice, [
                     'subtotal'          => (float) $invoice->subtotal,
                     'vat_amount'        => (float) $invoice->vat_amount,
                     'total'             => (float) $invoice->total,
@@ -171,6 +186,8 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
                     'branch_setting_id' => $invoice->branch_setting_id,
                     'notes'             => trans('sw.cancelled_invoice_cn_note', ['number' => $invoice->invoice_number]),
                 ]);
+
+                $this->refundMoneyBoxForCancelledInvoice($invoice, $creditNote);
             } catch (\Throwable $e) {
                 Log::error('GymSwInvoiceFrontController::cancel — credit note creation failed', [
                     'invoice_id' => $invoice->id,
@@ -189,6 +206,39 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
         ]);
 
         return redirect()->route('sw.gymSwInvoices.show', $id);
+    }
+
+    /**
+     * Record the cash-side refund for a cancelled invoice in the money box,
+     * linked to its credit note. Setting invoice_id on creation prevents
+     * GymMoneyBoxObserver from generating a duplicate credit note.
+     */
+    private function refundMoneyBoxForCancelledInvoice(GymSwInvoice $invoice, GymSwInvoice $creditNote): void
+    {
+        $amountPaid = round((float) $invoice->amount_paid, 2);
+        if ($amountPaid <= 0) {
+            return;
+        }
+
+        $lastMoneyBox = GymMoneyBox::branch()->latest()->first();
+        $amountBefore = GymMoneyBoxFrontController::amountAfter(
+            (float) ($lastMoneyBox->amount ?? 0),
+            (float) ($lastMoneyBox->amount_before ?? 0),
+            $lastMoneyBox->operation ?? null
+        );
+
+        GymMoneyBox::create([
+            'user_id'           => Auth::guard('sw')->user()->id ?? null,
+            'amount'            => $amountPaid,
+            'vat'               => (float) $invoice->vat_amount,
+            'operation'         => TypeConstants::Sub,
+            'amount_before'     => $amountBefore,
+            'notes'             => trans('sw.invoice_cancelled_refund_note', ['number' => $invoice->invoice_number]),
+            'type'              => TypeConstants::CreateMoneyBoxWithdraw,
+            'member_id'         => $invoice->member_id,
+            'branch_setting_id' => $invoice->branch_setting_id,
+            'invoice_id'        => $creditNote->id,
+        ]);
     }
 
     public function pdf(int $id)
