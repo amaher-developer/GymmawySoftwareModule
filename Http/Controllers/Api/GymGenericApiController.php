@@ -109,25 +109,25 @@ class GymGenericApiController extends GenericController
 
         $app_welcome_member = trans('sw.app_welcome_member', ['name' => @Str::limit($this->SettingRepository->select('name_ar', 'name_en')->first()->name, 20)]);
         $app_welcome_msg = trans('sw.app_welcome_msg', ['name' => Auth::guard('api')->user() ? @strtok(@Auth::guard('api')->user()->name, " ").' ' : ' ']);
-        $subscriptions = GymSubscription::where('is_mobile', 1)->where('category_id', null)->orderBy('id', 'desc')->limit(5)->get();
-        $activities = GymActivity::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
-        $stores = GymStoreProduct::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
-        $trainings = GymPTClass::where('is_mobile', 1)->with(['pt_subscription.pt_trainers'])->orderBy('id', 'desc')->limit(5)->get();
-        $banners = GymBanner::where('is_mobile', 1)->where('type', 1)->orderBy('id', 'desc')->limit(10)->get();
-        $offers  = GymBanner::where('is_mobile', 1)->where('type', 4)->orderBy('id', 'desc')->limit(10)->get();
-        $news    = GymBanner::where('is_mobile', 1)->where('type', 3)->orderBy('id', 'desc')->limit(10)->get();
-        $events  = GymBanner::where('is_mobile', 1)->where('type', 2)->orderBy('id', 'desc')->limit(10)->get();
+        $subscriptions = GymSubscription::branch()->where('is_mobile', 1)->where('category_id', null)->orderBy('id', 'desc')->limit(5)->get();
+        $activities = GymActivity::branch()->where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
+        $stores = GymStoreProduct::branch()->where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
+        $trainings = GymPTClass::branch()->where('is_mobile', 1)->with(['pt_subscription.pt_trainers'])->orderBy('id', 'desc')->limit(5)->get();
+        $banners = GymBanner::branch()->where('is_mobile', 1)->where('type', 1)->orderBy('id', 'desc')->limit(10)->get();
+        $offers  = GymBanner::branch()->where('is_mobile', 1)->where('type', 4)->orderBy('id', 'desc')->limit(10)->get();
+        $news    = GymBanner::branch()->where('is_mobile', 1)->where('type', 3)->orderBy('id', 'desc')->limit(10)->get();
+        $events  = GymBanner::branch()->where('is_mobile', 1)->where('type', 2)->orderBy('id', 'desc')->limit(10)->get();
 
-        $category_with_subscription = GymCategory::with(['subscriptions' => function ($q) {
+        $category_with_subscription = GymCategory::branch()->with(['subscriptions' => function ($q) {
             $q->limit(10);
         }])->where('is_subscription', true)->get();
-        
-        
+
+
 
         $this->return['result']['is_new_notifications'] =  rand(0,1);
         $this->return['result']['welcome_member'] =  $app_welcome_member;
         $this->return['result']['welcome_msg'] =  $app_welcome_msg;
-        $this->return['result']['phones'] =  [@Setting::first()->phone];
+        $this->return['result']['phones'] =  [@$this->SettingRepository->select('phone')->first()->phone];
         $this->return['result']['banners'] =  $banners->isNotEmpty() ? BannerResource::collection($banners) : [];
         $this->return['result']['is_offers'] =  $offers->isNotEmpty() ? 1 : 0;
         $this->return['result']['offers'] =  $offers->isNotEmpty() ? BannerResource::collection($offers) : [];
@@ -274,8 +274,8 @@ class GymGenericApiController extends GenericController
     }
 
     public function banner($id){
-        $banner = GymBanner::where("id", $id)->first();
-        $banners = GymBanner::where("id", '!=',$id)->limit(4)->get();
+        $banner = GymBanner::branch()->where("id", $id)->first();
+        $banners = GymBanner::branch()->where("id", '!=',$id)->limit(4)->get();
 
         $this->return['result']['banner'] =  $banner ? new BannerContentResource($banner) : '';
         $this->return['result']['banners'] =  $banners ? BannerResource::collection($banners) : [];

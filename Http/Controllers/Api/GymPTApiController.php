@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Auth;
 class GymPTApiController extends GymGenericApiController
 {
     public function trainings(){
-        $trainings = GymPTClass::with(['pt_subscription.pt_trainers']);
+        $trainings = GymPTClass::branch()->with(['pt_subscription.pt_trainers']);
 //        if(@request('device_type'))
             $trainings = $trainings->where('is_mobile', 1);
 //        else
@@ -27,7 +27,7 @@ class GymPTApiController extends GymGenericApiController
         return $this->successResponse();
     }
     public function training($id){
-        $training = GymPTClass::with([
+        $training = GymPTClass::branch()->with([
             'pt_subscription',
             'pt_subscription.classes.activeClassTrainers.trainer',
             'pt_subscription_trainer.pt_trainer',

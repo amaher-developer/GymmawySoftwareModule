@@ -15,8 +15,8 @@ class GymSubscriptionApiController extends GymGenericApiController
 {
     public function subscriptions(){
         $category_id = @request('category_id');
-        $categories = GymCategory::where('is_subscription', true)->limit(10)->get();
-        $subscriptions = GymSubscription::orderBy("id", "desc");
+        $categories = GymCategory::branch()->where('is_subscription', true)->limit(10)->get();
+        $subscriptions = GymSubscription::branch()->orderBy("id", "desc");
         if($category_id)
             $subscriptions = $subscriptions->where('category_id', $category_id);
         else
@@ -32,7 +32,7 @@ class GymSubscriptionApiController extends GymGenericApiController
         return $this->successResponse();
     }
     public function subscription($id){
-        $subscription = GymSubscription::with(['activities.activity' => function($q){
+        $subscription = GymSubscription::branch()->with(['activities.activity' => function($q){
             $q->withTrashed();
         }])->where("id", $id)->first();
         $this->return['result']['subscription'] =  $subscription ? new SubscriptionContentResource($subscription) : '';

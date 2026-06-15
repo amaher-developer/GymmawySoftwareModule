@@ -10,7 +10,7 @@ class GymStoreApiController extends GymGenericApiController
 {
 
     public function stores(){
-        $stores = GymStoreProduct::orderBy("id", "desc");
+        $stores = GymStoreProduct::branch()->orderBy("id", "desc");
         $stores = $stores->where('is_mobile', 1);
         $stores = $stores->paginate($this->limit);
         $this->getPaginateAttribute($stores);
@@ -18,8 +18,8 @@ class GymStoreApiController extends GymGenericApiController
         return $this->successResponse();
     }
     public function store($id){
-        $store = GymStoreProduct::where("id", $id)->first();
-        $stores = GymStoreProduct::where("id", '!=', $id)->limit(5)->get();
+        $store = GymStoreProduct::branch()->where("id", $id)->first();
+        $stores = GymStoreProduct::branch()->where("id", '!=', $id)->limit(5)->get();
         $this->return['result']['store'] =  $store ? new StoreContentResource($store) : '';
         $this->return['result']['stores'] =  $store ?  StoreResource::collection($stores) : [];
         return $this->successResponse();

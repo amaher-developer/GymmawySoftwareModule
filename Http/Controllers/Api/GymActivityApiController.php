@@ -10,7 +10,7 @@ use Modules\Software\Models\GymPotentialMember;
 class GymActivityApiController extends GymGenericApiController
 {
     public function activities(){
-        $activities = GymActivity::orderBy("id", "desc");
+        $activities = GymActivity::branch()->orderBy("id", "desc");
         $activities = $activities->where('is_mobile', 1);
         $activities = $activities->paginate($this->limit);
         $this->getPaginateAttribute($activities);
@@ -18,8 +18,8 @@ class GymActivityApiController extends GymGenericApiController
         return $this->successResponse();
     }
     public function activity($id){
-        $activity = GymActivity::where("id", $id)->first();
-        $activities = GymActivity::where("id", '!=',$id)->where('is_mobile', 1)->limit(4)->get();
+        $activity = GymActivity::branch()->where("id", $id)->first();
+        $activities = GymActivity::branch()->where("id", '!=',$id)->where('is_mobile', 1)->limit(4)->get();
 
         $this->return['result']['activity'] =  $activity ? new ActivityContentResource($activity) : '';
         $this->return['result']['activities'] =  $activities ? ActivityResource::collection($activities) : [];
