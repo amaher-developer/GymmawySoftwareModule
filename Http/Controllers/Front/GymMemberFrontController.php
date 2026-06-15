@@ -3362,11 +3362,20 @@ class GymMemberFrontController extends GymGenericFrontController
                 ->orWhere('transaction_id', $memberSubscriptionId)
                 ->orderBy('id', 'desc')
                 ->first();
-            if (!$invoice || !$invoice->member || !$invoice->subscription) {
+            if (!$invoice || !$invoice->subscription) {
                 return response()->json(['success' => false, 'error' => 'Subscription not found'], 404);
             }
 
             $member = $invoice->member;
+            if (!$member) {
+                // Link was sent for a new member not yet created in the DB (member-new-check-and-send-link flow)
+                $member           = new \stdClass();
+                $member->id       = null;
+                $member->name     = $invoice->name;
+                $member->phone    = $invoice->phone;
+                $member->email    = $invoice->email;
+                $member->address  = null;
+            }
             $subscription = $invoice->subscription;
         }
 
