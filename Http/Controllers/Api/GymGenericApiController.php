@@ -321,12 +321,27 @@ class GymGenericApiController extends GenericController
         return $this->successResponse();
     }
 
+    public function branches()
+    {
+        $branches = Setting::select('id', 'name_ar', 'name_en')->get();
+
+        $this->return['result']['branches'] = $branches->map(function ($branch) {
+            return [
+                'id' => $branch->id,
+                'name' => $branch->name,
+            ];
+        })->values();
+
+        return $this->successResponse();
+    }
+
     public function login(Request $request)
     {
         $phone = request('phone');
         $code = request('code');
         $device_token = request('device_token');
         $device_id = request('device_id');
+        $branch_setting_id = request('branch_setting_id');
 
         if (!$this->validateApiRequest(['phone', 'code', 'device_type'])) return $this->response;
 
@@ -337,6 +352,9 @@ class GymGenericApiController extends GenericController
         }])//->withCount('member_attendees')
             ->where('phone' , $phone)
             ->where(DB::raw('CAST(code AS SIGNED)'), (int)$code)
+            ->when($branch_setting_id, function ($q) use ($branch_setting_id) {
+                $q->where('branch_setting_id', $branch_setting_id);
+            })
             ->first();
 
         if($member && (($member->code == $code) || (@$member->national_id == $code))){

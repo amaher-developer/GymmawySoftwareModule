@@ -11,6 +11,7 @@
 
     Route::post('contact', 'Api\GymGenericApiController@contact')->middleware('api');
 
+    Route::post('branches', 'Api\GymGenericApiController@branches')->middleware('api');
     Route::post('member_login', 'Api\GymGenericApiController@login')->middleware('api');
     Route::post('member_info', 'Api\GymGenericApiController@memberInfo')->middleware('auth:api');
     Route::post('member_qr_token', 'Api\GymGenericApiController@memberQrToken')->middleware('auth:api');
