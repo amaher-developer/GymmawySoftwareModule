@@ -657,7 +657,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($checkBlockUser)
             return redirect()->back()->withErrors(['phone' => trans('sw.block_member_validate')]);
 
-        $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
+        $maxId = str_pad((GymMember::branch()->withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         if(@(int)$request->code)
             $maxId = str_pad(intval(@$request->code), 14, 0, STR_PAD_LEFT);
 
