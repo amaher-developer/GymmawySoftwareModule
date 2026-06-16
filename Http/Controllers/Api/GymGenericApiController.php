@@ -881,16 +881,18 @@ class GymGenericApiController extends GenericController
             ->limit(50)
             ->get();
 
-        $now = Carbon::now();
+        $today = Carbon::today();
         $result = [];
         foreach ($reservations as $r) {
             $activityName = $r->activity ? $r->activity->name : '-';
-            $reservationDateTime = Carbon::parse($r->reservation_date->format('Y-m-d') . ' ' . $r->start_time);
-            $canCancel = $r->status === 'confirmed' && $reservationDateTime->gt($now);
+            $dateStr = $r->reservation_date ? $r->reservation_date->format('Y-m-d') : '';
+            $canCancel = $r->status === 'confirmed'
+                && $dateStr
+                && Carbon::parse($dateStr)->gte($today);
             $result[] = [
                 'id'            => $r->id,
                 'activity_name' => $activityName,
-                'date'          => $r->reservation_date ? $r->reservation_date->format('Y-m-d') : '',
+                'date'          => $dateStr,
                 'start_time'    => substr($r->start_time ?? '', 0, 5),
                 'end_time'      => substr($r->end_time ?? '', 0, 5),
                 'status'        => $r->status ?? 'confirmed',
@@ -920,8 +922,8 @@ class GymGenericApiController extends GenericController
             return $this->falseResponse(trans('sw.not_found'));
         }
 
-        $reservationDateTime = Carbon::parse($reservation->reservation_date->format('Y-m-d') . ' ' . $reservation->start_time);
-        if ($reservation->status !== 'confirmed' || $reservationDateTime->lte(Carbon::now())) {
+        $dateStr = $reservation->reservation_date ? $reservation->reservation_date->format('Y-m-d') : null;
+        if ($reservation->status !== 'confirmed' || !$dateStr || Carbon::parse($dateStr)->lt(Carbon::today())) {
             return $this->falseResponse(trans('sw.not_authorized'));
         }
 
