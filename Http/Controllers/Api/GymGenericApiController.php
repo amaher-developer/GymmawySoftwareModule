@@ -875,6 +875,47 @@ class GymGenericApiController extends GenericController
             return $this->falseResponse(trans('sw.required_fields'));
         }
 
+        // 1. Verify the member has an active subscription covering this activity
+        $activeSubscription = GymMemberSubscription::with(['subscription.activities'])
+            ->where('member_id', $member->id)
+            ->where('expire_date', '>=', Carbon::today())
+            ->get()
+            ->first(function ($ms) use ($activityId) {
+                return ($ms->subscription->activities ?? collect())
+                    ->contains('activity_id', $activityId);
+            });
+
+        if (!$activeSubscription) {
+            return $this->falseResponse(trans('sw.subscription_expired_or_not_found'));
+        }
+
+        // 2. Check session limit: sum training_times across all active subscriptions for this activity
+        $allActiveSubs = GymMemberSubscription::with(['subscription.activities'])
+            ->where('member_id', $member->id)
+            ->where('expire_date', '>=', Carbon::today())
+            ->get();
+
+        $totalSessions = 0;
+        foreach ($allActiveSubs as $ms) {
+            foreach ($ms->subscription->activities ?? [] as $pivot) {
+                if ($pivot->activity_id == $activityId) {
+                    $totalSessions += (int)($pivot->training_times ?? 0);
+                }
+            }
+        }
+
+        if ($totalSessions > 0) {
+            $usedSessions = GymReservation::where('member_id', $member->id)
+                ->where('client_type', 'member')
+                ->where('activity_id', $activityId)
+                ->whereIn('status', ['confirmed', 'attended'])
+                ->count();
+
+            if ($usedSessions >= $totalSessions) {
+                return $this->falseResponse(trans('sw.activity_sessions_exceeded'));
+            }
+        }
+
         \Modules\Software\Models\GymReservation::unguarded(function () use ($member, $activityId, $date, $startTime, $endTime, $notes) {
             \Modules\Software\Models\GymReservation::create([
                 'client_type'       => 'member',
