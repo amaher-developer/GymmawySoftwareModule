@@ -193,6 +193,7 @@
 </script>
 <!-- end Notifications-->
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
     function notifytone() {
@@ -224,7 +225,7 @@
             '                                            </a></li>');
 
         // Play notification sound immediately
-        notifytone();
+        //notifytone();
 
         // Show automatic popup notification
         var popupMsg = data.message || '';
