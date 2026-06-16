@@ -728,7 +728,6 @@ class GymGenericApiController extends GenericController
         $activeSubscriptions = GymMemberSubscription::with(['subscription.activities.activity'])
             ->where('member_id', $member->id)
             ->where('expire_date', '>=', Carbon::today())
-            ->where('joining_date', '<=', Carbon::today())
             ->get();
 
         $activities = [];
@@ -739,7 +738,6 @@ class GymGenericApiController extends GenericController
             foreach ($sub->activities ?? [] as $pivot) {
                 $activity = $pivot->activity ?? null;
                 if (!$activity || in_array($activity->id, $seen)) continue;
-                if (!$activity->reservation_details) continue;
                 $seen[] = $activity->id;
                 $activities[] = [
                     'id'                   => $activity->id,
