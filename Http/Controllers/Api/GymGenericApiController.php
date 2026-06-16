@@ -731,25 +731,52 @@ class GymGenericApiController extends GenericController
             ->where('expire_date', '>=', Carbon::today())
             ->get();
 
-        $activities = [];
-        $seen = [];
+        // Aggregate training_times per activity across all active subscriptions
+        $activityMap = [];
         foreach ($activeSubscriptions as $ms) {
             $sub = $ms->subscription;
             if (!$sub) continue;
             foreach ($sub->activities ?? [] as $pivot) {
                 $activity = $pivot->activity ?? null;
-                if (!$activity || in_array($activity->id, $seen)) continue;
-                $seen[] = $activity->id;
-                $activities[] = [
-                    'id'                   => $activity->id,
-                    'name'                 => $activity->name,
-                    'image'                => $activity->image,
-                    'reservation_duration' => (int)($activity->reservation_duration ?? 60),
-                    'reservation_limit'    => (int)($activity->reservation_limit ?? 0),
-                    'trainer_name'         => $activity->trainer ? $activity->trainer->name : '',
-                    'trainer_image'        => $activity->trainer && $activity->trainer->image_name ? asset('uploads/pt_trainers/' . $activity->trainer->image_name) : '',
-                ];
+                if (!$activity) continue;
+                $id = $activity->id;
+                if (!isset($activityMap[$id])) {
+                    $activityMap[$id] = ['activity' => $activity, 'total_sessions' => 0];
+                }
+                $activityMap[$id]['total_sessions'] += (int)($pivot->training_times ?? 0);
             }
+        }
+
+        // Count used sessions (confirmed + attended) per activity for this member
+        $activityIds = array_keys($activityMap);
+        $usedCounts = $activityIds
+            ? GymReservation::where('member_id', $member->id)
+                ->where('client_type', 'member')
+                ->whereIn('activity_id', $activityIds)
+                ->whereIn('status', ['confirmed', 'attended'])
+                ->selectRaw('activity_id, COUNT(*) as cnt')
+                ->groupBy('activity_id')
+                ->pluck('cnt', 'activity_id')
+            : collect([]);
+
+        $activities = [];
+        foreach ($activityMap as $id => $item) {
+            $activity  = $item['activity'];
+            $total     = $item['total_sessions'];
+            $used      = (int)($usedCounts[$id] ?? 0);
+            $remaining = $total > 0 ? max(0, $total - $used) : null;
+            $activities[] = [
+                'id'                   => $activity->id,
+                'name'                 => $activity->name,
+                'image'                => $activity->image,
+                'reservation_duration' => (int)($activity->reservation_duration ?? 60),
+                'reservation_limit'    => (int)($activity->reservation_limit ?? 0),
+                'trainer_name'         => $activity->trainer ? $activity->trainer->name : '',
+                'trainer_image'        => $activity->trainer && $activity->trainer->image_name ? asset('uploads/pt_trainers/' . $activity->trainer->image_name) : '',
+                'total_sessions'       => $total,
+                'used_sessions'        => $used,
+                'remaining_sessions'   => $remaining,
+            ];
         }
 
         $this->return['result']['activities'] = $activities;
