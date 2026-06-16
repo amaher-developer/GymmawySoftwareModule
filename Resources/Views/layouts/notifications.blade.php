@@ -197,8 +197,8 @@
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
     function notifytone() {
-        console.log('{{ asset("mixkit-correct-answer-reward-952.wav") }}');
-        var snd = new Audio('{{ asset("mixkit-correct-answer-reward-952.wav") }}');
+        console.log('{{ asset("public/mixkit-correct-answer-reward-952.wav") }}');
+        var snd = new Audio('{{ asset("public/mixkit-correct-answer-reward-952.wav") }}');
         snd.play();
     }
     // Enable pusher logging - don't include this in production
