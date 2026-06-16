@@ -27,6 +27,8 @@
     Route::post('member-activities', 'Api\GymGenericApiController@memberActivities')->middleware('auth:api');
     Route::post('member-activity-slots', 'Api\GymGenericApiController@memberActivitySlots')->middleware('auth:api');
     Route::post('member-activity-book', 'Api\GymGenericApiController@memberActivityBook')->middleware('auth:api');
+    Route::post('member-reservations', 'Api\GymGenericApiController@memberReservations')->middleware('auth:api');
+    Route::post('member-activity-cancel', 'Api\GymGenericApiController@memberActivityCancel')->middleware('auth:api');
 
 
     Route::any('my-favorites', 'Api\GymGenericApiController@myFavorites')->middleware('auth:api');

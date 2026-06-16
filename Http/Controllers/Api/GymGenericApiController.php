@@ -23,6 +23,7 @@ use Modules\Software\Http\Resources\SettingResource;
 use Modules\Software\Http\Resources\StoreResource;
 use Modules\Software\Http\Resources\SubscriptionResource;
 use Modules\Software\Models\GymActivity;
+use Modules\Software\Models\GymReservation;
 use Modules\Software\Models\GymBanner;
 use Modules\Software\Models\GymCategory;
 use Modules\Software\Models\GymMember;
@@ -725,7 +726,7 @@ class GymGenericApiController extends GenericController
             return $this->falseResponse(trans('sw.not_authorized'));
         }
 
-        $activeSubscriptions = GymMemberSubscription::with(['subscription.activities.activity'])
+        $activeSubscriptions = GymMemberSubscription::with(['subscription.activities.activity.trainer'])
             ->where('member_id', $member->id)
             ->where('expire_date', '>=', Carbon::today())
             ->get();
@@ -745,6 +746,8 @@ class GymGenericApiController extends GenericController
                     'image'                => $activity->image,
                     'reservation_duration' => (int)($activity->reservation_duration ?? 60),
                     'reservation_limit'    => (int)($activity->reservation_limit ?? 0),
+                    'trainer_name'         => $activity->trainer ? $activity->trainer->name : '',
+                    'trainer_image'        => $activity->trainer && $activity->trainer->image_name ? asset('uploads/pt_trainers/' . $activity->trainer->image_name) : '',
                 ];
             }
         }
@@ -860,6 +863,70 @@ class GymGenericApiController extends GenericController
         });
 
         $this->message = trans('sw.reserved_success_msg');
+        return $this->successResponse();
+    }
+
+    public function memberReservations()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $reservations = GymReservation::with('activity')
+            ->where('member_id', $member->id)
+            ->where('client_type', 'member')
+            ->orderBy('reservation_date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->limit(50)
+            ->get();
+
+        $now = Carbon::now();
+        $result = [];
+        foreach ($reservations as $r) {
+            $activityName = $r->activity ? $r->activity->name : '-';
+            $reservationDateTime = Carbon::parse($r->reservation_date->format('Y-m-d') . ' ' . $r->start_time);
+            $canCancel = $r->status === 'confirmed' && $reservationDateTime->gt($now);
+            $result[] = [
+                'id'            => $r->id,
+                'activity_name' => $activityName,
+                'date'          => $r->reservation_date ? $r->reservation_date->format('Y-m-d') : '',
+                'start_time'    => substr($r->start_time ?? '', 0, 5),
+                'end_time'      => substr($r->end_time ?? '', 0, 5),
+                'status'        => $r->status ?? 'confirmed',
+                'can_cancel'    => $canCancel,
+                'notes'         => $r->notes ?? '',
+            ];
+        }
+
+        $this->return['result']['reservations'] = $result;
+        return $this->successResponse();
+    }
+
+    public function memberActivityCancel()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $id = request('reservation_id');
+        $reservation = GymReservation::where('id', $id)
+            ->where('member_id', $member->id)
+            ->where('client_type', 'member')
+            ->first();
+
+        if (!$reservation) {
+            return $this->falseResponse(trans('sw.not_found'));
+        }
+
+        $reservationDateTime = Carbon::parse($reservation->reservation_date->format('Y-m-d') . ' ' . $reservation->start_time);
+        if ($reservation->status !== 'confirmed' || $reservationDateTime->lte(Carbon::now())) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $reservation->update(['status' => 'cancelled', 'cancelled_at' => Carbon::now()]);
+        $this->message = trans('sw.reservation_cancelled');
         return $this->successResponse();
     }
 
