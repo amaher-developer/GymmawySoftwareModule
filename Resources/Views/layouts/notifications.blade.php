@@ -225,7 +225,7 @@
             '                                            </a></li>');
 
         // Play notification sound immediately
-        //notifytone();
+        notifytone();
 
         // Show automatic popup notification
         var popupMsg = data.message || '';
