@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/css/select2.min.css"/>
+﻿<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/css/select2.min.css"/>
 <style>
     .select2-container {
         width: 100% !important;
@@ -193,6 +193,7 @@
 </script>
 <!-- end Notifications-->
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
     function notifytone() {
@@ -222,9 +223,26 @@
             '                                                        </span>' + data.title + '</span>\n' +
             '                                            </a></li>');
 
-        setTimeout(function(){
-            notifytone();
-        }, 1500);
+        // Play notification sound immediately
+        notifytone();
+
+        // Show automatic popup notification
+        var popupMsg = data.message || '';
+        if (data.url && data.url !== 'null' && data.url !== '') {
+            popupMsg += '<br><br><a href="' + data.url + '" style="color:#4e73df;font-weight:bold;">{{ trans("sw.press_here") }}</a>';
+        }
+        Swal.fire({
+            title: '<i class="fa fa-bell" style="color:#f6c23e;margin-left:6px;"></i> ' + (data.title || '{{ trans("sw.new_notification") }}'),
+            html: popupMsg,
+            icon: 'info',
+            position: 'top-end',
+            showConfirmButton: true,
+            confirmButtonText: '{{ trans("sw.ok") }}',
+            confirmButtonColor: '#4e73df',
+            timer: 8000,
+            timerProgressBar: true,
+            toast: false,
+        });
     });
     // Some useful debug msgs
     // pusher.connection.bind('connecting', function() {
