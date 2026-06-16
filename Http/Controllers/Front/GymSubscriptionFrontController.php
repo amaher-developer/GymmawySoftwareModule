@@ -225,6 +225,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
 
         $subscription_inputs['workouts'] = @(int)$request->workouts;
+        $subscription_inputs['max_extension_days'] = (int)($subscription_inputs['max_extension_days'] ?? 0);
+        $subscription_inputs['max_freeze_extension_sum'] = (int)($subscription_inputs['max_freeze_extension_sum'] ?? 0);
         $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $subscription =  $this->GymSubscriptionRepository->create($subscription_inputs);
@@ -290,6 +292,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
             $subscription_inputs['time_week'] = null;
         }
         $subscription_inputs['workouts'] = @(int)$request->workouts;
+        $subscription_inputs['max_extension_days'] = (int)($subscription_inputs['max_extension_days'] ?? 0);
+        $subscription_inputs['max_freeze_extension_sum'] = (int)($subscription_inputs['max_freeze_extension_sum'] ?? 0);
         $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
 

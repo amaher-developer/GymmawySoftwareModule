@@ -3232,10 +3232,11 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
         return Response::json([
-            'status'      => true,
-            'invoice_id'  => $result['invoice_id'],
-            'payment_url' => $result['payment_url'],
-            'sent_via'    => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
+            'status'        => true,
+            'invoice_id'    => $result['invoice_id'],
+            'payment_url'   => $result['payment_url'],
+            'member_phone'  => $member->phone ?? null,
+            'sent_via'      => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
         ], 200);
     }
 
@@ -3300,10 +3301,11 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
         return Response::json([
-            'status'      => true,
-            'invoice_id'  => $result['invoice_id'],
-            'payment_url' => $result['payment_url'],
-            'sent_via'    => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
+            'status'        => true,
+            'invoice_id'    => $result['invoice_id'],
+            'payment_url'   => $result['payment_url'],
+            'member_phone'  => $member->phone ?? null,
+            'sent_via'      => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
         ], 200);
     }
 
@@ -3423,7 +3425,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
-            return response()->json(['success' => true, 'payment_url' => $paymentUrl, 'sent_via' => $sentVia]);
+            return response()->json(['success' => true, 'payment_url' => $paymentUrl, 'member_phone' => $member->phone ?? null, 'sent_via' => $sentVia]);
         } catch (\Exception $e) {
             Log::error('Failed to resend payment link', ['member_subscription_id' => $memberSubscriptionId, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);

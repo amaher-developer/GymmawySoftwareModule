@@ -94,6 +94,11 @@ class GymActivity extends GenericModel
         return $this->belongsTo(GymSubscriptionCategory::class, 'subscription_category_id');
     }
 
+    public function trainer()
+    {
+        return $this->belongsTo(GymPTTrainer::class, 'trainer_id')->withTrashed();
+    }
+
 
     public function toArray()
     {

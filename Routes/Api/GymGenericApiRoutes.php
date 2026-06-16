@@ -24,6 +24,9 @@
     Route::post('pt-training-classes', 'Api\GymPTApiController@trainingClasses')->middleware('api');
 
     Route::post('member-subscription-freeze', 'Api\GymGenericApiController@memberSubscriptionFreeze')->middleware('auth:api');
+    Route::post('member-activities', 'Api\GymGenericApiController@memberActivities')->middleware('auth:api');
+    Route::post('member-activity-slots', 'Api\GymGenericApiController@memberActivitySlots')->middleware('auth:api');
+    Route::post('member-activity-book', 'Api\GymGenericApiController@memberActivityBook')->middleware('auth:api');
 
 
     Route::any('my-favorites', 'Api\GymGenericApiController@myFavorites')->middleware('auth:api');

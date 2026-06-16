@@ -302,11 +302,23 @@
                     <!--end::Input group-->
                     
 
+                    <!--begin::Input group - Trainer-->
+                    <div class="mb-10 fv-row">
+                        <label class="form-label">{{ trans('sw.trainer')}}</label>
+                        <select name="trainer_id" class="form-select" id="trainer_id">
+                            <option value="">-- {{ trans('sw.select_trainer') }} --</option>
+                            @foreach($trainers ?? [] as $trainer)
+                                <option value="{{ $trainer->id }}" @if(old('trainer_id', $activity->trainer_id) == $trainer->id) selected @endif>{{ $trainer->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <!--end::Input group - Trainer-->
+
                 </div>
                 <!--end::Card body-->
             </div>
             <!--end::Activity Details-->
-            
+
             @if(isset($mainSettings->active_activity_reservation) && $mainSettings->active_activity_reservation)
             <!--begin::Reservation Settings-->
             <div class="card card-flush py-4">

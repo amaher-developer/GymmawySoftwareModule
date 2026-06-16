@@ -104,13 +104,21 @@
     <!--begin::Card body-->
     <div class="card-body pt-0">
         <!--begin::Search-->
-        <div class="d-flex align-items-center position-relative my-1 mb-5">
-            <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
+        <div class="d-flex align-items-center flex-wrap gap-3 position-relative my-1 mb-5">
+            <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4" style="top:50%;transform:translateY(-50%)"></i>
             <form class="d-flex" action="" method="get" style="max-width: 400px;">
                 <input type="text" name="search" class="form-control form-control-solid ps-12" value="{{ request('search') }}" placeholder="{{ trans('sw.search_on')}}">
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
                 </button>
+            </form>
+            <form class="d-flex ms-3" action="" method="get">
+                <select name="trainer_id" class="form-select form-select-solid" style="max-width: 200px;" onchange="this.form.submit()">
+                    <option value="">{{ trans('sw.all_trainers') }}</option>
+                    @foreach($trainers ?? [] as $trainer)
+                        <option value="{{ $trainer->id }}" @if(request('trainer_id') == $trainer->id) selected @endif>{{ $trainer->name }}</option>
+                    @endforeach
+                </select>
             </form>
         </div>
         <!--end::Search-->
@@ -149,6 +157,9 @@
                             <i class="ki-outline ki-time fs-6 me-2"></i>{{ trans('sw.reservation_duration')}}
                             <span class="fs-8 text-muted">({{ trans('sw.by_minutes')}})</span>
                         </th>
+                        <th class="min-w-150px text-nowrap">
+                            <i class="ki-outline ki-people fs-6 me-2"></i>{{ trans('sw.trainer')}}
+                        </th>
                         <th class="min-w-120px text-nowrap">
                             <i class="ki-outline ki-pc fs-6 me-2"></i>{{ trans('sw.system')}}
                         </th>
@@ -186,6 +197,9 @@
                             </td>
                             <td class="pe-0">
                                 <span class="fw-bold">{{ $activity->reservation_duration ? $activity->reservation_duration : '-' }}</span>
+                            </td>
+                            <td class="pe-0">
+                                <span class="fw-bold">{{ $activity->trainer ? $activity->trainer->name : '-' }}</span>
                             </td>
                             <td class="pe-0">
                                 @if(@$activity->is_system)

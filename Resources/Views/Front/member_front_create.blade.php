@@ -1030,7 +1030,9 @@
                             $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paytabs_link').prop('checked', false);
                             $('form.form').off('submit').submit();
                         },
-                        pw_check_invoice_url
+                        pw_check_invoice_url,
+                        data.payment_url || null,
+                        data.member_phone || null
                     );
                 },
                 error: function () {

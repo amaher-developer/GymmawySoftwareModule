@@ -1176,6 +1176,7 @@
     var pw_trans_payment_confirmed = '{{ trans('sw.payment_confirmed') }}';
     var pw_trans_payment_confirmed_desc = '{{ trans('sw.payment_confirmed_desc') }}';
     var pw_trans_payment_link_resent = '{{ trans('sw.payment_link_resent') }}';
+    var pw_trans_payment_link_copied = '{{ trans('sw.payment_link_copied') }}';
     var pw_trans_email = '{{ trans('sw.email') }}';
     var pw_trans_done = '{{ trans('admin.done') }}';
     var pw_csrf_token = '{{ csrf_token() }}';
@@ -1338,6 +1339,20 @@
                             <span class="fw-bold fs-6" id="pw_sent_text"></span>
                         </div>
                     </div>
+                    <div class="mb-5" id="pw_link_box" style="display:none;">
+                        <label class="form-label fw-semibold fs-7 text-muted mb-2">{{ trans('sw.payment_link_label') }}</label>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm bg-light" id="pw_link_input" readonly>
+                            <button type="button" class="btn btn-sm btn-light-primary" id="pw_copy_btn" title="{{ trans('sw.payment_link_copy') }}">
+                                <i class="ki-outline ki-copy fs-4"></i>
+                                {{ trans('sw.payment_link_copy') }}
+                            </button>
+                        </div>
+                        <a href="#" id="pw_whatsapp_btn" target="_blank" class="btn btn-sm btn-light-success w-100">
+                            <i class="ki-outline ki-whatsapp fs-4 me-1"></i>
+                            {{ trans('sw.payment_link_whatsapp') }}
+                        </a>
+                    </div>
                     <div class="d-flex justify-content-center gap-3 flex-wrap">
                         <button type="button" class="btn btn-light-primary" id="pw_resend_btn">
                             <i class="ki-outline ki-send fs-3 me-1"></i>
@@ -1374,6 +1389,25 @@ var pw_redirect_url = null;
 var pw_active_gateway = null;
 var pw_on_success_callback = null;
 var pw_poll_url = null; // overridable per call
+var pw_payment_url = null;
+var pw_member_phone = null;
+
+function pwSetPaymentLink(url, phone) {
+    pw_payment_url = url || null;
+    if (phone !== undefined) pw_member_phone = phone || null;
+    if (url) {
+        $('#pw_link_input').val(url);
+        var cleanPhone = (pw_member_phone || '').replace(/\D/g, '');
+        if (cleanPhone) {
+            $('#pw_whatsapp_btn').attr('href', 'https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(url)).show();
+        } else {
+            $('#pw_whatsapp_btn').hide();
+        }
+        $('#pw_link_box').show();
+    } else {
+        $('#pw_link_box').hide();
+    }
+}
 
 function pwShowSentNotice(sentVia) {
     var channels = [];
@@ -1415,16 +1449,18 @@ function pwStopPolling() {
     }
 }
 
-function pwOpenModal(memberSubscriptionId, sentVia, redirectUrl, gateway, onSuccessCallback, checkUrl) {
+function pwOpenModal(memberSubscriptionId, sentVia, redirectUrl, gateway, onSuccessCallback, checkUrl, paymentUrl, memberPhone) {
     pw_member_subscription_id = memberSubscriptionId;
     pw_redirect_url = redirectUrl;
     pw_active_gateway = gateway;
     pw_on_success_callback = onSuccessCallback || null;
     pw_poll_url = checkUrl || null;
+    pw_member_phone = memberPhone || null;
     $('#pw_loading_state').show();
     $('#pw_success_state').hide();
     $('#pw_sent_notice').hide();
     pwShowSentNotice(sentVia);
+    pwSetPaymentLink(paymentUrl || null, memberPhone || null);
     $('#paymentWaitingModal').modal('show');
     pwStartPolling();
 }
@@ -1440,11 +1476,27 @@ $(document).on('click', '#pw_resend_btn', function () {
             $btn.prop('disabled', false);
             if (data.success) {
                 pwShowSentNotice(data.sent_via);
+                if (data.payment_url) pwSetPaymentLink(data.payment_url, data.member_phone || pw_member_phone);
                 swal({ title: pw_trans_done, text: pw_trans_payment_link_resent, type: 'success', timer: 2500 });
             }
         },
         error: function () { $btn.prop('disabled', false); }
     });
+});
+
+$(document).on('click', '#pw_copy_btn', function () {
+    var url = $('#pw_link_input').val();
+    if (!url) return;
+    var $btn = $(this);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+            $btn.find('i').removeClass('ki-copy').addClass('ki-check');
+            setTimeout(function () { $btn.find('i').removeClass('ki-check').addClass('ki-copy'); }, 1500);
+        });
+    } else {
+        $('#pw_link_input').select();
+        document.execCommand('copy');
+    }
 });
 
 $(document).on('click', '#pw_continue_btn', function () {

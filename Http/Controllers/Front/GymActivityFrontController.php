@@ -57,7 +57,13 @@ class GymActivityFrontController extends GymGenericFrontController
                 $query->orWhere('name_' . $this->lang, 'like', "%" . $search . "%");
             });
         });
+        $trainer_id = request('trainer_id');
+        $activities->when($trainer_id, function ($q) use ($trainer_id) {
+            $q->where('trainer_id', $trainer_id);
+        });
         $search_query = request()->query();
+
+        $trainers = \Modules\Software\Models\GymPTTrainer::branch()->orderBy('name')->get();
 
         if ($this->limit) {
             $activities = $activities->paginate($this->limit);
@@ -67,7 +73,7 @@ class GymActivityFrontController extends GymGenericFrontController
             $total = $activities->count();
         }
 
-        return view('software::Front.activity_front_list', compact('activities','title', 'total', 'search_query'));
+        return view('software::Front.activity_front_list', compact('activities','title', 'total', 'search_query', 'trainers'));
     }
 
 
@@ -192,7 +198,8 @@ class GymActivityFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.activity_add');
-        return view('software::Front.activity_front_form', ['activity' => new GymActivity(),'title'=>$title]);
+        $trainers = \Modules\Software\Models\GymPTTrainer::branch()->orderBy('name')->get();
+        return view('software::Front.activity_front_form', ['activity' => new GymActivity(),'title'=>$title, 'trainers' => $trainers]);
     }
 
     public function store(GymActivityRequest $request)
@@ -215,7 +222,8 @@ class GymActivityFrontController extends GymGenericFrontController
     {
         $activity =$this->ActivityRepository->withTrashed()->find($id);
         $title = trans('sw.activity_edit');
-        return view('software::Front.activity_front_form', ['activity' => $activity,'title'=>$title]);
+        $trainers = \Modules\Software\Models\GymPTTrainer::branch()->orderBy('name')->get();
+        return view('software::Front.activity_front_form', ['activity' => $activity,'title'=>$title, 'trainers' => $trainers]);
     }
 
     public function update(GymActivityRequest $request, $id)

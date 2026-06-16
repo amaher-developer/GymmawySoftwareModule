@@ -718,6 +718,153 @@ class GymGenericApiController extends GenericController
     }
 
 
+    public function memberActivities()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $activeSubscriptions = GymMemberSubscription::with(['subscription.activities.activity'])
+            ->where('member_id', $member->id)
+            ->where('expire_date', '>=', Carbon::today())
+            ->where('joining_date', '<=', Carbon::today())
+            ->get();
+
+        $activities = [];
+        $seen = [];
+        foreach ($activeSubscriptions as $ms) {
+            $sub = $ms->subscription;
+            if (!$sub) continue;
+            foreach ($sub->activities ?? [] as $pivot) {
+                $activity = $pivot->activity ?? null;
+                if (!$activity || in_array($activity->id, $seen)) continue;
+                if (!$activity->reservation_details) continue;
+                $seen[] = $activity->id;
+                $activities[] = [
+                    'id'                   => $activity->id,
+                    'name'                 => $activity->name,
+                    'image'                => $activity->image,
+                    'reservation_duration' => (int)($activity->reservation_duration ?? 60),
+                    'reservation_limit'    => (int)($activity->reservation_limit ?? 0),
+                ];
+            }
+        }
+
+        $this->return['result']['activities'] = $activities;
+        return $this->successResponse();
+    }
+
+    public function memberActivitySlots()
+    {
+        $activityId = request('activity_id');
+        $date = request('reservation_date');
+        $duration = request('duration');
+
+        $activity = GymActivity::find($activityId);
+        if (!$activity) {
+            return $this->falseResponse(trans('sw.not_found'));
+        }
+
+        $duration = (int)($duration ?? $activity->reservation_duration ?? 60);
+        $interval = 30;
+        $reservationLimit = (int)($activity->reservation_limit ?? 0);
+        $hasLimit = $reservationLimit > 0;
+
+        $dateCarbon = Carbon::parse($date);
+        $dayOfWeek = $dateCarbon->dayOfWeek;
+        $dateStr = $dateCarbon->format('Y-m-d');
+
+        $reservationDetails = $activity->reservation_details;
+        $startOfDay = '08:00';
+        $endOfDay = '20:00';
+
+        if ($reservationDetails && isset($reservationDetails['work_days'][$dayOfWeek])) {
+            $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
+            if (empty($dayConfig['status'])) {
+                $this->return['result']['slots'] = [];
+                $this->return['result']['day_available'] = false;
+                return $this->successResponse();
+            }
+            $startOfDay = $dayConfig['start'] ?? '08:00';
+            $endOfDay = $dayConfig['end'] ?? '20:00';
+        }
+
+        $cursor = Carbon::parse("$dateStr $startOfDay");
+        $endDay = Carbon::parse("$dateStr $endOfDay");
+        $slots = [];
+        while ($cursor->copy()->addMinutes($duration) <= $endDay) {
+            $slots[] = ['start' => $cursor->format('H:i'), 'end' => $cursor->copy()->addMinutes($duration)->format('H:i')];
+            $cursor->addMinutes($interval);
+        }
+
+        $existing = \Modules\Software\Models\GymReservation::where('activity_id', $activityId)
+            ->whereDate('reservation_date', $dateStr)
+            ->whereNotIn('status', ['cancelled', 'missed'])
+            ->get(['start_time', 'end_time']);
+
+        $result = [];
+        foreach ($slots as $slot) {
+            $overlaps = 0;
+            foreach ($existing as $ex) {
+                try {
+                    $aS = Carbon::createFromFormat('H:i', substr($ex->start_time, 0, 5));
+                    $aE = Carbon::createFromFormat('H:i', substr($ex->end_time, 0, 5));
+                    $sT = Carbon::createFromFormat('H:i', $slot['start']);
+                    $eT = Carbon::createFromFormat('H:i', $slot['end']);
+                    if ($sT->lt($aE) && $eT->gt($aS)) $overlaps++;
+                } catch (\Exception $e) {}
+            }
+            $available = $hasLimit ? $overlaps < $reservationLimit : true;
+            $result[] = [
+                'start_time'       => $slot['start'],
+                'end_time'         => $slot['end'],
+                'available'        => $available,
+                'current_bookings' => $overlaps,
+            ];
+        }
+
+        $this->return['result']['slots'] = $result;
+        $this->return['result']['day_available'] = true;
+        $this->return['result']['duration'] = $duration;
+        return $this->successResponse();
+    }
+
+    public function memberActivityBook()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $activityId  = request('activity_id');
+        $date        = request('reservation_date');
+        $startTime   = request('start_time');
+        $endTime     = request('end_time');
+        $notes       = request('notes', '');
+
+        if (!$activityId || !$date || !$startTime || !$endTime) {
+            return $this->falseResponse(trans('sw.required_fields'));
+        }
+
+        \Modules\Software\Models\GymReservation::unguarded(function () use ($member, $activityId, $date, $startTime, $endTime, $notes) {
+            \Modules\Software\Models\GymReservation::create([
+                'client_type'       => 'member',
+                'member_id'         => $member->id,
+                'activity_id'       => $activityId,
+                'reservation_date'  => Carbon::parse($date)->format('Y-m-d'),
+                'start_time'        => $startTime,
+                'end_time'          => $endTime,
+                'status'            => 'confirmed',
+                'notes'             => $notes,
+                'branch_setting_id' => $member->branch_setting_id,
+            ]);
+        });
+
+        $this->message = trans('sw.reserved_success_msg');
+        return $this->successResponse();
+    }
+
     public function memberSubscriptionFreeze(){
         $member_id =  @Auth::guard('api')->user()->id;
         $memberInfo = GymMember::with(['member_subscription_info' => function ($q) {
