@@ -736,7 +736,7 @@ class GymGenericApiController extends GenericController
 
         $activeSubscriptions = GymMemberSubscription::with(['subscription.activities.activity.trainer'])
             ->where('member_id', $member->id)
-            ->where('status', TypeConstants::Active)
+            ->whereIn('status', [TypeConstants::Active, TypeConstants::Freeze, TypeConstants::Coming])
             ->get();
 
         // Aggregate training_times per activity across all active subscriptions
