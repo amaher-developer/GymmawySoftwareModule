@@ -736,7 +736,7 @@ class GymGenericApiController extends GenericController
 
         $activeSubscriptions = GymMemberSubscription::with(['subscription.activities.activity.trainer'])
             ->where('member_id', $member->id)
-            ->where('expire_date', '>=', Carbon::today())
+            ->where('status', TypeConstants::Active)
             ->get();
 
         // Aggregate training_times per activity across all active subscriptions
@@ -773,6 +773,14 @@ class GymGenericApiController extends GenericController
             $total     = $item['total_sessions'];
             $used      = (int)($usedCounts[$id] ?? 0);
             $remaining = $total > 0 ? max(0, $total - $used) : null;
+            $details = $activity->reservation_details;
+            $hasSchedule = false;
+            if ($details && isset($details['work_days']) && is_array($details['work_days'])) {
+                foreach ($details['work_days'] as $day) {
+                    if (!empty($day['status'])) { $hasSchedule = true; break; }
+                }
+            }
+            $sessionsExceeded = $total > 0 && $used >= $total;
             $activities[] = [
                 'id'                   => $activity->id,
                 'name'                 => $activity->name,
@@ -784,6 +792,8 @@ class GymGenericApiController extends GenericController
                 'total_sessions'       => $total,
                 'used_sessions'        => $used,
                 'remaining_sessions'   => $remaining,
+                'has_schedule'         => $hasSchedule,
+                'can_reserve'          => $hasSchedule && !$sessionsExceeded,
             ];
         }
 
