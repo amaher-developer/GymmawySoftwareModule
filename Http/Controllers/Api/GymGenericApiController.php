@@ -390,6 +390,14 @@ class GymGenericApiController extends GenericController
             return $this->falseResponse(trans('auth.invalid_login'));
         }
 
+        // Block QR generation if no active subscription
+        $hasActive = GymMemberSubscription::where('member_id', $member->id)
+            ->where('status', TypeConstants::Active)
+            ->exists();
+        if (!$hasActive) {
+            return $this->falseResponse(trans('sw.qr_subscription_required'));
+        }
+
         // If the member already has a non-expired token, return it instead of generating a new one
         if($member->qr_token && $member->qr_token_expires_at && Carbon::now()->lt($member->qr_token_expires_at)){
             $this->return['result']['qr_token'] = $member->qr_token;
