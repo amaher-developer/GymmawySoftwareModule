@@ -260,11 +260,12 @@ class GymMemberApiController extends GenericApiController
             $attendanceMemberSql = [];
             $attendanceUserSql = [];
             $attendances = collect($attendances)
+                ->filter(fn($item) => is_array($item))
                 ->unique(function ($item) {
                     if(@$item['USERID'])
-                        return $item['USERID'] . '_' . Carbon::parse(@$item['CHECKTIME'])->toDateString(); // Combine keys for uniqueness
+                        return $item['USERID'] . '_' . Carbon::parse(@$item['CHECKTIME'])->toDateString();
                     else
-                        return $item['FPID'] . '_' . Carbon::parse(@$item['CHECKTIME'])->toDateString(); // Combine keys for uniqueness
+                        return $item['FPID'] . '_' . Carbon::parse(@$item['CHECKTIME'])->toDateString();
 
                 })
                 ->values() // Reindex the array
