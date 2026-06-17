@@ -739,39 +739,40 @@ class GymGenericApiController extends GenericController
             ->whereIn('status', [TypeConstants::Active, TypeConstants::Freeze, TypeConstants::Coming])
             ->get();
 
-        // Aggregate training_times per activity across all active subscriptions
+        // Aggregate training_times and used sessions per activity, scoped to each subscription's date range
         $activityMap = [];
         foreach ($activeSubscriptions as $ms) {
             $sub = $ms->subscription;
             if (!$sub) continue;
+            $subStart = $ms->start_date ? Carbon::parse($ms->start_date)->format('Y-m-d') : null;
+            $subEnd   = $ms->expire_date ? Carbon::parse($ms->expire_date)->format('Y-m-d') : null;
             foreach ($sub->activities ?? [] as $pivot) {
                 $activity = $pivot->activity ?? null;
                 if (!$activity) continue;
                 $id = $activity->id;
+                $sessionAllowance = (int)($pivot->training_times ?? 0);
                 if (!isset($activityMap[$id])) {
-                    $activityMap[$id] = ['activity' => $activity, 'total_sessions' => 0];
+                    $activityMap[$id] = ['activity' => $activity, 'total_sessions' => 0, 'used_sessions' => 0];
                 }
-                $activityMap[$id]['total_sessions'] += (int)($pivot->training_times ?? 0);
+                $activityMap[$id]['total_sessions'] += $sessionAllowance;
+                // Count used sessions only within this subscription's date range
+                if ($sessionAllowance > 0 && $subStart) {
+                    $usedQuery = GymReservation::where('member_id', $member->id)
+                        ->where('client_type', 'member')
+                        ->where('activity_id', $id)
+                        ->whereIn('status', ['confirmed', 'attended'])
+                        ->where('reservation_date', '>=', $subStart);
+                    if ($subEnd) $usedQuery->where('reservation_date', '<=', $subEnd);
+                    $activityMap[$id]['used_sessions'] += (int)$usedQuery->count();
+                }
             }
         }
-
-        // Count used sessions (confirmed + attended) per activity for this member
-        $activityIds = array_keys($activityMap);
-        $usedCounts = $activityIds
-            ? GymReservation::where('member_id', $member->id)
-                ->where('client_type', 'member')
-                ->whereIn('activity_id', $activityIds)
-                ->whereIn('status', ['confirmed', 'attended'])
-                ->selectRaw('activity_id, COUNT(*) as cnt')
-                ->groupBy('activity_id')
-                ->pluck('cnt', 'activity_id')
-            : collect([]);
 
         $activities = [];
         foreach ($activityMap as $id => $item) {
             $activity  = $item['activity'];
             $total     = $item['total_sessions'];
-            $used      = (int)($usedCounts[$id] ?? 0);
+            $used      = $item['used_sessions'];
             $remaining = $total > 0 ? max(0, $total - $used) : null;
             $details = $activity->reservation_details;
             $hasSchedule = false;
