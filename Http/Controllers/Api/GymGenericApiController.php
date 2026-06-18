@@ -536,7 +536,7 @@ class GymGenericApiController extends GenericController
     public function get_settings()
     {
         // Select only columns that exist + JSON columns (social_media contains all social links)
-        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select('phone', 'support_email', 'address_ar', 'address_en', 'latitude', 'longitude', 'social_media', 'ios_version', 'android_version', 'terms_ar', 'terms_en', 'enable_dynamic_qr', 'qr_expiry_seconds')->first());
+        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select('phone', 'support_email', 'address_ar', 'address_en', 'latitude', 'longitude', 'social_media', 'ios_version', 'ios_app', 'android_version', 'android_app', 'terms_ar', 'terms_en', 'enable_dynamic_qr', 'qr_expiry_seconds')->first());
         return $this->return;
     }
 
