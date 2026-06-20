@@ -1114,17 +1114,7 @@
         </div>
         <!--end:Menu item-->
     @endif
-    @if ($swUser && config('sw_billing.zatca_enabled') && (isset($permissionsMap['reportZatcaInvoices']) || $isSuperUser))
-        <!-- <div class="menu-item">
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user/log/zatca-invoices')) active @endif"
-                href="{{ route('sw.reportZatcaInvoices') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.zatca_invoices_report') }}</span>
-            </a>
-        </div> -->
-    @endif
+    {{-- zatca invoices report hidden --}}
     @if ($swUser && (isset($permissionsMap['reportOnlinePaymentTransactionList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
