@@ -331,8 +331,10 @@
                                        max="{{@($member->member_subscription_info->subscription->price)}}"
                                        type="number" step="0.01">
                             </div>
+                            @else
+                            <input type="hidden" name="discount_value" id="discount_value" value="0">
                             @endif
-                            
+
                             @if((count($discounts) > 0) && ((in_array('editMemberDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
                             <div class="col-md-6">
                                 <label class="form-label">{{ trans('sw.discount')}}</label>
@@ -343,6 +345,8 @@
                                     @endforeach
                                 </select>
                             </div>
+                            @else
+                            <input type="hidden" name="group_discount_id" value="0">
                             @endif
                             
                             @if(@$mainSettings->vat_details['vat_percentage'])

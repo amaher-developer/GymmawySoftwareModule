@@ -693,11 +693,11 @@
                     <div class="row mb-5" @if((in_array('editMemberDiscount', (array)$swUser->permissions)) || $swUser->is_super_user) style="display: flex" @else style="display: none" @endif>
                         <label class="col-md-3 col-form-label">{{ trans('sw.discount_value')}}</label>
                         <div class="col-md-3">
-                            <input class="form-control" autocomplete="off" 
+                            <input class="form-control" autocomplete="off"
                                    placeholder="{{ trans('sw.discount_value')}}"
                                    name="discount_value"
                                    id="discount_value"
-                                   value=""
+                                   value="0"
                                    min="0"
                                    max=""
                                    type="number" step="0.01">
@@ -713,6 +713,8 @@
                                 @endforeach
                             </select>
                         </div>
+                        @else
+                        <input type="hidden" id="group_discount_id" name="group_discount_id" value="0">
                         @endif
                     </div>
                     <!--end::Discount Section-->
