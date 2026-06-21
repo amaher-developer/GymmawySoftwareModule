@@ -32,6 +32,13 @@ Route::prefix('pt/trainer')
         Route::name('sw.pendingPTTrainerCommissions')
             ->get('{trainer}/pending-commissions', 'Front\GymPTTrainerFrontController@pendingCommissions');
 
+        // Commission exports
+        Route::name('sw.exportPTTrainerCommissionsPDF')
+            ->get('{trainer}/commissions/pdf', 'Front\GymPTTrainerFrontController@exportCommissionsPDF');
+
+        Route::name('sw.exportPTTrainerCommissionsExcel')
+            ->get('{trainer}/commissions/excel', 'Front\GymPTTrainerFrontController@exportCommissionsExcel');
+
         // Create PT trainer subscription - create permission
         Route::group(['defaults' => ['permission' => 'createPTTrainerSubscription']], function () {
             Route::name('sw.createPTTrainerSubscription')

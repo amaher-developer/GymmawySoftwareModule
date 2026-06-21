@@ -549,6 +549,122 @@ class GymPTTrainerFrontController extends GymGenericFrontController
         ]);
     }
 
+    public function exportCommissionsPDF(Request $request, GymPTTrainer $trainer)
+    {
+        $commissions = $this->resolveCommissionsForExport($request, $trainer);
+        $title       = trans('sw.trainer_commission_modal_title', ['name' => $trainer->name]);
+        $fileName    = 'commissions-' . $trainer->id . '-' . Carbon::now()->format('Ymd');
+
+        $html = view('software::Front.pt_trainer_commission_pdf', [
+            'commissions' => $commissions['rows'],
+            'totals'      => $commissions['totals'],
+            'trainer'     => $trainer,
+            'title'       => $title,
+            'lang'        => $this->lang,
+            'settings'    => $this->mainSettings,
+        ])->render();
+
+        try {
+            $mpdf = new Mpdf([
+                'mode'             => 'utf-8',
+                'format'           => 'A4-L',
+                'orientation'      => 'L',
+                'margin_left'      => 15,
+                'margin_right'     => 15,
+                'margin_top'       => 16,
+                'margin_bottom'    => 16,
+                'margin_header'    => 9,
+                'margin_footer'    => 9,
+                'default_font'     => 'dejavusans',
+                'default_font_size'=> 10,
+            ]);
+            $mpdf->WriteHTML($html);
+
+            return response($mpdf->Output($fileName . '.pdf', 'D'), 200, [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $fileName . '.pdf"',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('mPDF trainer commissions failed: ' . $e->getMessage());
+            $pdf = PDF::loadView('software::Front.pt_trainer_commission_pdf', [
+                'commissions' => $commissions['rows'],
+                'totals'      => $commissions['totals'],
+                'trainer'     => $trainer,
+                'title'       => $title,
+                'lang'        => $this->lang,
+                'settings'    => $this->mainSettings,
+            ])->setPaper('a4', 'landscape');
+
+            return $pdf->download($fileName . '.pdf');
+        }
+    }
+
+    public function exportCommissionsExcel(Request $request, GymPTTrainer $trainer)
+    {
+        $commissions = $this->resolveCommissionsForExport($request, $trainer);
+        $fileName    = 'commissions-' . $trainer->id . '-' . Carbon::now()->format('Ymd');
+
+        $keys    = ['session_date', 'member_name', 'member_code', 'class_name', 'commission_amount', 'commission_rate'];
+        $records = $commissions['rows']->map(fn($r) => (object) $r);
+
+        return Excel::download(
+            new RecordsExport([
+                'records'  => $records,
+                'keys'     => $keys,
+                'lang'     => $this->lang,
+                'settings' => $this->mainSettings,
+            ]),
+            $fileName . '.xlsx'
+        );
+    }
+
+    private function resolveCommissionsForExport(Request $request, GymPTTrainer $trainer): array
+    {
+        $filters = array_filter([
+            'trainer_id'       => $trainer->id,
+            'class_id'         => $request->input('class_id'),
+            'from'             => $request->input('from'),
+            'to'               => $request->input('to'),
+            'branch_setting_id'=> @$this->user_sw->branch_setting_id ?: null,
+        ]);
+
+        $summary = $this->commissionService->summarizePending($filters);
+        $group   = $summary['grouped'] instanceof \Illuminate\Support\Collection
+            ? $summary['grouped']->get($trainer->id)
+            : null;
+
+        $rows = collect(data_get($group, 'commissions', []))->map(function (GymPTCommission $commission) {
+            $memberRecord = optional($commission->member)->member;
+            $attendee     = $commission->attendee;
+            $class        = optional($attendee?->pt_member?->pt_class);
+
+            $sessionDate = null;
+            try {
+                $raw = $attendee?->session_date ?? $commission->session_date;
+                $sessionDate = $raw ? Carbon::parse($raw)->format('Y-m-d H:i') : '-';
+            } catch (\Exception) {
+                $sessionDate = '-';
+            }
+
+            return [
+                'session_date'      => $sessionDate,
+                'member_name'       => optional($memberRecord)->name ?? '-',
+                'member_code'       => optional($memberRecord)->code ?? '',
+                'class_name'        => optional($class)->name ?? '-',
+                'commission_amount' => number_format($commission->commission_amount ?? 0, 2),
+                'commission_rate'   => number_format($commission->commission_rate ?? 0, 2) . '%',
+            ];
+        })->values();
+
+        return [
+            'rows'   => $rows,
+            'totals' => [
+                'amount' => round(data_get($group, 'total_amount', 0), 2),
+                'count'  => data_get($group, 'total_count', 0),
+            ],
+        ];
+    }
+
 
     public function createTrainerPayPercentageAmountForm(Request $request)
     {
