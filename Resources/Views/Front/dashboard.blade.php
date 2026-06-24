@@ -192,6 +192,11 @@
                             <button class="btn btn-primary normal_search" id="Normal_search" onclick="scanBarcodeManual();" type="button">
                                 <i class="ki-outline ki-barcode fs-1"></i>
                             </button>
+                            @if(@$mainSettings->enable_dynamic_qr)
+                            <button class="btn btn-success" onclick="openCameraQrScanner();" type="button" title="{{ trans('sw.scan_with_camera') }}">
+                                <i class="ki-outline ki-scan-barcode fs-1"></i>
+                            </button>
+                            @endif
                         </div>
                     </div>
                     <!--end::Input group-->
@@ -618,6 +623,101 @@
             });
         });
     </script>
+
+    @if(@$mainSettings->enable_dynamic_qr)
+
+    {{-- ── Camera QR Scanner Modal ─────────────────────────────────────────── --}}
+    <div class="modal fade" id="cameraQrModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="ki-outline ki-camera me-2"></i>{{ trans('sw.scan_with_camera') }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-3">
+                    <div class="position-relative d-inline-block w-100">
+                        <video id="cameraQrVideo" class="w-100 rounded" style="max-height:320px;object-fit:cover;" playsinline autoplay muted></video>
+                        <canvas id="cameraQrCanvas" style="display:none;"></canvas>
+                        <div id="cameraQrOverlay" class="position-absolute top-50 start-50 translate-middle" style="width:200px;height:200px;border:3px solid #50cd89;border-radius:8px;pointer-events:none;"></div>
+                    </div>
+                    <div id="cameraQrStatus" class="mt-3 text-muted fs-7">{{ trans('sw.point_camera_at_qr') }}</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('sw.close') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script>
+        var _cameraStream = null;
+        var _cameraRafId = null;
+
+        function openCameraQrScanner() {
+            $('#cameraQrModal').modal('show');
+        }
+
+        $('#cameraQrModal').on('shown.bs.modal', function () {
+            startCameraQr();
+        }).on('hidden.bs.modal', function () {
+            stopCameraQr();
+        });
+
+        function startCameraQr() {
+            var video = document.getElementById('cameraQrVideo');
+            var status = document.getElementById('cameraQrStatus');
+            status.textContent = '{{ trans('sw.point_camera_at_qr') }}';
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(function(stream) {
+                    _cameraStream = stream;
+                    video.srcObject = stream;
+                    video.play();
+                    requestAnimationFrame(scanCameraFrame);
+                })
+                .catch(function(err) {
+                    status.textContent = '{{ trans('sw.camera_access_denied') }}';
+                    console.error('Camera error:', err);
+                });
+        }
+
+        function scanCameraFrame() {
+            var video = document.getElementById('cameraQrVideo');
+            var canvas = document.getElementById('cameraQrCanvas');
+            var status = document.getElementById('cameraQrStatus');
+
+            if (!_cameraStream || video.readyState !== video.HAVE_ENOUGH_DATA) {
+                _cameraRafId = requestAnimationFrame(scanCameraFrame);
+                return;
+            }
+
+            canvas.width  = video.videoWidth;
+            canvas.height = video.videoHeight;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+            if (code && code.data) {
+                stopCameraQr();
+                $('#cameraQrModal').modal('hide');
+                barcode_scanner(code.data);
+            } else {
+                _cameraRafId = requestAnimationFrame(scanCameraFrame);
+            }
+        }
+
+        function stopCameraQr() {
+            if (_cameraRafId) { cancelAnimationFrame(_cameraRafId); _cameraRafId = null; }
+            if (_cameraStream) { _cameraStream.getTracks().forEach(function(t){ t.stop(); }); _cameraStream = null; }
+            var video = document.getElementById('cameraQrVideo');
+            if (video) video.srcObject = null;
+        }
+    </script>
+    @endif
 @endsection
 
 

@@ -202,6 +202,52 @@
             border: none;
             background: none;
         }
+
+        @if(config('app.white_label'))
+        #kt_aside_logo a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #kt_aside_logo a img.logo {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+
+        /* Hide logo when aside is collapsed/minimized */
+        body.aside-minimize #kt_aside_logo a {
+            display: none;
+        }
+
+        /* Mobile header logo */
+        #kt_header_mobile_logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #kt_header_mobile_logo img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+        @endif
     </style>
 
     @yield('styles')
@@ -391,8 +437,11 @@
             <div class="aside-logo flex-column-auto" id="kt_aside_logo">
                 <!--begin::Logo-->
                 <a href="{{route('home')}}">
-                    <img alt="Logo" src="{{$mainSettings->logo_white}}"
-                         class="h-25px logo"/>
+                    @if(config('app.white_label') && $mainSettings->logo)
+                        <img alt="Logo" src="{{$mainSettings->logo}}" class="h-25px logo"/>
+                    @else
+                        <img alt="Logo" src="{{$mainSettings->logo_white}}" class="h-25px logo"/>
+                    @endif
                 </a>
                 <!--end::Logo-->
                 <!--begin::Aside toggler-->
@@ -442,9 +491,12 @@
                     <!--end::Aside mobile toggle-->
                     <!--begin::Mobile logo-->
                     <div class="d-flex align-items-center flex-grow-1 flex-lg-grow-0">
-                        <a href="{{route('home')}}" class="d-lg-none">
-                            <img alt="Logo" src="{{asset('resources/assets/new_front/')}}/media/logos/demo13-small.png"
-                                 class="h-25px"/>
+                        <a href="{{route('home')}}" class="d-lg-none" id="kt_header_mobile_logo">
+                            @if(config('app.white_label'))
+                                <img alt="Logo" src="{{$mainSettings->logo ?? $mainSettings->logo_white}}" class="h-25px"/>
+                            @else
+                                <img alt="Logo" src="{{$mainSettings->logo_white ?? $mainSettings->logo}}" class="h-25px"/>
+                            @endif
                         </a>
                     </div>
                     <!--end::Mobile logo-->
@@ -934,13 +986,7 @@
                                 <!--end::User account menu-->
                                 <!--end::Menu wrapper-->
                             </div>
-                            <!--begin::Heaeder menu toggle-->
-                            <div class="d-flex align-items-stretch d-lg-none px-3 me-n3" title="Show header menu">
-                                <div class="topbar-item" id="kt_header_menu_mobile_toggle">
-                                    <i class="ki-outline ki-burger-menu-2 fs-1"></i>
-                                </div>
-                            </div>
-                            <!--end::Heaeder menu toggle-->
+                            
                         </div>
                         <!--end::Toolbar wrapper-->
                     </div>
@@ -955,27 +1001,18 @@
             <!--begin::Footer-->
             <div class="footer py-4 d-flex flex-lg-column" id="kt_footer">
                 <!--begin::Container-->
-                {{--                <div class="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between">--}}
-                {{--                    <!--begin::Copyright-->--}}
-                {{--                    <div class="text-gray-900 order-2 order-md-1">--}}
-                {{--                        <span class="text-muted fw-semibold me-1">2025&copy;</span>--}}
-                {{--                        <a href="" target="_blank" class="text-gray-800 text-hover-primary">Keenthemes</a>--}}
-                {{--                    </div>--}}
-                {{--                    <!--end::Copyright-->--}}
-                {{--                    <!--begin::Menu-->--}}
-                {{--                    <ul class="menu menu-gray-600 menu-hover-primary fw-semibold order-1">--}}
-                {{--                        <li class="menu-item">--}}
-                {{--                            <a href="https://keenthemes.com" target="_blank" class="menu-link px-2">About</a>--}}
-                {{--                        </li>--}}
-                {{--                        <li class="menu-item">--}}
-                {{--                            <a href="https://devs.keenthemes.com" target="_blank" class="menu-link px-2">Support</a>--}}
-                {{--                        </li>--}}
-                {{--                        <li class="menu-item">--}}
-                {{--                            <a href="https://1.envato.market/EA4JP" target="_blank" class="menu-link px-2">Purchase</a>--}}
-                {{--                        </li>--}}
-                {{--                    </ul>--}}
-                {{--                    <!--end::Menu-->--}}
-                {{--                </div>--}}
+                @if(config('app.white_label'))
+                <div class="container-fluid d-flex align-items-center justify-content-center">
+                    <a href="https://demo.gymmawy.com" target="_blank"
+                       class="d-flex align-items-center gap-2 text-muted text-hover-primary fw-semibold text-decoration-none"
+                       style="font-size:0.85rem;">
+                        <span>{{ app()->getLocale() === 'ar' ? 'مدعوم من' : 'Powered by' }}</span>
+                        <img src="{{asset('resources/assets/new_front/')}}/media/logos/demo13-small.png"
+                             alt="Gymmawy" style="height:20px; width:auto;" class="mx-1"/>
+                        <span>Gymmawy</span>
+                    </a>
+                </div>
+                @endif
                 <!--end::Container-->
             </div>
             <!--end::Footer-->
