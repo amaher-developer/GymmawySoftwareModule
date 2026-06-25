@@ -7,9 +7,9 @@ use Modules\Software\Models\GymUserPermission;
 
 class GymUserPermissionRepository extends GenericRepository
 {
-    public function __construct()
+    public function model()
     {
-        $this->model = new GymUserPermission();
+        return GymUserPermission::class;
     }
 }
 

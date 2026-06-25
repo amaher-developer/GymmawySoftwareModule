@@ -8,8 +8,6 @@ use Modules\Software\Http\Requests\GymUserPermissionRequest;
 use Modules\Software\Models\GymUserPermission;
 use Modules\Software\Repositories\GymUserPermissionRepository;
 use Carbon\Carbon;
-use Illuminate\Container\Container as Application;
-
 class GymUserPermissionFrontController extends GymGenericFrontController
 {
     public $PermissionRepository;
@@ -17,7 +15,7 @@ class GymUserPermissionFrontController extends GymGenericFrontController
     public function __construct()
     {
         parent::__construct();
-        $this->PermissionRepository = new GymUserPermissionRepository(new Application);
+        $this->PermissionRepository = app(GymUserPermissionRepository::class);
     }
 
     public function index()
