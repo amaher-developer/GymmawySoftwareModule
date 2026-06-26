@@ -222,7 +222,7 @@
                                 </div>
                                 @if($baseQr)
                                     <div class="flex-shrink-0 text-center">
-                                        <img src="{{ $baseQr }}" alt="ZATCA QR" width="120" height="120" class="img-thumbnail">
+                                        <img src="{{ $baseQr }}" alt="ZATCA QR" width="160" height="180" class="img-thumbnail" style="image-rendering:pixelated;">
                                         <div class="fs-8 text-muted mt-2">{{ data_get($invoiceData, 'invoice_number') }}</div>
                                     </div>
                                 @endif
@@ -358,7 +358,7 @@
                 @if(@$mainSettings->vat_details['saudi'] && $footerQrSrc)
                 <!-- begin::QR Code-->
                 <div class="my-1 d-flex flex-column align-items-center">
-                    <img class="well" src="{{$footerQrSrc}}" style="height: 60px; width: 60px;" alt="QR Code"/>
+                    <img class="well" src="{{$footerQrSrc}}" style="height: 160px; width: 160px; image-rendering: pixelated;" alt="QR Code"/>
                 </div>
                 <!-- end::QR Code-->
                 @endif
