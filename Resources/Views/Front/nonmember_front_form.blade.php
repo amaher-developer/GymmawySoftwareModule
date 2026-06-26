@@ -179,7 +179,7 @@
                             <!--end::Input group-->
                             @endif
                             
-                            @if((count($discounts) > 0) && ((is_array($swUser->permissions) && in_array('editNonMemberDiscountGroup', $swUser->permissions)) || $swUser->is_super_user))
+                            @if((count($discounts ?? []) > 0) && ((is_array($swUser->permissions) && in_array('editNonMemberDiscountGroup', $swUser->permissions)) || $swUser->is_super_user))
                             <!--begin::Input group-->
                             <div class="mb-10 fv-row">
                                 <!--begin::Label-->

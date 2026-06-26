@@ -233,7 +233,7 @@
                     </div>
                     @endif
 
-                    @if((count($discounts) > 0) && ((in_array('editStoreDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
+                    @if((count($discounts ?? []) > 0) && ((in_array('editStoreDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
                     <div class="mb-10 fv-row">
                         <label class="form-label">{{ trans('sw.discount')}}</label>
                         <select id="group_discount_id" name="group_discount_id" class="form-select" data-placeholder="{{ trans('sw.choose')}}">
