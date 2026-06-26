@@ -495,10 +495,10 @@
                                 <!--end::Title-->
                                 
                                 <!--begin::Radio group-->
-                                <div class="d-flex flex-equal gap-5 gap-xxl-9 px-0 mb-12" data-kt-buttons="true" data-kt-buttons-target="[data-kt-button]">
+                                <div class="d-flex flex-wrap gap-3 px-0 mb-12" data-kt-buttons="true" data-kt-buttons-target="[data-kt-button]">
                                     @foreach($payment_types as $payment_type)
                                     <!--begin::Radio-->
-                                    <label class="btn bg-light btn-color-gray-600 btn-active-text-gray-800 border border-3 border-gray-100 border-active-primary btn-active-light-primary w-100 px-4 @if($loop->first) active @endif" data-kt-button="true">
+                                    <label class="btn bg-light btn-color-gray-600 btn-active-text-gray-800 border border-3 border-gray-100 border-active-primary btn-active-light-primary px-4 @if($loop->first) active @endif" style="min-width:100px;flex:1 1 calc(33.333% - 12px);max-width:calc(50% - 6px);" data-kt-button="true">
                                         <!--begin::Input-->
                                         <input class="btn-check" type="radio" name="payment_type" value="{{ $payment_type->payment_id }}" @if($loop->first) checked @endif />
                                         <!--end::Input-->
@@ -532,6 +532,14 @@
                                     </span>
                                 </button>
                                 <!--end::Actions-->
+
+                                @if(session('last_pos_order_id'))
+                                <!--begin::Print Last Invoice-->
+                                <button type="button" class="btn btn-light-success fs-4 w-100 py-4 mt-4" onclick="javascript:window.open('{{ route('sw.showStoreOrderPOS', session('last_pos_order_id')) }}', 'POS', 'height=600,width=700');">
+                                    <i class="ki-outline ki-printer fs-2 me-2"></i>{{ trans('sw.print_invoice') }}
+                                </button>
+                                <!--end::Print Last Invoice-->
+                                @endif
                             </div>
                             <!--end::Payment Method-->
                         </form>
@@ -1117,6 +1125,26 @@
 <script>
     @if(session('sweet_flash_message'))
         @php($flash = session('sweet_flash_message'))
+        @if(session('last_pos_order_id') && ($flash['type'] ?? '') === 'success')
+        Swal.fire({
+            title: '{{ $flash["title"] ?? trans("admin.done") }}',
+            text: '{{ $flash["message"] ?? "" }}',
+            icon: '{{ $flash["type"] ?? "success" }}',
+            showCancelButton: true,
+            confirmButtonText: '<i class="ki-outline ki-printer fs-4 me-1"></i> {{ trans("sw.print_invoice") }}',
+            cancelButtonText: '{{ trans("sw.ok") }}',
+            buttonsStyling: false,
+            customClass: {
+                confirmButton: "btn btn-success me-3",
+                cancelButton: "btn btn-primary"
+            },
+            reverseButtons: false
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                window.open('{{ route("sw.showStoreOrderPOS", ["id" => session("last_pos_order_id")]) }}', 'POS', 'height=600,width=700');
+            }
+        });
+        @else
         Swal.fire({
             title: '{{ $flash["title"] ?? trans("admin.done") }}',
             text: '{{ $flash["message"] ?? "" }}',
@@ -1127,6 +1155,7 @@
                 confirmButton: "btn btn-primary"
             }
         });
+        @endif
     @endif
 
     @if($errors->any())
