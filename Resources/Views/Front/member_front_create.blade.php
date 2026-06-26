@@ -335,7 +335,7 @@
                             <input type="hidden" name="discount_value" id="discount_value" value="0">
                             @endif
 
-                            @if((count($discounts) > 0) && ((in_array('editMemberDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
+                            @if((count($discounts ?? []) > 0) && ((in_array('editMemberDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
                             <div class="col-md-6">
                                 <label class="form-label">{{ trans('sw.discount')}}</label>
                                 <select id="group_discount_id" name="group_discount_id" class="form-select select2" data-control="select2">

@@ -703,7 +703,7 @@
                                    type="number" step="0.01">
                         </div>
                         
-                        @if((count($discounts) > 0) && ((in_array('editMemberDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
+                        @if((count($discounts ?? []) > 0) && ((in_array('editMemberDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
                         <label class="col-md-3 col-form-label">{{ trans('sw.discount')}}</label>
                         <div class="col-md-3">
                             <select id="group_discount_id" name="group_discount_id" class="form-control select2">
