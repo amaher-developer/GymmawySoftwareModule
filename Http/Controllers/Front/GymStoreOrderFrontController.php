@@ -347,8 +347,10 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             
         $members = GymMember::branch()->get();
         $payment_types = \Modules\Software\Models\GymPaymentType::all();
-        
-        return view('software::Front.store_order_pos_front_form', compact('products', 'categories', 'members', 'payment_types', 'title'));
+        $discounts = \Modules\Software\Models\GymGroupDiscount::branch()->where('is_store', true)->get();
+        $swUser = $this->user_sw;
+
+        return view('software::Front.store_order_pos_front_form', compact('products', 'categories', 'members', 'payment_types', 'title', 'discounts', 'swUser'));
     }
 
     public function storePOS(GymStoreOrderRequest $request)
@@ -658,6 +660,8 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         // - Member credit is deducted
         // - NO Money Box entry (cash flow already recorded when wallet was topped up, or will be recorded when debt is paid)
         $this->userLog($notes, TypeConstants::CreateStoreOrder);
+
+        session()->flash('last_pos_order_id', $order_id);
 
         return redirect(route('sw.createStoreOrderPOS'));
     }
