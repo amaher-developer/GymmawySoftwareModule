@@ -442,6 +442,7 @@
                             @endif
                             
                             <!--begin::Discount Input-->
+                            @if((in_array('editStoreDiscount', (array)$swUser->permissions)) || $swUser->is_super_user)
                             <div class="mb-8">
                                 <label class="form-label fw-bold">{{ trans('sw.discount')}}</label>
                                 <div class="input-group">
@@ -452,6 +453,23 @@
                                     </select>
                                 </div>
                             </div>
+                            @else
+                            <input type="hidden" name="discount_value" id="discount_value" value="0">
+                            <input type="hidden" name="discount_type" id="discount_type" value="1">
+                            @endif
+
+                            @if((count($discounts) > 0) && ((in_array('editStoreDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
+                            <div class="mb-8">
+                                <label class="form-label fw-bold">{{ trans('sw.discount')}}</label>
+                                <select id="group_discount_id" name="group_discount_id" class="form-select" data-control="select2" data-placeholder="{{ trans('sw.choose')}}" onchange="applyGroupDiscount(this)">
+                                    <option></option>
+                                    <option value="0" data-type="0" data-amount="0">{{ trans('sw.choose')}}</option>
+                                    @foreach($discounts as $discount)
+                                        <option value="{{ $discount->id }}" data-type="{{ $discount->type }}" data-amount="{{ $discount->amount }}">{{ $discount->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
                             <!--end::Discount Input-->
                             
                             @if(@$mainSettings->active_loyalty)
@@ -564,6 +582,20 @@
 </script>
 <script>
     let cart = [];
+
+    function applyGroupDiscount(select) {
+        const option = select.options[select.selectedIndex];
+        const type = parseInt(option.getAttribute('data-type')) || 0;
+        const amount = parseFloat(option.getAttribute('data-amount')) || 0;
+        if (amount > 0) {
+            $('#discount_value').val(amount);
+            $('#discount_type').val(type);
+        } else {
+            $('#discount_value').val(0);
+        }
+        calculateTotal();
+        calculateLoyaltyDiscount();
+    }
     const vatRate = {{ @$mainSettings->vat_details['vat_percentage'] ?? 0 }} / 100;
     const currencySymbol = '{{ $lang == "ar" ? (env("APP_CURRENCY_AR") ?? "") : (env("APP_CURRENCY_EN") ?? "") }}';
     const storePostpaidEnabled = {{ @$mainSettings->store_postpaid ? 'true' : 'false' }};
