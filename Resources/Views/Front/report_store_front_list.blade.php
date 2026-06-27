@@ -244,65 +244,52 @@
             @if(count($products) > 0)
             <div class="col-md-7">
                 <div class="card border h-100">
-                    <div class="card-header border-bottom py-4">
-                        <h5 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
-                            <i class="ki-outline ki-package fs-3 text-primary"></i>
+                    <div class="card-header border-bottom py-3 min-h-auto">
+                        <h6 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
+                            <i class="ki-outline ki-package fs-4 text-primary"></i>
                             {{ trans('sw.products_sold') }}
-                        </h5>
+                        </h6>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-row-dashed align-middle mb-0 fs-7" style="table-layout:fixed;">
-                                <colgroup>
-                                    <col>
-                                    <col style="width:65px;">
-                                    <col style="width:75px;">
-                                    <col style="width:85px;">
-                                </colgroup>
-                                <thead class="bg-light">
-                                    <tr class="fw-semibold text-gray-600 text-uppercase">
-                                        <th class="px-2 py-2">{{ trans('sw.product') }}</th>
-                                        <th class="text-center px-1 py-2">{{ trans('sw.units_sold') }}</th>
-                                        <th class="text-center px-1 py-2">{{ trans('sw.unit_price') }}</th>
-                                        <th class="text-end px-2 py-2">{{ trans('sw.total_revenue') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($products as $i => $product)
-                                    @php
-                                        $productName = optional($product->product)->name ?? trans('sw.not_specified');
-                                        $productRevenue = (float)($product->price ?? 0);
-                                        $productUnits = (float)($product->products ?? 0);
-                                        $unitPrice = $productUnits > 0 ? ($productRevenue / $productUnits) : 0;
-                                        $pct = $stats->total_paid > 0 ? ($productRevenue / $stats->total_paid * 100) : 0;
-                                    @endphp
-                                    <tr>
-                                        <td class="px-2">
-                                            <div class="d-flex align-items-center gap-1">
-                                                <span class="text-muted fs-8" style="min-width:16px;">{{ $i + 1 }}.</span>
-                                                <div class="flex-grow-1 overflow-hidden">
-                                                    <div class="fw-semibold text-gray-800 text-truncate">{{ $productName }}</div>
-                                                    <div class="mt-1" style="height:3px; background:#f1f1f1; border-radius:2px;">
-                                                        <div style="height:3px; width:{{ min(100, round($pct)) }}%; background:#009ef7; border-radius:2px;"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="text-center px-1 fw-semibold">{{ number_format($productUnits, 0) }}</td>
-                                        <td class="text-center px-1 text-gray-600">{{ number_format($unitPrice, 2) }}</td>
-                                        <td class="text-end px-2 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="bg-light">
-                                    <tr class="fw-bold text-gray-700">
-                                        <td colspan="2" class="px-2 py-2">{{ trans('sw.total') }}</td>
-                                        <td class="text-center px-1 py-2">—</td>
-                                        <td class="text-end px-2 py-2">{{ number_format($products->sum('price'), 2) }}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
+                        <table class="table table-sm align-middle mb-0 fs-7">
+                            <thead class="bg-light">
+                                <tr class="fw-semibold text-gray-500 text-uppercase fs-8">
+                                    <th class="ps-4 pe-2 py-3 w-50">{{ trans('sw.product') }}</th>
+                                    <th class="text-center px-2 py-3 text-nowrap">{{ trans('sw.units_sold') }}</th>
+                                    <th class="text-center px-2 py-3 text-nowrap">{{ trans('sw.unit_price') }}</th>
+                                    <th class="text-end ps-2 pe-4 py-3 text-nowrap">{{ trans('sw.total_revenue') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($products as $i => $product)
+                                @php
+                                    $productName = optional($product->product)->name ?? trans('sw.not_specified');
+                                    $productRevenue = (float)($product->price ?? 0);
+                                    $productUnits = (float)($product->products ?? 0);
+                                    $unitPrice = $productUnits > 0 ? ($productRevenue / $productUnits) : 0;
+                                    $pct = $stats->total_paid > 0 ? ($productRevenue / $stats->total_paid * 100) : 0;
+                                @endphp
+                                <tr>
+                                    <td class="ps-4 pe-2 py-3">
+                                        <div class="fw-semibold text-gray-800">{{ $productName }}</div>
+                                        <div class="mt-1" style="height:3px;background:#f1f1f1;border-radius:2px;">
+                                            <div style="height:3px;width:{{ min(100,round($pct)) }}%;background:#009ef7;border-radius:2px;"></div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center px-2 py-3 fw-semibold">{{ number_format($productUnits, 0) }}</td>
+                                    <td class="text-center px-2 py-3 text-gray-600">{{ number_format($unitPrice, 2) }}</td>
+                                    <td class="text-end ps-2 pe-4 py-3 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="bg-light">
+                                <tr class="fw-bold text-gray-700 fs-7">
+                                    <td colspan="2" class="ps-4 pe-2 py-3">{{ trans('sw.total') }}</td>
+                                    <td class="text-center px-2 py-3 text-muted">—</td>
+                                    <td class="text-end ps-2 pe-4 py-3">{{ number_format($products->sum('price'), 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -312,45 +299,38 @@
             @if(count($paymentBreakdown) > 0)
             <div class="col-md-5">
                 <div class="card border h-100">
-                    <div class="card-header border-bottom py-4">
-                        <h5 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
-                            <i class="ki-outline ki-wallet fs-3 text-success"></i>
+                    <div class="card-header border-bottom py-3 min-h-auto">
+                        <h6 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
+                            <i class="ki-outline ki-wallet fs-4 text-success"></i>
                             {{ trans('sw.payment_types_summary') }}
-                        </h5>
+                        </h6>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-row-dashed align-middle mb-0 fs-7" style="table-layout:fixed;">
-                                <colgroup>
-                                    <col>
-                                    <col style="width:80px;">
-                                    <col style="width:100px;">
-                                </colgroup>
-                                <thead class="bg-light">
-                                    <tr class="fw-semibold text-gray-600 text-uppercase">
-                                        <th class="ps-2 py-2">{{ trans('sw.payment_type') }}</th>
-                                        <th class="text-center px-1 py-2">{{ trans('sw.total_orders') }}</th>
-                                        <th class="text-end pe-2 py-2">{{ trans('sw.amount_paid') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($paymentBreakdown as $pb)
-                                    <tr>
-                                        <td class="ps-2 fw-semibold text-truncate">{{ optional($pb->pay_type)->name ?? trans('sw.not_specified') }}</td>
-                                        <td class="text-center px-1">{{ number_format($pb->orders_count) }}</td>
-                                        <td class="text-end pe-2 fw-bold text-success">{{ number_format($pb->total_paid, 2) }}</td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="bg-light">
-                                    <tr class="fw-bold text-gray-700">
-                                        <td class="ps-2 py-2">{{ trans('sw.total') }}</td>
-                                        <td class="text-center px-1 py-2">{{ number_format($paymentBreakdown->sum('orders_count')) }}</td>
-                                        <td class="text-end pe-2 py-2">{{ number_format($paymentBreakdown->sum('total_paid'), 2) }}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
+                        <table class="table table-sm align-middle mb-0 fs-7">
+                            <thead class="bg-light">
+                                <tr class="fw-semibold text-gray-500 text-uppercase fs-8">
+                                    <th class="ps-4 pe-2 py-3">{{ trans('sw.payment_type') }}</th>
+                                    <th class="text-center px-2 py-3 text-nowrap">{{ trans('sw.total_orders') }}</th>
+                                    <th class="text-end ps-2 pe-4 py-3 text-nowrap">{{ trans('sw.amount_paid') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($paymentBreakdown as $pb)
+                                <tr>
+                                    <td class="ps-4 pe-2 py-3 fw-semibold">{{ optional($pb->pay_type)->name ?? trans('sw.not_specified') }}</td>
+                                    <td class="text-center px-2 py-3">{{ number_format($pb->orders_count) }}</td>
+                                    <td class="text-end ps-2 pe-4 py-3 fw-bold text-success">{{ number_format($pb->total_paid, 2) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="bg-light">
+                                <tr class="fw-bold text-gray-700 fs-7">
+                                    <td class="ps-4 pe-2 py-3">{{ trans('sw.total') }}</td>
+                                    <td class="text-center px-2 py-3">{{ number_format($paymentBreakdown->sum('orders_count')) }}</td>
+                                    <td class="text-end ps-2 pe-4 py-3">{{ number_format($paymentBreakdown->sum('total_paid'), 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
             </div>
