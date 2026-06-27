@@ -254,19 +254,17 @@
                         <div class="table-responsive">
                             <table class="table table-row-dashed align-middle mb-0 fs-7" style="table-layout:fixed;">
                                 <colgroup>
-                                    <col style="width:30px;">
                                     <col>
-                                    <col style="width:70px;">
-                                    <col style="width:80px;">
-                                    <col style="width:90px;">
+                                    <col style="width:65px;">
+                                    <col style="width:75px;">
+                                    <col style="width:85px;">
                                 </colgroup>
                                 <thead class="bg-light">
                                     <tr class="fw-semibold text-gray-600 text-uppercase">
-                                        <th class="ps-2 py-2">#</th>
-                                        <th class="px-1 py-2">{{ trans('sw.product') }}</th>
+                                        <th class="px-2 py-2">{{ trans('sw.product') }}</th>
                                         <th class="text-center px-1 py-2">{{ trans('sw.units_sold') }}</th>
                                         <th class="text-center px-1 py-2">{{ trans('sw.unit_price') }}</th>
-                                        <th class="text-end pe-2 py-2">{{ trans('sw.total_revenue') }}</th>
+                                        <th class="text-end px-2 py-2">{{ trans('sw.total_revenue') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -279,24 +277,28 @@
                                         $pct = $stats->total_paid > 0 ? ($productRevenue / $stats->total_paid * 100) : 0;
                                     @endphp
                                     <tr>
-                                        <td class="ps-2 text-muted fs-7">{{ $i + 1 }}</td>
-                                        <td class="px-1">
-                                            <div class="fw-semibold text-gray-800 text-truncate">{{ $productName }}</div>
-                                            <div class="mt-1" style="height:3px; background:#f1f1f1; border-radius:2px;">
-                                                <div style="height:3px; width:{{ min(100, round($pct)) }}%; background:#009ef7; border-radius:2px;"></div>
+                                        <td class="px-2">
+                                            <div class="d-flex align-items-center gap-1">
+                                                <span class="text-muted fs-8" style="min-width:16px;">{{ $i + 1 }}.</span>
+                                                <div class="flex-grow-1 overflow-hidden">
+                                                    <div class="fw-semibold text-gray-800 text-truncate">{{ $productName }}</div>
+                                                    <div class="mt-1" style="height:3px; background:#f1f1f1; border-radius:2px;">
+                                                        <div style="height:3px; width:{{ min(100, round($pct)) }}%; background:#009ef7; border-radius:2px;"></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="text-center px-1 fw-semibold">{{ number_format($productUnits, 0) }}</td>
                                         <td class="text-center px-1 text-gray-600">{{ number_format($unitPrice, 2) }}</td>
-                                        <td class="text-end pe-2 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
+                                        <td class="text-end px-2 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
                                     </tr>
                                     @endforeach
                                 </tbody>
                                 <tfoot class="bg-light">
                                     <tr class="fw-bold text-gray-700">
-                                        <td colspan="3" class="ps-2 py-2">{{ trans('sw.total') }}</td>
-                                        <td class="text-center py-2">—</td>
-                                        <td class="text-end pe-2 py-2">{{ number_format($products->sum('price'), 2) }}</td>
+                                        <td colspan="2" class="px-2 py-2">{{ trans('sw.total') }}</td>
+                                        <td class="text-center px-1 py-2">—</td>
+                                        <td class="text-end px-2 py-2">{{ number_format($products->sum('price'), 2) }}</td>
                                     </tr>
                                 </tfoot>
                             </table>
