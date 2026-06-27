@@ -1641,6 +1641,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
 
     public function reportStoreList(){
+        $this->limit = 5;
         $title = trans('sw.store_report');
         $search_query = request()->query();
         $from = request('from');

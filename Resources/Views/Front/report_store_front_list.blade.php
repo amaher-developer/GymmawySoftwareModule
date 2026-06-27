@@ -258,6 +258,7 @@
                                         <th class="ps-4 py-3">#</th>
                                         <th class="py-3">{{ trans('sw.product') }}</th>
                                         <th class="text-center py-3">{{ trans('sw.units_sold') }}</th>
+                                        <th class="text-center py-3">{{ trans('sw.unit_price') }}</th>
                                         <th class="text-end pe-4 py-3">{{ trans('sw.total_revenue') }}</th>
                                     </tr>
                                 </thead>
@@ -267,6 +268,7 @@
                                         $productName = optional($product->product)->name ?? trans('sw.not_specified');
                                         $productRevenue = (float)($product->price ?? 0);
                                         $productUnits = (float)($product->products ?? 0);
+                                        $unitPrice = $productUnits > 0 ? ($productRevenue / $productUnits) : 0;
                                         $pct = $stats->total_paid > 0 ? ($productRevenue / $stats->total_paid * 100) : 0;
                                     @endphp
                                     <tr>
@@ -278,14 +280,15 @@
                                             </div>
                                         </td>
                                         <td class="text-center fw-semibold">{{ number_format($productUnits, 0) }}</td>
+                                        <td class="text-center text-gray-600">{{ number_format($unitPrice, 2) }}</td>
                                         <td class="text-end pe-4 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
                                     </tr>
                                     @endforeach
                                 </tbody>
                                 <tfoot class="bg-light">
                                     <tr class="fw-bold text-gray-700">
-                                        <td colspan="2" class="ps-4 py-3">{{ trans('sw.total') }}</td>
-                                        <td class="text-center py-3">{{ number_format($products->sum('products'), 0) }}</td>
+                                        <td colspan="3" class="ps-4 py-3">{{ trans('sw.total') }}</td>
+                                        <td class="text-center py-3">—</td>
                                         <td class="text-end pe-4 py-3">{{ number_format($products->sum('price'), 2) }}</td>
                                     </tr>
                                 </tfoot>
