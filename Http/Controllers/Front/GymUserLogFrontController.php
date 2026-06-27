@@ -1647,13 +1647,16 @@ class GymUserLogFrontController extends GymGenericFrontController
         $to = request('to');
         $search = request('search');
 
+        $fromDate = $from ? Carbon::parse($from)->format('Y-m-d') : null;
+        $toDate   = $to   ? Carbon::parse($to)->format('Y-m-d')   : null;
+
         $productsQuery = GymStoreOrderProduct::branch()
             ->selectRaw('product_id, SUM(price) AS price, SUM(quantity) AS products')
             ->with(['product' => function ($q) {
                 $q->withTrashed();
             }])
             ->groupBy('product_id')
-            ->orderByDesc('products');
+            ->orderByDesc('price');
 
         $ordersQuery = GymStoreOrder::branch()
             ->with([
@@ -1669,16 +1672,24 @@ class GymUserLogFrontController extends GymGenericFrontController
             ])
             ->orderByDesc('created_at');
 
-        if ($from) {
-            $fromDate = Carbon::parse($from)->format('Y-m-d');
+        $statsQuery = GymStoreOrder::branch();
+        $paymentBreakdownQuery = GymStoreOrder::branch()
+            ->with('pay_type')
+            ->selectRaw('payment_type, COUNT(*) as orders_count, SUM(COALESCE(amount_paid,0)) as total_paid')
+            ->groupBy('payment_type');
+
+        if ($fromDate) {
             $productsQuery->whereDate('created_at', '>=', $fromDate);
             $ordersQuery->whereDate('created_at', '>=', $fromDate);
+            $statsQuery->whereDate('created_at', '>=', $fromDate);
+            $paymentBreakdownQuery->whereDate('created_at', '>=', $fromDate);
         }
 
-        if ($to) {
-            $toDate = Carbon::parse($to)->format('Y-m-d');
+        if ($toDate) {
             $productsQuery->whereDate('created_at', '<=', $toDate);
             $ordersQuery->whereDate('created_at', '<=', $toDate);
+            $statsQuery->whereDate('created_at', '<=', $toDate);
+            $paymentBreakdownQuery->whereDate('created_at', '<=', $toDate);
         }
 
         if ($search) {
@@ -1704,6 +1715,18 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         $products = $productsQuery->get();
 
+        $stats = $statsQuery->selectRaw('
+            COUNT(*) as total_orders,
+            SUM(COALESCE(amount_paid,0)) as total_paid,
+            SUM(COALESCE(amount_remaining,0)) as total_remaining,
+            SUM(COALESCE(discount_value,0)) as total_discount,
+            SUM(COALESCE(vat,0)) as total_vat,
+            SUM(CASE WHEN COALESCE(amount_remaining,0) <= 0.001 THEN 1 ELSE 0 END) as paid_count,
+            SUM(CASE WHEN COALESCE(amount_remaining,0) > 0.001 THEN 1 ELSE 0 END) as unpaid_count
+        ')->first();
+
+        $paymentBreakdown = $paymentBreakdownQuery->get();
+
         if ($this->limit) {
             $orders = $ordersQuery->paginate($this->limit)->onEachSide(1);
             $total = $orders->total();
@@ -1712,7 +1735,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-        return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'title', 'total'));
+        return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'stats', 'paymentBreakdown', 'title', 'total'));
 
     }
 

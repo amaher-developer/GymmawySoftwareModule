@@ -186,8 +186,161 @@
         </div>
         <!--end::Search-->
 
-        <!--begin::Total count-->
-        <!--end::Total count-->
+        <!--begin::Statistics Cards-->
+        @if($stats && $stats->total_orders > 0)
+        <div class="row g-4 mb-6">
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card bg-light-primary border-0 h-100">
+                    <div class="card-body text-center py-4 px-3">
+                        <div class="fs-2x fw-bold text-primary">{{ number_format($stats->total_orders) }}</div>
+                        <div class="fs-7 text-muted fw-semibold mt-1">{{ trans('sw.total_orders') }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card bg-light-success border-0 h-100">
+                    <div class="card-body text-center py-4 px-3">
+                        <div class="fs-2x fw-bold text-success">{{ number_format($stats->paid_count) }}</div>
+                        <div class="fs-7 text-muted fw-semibold mt-1">{{ trans('sw.paid_orders') }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card bg-light-warning border-0 h-100">
+                    <div class="card-body text-center py-4 px-3">
+                        <div class="fs-2x fw-bold text-warning">{{ number_format($stats->unpaid_count) }}</div>
+                        <div class="fs-7 text-muted fw-semibold mt-1">{{ trans('sw.unpaid_orders') }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card bg-light-info border-0 h-100">
+                    <div class="card-body text-center py-4 px-3">
+                        <div class="fs-2x fw-bold text-info">{{ number_format($stats->total_paid, 2) }}</div>
+                        <div class="fs-7 text-muted fw-semibold mt-1">{{ trans('sw.total_revenue') }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card bg-light-danger border-0 h-100">
+                    <div class="card-body text-center py-4 px-3">
+                        <div class="fs-2x fw-bold text-danger">{{ number_format($stats->total_discount, 2) }}</div>
+                        <div class="fs-7 text-muted fw-semibold mt-1">{{ trans('sw.total_discount') }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card bg-light-dark border-0 h-100">
+                    <div class="card-body text-center py-4 px-3">
+                        <div class="fs-2x fw-bold text-dark">{{ number_format($stats->total_vat, 2) }}</div>
+                        <div class="fs-7 text-muted fw-semibold mt-1">{{ trans('sw.vat') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-6">
+            <!--begin::Products Breakdown-->
+            @if(count($products) > 0)
+            <div class="col-md-7">
+                <div class="card border h-100">
+                    <div class="card-header border-bottom py-4">
+                        <h5 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
+                            <i class="ki-outline ki-package fs-3 text-primary"></i>
+                            {{ trans('sw.products_sold') }}
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-row-dashed align-middle mb-0 fs-7">
+                                <thead class="bg-light">
+                                    <tr class="fw-semibold text-gray-600 text-uppercase">
+                                        <th class="ps-4 py-3">#</th>
+                                        <th class="py-3">{{ trans('sw.product') }}</th>
+                                        <th class="text-center py-3">{{ trans('sw.units_sold') }}</th>
+                                        <th class="text-end pe-4 py-3">{{ trans('sw.total_revenue') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($products as $i => $product)
+                                    @php
+                                        $productName = optional($product->product)->name ?? trans('sw.not_specified');
+                                        $productRevenue = (float)($product->price ?? 0);
+                                        $productUnits = (float)($product->products ?? 0);
+                                        $pct = $stats->total_paid > 0 ? ($productRevenue / $stats->total_paid * 100) : 0;
+                                    @endphp
+                                    <tr>
+                                        <td class="ps-4 text-muted fs-7">{{ $i + 1 }}</td>
+                                        <td>
+                                            <div class="fw-semibold text-gray-800">{{ $productName }}</div>
+                                            <div class="mt-1" style="height:4px; background:#f1f1f1; border-radius:2px;">
+                                                <div style="height:4px; width:{{ min(100, round($pct)) }}%; background:#009ef7; border-radius:2px;"></div>
+                                            </div>
+                                        </td>
+                                        <td class="text-center fw-semibold">{{ number_format($productUnits, 0) }}</td>
+                                        <td class="text-end pe-4 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot class="bg-light">
+                                    <tr class="fw-bold text-gray-700">
+                                        <td colspan="2" class="ps-4 py-3">{{ trans('sw.total') }}</td>
+                                        <td class="text-center py-3">{{ number_format($products->sum('products'), 0) }}</td>
+                                        <td class="text-end pe-4 py-3">{{ number_format($products->sum('price'), 2) }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            <!--begin::Payment Types Breakdown-->
+            @if(count($paymentBreakdown) > 0)
+            <div class="col-md-5">
+                <div class="card border h-100">
+                    <div class="card-header border-bottom py-4">
+                        <h5 class="card-title fw-bold mb-0 d-flex align-items-center gap-2">
+                            <i class="ki-outline ki-wallet fs-3 text-success"></i>
+                            {{ trans('sw.payment_types_summary') }}
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-row-dashed align-middle mb-0 fs-7">
+                                <thead class="bg-light">
+                                    <tr class="fw-semibold text-gray-600 text-uppercase">
+                                        <th class="ps-4 py-3">{{ trans('sw.payment_type') }}</th>
+                                        <th class="text-center py-3">{{ trans('sw.total_orders') }}</th>
+                                        <th class="text-end pe-4 py-3">{{ trans('sw.amount_paid') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($paymentBreakdown as $pb)
+                                    <tr>
+                                        <td class="ps-4 fw-semibold">{{ optional($pb->pay_type)->name ?? trans('sw.not_specified') }}</td>
+                                        <td class="text-center">{{ number_format($pb->orders_count) }}</td>
+                                        <td class="text-end pe-4 fw-bold text-success">{{ number_format($pb->total_paid, 2) }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot class="bg-light">
+                                    <tr class="fw-bold text-gray-700">
+                                        <td class="ps-4 py-3">{{ trans('sw.total') }}</td>
+                                        <td class="text-center py-3">{{ number_format($paymentBreakdown->sum('orders_count')) }}</td>
+                                        <td class="text-end pe-4 py-3">{{ number_format($paymentBreakdown->sum('total_paid'), 2) }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+        </div>
+        @endif
+        <!--end::Statistics Cards-->
 
         @if(count($orders) > 0)
             <!--begin::Table-->
