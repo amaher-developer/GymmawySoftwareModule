@@ -19,152 +19,162 @@
     </ul>
     <!--end::Breadcrumb-->
 @endsection
-@section('styles')
-    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker-bs3.css"/>
-@endsection
+
 @section('page_body')
-    <div class="row">
-        <div class="row " style="padding-bottom: 15px;">
-            <form id="form_filter"
-                  action=""
-                  method="get">
-                <div class="col-lg-3 col-md-3 col-xs-9 mg-t-20 mg-lg-t-0" style="padding-bottom: 5px">
-                    <input class="form-control form-control-inline input-medium date-picker" size="16" type="text"
-                           placeholder="{{ trans('sw.date')}}" name="date"
-                           data-date="10/11/2012" data-date-format="mm/dd/yyyy"
-                           value="@php echo @strip_tags($_GET['date']) @endphp" autocomplete="off"/>
-                    {{--                        <span class="help-block">--}}
-                    {{--											Select date </span>--}}
-                </div><!-- end filter div -->
 
-                <div class="col-lg-2 col-md-2 col-xs-3">
-                    <button class="btn btn-primary  rounded-3 btn-block" id="filter" type="submit"><i
-                            class="fa fa-filter mx-1"></i> {{ trans('sw.filter')}}</button>
-                </div>
+<!--begin::Notifications-->
+<div class="card card-flush">
+    <!--begin::Card header-->
+    <div class="card-header align-items-center py-5 gap-2 gap-md-5">
+        <div class="card-title">
+            <div class="d-flex align-items-center my-1">
+                <i class="ki-outline ki-notification-bing fs-2 me-3"></i>
+                <span class="fs-4 fw-semibold text-gray-900">{{ $title }}</span>
+            </div>
+        </div>
+        <div class="card-toolbar">
+            <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
+                <!--begin::Filter-->
+                <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_notifications_filter_collapse">
+                    <i class="ki-outline ki-filter fs-6"></i>
+                    {{ trans('sw.filter')}}
+                </button>
+                <!--end::Filter-->
+            </div>
+        </div>
+    </div>
+    <!--end::Card header-->
 
+    <!--begin::Card body-->
+    <div class="card-body pt-0">
+        <!--begin::Filter-->
+        <div class="collapse" id="kt_notifications_filter_collapse">
+            <div class="card card-body mb-5">
+                <form id="form_filter" action="" method="get">
+                    <div class="row g-6">
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.date')}}</label>
+                            <input type="date" name="date" value="{{ request('date') }}" class="form-control form-control-solid">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-5">
+                        <button type="reset" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</button>
+                        <button type="submit" class="btn btn-primary fw-semibold px-6">
+                            <i class="ki-outline ki-check fs-6"></i>
+                            {{ trans('sw.filter')}}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!--end::Filter-->
+
+        <!--begin::Search-->
+        <div class="d-flex align-items-center position-relative my-1 mb-5">
+            <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
+            <form class="d-flex" action="" method="get" style="max-width: 400px;">
+                <input type="text" name="search" class="form-control form-control-solid ps-12" value="{{ request('search') }}" placeholder="{{ trans('sw.search_on')}}">
+                <button class="btn btn-primary" type="submit">
+                    <i class="ki-outline ki-magnifier fs-3"></i>
+                </button>
             </form>
         </div>
-        <div style="clear: none"></div>
-        <div class="row">
-            <div class="col-lg-4  col-md-4 col-xs-6 mg-t-20 mg-lg-t-0">
-                <div class="input-group">
-                    <form class="d-flex w-100" action=""
-                          method="get">
-                        <div class="input-group ">
-                            <input type="text" name="search" class="form-control" value="@php echo @strip_tags($_GET['search']) @endphp"
-                                   placeholder="{{ trans('sw.search_on')}}">
-                            <span class="input-group-btn ">
-											<button class="btn blue  rounded-3" type="submit"><i
-                                                    class="fa fa-search"></i></button>
-											</span>
-                        </div>
-                        <span
-                            class="input-group-btn "><i
-                                class="fa fa-search"></i></span>
+        <!--end::Search-->
 
-                    </form>
-                </div><!-- end search button-->
-            </div><!-- end search div -->
+        <!--begin::Total count-->
+        <div class="d-flex align-items-center mb-5">
+            <div class="symbol symbol-50px me-5">
+                <div class="symbol-label bg-light-primary">
+                    <i class="ki-outline ki-notification-bing fs-2x text-primary"></i>
+                </div>
+            </div>
+            <div class="d-flex flex-column">
+                <span class="fs-6 fw-semibold text-gray-900">{{ trans('admin.total_count')}}</span>
+                <span class="fs-2 fw-bold text-primary">{{ $total }}</span>
+            </div>
         </div>
-        <div style="clear: none;padding-bottom: 15px"></div>
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-striped table-bordered table-hover">
-                    <tbody>
-                    <tr>
-                        <th>{{ trans('admin.total_count')}}</th>
-                        <td>{{ $total }}</td>
-                    </tr>
+        <!--end::Total count-->
+
+        @if(count($logs) > 0)
+            <!--begin::Table-->
+            <div class="table-responsive">
+                <table class="table align-middle table-row-dashed fs-6 gy-5" id="kt_notifications_table">
+                    <thead>
+                        <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+                            <th class="min-w-300px">
+                                <i class="ki-outline ki-information-5 fs-6 me-2"></i>{{ trans('sw.notification')}}
+                            </th>
+                            <th class="min-w-150px text-nowrap">
+                                <i class="ki-outline ki-calendar fs-6 me-2"></i>{{ trans('sw.date')}}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="fw-semibold text-gray-600">
+                        @foreach($logs as $key => $log)
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="symbol symbol-40px me-3">
+                                        <div class="symbol-label bg-light-info">
+                                            <i class="ki-outline ki-notification-bing fs-3 text-info"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-start flex-column">
+                                        <span class="text-gray-800 fw-bold fs-6">{{ $log->title ?? $log->body }}</span>
+                                        @if($log->title && $log->title !== $log->body)
+                                            <span class="text-muted fs-7">{{ $log->body }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-nowrap">
+                                <div class="d-flex flex-column">
+                                    <div class="text-muted fw-bold d-flex align-items-center">
+                                        <i class="ki-outline ki-calendar fs-6 text-muted me-2"></i>
+                                        <span>{{ $log->created_at->format('Y-m-d') }}</span>
+                                    </div>
+                                    <div class="text-muted fs-7 d-flex align-items-center">
+                                        <i class="ki-outline ki-time fs-6 text-muted me-2"></i>
+                                        <span>{{ $log->created_at->format('h:i a') }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
                     </tbody>
                 </table>
             </div>
-        </div>
+            <!--end::Table-->
 
-        @if(count($logs) > 0)
-        <div class="table-responsive border-top userlist-table">
-            <table class="table card-table table-striped table-vcenter ">
-                <thead>
-                <tr class="">
-                    <th style="width: 60%"><i class="fa fa-info-circle"></i> {{ trans('sw.notification')}}</th>
-                    <th class="text-nowrap mb-0"><i class="fa fa-calendar"></i> {{ trans('sw.date')}}</th>
-                    <th><i class="fa fa-user"></i> {{ trans('sw.by')}}</th>
-                </tr>
-                </thead>
-                <tbody>
-                @foreach($logs as $key=> $log)
-                    <tr>
-                        <td> {{ $log->body }}</td>
-                        <td class="text-nowrap mb-0"><i class="fa fa-calendar text-muted"></i> {{ $log->created_at->format('Y-m-d') }}
-                            <br/>
-                            <i class="fa fa-clock-o text-muted"></i> {{ $log->created_at->format('h:i a') }}</td>
-                        <td class="text-nowrap mb-0"> {{ @$log->user->name }}</td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div class="col-lg-5 col-md-5 col-md-offset-5 text-center">
-            {!! $logs->appends($search_query)->render()  !!}
-        </div>
+            <!--begin::Pagination-->
+            <div class="d-flex flex-stack flex-wrap pt-10">
+                <div class="fs-6 fw-semibold text-gray-700">
+                    {{ trans('sw.showing_entries', [
+                        'from' => $logs->firstItem() ?? 0,
+                        'to' => $logs->lastItem() ?? 0,
+                        'total' => $logs->total()
+                    ]) }}
+                </div>
+                <ul class="pagination">
+                    {!! $logs->appends($search_query)->render() !!}
+                </ul>
+            </div>
+            <!--end::Pagination-->
         @else
-            <h4 class="col-lg-12 text-center">{{ trans('sw.no_record_found')}}</h4>
+            <!--begin::Empty State-->
+            <div class="text-center py-10">
+                <div class="symbol symbol-100px mb-5">
+                    <div class="symbol-label fs-2x fw-semibold text-info bg-light-info">
+                        <i class="ki-outline ki-notification-bing fs-2"></i>
+                    </div>
+                </div>
+                <h4 class="text-gray-800 fw-bold">{{ trans('sw.no_record_found')}}</h4>
+            </div>
+            <!--end::Empty State-->
         @endif
     </div>
-@endsection
-
-@section('scripts')
-    @parent
-{{--    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"--}}
-{{--            type="text/javascript"></script>--}}
-{{--    <script type="text/javascript"--}}
-{{--            src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/moment.min.js"></script>--}}
-{{--    <script type="text/javascript"--}}
-{{--            src="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-daterangepicker/daterangepicker.js"></script>--}}
-{{--    <script src="{{asset('/')}}resources/assets/new_front/global/scripts/metronic.js" type="text/javascript"></script>--}}
-{{--    <script src="{{asset('/')}}resources/assets/new_front/pages/scripts/components-pickers.js"></script>--}}
-    <script>
-
-        $(document).on('click', '#export', function (event) {
-            event.preventDefault();
-            $.ajax({
-                url: $(this).attr('url'),
-                cache: false,
-                type: 'GET',
-                dataType: 'json',
-                success: function (response) {
-                    var a = document.createElement("a");
-                    a.href = response.file;
-                    a.download = response.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                },
-                error: function (request, error) {
-                    swal("Operation failed", "Something went wrong.", "error");
-                    console.error("Request: " + JSON.stringify(request));
-                    console.error("Error: " + JSON.stringify(error));
-                }
-            });
-
-        });
-
-        $("#filter_form").slideUp();
-        $(".filter_trigger_button").click(function () {
-            $("#filter_form").slideToggle(300);
-        });
-
-        $(document).on('click', '.remove_filter', function (event) {
-            event.preventDefault();
-            var filter = $(this).attr('id');
-            $("#" + filter).val('');
-            $("#filter_form").submit();
-        });
-
-        jQuery(document).ready(function () {
-            ComponentsPickers.init();
-        });
-    </script>
+    <!--end::Card body-->
+</div>
+<!--end::Notifications-->
 
 @endsection
-
-

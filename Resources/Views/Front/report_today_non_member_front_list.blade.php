@@ -161,6 +161,15 @@
                                 <input type="text" class="form-control" name="to" id="to_date" value="@php echo @strip_tags($_GET['to']) @endphp" placeholder="{{ trans('sw.to')}}" autocomplete="off">
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.trainer')}}</label>
+                            <select name="trainer_id" class="form-select form-select-solid">
+                                <option value="">{{ trans('admin.choose') }}...</option>
+                                @foreach($trainers ?? [] as $t)
+                                    <option value="{{ $t->id }}" @selected(request('trainer_id')==$t->id)>{{ $t->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-end mt-5">
                         <button type="reset" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</button>
@@ -211,6 +220,9 @@
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.activities')}}
                             </th>
+                            <th class="min-w-150px text-nowrap">
+                                <i class="ki-outline ki-profile-user fs-6 me-2"></i>{{ trans('sw.trainer')}}
+                            </th>
                             <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-status fs-6 me-2"></i>{{ trans('sw.status')}}
                             </th>
@@ -235,7 +247,10 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="fw-bold">@php if(@$log->member->activities){ echo  implode(', ', @$log->member->activities->pluck('name_'.$lang)->toArray()); } else { echo '-'; } @endphp </span>
+                                    <span class="fw-bold">{{ @$log->activity->{'name_'.$lang} ?? @$log->activity->name_ar ?? @$log->activity->name_en ?? '-' }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ @$log->activity->trainer->name ?? '-' }}</span>
                                 </td>
                                 <td>
                                     <span class="badge badge-light-success">{{ trans('sw.attend') }}</span>

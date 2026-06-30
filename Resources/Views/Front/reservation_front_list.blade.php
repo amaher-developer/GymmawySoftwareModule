@@ -216,10 +216,19 @@
                 </div>
                         <div class="col-md-3">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.activity') }}</label>
-                            <select name="activity" class="form-select form-select-solid">
+                            <select name="activity_id" class="form-select form-select-solid">
                                 <option value="">{{ trans('admin.choose') }}...</option>
                                 @foreach($activities ?? [] as $a)
-                                    <option value="{{ $a->id }}" @selected(request('activity')==$a->id)>{{ $a->{'name_'.($lang ?? 'ar')} ?? $a->name }}</option>
+                                    <option value="{{ $a->id }}" @selected(request('activity_id')==$a->id)>{{ $a->{'name_'.($lang ?? 'ar')} ?? $a->name }}</option>
+                                @endforeach
+                            </select>
+                </div>
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.trainer') }}</label>
+                            <select name="trainer_id" class="form-select form-select-solid">
+                                <option value="">{{ trans('admin.choose') }}...</option>
+                                @foreach($trainers ?? [] as $t)
+                                    <option value="{{ $t->id }}" @selected(request('trainer_id')==$t->id)>{{ $t->name }}</option>
                                 @endforeach
                             </select>
                 </div>

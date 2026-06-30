@@ -9,6 +9,7 @@ use Modules\Software\Models\GymReservation;
 use Modules\Software\Models\GymActivity;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymNonMember;
+use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Models\GymReservationUsage;
 use Illuminate\Container\Container as Application;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class GymReservationFrontController extends GymGenericFrontController
     {
         $title = trans('sw.reservations');
 
-        $this->request_array = ['search', 'activity_id', 'member_id', 'non_member_id', 'status', 'date'];
+        $this->request_array = ['search', 'activity_id', 'member_id', 'non_member_id', 'trainer_id', 'status', 'date'];
         foreach ($this->request_array as $item)
             $$item = request()->has($item) ? request()->$item : false;
 
@@ -63,6 +64,7 @@ class GymReservationFrontController extends GymGenericFrontController
         $reservations->when($activity_id, fn($q) => $q->where('activity_id', $activity_id));
         $reservations->when($member_id, fn($q) => $q->where('member_id', $member_id));
         $reservations->when($non_member_id, fn($q) => $q->where('non_member_id', $non_member_id));
+        $reservations->when($trainer_id, fn($q) => $q->whereHas('activity', fn($aq) => $aq->where('trainer_id', $trainer_id)));
         $reservations->when($status, fn($q) => $q->where('status', $status));
         $reservations->when($date, fn($q) => $q->whereDate('reservation_date', $date));
 
@@ -117,12 +119,13 @@ class GymReservationFrontController extends GymGenericFrontController
         }
 
         $activities = GymActivity::branch()->get();
-        
+        $trainers = GymPTTrainer::branch()->get();
+
         // Set records - if paginated, use the paginator itself (it has items() method for iteration)
         // If not paginated, use the collection
         $records = $reservations;
 
-        return view('software::Front.reservation_front_list', compact('reservations', 'records', 'title', 'total', 'search_query', 'activities'));
+        return view('software::Front.reservation_front_list', compact('reservations', 'records', 'title', 'total', 'search_query', 'activities', 'trainers'));
     }
 
     public function create()

@@ -1209,7 +1209,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     public function reportTodayNonMemberList(){
         $search_query = request()->query();
         $title = trans('sw.non_client_attendees_today');
-        $this->request_array = ['search', 'date', 'to', 'from'];
+        $this->request_array = ['search', 'date', 'to', 'from', 'trainer_id'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
@@ -1217,7 +1217,11 @@ class GymUserLogFrontController extends GymGenericFrontController
             $q->withTrashed();
         }, 'non_member' => function($q){
             $q->withTrashed();
-        }, 'user', 'activity']);
+        }, 'user', 'activity' => function($q){
+            $q->withTrashed()->with(['trainer' => function($q){
+                $q->withTrashed();
+            }]);
+        }]);
         $logs = $logs->when($search, function ($query) use ($search) {
             $query->whereHas('member', function ($q) use ($search) {
                 $q->where('id', '=', (int)$search);
@@ -1229,6 +1233,11 @@ class GymUserLogFrontController extends GymGenericFrontController
                 $q->where('id', '=', (int)$search);
                 $q->orWhere('name', 'like', "%" . $search . "%");
                 $q->orWhere('phone', 'like', "%" . $search . "%");
+            });
+        });
+        $logs->when($trainer_id, function ($query) use ($trainer_id) {
+            $query->whereHas('activity', function ($q) use ($trainer_id) {
+                $q->where('trainer_id', $trainer_id);
             });
         });
         if(@$from && @$to) {
@@ -1247,7 +1256,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $logs = $logs->get();
             $total = $logs->count();
         }
-        return view('software::Front.report_today_non_member_front_list', compact('logs','search_query','title', 'total'));
+        $trainers = GymPTTrainer::branch()->get();
+        return view('software::Front.report_today_non_member_front_list', compact('logs','search_query','title', 'total', 'trainers'));
     }
     function exportTodayNonMemberExcel()
     {

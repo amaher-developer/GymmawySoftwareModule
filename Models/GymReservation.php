@@ -19,6 +19,7 @@ class GymReservation extends GenericModel
         'status',
         'cancelled_at',
         'notes',
+        'branch_setting_id',
     ];
 
     protected $casts = [

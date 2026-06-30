@@ -23,15 +23,17 @@ class GymNotificationFrontController extends GymGenericFrontController
 
     public function sendToUsers(Request $request){
 
-        $notification = new GymUserNotification();
-        $notification->user_id = auth()->guard('sw')->user()->id;
-        $notification->title = @$request->get('content');
-        $notification->body = @$request->get('content');
-        $notification->save();
-
         $users = GymUser::branch()->whereIn('id', $request->users)->get();
-        foreach ($request->users as $user) {
-            $data = ['title' => @$request->get('content'), 'content' => @$request->get('content'), 'user_id' => $user, 'created_at' => Carbon::now()->diffForHumans(Carbon::now())];
+
+        foreach ($users as $user) {
+            $notification = new GymUserNotification();
+            $notification->user_id = $user->id;
+            $notification->title = @$request->get('content');
+            $notification->body = @$request->get('content');
+            $notification->branch_setting_id = $user->branch_setting_id;
+            $notification->save();
+
+            $data = ['title' => @$request->get('content'), 'content' => @$request->get('content'), 'user_id' => $user->id, 'created_at' => Carbon::now()->diffForHumans(Carbon::now())];
             event(new UserEvent($data));
         }
         \Notification::send($users, new SwGymUserNotification(GymUserNotification::latest('id')->first()));
@@ -44,13 +46,17 @@ class GymNotificationFrontController extends GymGenericFrontController
     }
     public function appToUsers($request = []){
 
-        $notification = new GymUserNotification();
-        $notification->title = @$request['title'];
-        $notification->body = @$request['content'];
-        $notification->save();
         $users = GymUser::branch()->get();
-        foreach ($users->pluck('id') as $user) {
-            $data = ['title' => @$request['title'],'content' => @$request['content'], 'url' => @$request['url'], 'user_id' => $user, 'created_at' => Carbon::now()->diffForHumans(Carbon::now())];
+
+        foreach ($users as $user) {
+            $notification = new GymUserNotification();
+            $notification->user_id = $user->id;
+            $notification->title = @$request['title'];
+            $notification->body = @$request['content'];
+            $notification->branch_setting_id = $user->branch_setting_id;
+            $notification->save();
+
+            $data = ['title' => @$request['title'],'content' => @$request['content'], 'url' => @$request['url'], 'user_id' => $user->id, 'created_at' => Carbon::now()->diffForHumans(Carbon::now())];
             event(new UserEvent($data));
         }
 
