@@ -46,7 +46,9 @@ class GymNotificationFrontController extends GymGenericFrontController
     }
     public function appToUsers($request = []){
 
-        $users = GymUser::branch()->get();
+        $users = !empty($request['branch_setting_id'])
+            ? GymUser::where('branch_setting_id', $request['branch_setting_id'])->get()
+            : GymUser::branch()->get();
 
         foreach ($users as $user) {
             $notification = new GymUserNotification();
