@@ -693,7 +693,6 @@
                                     @php
                                         $memberReservations = $upcomingReservations[$member->id] ?? collect();
                                     @endphp
-                                    @if($memberReservations->count() > 0)
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)" class="menu-link px-3 position-relative"
                                            title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
@@ -701,10 +700,11 @@
                                            data-bs-target="#upcomingReservationsModal{{ $member->id }}">
                                             <i class="ki-outline ki-calendar-tick text-primary"></i>
                                             <span>{{ trans('sw.upcoming_reservations') }}</span>
-                                            <span class="badge badge-circle bg-danger ms-2">{{ $memberReservations->count() }}</span>
+                                            @if($memberReservations->count() > 0)
+                                                <span class="badge badge-circle bg-danger ms-2">{{ $memberReservations->count() }}</span>
+                                            @endif
                                         </a>
                                     </div>
-                                    @endif
 
                                     @if($active_activity_reservation)
                                         @php
@@ -1197,7 +1197,6 @@
         @php
             $memberReservations = $upcomingReservations[$member->id] ?? collect();
         @endphp
-        @if($memberReservations->count() > 0)
             <div class="modal fade" id="upcomingReservationsModal{{ $member->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content">
@@ -1239,7 +1238,7 @@
                                 </div>
                                 
                                 <div class="d-flex flex-column gap-3">
-                                    @foreach($memberReservations as $reservation)
+                                    @forelse($memberReservations as $reservation)
                                         <div class="card card-flush border border-gray-300 border-dashed">
                                             <div class="card-body">
                                                 <div class="d-flex align-items-center justify-content-between">
@@ -1303,7 +1302,16 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    @endforeach
+                                    @empty
+                                        <div class="text-center py-10">
+                                            <div class="symbol symbol-75px mb-4">
+                                                <div class="symbol-label bg-light-info">
+                                                    <i class="ki-outline ki-calendar-tick fs-2x text-info"></i>
+                                                </div>
+                                            </div>
+                                            <div class="text-gray-600 fw-semibold">{{ trans('sw.no_record_found') }}</div>
+                                        </div>
+                                    @endforelse
                                 </div>
                             </div>
                             <!--end::Reservations List-->
@@ -1314,7 +1322,6 @@
                     </div>
                 </div>
             </div>
-        @endif
     @endforeach
     <!--end::Upcoming Reservations Modal-->
 
