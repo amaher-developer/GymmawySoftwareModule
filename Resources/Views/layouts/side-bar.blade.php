@@ -1603,18 +1603,6 @@
                     </a>
                 </div>
             @endif
-{{-- Categories --}}
-            @if ($swUser && (isset($permissionsMap['listCategory']) || $isSuperUser))
-                <div class="menu-item">
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/category*')) active @endif"
-                        href="{{ route('sw.listCategory') }}">
-                        <span class="menu-bullet">
-                            <span class="bullet bullet-dot"></span>
-                        </span>
-                        <span class="menu-title">{{ trans('sw.categories') }}</span>
-                    </a>
-                </div>
-            @endif
 
  {{-- Activities (moved under Settings) --}}
             @if ((@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && ($swUser && (isset($permissionsMap['listActivity']) || $isSuperUser)    ))
@@ -1703,6 +1691,18 @@
                 </div>
             @endif -->
 
+{{-- Categories --}}
+            @if ($swUser && (isset($permissionsMap['listCategory']) || $isSuperUser))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/category*')) active @endif"
+                        href="{{ route('sw.listCategory') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.categories') }}</span>
+                    </a>
+                </div>
+            @endif
 
             @if ($swUser && (isset($permissionsMap['listSaleChannel']) || $isSuperUser))
                 <!--begin:Menu item-->
