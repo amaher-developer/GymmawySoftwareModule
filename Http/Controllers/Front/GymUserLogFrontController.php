@@ -1237,7 +1237,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         });
         $logs->when($trainer_id, function ($query) use ($trainer_id) {
             $query->whereHas('activity', function ($q) use ($trainer_id) {
-                $q->where('trainer_id', $trainer_id);
+                $q->withTrashed()->where('trainer_id', $trainer_id);
             });
         });
         if(@$from && @$to) {

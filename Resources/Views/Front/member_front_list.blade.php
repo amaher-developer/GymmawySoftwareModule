@@ -690,23 +690,23 @@
                                     </div>
                                     @endif
 
-                                    @if($active_activity_reservation)
-                                        @php
-                                            $memberReservations = $upcomingReservations[$member->id] ?? collect();
-                                        @endphp
-                                        @if($memberReservations->count() > 0)
-                                        <div class="menu-item px-3">
-                                            <a href="javascript:void(0)" class="menu-link px-3 position-relative"
-                                               title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
-                                               data-bs-toggle="modal"
-                                               data-bs-target="#upcomingReservationsModal{{ $member->id }}">
-                                                <i class="ki-outline ki-calendar-tick text-primary"></i>
-                                                <span>{{ trans('sw.upcoming_reservations') }}</span>
-                                                <span class="badge badge-circle bg-danger ms-2">{{ $memberReservations->count() }}</span>
-                                            </a>
-                                        </div>
-                                        @endif
+                                    @php
+                                        $memberReservations = $upcomingReservations[$member->id] ?? collect();
+                                    @endphp
+                                    @if($memberReservations->count() > 0)
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)" class="menu-link px-3 position-relative"
+                                           title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
+                                           data-bs-toggle="modal"
+                                           data-bs-target="#upcomingReservationsModal{{ $member->id }}">
+                                            <i class="ki-outline ki-calendar-tick text-primary"></i>
+                                            <span>{{ trans('sw.upcoming_reservations') }}</span>
+                                            <span class="badge badge-circle bg-danger ms-2">{{ $memberReservations->count() }}</span>
+                                        </a>
+                                    </div>
+                                    @endif
 
+                                    @if($active_activity_reservation)
                                         @php
                                             $memberActivities = @$member->member_subscription_info->activities ?? [];
                                             $hasValidActivities = false;
@@ -1191,8 +1191,7 @@
     <!-- End model pay -->
 
     <!-- End model profile -->
-    
-    @if($active_activity_reservation)
+
     <!--begin::Upcoming Reservations Modal for Each Member-->
     @foreach($members as $member)
         @php
@@ -1318,7 +1317,8 @@
         @endif
     @endforeach
     <!--end::Upcoming Reservations Modal-->
-    
+
+    @if($active_activity_reservation)
     <!--begin::Quick Book Modal for Each Member-->
     @foreach($members as $member)
         @php

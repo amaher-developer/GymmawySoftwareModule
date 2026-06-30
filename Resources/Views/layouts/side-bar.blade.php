@@ -1519,6 +1519,7 @@
         class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
+                Request::is(($lang ?? 'ar') . '/category*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
                 Request::is(($lang ?? 'ar') . '/reservation*') ||
                 Request::is(($lang ?? 'ar') . '/user*') ||
@@ -1529,6 +1530,7 @@
         <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
+                Request::is(($lang ?? 'ar') . '/category*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
                 Request::is(($lang ?? 'ar') . '/reservation*') ||
                 Request::is(($lang ?? 'ar') . '/user*') || 
@@ -1601,6 +1603,19 @@
                     </a>
                 </div>
             @endif
+{{-- Categories --}}
+            @if ($swUser && (isset($permissionsMap['listCategory']) || $isSuperUser))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/category*')) active @endif"
+                        href="{{ route('sw.listCategory') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.categories') }}</span>
+                    </a>
+                </div>
+            @endif
+
  {{-- Activities (moved under Settings) --}}
             @if ((@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && ($swUser && (isset($permissionsMap['listActivity']) || $isSuperUser)    ))
                 <div class="menu-item">
