@@ -212,6 +212,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
     {
         $product_inputs = $this->prepare_inputs($request->except(['_token', 'vendor_name', 'vendor_phone', 'vendor_address', 'vendor_amount', 'vendor_payment_type']));
         $product_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
+        $product_inputs['is_meal']   = request()->has('is_meal') ? 1 : 0;
         $product_inputs['user_id'] = $this->user_sw->id;
         $displayName = $this->normalizeDisplayName($request->input('display_name'));
         $product_inputs['display_name_ar'] = $displayName;
@@ -341,6 +342,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
         $product_inputs = $this->prepare_inputs($request->except(['_token']));
         $product_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
+        $product_inputs['is_meal']   = request()->has('is_meal') ? 1 : 0;
         $product_inputs['is_web'] = @(int)$product_inputs['is_web'];
         $product_inputs['is_mobile'] = @(int)$product_inputs['is_mobile'];
         $displayName = $this->normalizeDisplayName($request->input('display_name'));

@@ -15,6 +15,11 @@ class GymStoreProduct extends GenericModel
     protected $guarded = ['id'];
     protected $casts = [
         'is_system' => 'boolean',
+        'is_meal'   => 'boolean',
+        'calories'  => 'float',
+        'protein'   => 'float',
+        'carbs'     => 'float',
+        'fat'       => 'float',
     ];
 
     public function scopeIsSystem($query)
