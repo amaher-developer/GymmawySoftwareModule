@@ -7,6 +7,7 @@ use App\Modules\Gym\Models\GymBrand;
 use Modules\Software\Classes\TypeConstants;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class GymMemberSubscription extends GenericModel
 {
@@ -120,6 +121,20 @@ class GymMemberSubscription extends GenericModel
     public function freezes()
     {
         return $this->hasMany(GymMemberSubscriptionFreeze::class, 'member_subscription_id');
+    }
+
+    private static ?bool $_hasOptionTables = null;
+
+    protected static function booted(): void
+    {
+        if (self::$_hasOptionTables === null) {
+            self::$_hasOptionTables = Schema::hasTable('sw_gym_member_subscription_options');
+        }
+        if (!self::$_hasOptionTables) {
+            static::retrieved(function ($model) {
+                $model->setRelation('selected_options', collect());
+            });
+        }
     }
 
     public function selected_options()
