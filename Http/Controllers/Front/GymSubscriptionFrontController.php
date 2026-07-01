@@ -785,9 +785,9 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         $lang = $this->lang;
         return GymStoreProduct::branch()
             ->orderBy('name_' . $lang)
-            ->get(['id', 'name_ar', 'name_en', 'display_name_ar', 'display_name_en', 'category_id', 'image'])
+            ->get(['id', 'name_ar', 'name_en', 'category_id', 'image'])
             ->map(function ($p) use ($lang) {
-                $displayName = $p->getRawOriginal('display_name_' . $lang) ?: $p->{'name_' . $lang};
+                $displayName = $p->{'name_' . $lang};
                 $rawImage    = $p->getRawOriginal('image');
                 $image       = $rawImage
                     ? (filter_var($rawImage, FILTER_VALIDATE_URL) ? $rawImage : asset(GymStoreProduct::$uploads_path . basename($rawImage)))
