@@ -29,6 +29,7 @@ use Modules\Software\Models\GymSubscription;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\File;
@@ -41,6 +42,15 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     private $imageManager;
     public $GymCategoryRepository;
     public $fileName;
+
+    private static ?bool $_hasOptionTables = null;
+    private function hasOptionTables(): bool
+    {
+        if (self::$_hasOptionTables === null) {
+            self::$_hasOptionTables = Schema::hasTable('sw_gym_subscription_option_groups');
+        }
+        return self::$_hasOptionTables;
+    }
 
     public function __construct()
     {
@@ -298,8 +308,16 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
+        $eagerRelations = ['activities', 'subscription_products.product'];
+        if ($this->hasOptionTables()) {
+            $eagerRelations = array_merge($eagerRelations, [
+                'option_groups.options.product',
+                'option_groups.options.activity',
+                'option_groups.category',
+            ]);
+        }
         $subscription = $this->GymSubscriptionRepository->branch()
-            ->with(['activities', 'subscription_products.product', 'option_groups.options.product', 'option_groups.options.activity', 'option_groups.category'])
+            ->with($eagerRelations)
             ->withTrashed()->find($id);
         $title           = trans('sw.subscription_edit');
         $activities      = GymActivity::branch()->with('trainer')->get();
@@ -319,7 +337,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
             'is_replaceable' => (bool) $sp->is_replaceable,
         ])->values()->all();
 
-        $existingGroupsJs = $subscription->option_groups->map(fn($g) => [
+        $existingGroupsJs = $this->hasOptionTables() ? $subscription->option_groups->map(fn($g) => [
             'id'             => $g->id,
             'name_ar'        => $g->getRawOriginal('name_ar') ?? '',
             'name_en'        => $g->getRawOriginal('name_en') ?? $g->getRawOriginal('name_ar') ?? '',
@@ -352,7 +370,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                     'list_order'     => $o->list_order ?? 0,
                 ];
             })->values()->all(),
-        ])->values()->all();
+        ])->values()->all() : [];
 
         return view('software::Front.subscription_front_form', compact(
             'activities', 'trainers', 'categories', 'storeCategories', 'allProducts', 'productsForJs', 'activitiesForJs',
@@ -637,6 +655,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     private function syncSubscriptionProducts(GymSubscription $sub, array $products): void
     {
+        if (!Schema::hasTable('sw_gym_subscription_products')) return;
         $branchId = (int) (@$this->user_sw->branch_setting_id ?? 1);
         $keepIds  = collect($products)->filter(fn($p) => !empty($p['id']))->pluck('id')->map(fn($id) => (int) $id)->all();
 
@@ -664,6 +683,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     private function syncSubscriptionGroups(GymSubscription $sub, array $groups): void
     {
+        if (!$this->hasOptionTables()) return;
         $branchId     = (int) (@$this->user_sw->branch_setting_id ?? 1);
         $keepGroupIds = collect($groups)->filter(fn($g) => !empty($g['id']))->pluck('id')->map(fn($id) => (int) $id)->all();
 
