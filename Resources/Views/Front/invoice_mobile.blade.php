@@ -116,9 +116,9 @@
             @php
                 $lang = app()->getLocale();
                 $invoiceActivities = $invoice->activities ?? [];
-                $groupedOptions = $invoice->selected_options
-                    ->filter(fn($so) => $so->option && $so->option->group)
-                    ->groupBy(fn($so) => $so->option->group->id);
+                $groupedOptions = $invoice->relationLoaded('selected_options')
+                    ? $invoice->selected_options->filter(fn($so) => $so->option && $so->option->group)->groupBy(fn($so) => $so->option->group->id)
+                    : collect();
                 $hasExtras = count($invoiceActivities) > 0 || $groupedOptions->isNotEmpty();
             @endphp
             @if($hasExtras)

@@ -23,6 +23,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Milon\Barcode\DNS2D;
@@ -156,13 +157,16 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscription($id)
     {
         $title = trans('sw.subscription_contract');
-        $order = GymMemberSubscription::branch()->with([
+        $orderRelations = [
             'pay_type',
             'member' => function($q){$q->withTrashed();},
             'subscription' => function($q){$q->withTrashed();},
-            'selected_options.option.product',
-            'selected_options.option.activity',
-        ])->where('id', $id)->first();
+        ];
+        if (Schema::hasTable('sw_gym_member_subscription_options')) {
+            $orderRelations[] = 'selected_options.option.product';
+            $orderRelations[] = 'selected_options.option.activity';
+        }
+        $order = GymMemberSubscription::branch()->with($orderRelations)->where('id', $id)->first();
         $money_box = GymMoneyBox::branch()->where('member_id', $order->member_id)->where('member_subscription_id', $order->id)->get();
         $payment_types = GymPaymentType::get();
         $money_box->filter(function ($item) use ($payment_types){

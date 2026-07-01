@@ -2078,7 +2078,13 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function invoiceMobile($id)
     {
-        $invoice = GymMemberSubscription::with(['subscription', 'member', 'selected_options.option.group', 'selected_options.option.product', 'selected_options.option.activity'])->where('id', $id)->first();
+        $invoiceRelations = ['subscription', 'member'];
+        if (Schema::hasTable('sw_gym_member_subscription_options')) {
+            $invoiceRelations[] = 'selected_options.option.group';
+            $invoiceRelations[] = 'selected_options.option.product';
+            $invoiceRelations[] = 'selected_options.option.activity';
+        }
+        $invoice = GymMemberSubscription::with($invoiceRelations)->where('id', $id)->first();
 
         if (!$invoice) {
             return abort(404);

@@ -40,6 +40,7 @@ use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymWALog;
 use Modules\Billing\Services\SwBillingService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -2764,7 +2765,9 @@ class GymMemberFrontController extends GymGenericFrontController
             $membership->expire_date = Carbon::parse($membership->expire_date)->toDateString();
             $membership->from_expire_days = Carbon::parse($membership->expire_date)->diffInDays(Carbon::now()->subDay()->toDateString());
         }
-        $selectedOptionIds = $membership ? $membership->selected_options->pluck('option_id')->toArray() : [];
+        $selectedOptionIds = ($membership && Schema::hasTable('sw_gym_member_subscription_options'))
+            ? $membership->selected_options->pluck('option_id')->toArray()
+            : [];
         return Response::json(['membership' => $subscriptions, 'member' => @$member, 'member_membership' => @$membership, 'selected_option_ids' => $selectedOptionIds], 200);
     }
 
