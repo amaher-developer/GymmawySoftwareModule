@@ -21,25 +21,22 @@ return new class extends Migration
         });
 
         // Link option groups to product categories (optional — null means free-form choices)
-        Schema::table('sw_gym_subscription_option_groups', function (Blueprint $table) {
-            $table->unsignedInteger('category_id')
-                  ->nullable()
-                  ->after('name_en')
-                  ->comment('Optional: restrict choices to products from this category');
-
-            $table->foreign('category_id')
-                  ->references('id')
-                  ->on('sw_gym_store_categories')
-                  ->nullOnDelete();
-        });
+        if (Schema::hasTable('sw_gym_subscription_option_groups') &&
+            !Schema::hasColumn('sw_gym_subscription_option_groups', 'category_id')) {
+            Schema::table('sw_gym_subscription_option_groups', function (Blueprint $table) {
+                $table->unsignedInteger('category_id')->nullable()->after('name_en');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('sw_gym_subscription_option_groups', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
-            $table->dropColumn('category_id');
-        });
+        if (Schema::hasTable('sw_gym_subscription_option_groups') &&
+            Schema::hasColumn('sw_gym_subscription_option_groups', 'category_id')) {
+            Schema::table('sw_gym_subscription_option_groups', function (Blueprint $table) {
+                $table->dropColumn('category_id');
+            });
+        }
 
         Schema::table('sw_gym_store_products', function (Blueprint $table) {
             $table->string('meal_type')->nullable()->after('is_meal');
