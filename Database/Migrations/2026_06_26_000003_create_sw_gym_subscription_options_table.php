@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('sw_gym_subscription_options', function (Blueprint $table) {
+        Schema::createIfNotExists('sw_gym_subscription_options', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('branch_setting_id')->nullable()->index();
             $table->foreign('branch_setting_id')->references('id')->on('settings')->onDelete('set null');
