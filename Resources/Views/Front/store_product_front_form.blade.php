@@ -508,6 +508,9 @@
                 return { id: term, text: term, newTag: true };
             }
         });
+        @if(!empty($currentDisplayName))
+        $('#display_name').val(@json($currentDisplayName)).trigger('change');
+        @endif
         // ── End Display Name ───────────────────────────────────────────────────
 
         $("#gym_image").change(function () {
