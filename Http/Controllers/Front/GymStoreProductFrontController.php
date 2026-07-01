@@ -2,6 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
+use Illuminate\Support\Facades\Schema;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Exports\RecordsExport;
 use Modules\Software\Http\Requests\GymStoreProductRequest;
@@ -299,19 +300,23 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
     private function getDisplayNameSuggestions(): array
     {
-        $rows = GymStoreProduct::branch()
-            ->where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->whereNotNull('display_name_ar')->where('display_name_ar', '!=', '');
-                })->orWhere(function ($q2) {
-                    $q2->whereNotNull('display_name_en')->where('display_name_en', '!=', '');
-                });
-            })
-            ->get(['display_name_ar', 'display_name_en']);
+        $hasDisplayCols = Schema::hasColumn('sw_gym_store_products', 'display_name_ar');
 
-        // Merge both columns into one deduplicated sorted list
-        return $rows->pluck('display_name_ar')
-            ->merge($rows->pluck('display_name_en'))
+        if (!$hasDisplayCols) {
+            $rows = GymStoreProduct::branch()->get(['name_ar', 'name_en']);
+            return $rows->pluck('name_ar')
+                ->merge($rows->pluck('name_en'))
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values()
+                ->toArray();
+        }
+
+        $rows = GymStoreProduct::branch()->get(['display_name_ar', 'display_name_en', 'name_ar', 'name_en']);
+
+        return $rows->map(fn($r) => $r->getRawOriginal('display_name_ar') ?: $r->getRawOriginal('name_ar'))
+            ->merge($rows->map(fn($r) => $r->getRawOriginal('display_name_en') ?: $r->getRawOriginal('name_en')))
             ->filter()
             ->unique()
             ->sort()
