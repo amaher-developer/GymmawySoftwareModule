@@ -57,7 +57,18 @@
         <!--end::Card title-->
         <!--begin::Card toolbar-->
         <div class="card-toolbar">
-            <div class="d-flex align-items-center gap-2 gap-lg-3">
+            <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
+                <!--begin::Filter-->
+                @if(($subscriptionCategories ?? collect())->isNotEmpty())
+                <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_subscriptions_filter_collapse">
+                    <i class="ki-outline ki-filter fs-6"></i>
+                    {{ trans('sw.filter')}}
+                    @if(request('subscription_category_id'))
+                        <span class="badge badge-circle badge-danger ms-1" style="width:8px;height:8px;min-width:8px;padding:0;"></span>
+                    @endif
+                </button>
+                @endif
+                <!--end::Filter-->
                 <!--begin::Add Subscription-->
                 @if(in_array('createSubscription', (array)$swUser->permissions) || $swUser->is_super_user)
                     <a href="{{route('sw.createSubscription')}}" class="btn btn-sm btn-flex btn-light-primary">
@@ -103,11 +114,70 @@
 
     <!--begin::Card body-->
     <div class="card-body pt-0">
+        <!--begin::Search & Filter-->
+        <form id="sub_filter_form" action="" method="get">
+
+            {{-- Collapsible filter panel (category) --}}
+            @if(($subscriptionCategories ?? collect())->isNotEmpty())
+            <div class="collapse @if(request('subscription_category_id')) show @endif mb-4" id="kt_subscriptions_filter_collapse">
+                <div class="card card-body py-4">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.subscription_categories') }}</label>
+                            <select name="subscription_category_id" id="cat_filter_select" class="form-select form-select-solid">
+                                <option value="" data-image="{{ asset('resources/assets/new_front/img/blank-image.svg') }}">
+                                    {{ trans('admin.choose') }}...
+                                </option>
+                                @foreach($subscriptionCategories as $cat)
+                                    <option value="{{ $cat->id }}"
+                                            data-image="{{ $cat->image_url }}"
+                                            @selected(request('subscription_category_id') == $cat->id)>
+                                        {{ $cat->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4 gap-2">
+                        <a href="{{ route('sw.listSubscription', array_filter(request()->except('subscription_category_id'))) }}"
+                           class="btn btn-light btn-sm">{{ trans('admin.reset') }}</a>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="ki-outline ki-check fs-6"></i>{{ trans('sw.filter') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- Active category badge --}}
+            @if(request('subscription_category_id') && ($subscriptionCategories ?? collect())->isNotEmpty())
+                @php $activeCat = ($subscriptionCategories ?? collect())->firstWhere('id', request('subscription_category_id')); @endphp
+                @if($activeCat)
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <span class="text-muted fs-7">{{ trans('sw.filter') }}:</span>
+                    <span class="badge badge-light-primary d-flex align-items-center gap-2 fs-7 py-2 px-3">
+                        <img src="{{ $activeCat->image_url }}" class="rounded" style="width:18px;height:18px;object-fit:cover;">
+                        {{ $activeCat->name }}
+                        <a href="{{ route('sw.listSubscription', array_filter(request()->except('subscription_category_id'))) }}" class="ms-1 text-hover-danger">
+                            <i class="ki-outline ki-cross fs-7"></i>
+                        </a>
+                    </span>
+                </div>
+                @endif
+            @endif
+
+        </form>
+        <!--end::Filter-->
+
         <!--begin::Search-->
         <div class="d-flex align-items-center position-relative my-1 mb-5">
             <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
             <form class="d-flex" action="" method="get" style="max-width: 400px;">
-                <input type="text" name="search" class="form-control form-control-solid ps-12" value="{{ request('search') }}" placeholder="{{ trans('sw.search_on')}}">
+                @if(request('subscription_category_id'))
+                    <input type="hidden" name="subscription_category_id" value="{{ request('subscription_category_id') }}">
+                @endif
+                <input type="text" name="search" class="form-control form-control-solid ps-12"
+                       value="{{ request('search') }}" placeholder="{{ trans('sw.search_on')}}">
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
                 </button>
@@ -336,6 +406,27 @@
             $("#filter_form").submit();
         });
 
+        // Category filter — select2 with image thumbnails
+        if (typeof $.fn.select2 !== 'undefined' && $('#cat_filter_select').length) {
+            function formatCatOption(opt) {
+                if (!opt.id) return opt.text;
+                var img = $(opt.element).data('image');
+                if (img) {
+                    return $('<span class="d-flex align-items-center gap-2">' +
+                        '<img src="' + img + '" style="width:22px;height:22px;border-radius:4px;object-fit:cover;flex-shrink:0;">' +
+                        '<span>' + opt.text + '</span></span>');
+                }
+                return opt.text;
+            }
+            $('#cat_filter_select').select2({
+                templateResult:    formatCatOption,
+                templateSelection: formatCatOption,
+                minimumResultsForSearch: 6,
+            });
+            $('#cat_filter_select').on('select2:select select2:unselect', function () {
+                $('#sub_filter_form').submit();
+            });
+        }
 
     </script>
 

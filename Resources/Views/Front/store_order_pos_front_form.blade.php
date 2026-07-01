@@ -328,13 +328,48 @@
                             
                             <!--begin::Member Selection-->
                             <div class="mb-8">
-                                <label class="form-label fw-bold">{{ trans('sw.member')}}</label>
-                                <select name="member_id" id="member_id" class="form-select" data-control="select2" data-placeholder="{{ trans('sw.select_member')}}">
-                                    <option value="">{{ trans('sw.select_member')}}</option>
-                                    @foreach($members as $member)
-                                    <option value="{{ $member->id }}" data-member-code="{{ $member->code }}">{{ $member->name }} - {{ $member->code }}</option>
-                                    @endforeach
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <label class="form-label fw-bold mb-0">{{ trans('sw.member')}}</label>
+                                    <!-- <button type="button" class="btn btn-sm btn-light-primary py-1 px-3" id="toggleQuickCreateMember">
+                                        <i class="ki-duotone ki-plus fs-6"></i> {{ trans('sw.add') }}
+                                    </button> -->
+                                </div>
+                                <select name="member_id" id="member_id" class="form-select" data-placeholder="{{ trans('sw.select_member')}}">
+                                    <option value=""></option>
                                 </select>
+
+                                {{-- Quick Create Member Form --}}
+                                <div id="quickCreateMemberForm" class="card border border-primary mt-3 p-4 d-none">
+                                    <h6 class="fw-bold text-primary mb-4">{{ trans('sw.add') }} {{ trans('sw.member') }}</h6>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold fs-7">{{ trans('sw.name') }} <span class="text-danger">*</span></label>
+                                            <input type="text" id="qcm_name" class="form-control form-control-sm" placeholder="{{ trans('sw.name') }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold fs-7">{{ trans('sw.phone') }} <span class="text-danger">*</span></label>
+                                            <input type="text" id="qcm_phone" class="form-control form-control-sm" placeholder="{{ trans('sw.phone') }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold fs-7">{{ trans('sw.gender') }}</label>
+                                            <select id="qcm_gender" class="form-select form-select-sm">
+                                                <option value="">-- {{ trans('sw.choose') }} --</option>
+                                                <option value="1">{{ trans('sw.male') }}</option>
+                                                <option value="0">{{ trans('sw.female') }}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-4">
+                                        <button type="button" class="btn btn-primary btn-sm" id="submitQuickCreateMember">
+                                            <span class="indicator-label">{{ trans('sw.save') }}</span>
+                                            <span class="indicator-progress d-none">
+                                                <span class="spinner-border spinner-border-sm align-middle ms-1"></span>
+                                            </span>
+                                        </button>
+                                        <button type="button" class="btn btn-light btn-sm" id="cancelQuickCreateMember">{{ trans('sw.cancel') }}</button>
+                                    </div>
+                                    <div id="qcm_error" class="text-danger mt-2 fs-7 d-none"></div>
+                                </div>
                             </div>
                             
                             <div class="card bg-light-secondary p-5 mb-8 d-none" id="member_info_card">
@@ -1045,17 +1080,33 @@
         $('#member_info_card').removeClass('d-none');
     }
     
+    // Select2 AJAX — search members on type
+    $('#member_id').select2({
+        placeholder: '{{ trans("sw.select_member") }}',
+        allowClear: true,
+        minimumInputLength: 1,
+        ajax: {
+            url: '{{ route("sw.posSearchMembers") }}',
+            dataType: 'json',
+            delay: 300,
+            data: function (params) { return { q: params.term }; },
+            processResults: function (data) { return { results: data.results }; },
+            cache: true,
+        },
+    });
+
     $('#member_id').on('change', function() {
         const memberId = $(this).val();
         selectedMemberId = memberId || null;
         $('#store_member_use_balance').prop('checked', false);
         $('#use_balance_notice').addClass('d-none');
-        
+
         if (!memberId) {
             resetMemberInfoCard();
         } else {
-            const memberCode = $('#member_id option:selected').data('member-code');
-            $.get('{{ route('sw.getStoreMemberAjax') }}', { member_id: memberCode || memberId })
+            const selected = $(this).select2('data')[0];
+            const memberCode = selected && selected.code ? selected.code : memberId;
+            $.get('{{ route('sw.getStoreMemberAjax') }}', { member_id: memberCode })
                 .done(function(result) {
                     if (result && result.id) {
                         updateMemberInfoCard(result);
@@ -1202,5 +1253,79 @@
             }
         });
     @endif
+
+    // ── Quick Create Member ───────────────────────────────────────────────────
+    $('#toggleQuickCreateMember').on('click', function () {
+        var $form = $('#quickCreateMemberForm');
+        $form.toggleClass('d-none');
+        if (!$form.hasClass('d-none')) {
+            $('#qcm_name').val('');
+            $('#qcm_phone').val('');
+            $('#qcm_gender').val('');
+            $('#qcm_error').addClass('d-none').text('');
+            $('#qcm_name').focus();
+        }
+    });
+
+    $('#cancelQuickCreateMember').on('click', function () {
+        $('#quickCreateMemberForm').addClass('d-none');
+        $('#qcm_name, #qcm_phone').val('');
+        $('#qcm_gender').val('');
+        $('#qcm_error').addClass('d-none').text('');
+    });
+
+    $('#submitQuickCreateMember').on('click', function () {
+        var $btn = $(this);
+        var name   = $('#qcm_name').val().trim();
+        var phone  = $('#qcm_phone').val().trim();
+        var gender = $('#qcm_gender').val();
+
+        $('#qcm_error').addClass('d-none').text('');
+
+        if (!name || !phone) {
+            $('#qcm_error').removeClass('d-none').text('{{ trans("sw.name") }} & {{ trans("sw.phone") }} {{ trans("sw.required") }}');
+            return;
+        }
+
+        $btn.find('.indicator-label').addClass('d-none');
+        $btn.find('.indicator-progress').removeClass('d-none');
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: '{{ route("sw.posQuickCreateMember") }}',
+            method: 'POST',
+            data: { _token: '{{ csrf_token() }}', name: name, phone: phone, gender: gender },
+            success: function (res) {
+                var m = res.member;
+                var label = m.name + ' - ' + m.code;
+                // Add or re-select in Select2
+                if ($('#member_id option[value="' + m.id + '"]').length === 0) {
+                    var newOption = new Option(label, m.id, true, true);
+                    $(newOption).attr('data-code', m.code);
+                    $('#member_id').append(newOption);
+                }
+                $('#member_id').val(m.id).trigger('change');
+                $('#quickCreateMemberForm').addClass('d-none');
+                $('#qcm_name, #qcm_phone').val('');
+                $('#qcm_gender').val('');
+                if (res.existing) {
+                    Swal.fire({ icon: 'info', title: '{{ trans("sw.member") }}', text: label, timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'success', title: '✓', text: label, timer: 1500, showConfirmButton: false });
+                }
+            },
+            error: function (xhr) {
+                var errors = xhr.responseJSON && xhr.responseJSON.errors
+                    ? Object.values(xhr.responseJSON.errors).flat().join('<br>')
+                    : '{{ trans("sw.error") }}';
+                $('#qcm_error').removeClass('d-none').html(errors);
+            },
+            complete: function () {
+                $btn.find('.indicator-label').removeClass('d-none');
+                $btn.find('.indicator-progress').addClass('d-none');
+                $btn.prop('disabled', false);
+            }
+        });
+    });
 </script>
 @endsection

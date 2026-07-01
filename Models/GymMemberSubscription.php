@@ -122,6 +122,11 @@ class GymMemberSubscription extends GenericModel
         return $this->hasMany(GymMemberSubscriptionFreeze::class, 'member_subscription_id');
     }
 
+    public function selected_options()
+    {
+        return $this->hasMany(GymMemberSubscriptionOption::class, 'member_subscription_id');
+    }
+
     public function toArray()
     {
         return parent::toArray();

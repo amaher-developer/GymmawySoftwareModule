@@ -98,6 +98,24 @@ class GymSubscription extends GenericModel
         return $this->hasMany(GymActivitySubscription::class, 'subscription_id');
     }
 
+    public function subscription_products()
+    {
+        return $this->hasMany(GymSubscriptionProduct::class, 'subscription_id')->orderBy('list_order');
+    }
+
+    public function products()
+    {
+        return $this->belongsToMany(GymStoreProduct::class, 'sw_gym_subscription_products', 'subscription_id', 'product_id')
+            ->withPivot('list_order', 'is_replaceable')
+            ->orderBy('sw_gym_subscription_products.list_order')
+            ->withTimestamps();
+    }
+
+    public function option_groups()
+    {
+        return $this->hasMany(GymSubscriptionOptionGroup::class, 'subscription_id')->orderBy('list_order');
+    }
+
 //    public function gym()
 //    {
 //        return $this->belongsTo(GymBrand::class, 'gym_id');

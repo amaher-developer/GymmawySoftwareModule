@@ -103,7 +103,33 @@
                         <!--end::Input-->
                     </div>
                     <!--end::Input group-->
-                    
+
+                    {{-- Display Name: single dropdown with ability to add a new name --}}
+                    @php
+                        $currentDisplayName = old('display_name',
+                            $product->getRawOriginal('display_name_ar') ?: $product->getRawOriginal('display_name_en')
+                        );
+                        // If current value is not in the suggestions list, add it so it shows as selected
+                        $dnSuggestions = $displayNameSuggestions;
+                        if ($currentDisplayName && !in_array($currentDisplayName, $dnSuggestions)) {
+                            array_unshift($dnSuggestions, $currentDisplayName);
+                        }
+                    @endphp
+                    <div class="mb-10 fv-row" id="display_name_section">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <label class="form-label mb-0">{{ trans('sw.display_name') }}</label>
+                            <span class="badge badge-light-secondary fs-8">{{ trans('sw.optional') }}</span>
+                        </div>
+                        <select name="display_name" id="display_name" class="form-select">
+                            <option value="">— {{ trans('sw.no_display_name') }} —</option>
+                            @foreach($dnSuggestions as $s)
+                                <option value="{{ $s }}" @selected($currentDisplayName === $s)>{{ $s }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text text-muted mt-2">{{ trans('sw.display_name_hint') }}</div>
+                    </div>
+                    {{-- End display name field --}}
+
                     <!--begin::Input group-->
                     <div class="mb-10 fv-row">
                         <!--begin::Label-->
@@ -469,6 +495,20 @@
                 minimumResultsForSearch: Infinity
             });
         });
+
+        // ── Display Name — Select2 with tags (add new inline) ─────────────────
+        $('#display_name').select2({
+            tags: true,
+            allowClear: true,
+            width: '100%',
+            placeholder: '{{ trans("sw.no_display_name") }}',
+            createTag: function(params) {
+                var term = $.trim(params.term);
+                if (!term) return null;
+                return { id: term, text: term, newTag: true };
+            }
+        });
+        // ── End Display Name ───────────────────────────────────────────────────
 
         $("#gym_image").change(function () {
             let input = this;

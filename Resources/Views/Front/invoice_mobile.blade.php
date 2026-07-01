@@ -60,6 +60,17 @@
         .divider { border: none; border-top: 1px dashed #ddd; margin: 12px 0; }
         .qr-wrap { text-align: center; padding: 10px 0; }
         .qr-wrap img { width: 100px; }
+        .options-section { margin-bottom: 15px; }
+        .options-section-title {
+            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            color: #999; letter-spacing: .5px; margin-bottom: 6px;
+        }
+        .option-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: #f0f4ff; border: 1px solid #d0dbff;
+            border-radius: 20px; padding: 4px 10px;
+            font-size: 13px; color: #3b4cb8; margin: 3px 3px 3px 0;
+        }
     </style>
 </head>
 <body>
@@ -101,6 +112,73 @@
                 <span class="label">{{ trans('front.buyer_name') }}</span>
                 <span class="value">{{ optional($invoice->member)->name }}</span>
             </div>
+
+            @php
+                $lang = app()->getLocale();
+                $invoiceActivities = $invoice->activities ?? [];
+                $groupedOptions = $invoice->selected_options
+                    ->filter(fn($so) => $so->option && $so->option->group)
+                    ->groupBy(fn($so) => $so->option->group->id);
+                $hasExtras = count($invoiceActivities) > 0 || $groupedOptions->isNotEmpty();
+            @endphp
+            @if($hasExtras)
+                <hr class="divider">
+            @endif
+
+            @if(count($invoiceActivities) > 0)
+                <div class="invoice-row" style="align-items: flex-start; flex-direction: column; gap: 6px;">
+                    <span class="label" style="font-size:12px;">{{ trans('sw.activities') }}</span>
+                    <div>
+                        @foreach($invoiceActivities as $actRow)
+                            @php
+                                $actName = $lang === 'ar'
+                                    ? (@$actRow['activity']['name_ar'] ?: @$actRow['activity']['name_en'])
+                                    : (@$actRow['activity']['name_en'] ?: @$actRow['activity']['name_ar']);
+                                $times = (int) @$actRow['training_times'];
+                            @endphp
+                            @if($actName)
+                                <span class="option-chip">
+                                    {{ $actName }}
+                                    @if($times > 0)
+                                        &nbsp;·&nbsp;{{ $times }} {{ trans('sw.training_times') }}
+                                    @endif
+                                </span>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if($groupedOptions->isNotEmpty())
+                @foreach($groupedOptions as $groupId => $groupOptions)
+                    @php $group = $groupOptions->first()->option->group; @endphp
+                    <div class="invoice-row" style="align-items: flex-start; flex-direction: column; gap: 4px;">
+                        <span class="label" style="font-size:12px;">{{ $lang === 'ar' ? $group->name_ar : ($group->name_en ?: $group->name_ar) }}</span>
+                        <div>
+                            @foreach($groupOptions as $so)
+                                @php
+                                    $opt = $so->option;
+                                    $optName = '';
+                                    if (!$opt->product_id && !$opt->activity_id) {
+                                        $optName = $lang === 'ar' ? ($opt->getRawOriginal('name_ar') ?: $opt->getRawOriginal('name_en')) : ($opt->getRawOriginal('name_en') ?: $opt->getRawOriginal('name_ar'));
+                                    } elseif ($opt->activity_id && $opt->activity) {
+                                        $optName = $opt->activity->{'name_' . $lang} ?? $opt->activity->name_ar;
+                                    } elseif ($opt->product_id && $opt->product) {
+                                        $optName = $opt->product->getRawOriginal('display_name_' . $lang) ?: ($opt->product->{'name_' . $lang} ?? $opt->product->name_ar);
+                                    }
+                                @endphp
+                                @if($optName)
+                                    <span class="option-chip">{{ $optName }}</span>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+
+            @if($hasExtras)
+                <hr class="divider">
+            @endif
 
             @if($invoice->joining_date)
             <div class="invoice-row">

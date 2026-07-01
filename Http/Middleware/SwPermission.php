@@ -137,6 +137,10 @@ class SwPermission
             , 'memberActivityMembershipAttendees'
             , 'memberInvitationAttendees', 'editUserProfile', 'listUserJson'
             , 'listUserLog', 'downloadCard', 'memberSubscriptionRenew', 'downloadQRCode', 'downloadCode', 'downloadStoreProductBarcode', 'downloadMemberBarcode'
+            , 'subscriptionProducts.index', 'subscriptionProducts.store', 'subscriptionProducts.update', 'subscriptionProducts.destroy', 'subscriptionProducts.reorder'
+            , 'subscriptionOptionGroups.index', 'subscriptionOptionGroups.store', 'subscriptionOptionGroups.update', 'subscriptionOptionGroups.destroy'
+            , 'subscriptionOptions.store', 'subscriptionOptions.update', 'subscriptionOptions.destroy'
+            , 'subscription.calculatePrice', 'subscription.options'
             , 'showOrderSubscription', 'showOrderSubscriptionPOS'
             , 'showOrderPTSubscription', 'showOrderPTSubscriptionPOS'
             , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS'
@@ -163,6 +167,7 @@ class SwPermission
             , 'reservation.confirm', 'reservation.cancel', 'reservation.attend', 'reservation.missed'
             , 'getMembersBySearch', 'updateEventNotificationMessage'
             , 'phonesByAjax', 'phonesByAjaxWAUltra', 'phonesByAjaxWA'
+            , 'checkMemberPhoneExists', 'checkSubscriptionOverlap'
         ];
         
         // Merge permissions once

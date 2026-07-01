@@ -81,7 +81,7 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
     }
 
     function exportPDF(){
-        $records = $this->SubscriptionCategoryRepository->get();
+        $records = $this->CategoryRepository->get();
         $this->fileName = 'subscription_categories-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name'];
@@ -225,33 +225,33 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
         $input_file = 'image';
         if (request()->hasFile($input_file)) {
             $file = request()->file($input_file);
-            $filename = rand(0, 20000) . time() . '.' . $file->getClientOriginalExtension();
-            $destinationPath = base_path(GymSubscriptionCategory::$uploads_path);
+            if ($file->isValid()) {
+                $extension = $file->getClientOriginalExtension();
+                $filename = uniqid() . time() . ($extension ? '.' . $extension : '.jpg');
+                $destinationPath = base_path(GymSubscriptionCategory::$uploads_path);
 
-            $upload_success = $this->imageManager
-                ->read($file)
-                ->scale(width: 360)
-                ->toJpeg()
-                ->save($destinationPath . $filename);
+                if (!File::exists($destinationPath)) {
+                    File::makeDirectory($destinationPath, 0777, true, true);
+                }
 
-            if ($upload_success) {
-                $inputs[$input_file] = $filename;
+                try {
+                    $this->imageManager
+                        ->read($file->getRealPath())
+                        ->scaleDown(360)
+                        ->toJpeg(90)
+                        ->save($destinationPath . DIRECTORY_SEPARATOR . $filename);
+
+                    $inputs[$input_file] = $filename;
+                } catch (\Throwable $e) {
+                    report($e);
+                    unset($inputs[$input_file]);
+                }
+            } else {
+                unset($inputs[$input_file]);
             }
         } else {
             unset($inputs[$input_file]);
         }
-        // Handle text fields - convert null/empty values to empty strings to avoid null constraint violations
-        if (isset($inputs['content_ar'])) {
-            $inputs['content_ar'] = $inputs['content_ar'] !== null ? $inputs['content_ar'] : '';
-        } else {
-            $inputs['content_ar'] = '';
-        }
-        if (isset($inputs['content_en'])) {
-            $inputs['content_en'] = $inputs['content_en'] !== null ? $inputs['content_en'] : '';
-        } else {
-            $inputs['content_en'] = '';
-        }
-
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;

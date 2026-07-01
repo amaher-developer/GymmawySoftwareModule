@@ -345,12 +345,11 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             })->count() > 0;
         });
             
-        $members = GymMember::branch()->get();
         $payment_types = \Modules\Software\Models\GymPaymentType::all();
         $discounts = \Modules\Software\Models\GymGroupDiscount::branch()->where('is_store', true)->get();
         $swUser = $this->user_sw;
 
-        return view('software::Front.store_order_pos_front_form', compact('products', 'categories', 'members', 'payment_types', 'title', 'discounts', 'swUser'));
+        return view('software::Front.store_order_pos_front_form', compact('products', 'categories', 'payment_types', 'title', 'discounts', 'swUser'));
     }
 
     public function storePOS(GymStoreOrderRequest $request)
@@ -987,6 +986,77 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             'money_to_point_rate' => (float)$rule->money_to_point_rate,
             'points_for_one_currency' => round($pointsForOneCurrency, 2),
             'rule_name' => $rule->name,
+        ]);
+    }
+
+    public function posQuickCreateMember(\Illuminate\Http\Request $request)
+    {
+        $branchId = \Modules\Generic\Models\GenericModel::getCurrentBranchId();
+
+        $request->validate([
+            'name'   => 'required|string|max:255',
+            'phone'  => 'required|string',
+            'gender' => 'nullable|in:0,1',
+        ]);
+
+        // If phone already exists in this branch, return the existing member
+        $existing = GymMember::branch()->where('phone', $request->phone)->first();
+        if ($existing) {
+            return response()->json([
+                'existing' => true,
+                'member'   => [
+                    'id'    => $existing->id,
+                    'name'  => $existing->name,
+                    'phone' => $existing->phone,
+                    'code'  => $existing->code,
+                ],
+            ]);
+        }
+
+        $code = str_pad((GymMember::branch()->withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
+
+        $member = GymMember::create([
+            'name'              => $request->name,
+            'phone'             => $request->phone,
+            'gender'            => ($request->gender !== '' && $request->gender !== null) ? $request->gender : null,
+            'code'              => $code,
+            'user_id'           => Auth::guard('sw')->user()->id,
+            'branch_setting_id' => $branchId,
+        ]);
+
+        return response()->json([
+            'existing' => false,
+            'member'   => [
+                'id'    => $member->id,
+                'name'  => $member->name,
+                'phone' => $member->phone,
+                'code'  => $member->code,
+            ],
+        ]);
+    }
+
+    public function posSearchMembers(\Illuminate\Http\Request $request)
+    {
+        $q = trim($request->get('q', ''));
+
+        $query = GymMember::branch()->select('id', 'name', 'phone', 'code');
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('phone', 'like', "%{$q}%")
+                    ->orWhere('code', 'like', "%{$q}%");
+            });
+        }
+
+        $members = $query->orderBy('id', 'desc')->limit(30)->get();
+
+        return response()->json([
+            'results' => $members->map(fn($m) => [
+                'id'   => $m->id,
+                'text' => $m->name . ' - ' . $m->code,
+                'code' => $m->code,
+            ]),
         ]);
     }
 

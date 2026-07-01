@@ -156,7 +156,13 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscription($id)
     {
         $title = trans('sw.subscription_contract');
-        $order = GymMemberSubscription::branch()->with(['pay_type', 'member' => function($q){$q->withTrashed();}, 'subscription' => function($q){$q->withTrashed();}])->where('id', $id)->first();
+        $order = GymMemberSubscription::branch()->with([
+            'pay_type',
+            'member' => function($q){$q->withTrashed();},
+            'subscription' => function($q){$q->withTrashed();},
+            'selected_options.option.product',
+            'selected_options.option.activity',
+        ])->where('id', $id)->first();
         $money_box = GymMoneyBox::branch()->where('member_id', $order->member_id)->where('member_subscription_id', $order->id)->get();
         $payment_types = GymPaymentType::get();
         $money_box->filter(function ($item) use ($payment_types){

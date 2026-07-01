@@ -136,12 +136,12 @@
                 </div>
             </div>
             <div class="card-toolbar">
-                <div class="d-flex align-items-center gap-2 gap-lg-3">
+                <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3">
 
                     <!--begin::Filter-->
                     <button type="button" class="btn btn-sm btn-flex btn-light-primary" data-bs-toggle="collapse" data-bs-target="#kt_moneybox_filter_collapse">
                         <i class="ki-outline ki-filter fs-6"></i>
-                        {{ trans('sw.filter')}}
+                        <span class="d-none d-md-inline ms-1">{{ trans('sw.filter')}}</span>
                     </button>
                     <!--end::Filter-->
 
@@ -150,7 +150,7 @@
                         <div class="m-0">
                             <button class="btn btn-sm btn-flex btn-light-primary" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
                                 <i class="ki-outline ki-exit-down fs-6"></i>
-                                {{ trans('sw.download')}}
+                                <span class="d-none d-md-inline ms-1">{{ trans('sw.download')}}</span>
                             </button>
                             <div class="menu menu-sub menu-sub-dropdown w-200px" data-kt-menu="true">
                                 @if(in_array('exportMoneyBoxExcel', (array)$swUser->permissions) || $swUser->is_super_user)
@@ -174,31 +174,30 @@
                     @endif
                     <!--end::Export-->
                     <!--begin::Print-->
-                    <button type="button" class="btn btn-sm btn-flex btn-light-primary" onclick="printPageContent()">
+                    <button type="button" class="btn btn-sm btn-flex btn-light-primary" onclick="printPageContent()" data-bs-toggle="tooltip" title="{{ trans('sw.print')}}">
                         <i class="ki-outline ki-printer fs-6"></i>
-                        {{ trans('sw.print')}}
+                        <span class="d-none d-md-inline ms-1">{{ trans('sw.print')}}</span>
                     </button>
                     <!--end::Print-->
 
                     <!--begin::Refresh-->
-                    <button class="btn btn-sm btn-flex btn-light-primary" id="members_refresh" onclick="members_refresh()">
+                    <button class="btn btn-sm btn-flex btn-light-primary" id="members_refresh" onclick="members_refresh()" data-bs-toggle="tooltip" title="{{ trans('sw.members_refresh')}}">
                         <i class="ki-outline ki-arrows-circle fs-6"></i>
-                        {{ trans('sw.members_refresh')}}
+                        <span class="d-none d-md-inline ms-1">{{ trans('sw.members_refresh')}}</span>
                     </button>
                     <!--end::Refresh-->
 
                     <!--begin::Trashed-->
-                    
                     @if($swUser->is_super_user)
                         @if(request('trashed'))
-                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->except('trashed'), [])) }}" class="btn btn-sm btn-flex btn-light-danger">
+                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->except('trashed'), [])) }}" class="btn btn-sm btn-flex btn-light-danger" data-bs-toggle="tooltip" title="{{ trans('sw.show_active')}}">
                                 <i class="ki-outline ki-eye fs-6"></i>
-                                {{ trans('sw.show_active')}}
+                                <span class="d-none d-md-inline ms-1">{{ trans('sw.show_active')}}</span>
                             </a>
                         @else
-                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->query(), ['trashed' => 1])) }}" class="btn btn-sm btn-flex btn-light-warning">
+                            <a href="{{ route('sw.listMoneyBox', array_merge(request()->query(), ['trashed' => 1])) }}" class="btn btn-sm btn-flex btn-light-warning" data-bs-toggle="tooltip" title="{{ trans('sw.show_trashed')}}">
                                 <i class="ki-outline ki-trash fs-6"></i>
-                                {{ trans('sw.show_trashed')}}
+                                <span class="d-none d-md-inline ms-1">{{ trans('sw.show_trashed')}}</span>
                             </a>
                         @endif
                     @endif

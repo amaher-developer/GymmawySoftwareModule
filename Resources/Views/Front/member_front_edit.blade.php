@@ -575,6 +575,21 @@
                     </div>
                     <!--end::Select Membership-->
 
+                    <!--begin::Option Groups-->
+                    <div id="edit_pos_option_groups_card" class="row mb-4" style="display:none">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">{{ trans('sw.option_groups') }}</label>
+                            <div id="edit_pos_option_groups_body" class="border rounded p-3">
+                                <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="edit_pos_option_ids_container"></div>
+                    <div id="edit_pos_breakdown" class="row mb-4" style="display:none">
+                        <div class="col-md-12" id="edit_pos_breakdown_inner"></div>
+                    </div>
+                    <!--end::Option Groups-->
+
                     <!--begin::Date Range-->
                     <div class="row mb-3">
                         <div class="col-md-12">
@@ -969,6 +984,10 @@
                     $('#EditMembershipSelect').html(output).trigger('change.select2');
 
                     setMembershipDate(data.member_membership);
+                    var currentSubId = data.member_membership ? data.member_membership['subscription_id'] : null;
+                    var savedIds = (data.selected_option_ids || []);
+                    editPosOptionsTotal = 0;
+                    editPosLoadOptionGroups(currentSubId, savedIds);
                 },
                 error: (reject) => {
                     var response = $.parseJSON(reject.responseText);
@@ -1096,6 +1115,10 @@
     var selectedMembershipPrice = 0;
     var selectedMembershipStartDate = '';
     var selectedMembershipExpireDate = '';
+    var editPosOptionsTotal = 0;
+    var editPosOptionsUrl   = '{{ route("sw.subscription.options", ":id") }}';
+    var editPosCalcUrl      = '{{ route("sw.subscription.calculatePrice", ":id") }}';
+    var EDIT_VAT_PCT        = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
     var selectedMembershipWorkouts = 0;
     var selectedMembershipFreezeLimit = 0;
     var selectedMembershipNumberTimesFreeze = 0;
@@ -1151,10 +1174,15 @@
     }
 
     function submitMembershipData(){
-        var id = $('#edit_membership_id').val()
+        var id = $('#edit_membership_id').val();
+        var editOptIds = [];
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            editOptIds.push(parseInt($(this).val()));
+        });
         var data = {
          'member_subscription_id': id,
          'subscription_id': $('#EditMembershipSelect').val(),
+         'option_ids': editOptIds,
          'joining_date': $('#start_date_membership').val(),
          'expire_date': $('#expire_date_membership').val(),
          'workouts': $('#EditMembershipWorkouts').val(),
@@ -1218,6 +1246,148 @@
     }
 
 
+    // ── Edit Modal Option Groups ──────────────────────────────────────────────
+    $('#EditMembershipSelect').on('change', function() {
+        editPosOptionsTotal = 0;
+        $('#edit_pos_option_ids_container').empty();
+        $('#edit_pos_breakdown').hide();
+        editPosLoadOptionGroups($(this).val(), []);
+    });
+
+    function editPosLoadOptionGroups(subId, preSelectedIds) {
+        var $card = $('#edit_pos_option_groups_card');
+        var $body = $('#edit_pos_option_groups_body');
+        if (!subId) { $card.hide(); return; }
+        $card.show();
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $.ajax({
+            url: editPosOptionsUrl.replace(':id', subId),
+            method: 'GET',
+            data: { channel: 1 },
+            headers: { 'Accept': 'application/json' },
+            success: function(res) {
+                var groups = res.option_groups || [];
+                if (!groups.length) { $card.hide(); return; }
+                editPosRenderGroups(groups, preSelectedIds, subId);
+            },
+            error: function() { $card.hide(); }
+        });
+    }
+
+    function editPosRenderGroups(groups, preSelectedIds, subId) {
+        var $body = $('#edit_pos_option_groups_body');
+        $body.empty();
+        var lang = '{{ $lang }}';
+        groups.forEach(function(group) {
+            var isSingle = group.selection_type === 'single';
+            var $grp = $('<div class="mb-3">');
+            $grp.append($('<div class="fw-semibold mb-2 fs-7">').text(group['name_' + lang] || group.name_ar || ''));
+            var $opts = $('<div class="d-flex flex-column gap-2">');
+            (group.options || []).forEach(function(opt) {
+                var $label = $('<label class="d-flex align-items-center gap-2 cursor-pointer p-2 rounded border-hover-primary">');
+                var $inp = $('<input class="form-check-input edit-pos-opt-check mt-0">')
+                    .attr('type', isSingle ? 'radio' : 'checkbox')
+                    .attr('data-group-id', group.id)
+                    .attr('data-price', parseFloat(opt.price_modifier || 0))
+                    .val(opt.id)
+                    .on('change', function() {
+                        if (isSingle) {
+                            $('#edit_pos_option_groups_body .edit-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                        }
+                        editPosUpdatePrice(subId);
+                    });
+                if (preSelectedIds.indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                var name = '';
+                if (opt.product) name = opt.product['display_name_' + lang] || opt.product['name_' + lang] || opt.product.name_ar || '';
+                else if (opt.activity) name = opt.activity['name_' + lang] || opt.activity.name_ar || '';
+                var price = parseFloat(opt.price_modifier || 0);
+                $label.append($inp).append($('<span class="flex-grow-1 fs-7">').text(name));
+                if (price !== 0) $label.append($('<span class="badge badge-light-primary fs-8">').text((price > 0 ? '+' : '') + price.toFixed(2)));
+                $opts.append($('<div>').append($label));
+            });
+            $grp.append($opts);
+            $body.append($grp);
+        });
+        if (preSelectedIds.length) editPosUpdatePrice(subId);
+    }
+
+    function editPosUpdatePrice(subId) {
+        var optionIds = [];
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            optionIds.push(parseInt($(this).val()));
+        });
+        var $cont = $('#edit_pos_option_ids_container');
+        $cont.empty();
+        optionIds.forEach(function(id) { $cont.append($('<input type="hidden" name="option_ids[]">').val(id)); });
+        $.ajax({
+            url: editPosCalcUrl.replace(':id', subId),
+            method: 'POST',
+            data: { option_ids: optionIds },
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+            dataType: 'json',
+            success: function(res) {
+                editPosOptionsTotal = parseFloat(res.options_total || 0);
+                var baseP = parseFloat(res.base_price || 0);
+                editPosRenderBreakdown(res, baseP, editPosOptionsTotal);
+                // If no options selected, reset price display to base
+                if (!(res.selected_options || []).length) {
+                    var discount = parseFloat($('#discount_value').val() || 0);
+                    var vatAmt = EDIT_VAT_PCT > 0 ? parseFloat(((baseP - discount) * EDIT_VAT_PCT / 100).toFixed(2)) : 0;
+                    var total = parseFloat((baseP - discount + vatAmt).toFixed(2));
+                    var prevPaid = parseFloat($('#prev_amount_paid_input').val() || 0);
+                    $('#myTotal').text('{{ trans("sw.price") }} = ' + baseP.toFixed(2));
+                    $('#myTotalWithVat').text('{{ trans("sw.price") }} = ' + total.toFixed(2));
+                    $('#create_amount_paid').attr('max', total.toFixed(2)).val(total.toFixed(2));
+                    $('#create_amount_remaining').val((0).toFixed(2));
+                    $('#diff_amount_paid').html(parseFloat(total - prevPaid).toFixed(2));
+                    $('#discount_value').attr('max', total.toFixed(2));
+                }
+            },
+            error: function() { editPosOptionsTotal = 0; }
+        });
+    }
+
+    function editPosRenderBreakdown(res, baseP, optsP) {
+        var $wrap = $('#edit_pos_breakdown');
+        var $inner = $('#edit_pos_breakdown_inner');
+        var opts = res.selected_options || [];
+        if (!opts.length) { $wrap.hide(); return; }
+
+        // Recalculate totals and update price display + amount fields
+        var subtotal  = baseP + optsP;
+        var discount  = parseFloat($('#discount_value').val() || 0);
+        var vatAmt    = EDIT_VAT_PCT > 0 ? parseFloat(((subtotal - discount) * EDIT_VAT_PCT / 100).toFixed(2)) : 0;
+        var newTotal  = parseFloat((subtotal - discount + vatAmt).toFixed(2));
+        var prevPaid  = parseFloat($('#prev_amount_paid_input').val() || 0);
+        $('#myTotal').text('{{ trans("sw.price") }} = ' + subtotal.toFixed(2));
+        $('#myTotalWithVat').text('{{ trans("sw.price") }} = ' + newTotal.toFixed(2));
+        $('#create_amount_paid').attr('max', newTotal.toFixed(2)).val(newTotal.toFixed(2));
+        $('#create_amount_remaining').val((0).toFixed(2));
+        $('#diff_amount_paid').html(parseFloat(newTotal - prevPaid).toFixed(2));
+        $('#discount_value').attr('max', newTotal.toFixed(2));
+        var html = '<div class="p-3 rounded" style="background:#f0fdf4;border:1px dashed #16a34a">'
+            + '<div class="fw-bold text-success mb-2 fs-7"><i class="bi bi-receipt me-1"></i>{{ trans("sw.price_breakdown") }}</div>'
+            + '<div class="d-flex justify-content-between text-muted fs-7 mb-1"><span>{{ trans("sw.base_price") }}</span><span>' + baseP.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        opts.forEach(function(o) {
+            var mod = parseFloat(o.price_modifier || 0);
+            var name = o['name_{{ $lang }}'] || o.name_ar || o.name_en || '';
+            if (!name) return;
+            var modLabel = mod === 0 ? '{{ trans("sw.app_currency") == "ر.س" ? "مجاناً" : "Free" }}' : (mod > 0 ? '+' : '') + mod.toFixed(2) + ' {{ trans("sw.app_currency") }}';
+            html += '<div class="d-flex justify-content-between text-success fs-7 mb-1"><span><i class="bi bi-check2 me-1"></i>' + $('<span>').text(name).html() + '</span><span>' + modLabel + '</span></div>';
+        });
+        var subtotal = baseP + optsP;
+        html += '<div class="d-flex justify-content-between fw-bold border-top border-success mt-2 pt-2"><span>{{ trans("sw.total") }}</span><span>' + subtotal.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        if (EDIT_VAT_PCT > 0) {
+            var vatAmt = parseFloat((subtotal * EDIT_VAT_PCT / 100).toFixed(2));
+            html += '<div class="d-flex justify-content-between text-muted fs-7 mt-1"><span>{{ trans("sw.vat") }} (' + EDIT_VAT_PCT + '%)</span><span>+' + vatAmt.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+            html += '<div class="d-flex justify-content-between fw-bold text-primary mt-1"><span>{{ trans("sw.total_after_vat") }}</span><span>' + (subtotal + vatAmt).toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        }
+        html += '</div>';
+        $inner.html(html);
+        $wrap.show();
+    }
+    // ── End Edit Modal Option Groups ──────────────────────────────────────────
+
     function editBarCodeInput(){
         $('#subscribedClientInputCode').prop('disabled', false); // If checked enable item
         $('#editBarcodeBtn').hide();
@@ -1265,6 +1435,11 @@
         $.each($("#EditMembershipSelect option:selected"), function () {
             selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')).toFixed(2));
         });
+        var editOptsFromDom = 0;
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            editOptsFromDom += parseFloat($(this).attr('data-price') || 0);
+        });
+        var effectivePrice = parseFloat(selectedMembershipPrice) + editOptsFromDom;
         let vat = 0;
         let selectedMembershipPriceWithVat = 0;
         let valueAmountPaid = $('#create_amount_paid').val();
@@ -1272,11 +1447,11 @@
         let valueDiscount = 0;
         valueDiscount = $('#discount_value').val();
         @if(@$mainSettings->vat_details['vat_percentage'])
-            vat = (parseFloat(selectedMembershipPrice)- parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+            vat = (effectivePrice - parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
             vat = parseFloat(vat.toFixed(2));
         @endif
 
-        selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount) + vat;
+        selectedMembershipPriceWithVat = effectivePrice - parseFloat(valueDiscount) + vat;
         selectedMembershipPriceWithVat = Number(selectedMembershipPriceWithVat).toFixed(2);
 
         $('#create_amount_remaining').val(Number(selectedMembershipPriceWithVat - valueAmountPaid ).toFixed(2));
@@ -1333,8 +1508,12 @@
         discount_value();
     });
     function discount_value(discount_amount = null) {
-        // $('#discount_value').change(function () {
-        let price = (parseFloat($('#EditMembershipSelect option:selected').attr('price')));
+        let basePrice = parseFloat($('#EditMembershipSelect option:selected').attr('price'));
+        var _editOptsFromDom = 0;
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            _editOptsFromDom += parseFloat($(this).attr('data-price') || 0);
+        });
+        let price = basePrice + _editOptsFromDom;
         let vat = 0;
         let priceWithVat = 0;
 

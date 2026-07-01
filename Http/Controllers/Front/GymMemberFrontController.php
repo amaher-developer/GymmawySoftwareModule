@@ -661,7 +661,7 @@ class GymMemberFrontController extends GymGenericFrontController
         if(@(int)$request->code)
             $maxId = str_pad(intval(@$request->code), 14, 0, STR_PAD_LEFT);
 
-        $member_inputs = $this->prepare_inputs($request->except(['_token', 'subscription_id', 'amount_paid', 'discount_value', 'payment_type', 'notes']));
+        $member_inputs = $this->prepare_inputs($request->except(['_token', 'subscription_id', 'amount_paid', 'discount_value', 'payment_type', 'notes', 'option_ids']));
         if(@$request->dob){$member_inputs['dob'] = Carbon::parse($request->dob);}
         $member_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $member_inputs['code'] = $maxId;
@@ -676,12 +676,22 @@ class GymMemberFrontController extends GymGenericFrontController
         }])->find($request->subscription_id);
 
         if ($subscription) {
-            $vat = ($subscription->price - @$request->discount_value) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
+            // Server-side pricing: base + any selected option add-ons
+            $optionIds      = array_values(array_filter(array_map('intval', (array) $request->input('option_ids', []))));
+            $_pricingSvc    = new \Modules\Software\Services\SubscriptionPricingService();
+            $pricing        = $_pricingSvc->calculate($subscription, $optionIds);
+            $baseTotal      = $pricing['total']; // base + options, before discount/VAT
+
+            $vat = ($baseTotal - @$request->discount_value) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
             $vat = round($vat, 2);
             $amount_paid = round(@$request->amount_paid, 2);
             $discount_value = round(@$request->discount_value, 2);
-            $subscription_price = round(($subscription->price - @$request->discount_value + $vat), 2);
+            $subscription_price = round(($baseTotal - @$request->discount_value + $vat), 2);
             $notes = (string)$request->notes;
+            if (!empty($pricing['selected_options'])) {
+                $optionsNote = $_pricingSvc->buildOptionsNote($pricing['selected_options'], $this->lang);
+                if ($optionsNote) $notes = ($notes ? $notes . "\n" : '') . $optionsNote;
+            }
             if (@$amount_paid > $subscription_price) {
                 return redirect(route('sw.createMember'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less')]);
             }
@@ -692,7 +702,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $sub = [];
 
             try {
-                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes) {
+                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes, $optionIds, $baseTotal) {
             $member = $this->MemberRepository->create($member_inputs);
 
             $this->incrementLastBarcodeNumber();
@@ -710,11 +720,11 @@ class GymMemberFrontController extends GymGenericFrontController
                         'max_freeze_extension_sum' => $subscription->max_freeze_extension_sum,
                         'joining_date' => $member_inputs['joining_date'] ? Carbon::parse($member_inputs['joining_date']) : Carbon::now(),
                         'expire_date' => $member_inputs['expire_date'] ? Carbon::parse($member_inputs['expire_date']) : Carbon::parse($member_inputs['joining_date'])->addDays($subscription->period - 1),
-                        'amount_remaining' => (($subscription->price - $amount_paid - @$discount_value) + (($subscription->price - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100))),
+                        'amount_remaining' => (($baseTotal - $amount_paid - @$discount_value) + (($baseTotal - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100))),
                         'amount_paid' => (float)($amount_paid),
                         'discount_value' => (float)$discount_value,
                         'payment_type' => (int)($request->payment_type),
-                        'amount_before_discount' => $subscription->price,
+                        'amount_before_discount' => $baseTotal, // base + options, before discount/VAT
                         'vat' => $vat,
                         'vat_percentage' => @$this->mainSettings->vat_details['vat_percentage'],
                         'activities' => @$subscription->activities->toJson(),
@@ -725,6 +735,15 @@ class GymMemberFrontController extends GymGenericFrontController
                     ];
 
             $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
+
+            // Save selected option choices with price snapshot
+            if (!empty($optionIds)) {
+                $memberSubModel = GymMemberSubscription::find($member_subscription);
+                if ($memberSubModel) {
+                    (new \Modules\Software\Services\SubscriptionPricingService())
+                        ->saveSelectedOptions($memberSubModel, $optionIds, (int) (@$this->user_sw->branch_setting_id ?? 1));
+                }
+            }
 
             $amount_box = GymMoneyBox::branch()->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
@@ -1486,10 +1505,19 @@ class GymMemberFrontController extends GymGenericFrontController
         $joining_date = Carbon::parse(@$request->joining_date)->toDateString();
         $expire_date = @$request->expire_date ? Carbon::parse(@$request->expire_date)->toDateString() : Carbon::parse($joining_date)->addDays((int)$subscription->period - 1)->toDateString();
 
+        $optionIds = array_values(array_filter(array_map('intval', (array) $request->input('option_ids', []))));
+        $pricingService = new \Modules\Software\Services\SubscriptionPricingService();
+
         if ($member_subscription->subscription_id == $subscription_id) {
             $get_subscription_price = $member_subscription->amount_before_discount;
         } else {
             $get_subscription_price = $subscription->price;
+        }
+        if (!empty($optionIds)) {
+            $pricing = $pricingService->calculate($subscription, $optionIds);
+            $get_subscription_price = $pricing['total'];
+            $editOptionsNote = $pricingService->buildOptionsNote($pricing['selected_options'], $this->lang);
+            if ($editOptionsNote) $notes = ($notes ? $notes . "\n" : '') . $editOptionsNote;
         }
 
         $vat = ($get_subscription_price - $discount_value) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
@@ -1543,6 +1571,8 @@ class GymMemberFrontController extends GymGenericFrontController
         $member_subscription->time_week = $subscription->time_week;
         $member_subscription->notes = $notes;
         $member_subscription->save();
+
+        $pricingService->saveSelectedOptions($member_subscription, $optionIds, (int)(@$this->user_sw->branch_setting_id ?? 0));
 
         // Handle loyalty points when amount changes
         if ($price_diff != 0 && $member_subscription->member_id && @$this->mainSettings->active_loyalty) {
@@ -2734,7 +2764,8 @@ class GymMemberFrontController extends GymGenericFrontController
             $membership->expire_date = Carbon::parse($membership->expire_date)->toDateString();
             $membership->from_expire_days = Carbon::parse($membership->expire_date)->diffInDays(Carbon::now()->subDay()->toDateString());
         }
-        return Response::json(['membership' => $subscriptions, 'member' => @$member, 'member_membership' => @$membership], 200);
+        $selectedOptionIds = $membership ? $membership->selected_options->pluck('option_id')->toArray() : [];
+        return Response::json(['membership' => $subscriptions, 'member' => @$member, 'member_membership' => @$membership, 'selected_option_ids' => $selectedOptionIds], 200);
     }
 
     public function memberSubscriptionRenewStore(Request $request)
@@ -2757,12 +2788,22 @@ class GymMemberFrontController extends GymGenericFrontController
         $discount_value = (float)@$request->discount_value;
         $group_discount_id = (int)@$request->group_discount_id;
         $payment_type = (float)@$request->payment_type;
-        $vat = ($subscription->price - $discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100);
+        $renewOptionIds      = array_values(array_filter(array_map('intval', (array) $request->input('option_ids', []))));
+        $renewPricingService = new \Modules\Software\Services\SubscriptionPricingService();
+        $renewPricing        = !empty($renewOptionIds)
+            ? $renewPricingService->calculate($subscription, $renewOptionIds)
+            : ['total' => (float) $subscription->price, 'selected_options' => []];
+        $basePrice           = $renewPricing['total'];
+        $vat = ($basePrice - $discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100);
         $vat = round(@$vat, 2);
         $vat_percentage = @$this->mainSettings->vat_details['vat_percentage'];
-        $amount_remaining = ($subscription->price - $discount_value + $vat - $amount_paid);
+        $amount_remaining = ($basePrice - $discount_value + $vat - $amount_paid);
         $amount_remaining = round(@$amount_remaining, 2);
-        $notes =  (string)@$request->notes;
+        $notes = (string)@$request->notes;
+        if (!empty($renewPricing['selected_options'])) {
+            $renewOptionsNote = $renewPricingService->buildOptionsNote($renewPricing['selected_options'], $this->lang);
+            if ($renewOptionsNote) $notes = ($notes ? $notes . "\n" : '') . $renewOptionsNote;
+        }
 
         if (!$custom_expire_date && ($subscription->is_expire_changeable)) {
             return Response::json(['msg' => trans('sw.error_expire_date'), 'code' => 'custom_expire_date'], 200);
@@ -2813,7 +2854,7 @@ class GymMemberFrontController extends GymGenericFrontController
             'group_discount_id' => $group_discount_id,
             'payment_type' => $payment_type,
             'status' => TypeConstants::Active,
-            'amount_before_discount' => $subscription->price,
+            'amount_before_discount' => $basePrice,
             'activities' => @$subscription->activities->toJson(),
             'time_week' =>  @json_encode($subscription->time_week),
             'updated_at' => Carbon::now(),
@@ -2823,6 +2864,12 @@ class GymMemberFrontController extends GymGenericFrontController
         ];
         $member_subscription = GymMemberSubscription::insertGetId($renew_subscription);
 
+        if (!empty($renewOptionIds)) {
+            $memberSubModel = GymMemberSubscription::find($member_subscription);
+            if ($memberSubModel) {
+                $renewPricingService->saveSelectedOptions($memberSubModel, $renewOptionIds, (int)(@$this->user_sw->branch_setting_id ?? 0));
+            }
+        }
 
         $amount_box = GymMoneyBox::branch()->latest()->first();
         $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);

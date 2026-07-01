@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Log;
 
 class GymStoreProduct extends GenericModel
 {
-
     protected $dates = ['deleted_at'];
 
     protected $table = 'sw_gym_store_products';
@@ -22,7 +21,7 @@ class GymStoreProduct extends GenericModel
     {
         return $query->where('is_system', true);
     }
-    protected $appends = ['name', 'image_name', 'content'];
+    protected $appends = ['name', 'display_name', 'image_name', 'content'];
     public static $uploads_path='uploads/products/';
     public static $thumbnails_uploads_path='uploads/products/thumbnails/';
 
@@ -35,6 +34,11 @@ class GymStoreProduct extends GenericModel
     public function order_product()
     {
         return $this->hasMany(GymStoreOrderProduct::class, 'product_id');
+    }
+
+    public function subscription_products()
+    {
+        return $this->hasMany(GymSubscriptionProduct::class, 'product_id');
     }
     
     public function category(){
@@ -53,6 +57,18 @@ class GymStoreProduct extends GenericModel
     {
         $lang = 'name_'. $this->lang;
         return $this->$lang;
+    }
+
+    /**
+     * Returns display_name_{lang} when set, otherwise falls back to name_{lang}.
+     * Use this in Subscription Products and customer-facing screens.
+     * POS / Inventory / Reports must continue using ->name (or name_ar / name_en directly).
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        $lang        = 'display_name_' . $this->lang;
+        $displayName = $this->getRawOriginal($lang);
+        return $displayName ?: $this->getNameAttribute();
     }
     public function getImageNameAttribute()
     {

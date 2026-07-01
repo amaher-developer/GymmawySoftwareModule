@@ -8,12 +8,6 @@ use Illuminate\Support\Str;
 
 class SubscriptionContentResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
-     */
     public function toArray($request)
     {
         $setting = Setting::select('vat_details')->first();
@@ -35,24 +29,77 @@ class SubscriptionContentResource extends JsonResource
 
         $finalPrice = $discountedPrice + ($discountedPrice * $vatPct / 100);
 
-        return
-            [
-                "id" => $this->id,
-                "name" => Str::limit(@$this->name, 30),
-                "image" => $this->image_name ? $this->image : @env('APP_URL').@env('APP_URL_ASSETS') . 'placeholder_black.png',
-                "price" => number_format($finalPrice, 2). ' ' . $currency . ' ',
-                "content" => strip_tags(@$this->content),
-                "period" => $this->period . ' '. trans('sw.day_2'),
-                "workouts" => $this->workouts,
-                "freeze_limit" => $this->freeze_limit,
-                "number_times_freeze" => $this->number_times_freeze,
-                "activities" => @$this->activities ? SubscriptionActivityResource::collection($this->activities) : [],
-                "is_payment" => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? 1 : 0,
-                //"payment_link" => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? (@env('APP_WEBSITE'). $this->lang ."/"."subscription-mobile/".$this->id) : "",
-                "payment_link" => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? route('sw.subscription-mobile', ['id' => $this->id]) : "",
+        return [
+            "id"                   => $this->id,
+            "name"                 => Str::limit(@$this->name, 30),
+            "image"                => $this->image_name ? $this->image : @env('APP_URL').@env('APP_URL_ASSETS') . 'placeholder_black.png',
+            "price"                => number_format($finalPrice, 2). ' ' . $currency . ' ',
+            "base_price_raw"       => $basePrice,
+            "content"              => strip_tags(@$this->content),
+            "period"               => $this->period . ' '. trans('sw.day_2'),
+            "workouts"             => $this->workouts,
+            "freeze_limit"         => $this->freeze_limit,
+            "number_times_freeze"  => $this->number_times_freeze,
+            "activities"           => @$this->activities ? SubscriptionActivityResource::collection($this->activities) : [],
+            "option_groups"        => $this->buildOptionGroupsForApi(),
+            "products"             => $this->buildProductsForApi(),
+            "is_payment"           => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? 1 : 0,
+            "payment_link"         => @env('APP_WEB_PAYMENT_SUBSCRIPTION') == 1 ? route('sw.subscription-mobile', ['id' => $this->id]) : "",
+        ];
+    }
 
-            ];
+    private function buildOptionGroupsForApi(): array
+    {
+        try {
+            $groups = $this->option_groups()
+                ->with(['options' => fn($q) => $q->orderBy('list_order')])
+                ->where('is_mobile', true)
+                ->orderBy('list_order')
+                ->get();
+
+            return $groups->map(fn($group) => [
+                'id'             => $group->id,
+                'name'           => $group->name,
+                'name_ar'        => $group->name_ar,
+                'name_en'        => $group->name_en,
+                'selection_type' => $group->selection_type,
+                'is_required'    => (bool) $group->is_required,
+                'options'        => $group->options->map(fn($opt) => [
+                    'id'             => $opt->id,
+                    'name'           => $opt->name,
+                    'name_ar'        => $opt->name_ar,
+                    'name_en'        => $opt->name_en,
+                    'price_modifier' => (float) $opt->price_modifier,
+                ])->values()->all(),
+            ])->values()->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function buildProductsForApi(): array
+    {
+        try {
+            $subscriptionProducts = $this->subscription_products()
+                ->with('product')
+                ->orderBy('list_order')
+                ->get();
+
+            return $subscriptionProducts->map(fn($sp) => [
+                'id'             => $sp->product->id,
+                'display_name'   => $sp->product->display_name,
+                'display_name_ar'=> $sp->product->getRawOriginal('display_name_ar') ?: $sp->product->name_ar,
+                'display_name_en'=> $sp->product->getRawOriginal('display_name_en') ?: $sp->product->name_en,
+                'image'          => $sp->product->image,
+                'is_replaceable' => (bool) $sp->is_replaceable,
+                'is_meal'        => (bool) $sp->product->is_meal,
+                'calories'       => $sp->product->calories,
+                'protein'        => $sp->product->protein,
+                'carbs'          => $sp->product->carbs,
+                'fat'            => $sp->product->fat,
+            ])->values()->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 }
-
-

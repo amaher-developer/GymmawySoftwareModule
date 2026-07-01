@@ -319,8 +319,55 @@
                                                     <!--end::Title-->
                                                 </div>
                                             </td>
-                                            <td class="text-end">{{number_format($order->amount_paid,2)}} {{@trans('sw.app_currency')}}</td>
+                                            <td class="text-end">{{number_format($order->amount_before_discount ?? $order->subscription->price ?? 0, 2)}} {{@trans('sw.app_currency')}}</td>
                                         </tr>
+                                        @php
+                                            $selectedOpts = $order->selected_options ?? collect();
+                                            $optionsTotal = $selectedOpts->sum('price_snapshot');
+                                            $lang = app()->getLocale();
+                                        @endphp
+                                        @if($selectedOpts->count())
+                                        <tr>
+                                            <td colspan="3" class="pt-3 pb-1">
+                                                <span class="text-muted fs-7 fw-semibold"><i class="ki-outline ki-abstract-26 fs-7 me-1"></i>{{ trans('sw.option_groups') }}</span>
+                                            </td>
+                                        </tr>
+                                        @foreach($selectedOpts as $selOpt)
+                                        @php
+                                            $opt = $selOpt->option;
+                                            $optName = '';
+                                            if ($opt) {
+                                                if ($opt->product_id && $opt->product) {
+                                                    $optName = $lang === 'ar'
+                                                        ? ($opt->product->getRawOriginal('display_name_ar') ?: $opt->product->name_ar ?? '')
+                                                        : ($opt->product->getRawOriginal('display_name_en') ?: $opt->product->name_en ?? $opt->product->name_ar ?? '');
+                                                } elseif ($opt->activity_id && $opt->activity) {
+                                                    $optName = $lang === 'ar' ? ($opt->activity->name_ar ?? '') : ($opt->activity->name_en ?? $opt->activity->name_ar ?? '');
+                                                }
+                                            }
+                                            $optPrice = (float)($selOpt->price_snapshot ?? 0);
+                                        @endphp
+                                        <tr>
+                                            <td></td>
+                                            <td class="ps-8 fs-7 text-gray-700">
+                                                <i class="ki-outline ki-check fs-7 text-success me-1"></i>{{ $optName ?: '#'.$selOpt->option_id }}
+                                            </td>
+                                            <td class="text-end fs-7 text-gray-700">
+                                                @if($optPrice == 0)
+                                                    <span class="text-success">{{ app()->getLocale() === 'ar' ? 'مجاناً' : 'Free' }}</span>
+                                                @else
+                                                    {{ ($optPrice > 0 ? '+' : '') . number_format($optPrice, 2) }} {{ trans('sw.app_currency') }}
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                        @if($optionsTotal != 0)
+                                        <tr>
+                                            <td colspan="2" class="text-end text-muted fs-7">{{ trans('sw.option_groups') }} {{ trans('sw.total') }}</td>
+                                            <td class="text-end fs-7">{{ ($optionsTotal > 0 ? '+' : '') . number_format($optionsTotal, 2) }} {{ trans('sw.app_currency') }}</td>
+                                        </tr>
+                                        @endif
+                                        @endif
                                         <tr>
                                             <td colspan="2" class="text-end">{{ trans('sw.total_for_price') }} @if(@$order->vat)<span class="total_for_price">({{ trans('sw.excluding_vat') }})</span>@endif</td>
                                             <td class="text-end">{{number_format(($order->amount_paid + @$order->amount_remaining - @$order->vat),2)}} {{@trans('sw.app_currency')}}</td>

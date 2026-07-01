@@ -77,7 +77,7 @@
         $invoice = $invoice ?? null;
     @endphp
     <!--begin::Member Create Form-->
-    <form method="post" action="" class="form" enctype="multipart/form-data">
+    <form method="post" action="{{ route('sw.createMember') }}" class="form" enctype="multipart/form-data">
         {{csrf_field()}}
 
         @if ($errors->any())
@@ -298,7 +298,27 @@
                     </div>
                 </div>
                 <!--end::Membership & Subscription Card-->
-                
+
+                <!--begin::Subscription Options Card-->
+                <div class="card card-flush mb-7" id="pos_option_groups_card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <h3 class="fw-bold">
+                                <i class="ki-outline ki-category fs-2 me-2"></i>
+                                {{ trans('sw.option_groups') }}
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="card-body pt-3" id="pos_option_groups_body">
+                        <div class="text-center py-4">
+                            <span class="spinner-border spinner-border-sm text-primary"></span>
+                        </div>
+                    </div>
+                </div>
+                {{-- Hidden inputs for selected option IDs — populated by JS --}}
+                <div id="pos_option_ids_container"></div>
+                <!--end::Subscription Options Card-->
+
                 <!--begin::Payment Information Card-->
                 <div class="card card-flush mb-7">
                     <div class="card-header">
@@ -317,6 +337,8 @@
                                     <span class="badge badge-lg badge-light-warning fw-bold" id="myTotalWithVat">{{ trans('sw.including_vat')}} = {{(float)@$member->member_subscription_info->subscription->price}}</span>
                                     @endif
                                 </div>
+                                {{-- Options price breakdown (shown when options with surcharges are selected) --}}
+                                <div id="pos_options_breakdown" class="mt-3" style="display:none"></div>
                             </div>
                             
                             <!-- Discount Controls -->
@@ -561,6 +583,20 @@
                         <input type="hidden" name="image" id="photo_camera">
                     </div>
                 </div>
+                <!--begin::Options Summary Card-->
+                <div id="pos_side_summary" class="card card-flush mt-5" style="display:none">
+                    <div class="card-header py-4">
+                        <div class="card-title">
+                            <h5 class="fw-bold mb-0">
+                                <i class="ki-outline ki-receipt-square fs-3 me-2 text-success"></i>
+                                {{ trans('sw.price_breakdown') }}
+                            </h5>
+                        </div>
+                    </div>
+                    <div class="card-body pt-0 pb-4" id="pos_side_summary_body">
+                    </div>
+                </div>
+                <!--end::Options Summary Card-->
             </div>
             <!-- end::Right Column -->
         </div>
@@ -606,7 +642,11 @@
         // Declare variables at the top
         let selectedMembershipPrice = 0;
         let selectedMembershipExpireDate = '';
+        var posOptionsTotal = 0; // server-confirmed options total (0 when no options selected)
         let loyaltyMoneyToPointRate = 0;
+        var posOptionsUrl       = '{{ route("sw.subscription.options", ":id") }}';
+        var posCalcPriceUrl     = '{{ route("sw.subscription.calculatePrice", ":id") }}';
+        var SW_VAT_PCT          = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
 
         $("#membership").select2();
 
@@ -676,31 +716,32 @@
 
         }
 
+        var _amountPaidUpdating = false; // guard against re-entrancy when discount_value() sets .val()
+
         $("#create_amount_paid").on('change input keyup', function () {
-            console.log('Amount paid changed, current value:', $(this).val());
-            
-            selectedMembershipPrice = 0;
+            if (_amountPaidUpdating) return; // programmatic update — skip to avoid loop
+
+            let basePrice = 0;
             $.each($("#membership option:selected"), function () {
-                selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')) || 0);
+                basePrice += (parseFloat($(this).attr('price')) || 0);
             });
+            // Always include confirmed options total in the expected total
+            let totalBeforeDiscount = basePrice + posOptionsTotal;
 
             let vat = 0;
-            let selectedMembershipPriceWithVat = 0;
+            let totalWithVat = 0;
             let valueAmountPaid = parseFloat($('#create_amount_paid').val()) || 0;
-
-            let valueDiscount = parseFloat($('#discount_value').val()) || 0;
+            let valueDiscount   = parseFloat($('#discount_value').val()) || 0;
 
             @if(@$mainSettings->vat_details['vat_percentage'])
-                vat = (parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+                vat = (totalBeforeDiscount - valueDiscount) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
                 vat = parseFloat(vat.toFixed(2));
             @endif
-            selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount) + vat;
+            totalWithVat = parseFloat(totalBeforeDiscount - valueDiscount + vat);
 
-            $('#create_amount_remaining').val(Number(selectedMembershipPriceWithVat - valueAmountPaid ).toFixed(2));
-            $('#create_amount_paid').attr('max', Number(selectedMembershipPriceWithVat).toFixed(2));
+            $('#create_amount_remaining').val(Number(totalWithVat - valueAmountPaid).toFixed(2));
+            $('#create_amount_paid').attr('max', Number(totalWithVat).toFixed(2));
 
-            // Calculate loyalty points
-            console.log('Calling calculateMemberLoyaltyPoints from amount_paid change');
             calculateMemberLoyaltyPoints();
         });
 
@@ -719,8 +760,10 @@
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice + vat).toFixed(2);
             $('#myTotal').text("{{ trans('sw.price')}} = " + parseFloat(selectedMembershipPrice).toFixed(2)).css('text-decoration', 'unset');
             $('#myTotalWithVat').val(selectedMembershipPriceWithVat).attr('max', selectedMembershipPriceWithVat).text("{{ trans('sw.including_vat')}} = " + selectedMembershipPriceWithVat).css('text-decoration', 'unset');
+            _amountPaidUpdating = true;
             $('#create_amount_paid').val(selectedMembershipPriceWithVat).attr('max', selectedMembershipPriceWithVat);
             $('#create_amount_remaining').val(0);
+            _amountPaidUpdating = false;
             $('#discount_value').attr('max', selectedMembershipPriceWithVat).attr('disabled', false).val(0);
             $('#myTotalAfterDiscount').hide();
 
@@ -731,6 +774,13 @@
 
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
+
+            // Reset options total and load option groups for the new subscription
+            posOptionsTotal = 0;
+            $('#pos_option_ids_container').empty();
+            $('#pos_options_breakdown').hide();
+            $('#pos_side_summary').hide();
+            posLoadOptionGroups($(this).val());
         });
 
         $('#editCustomStartDate').change(function () {
@@ -759,8 +809,10 @@
             @endif
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice + vat).toFixed(2);
 
+            _amountPaidUpdating = true;
             $('#create_amount_paid').val(selectedMembershipPriceWithVat).attr('max', selectedMembershipPriceWithVat);
             $('#create_amount_remaining').val(0);
+            _amountPaidUpdating = false;
             $('#myTotal').text("{{ trans('sw.price')}} = " + parseFloat(selectedMembershipPrice).toFixed(2));
             $('#myTotalWithVat').text("{{ trans('sw.including_vat')}} = " + selectedMembershipPriceWithVat);
             $('#discount_value').attr('max', selectedMembershipPriceWithVat).attr('disabled', false).val(0);
@@ -781,8 +833,11 @@
             discount_value();
         });
         function discount_value(discount_amount = null) {
-            // $('#discount_value').change(function () {
-            let price = parseFloat($('#membership option:selected').attr('price')) || 0;
+            // base subscription price + any option add-ons confirmed by server
+            let basePrice = parseFloat($('#membership option:selected').attr('price')) || 0;
+            let price = basePrice + posOptionsTotal;
+            // Always keep #myTotal badge in sync (base + options, before discount/VAT)
+            $('#myTotal').text("{{ trans('sw.price')}} = " + price.toFixed(2));
             let vat = 0;
             let priceWithVat = 0;
             let discount_value = 0;
@@ -807,8 +862,10 @@
             }
 
             $('#myTotalWithVat').text("{{ trans('sw.including_vat')}} = " + parseFloat(priceWithVat).toFixed(2));
+            _amountPaidUpdating = true;
             $('#create_amount_paid').val(parseFloat(priceWithVat).toFixed(2)).attr('max', parseFloat(priceWithVat).toFixed(2));
             $('#create_amount_remaining').val(0);
+            _amountPaidUpdating = false;
 
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
@@ -828,6 +885,235 @@
                 discount_value(result);
             }
         });
+
+        // ── POS Subscription Option Groups ────────────────────────────────────
+        function posLoadOptionGroups(subId) {
+            var $card = $('#pos_option_groups_card');
+            var $body = $('#pos_option_groups_body');
+            $('#pos_option_ids_container').empty();
+            posOptionsTotal = 0;
+
+            if (!subId) { $card.hide(); return; }
+
+            $body.html('<div class="text-center py-5"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+            $card.show();
+
+            $.ajax({
+                url: posOptionsUrl.replace(':id', subId),
+                method: 'GET',
+                data: { channel: 1 },
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+                dataType: 'json',
+                success: function(res) {
+                    var groups = res.option_groups || [];
+                    if (groups.length === 0) { $card.hide(); return; }
+                    $card.show();
+                    $body.empty().append(posRenderGroups(groups));
+                },
+                error: function() { $card.hide(); }
+            });
+        }
+
+        function posRenderGroups(groups) {
+            var $row = $('<div class="row g-5">');
+            groups.forEach(function(group) {
+                var isSingle  = group.selection_type === 'single';
+                var isRequired = group.is_required;
+                var $col = $('<div class="col-md-6 col-lg-4">');
+
+                var $lbl = $('<div class="fw-semibold fs-6 mb-3">');
+                $lbl.append($('<span>').text(group.name_ar + ' / ' + group.name_en));
+                if (isRequired) {
+                    $lbl.append($('<span class="badge badge-light-danger ms-2 fs-8">').text('{{ trans("sw.mandatory") }}'));
+                }
+                $lbl.append($('<span class="badge badge-light-secondary ms-1 fs-8">').text(
+                    isSingle ? '{{ trans("sw.single") }}' : '{{ trans("sw.multiple") }}'
+                ));
+                $col.append($lbl);
+
+                var $opts = $('<div class="d-flex flex-column gap-3">');
+                (group.options || []).forEach(function(opt) {
+                    var $label = $('<label class="d-flex align-items-center gap-3 cursor-pointer p-2 rounded border-hover-primary">');
+                    var $inp = $('<input class="form-check-input pos-option-input mt-0">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('data-group-id', group.id)
+                        .attr('data-single', isSingle ? '1' : '0')
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) {
+                                // Uncheck siblings in same group
+                                $('#pos_option_groups_body .pos-option-input[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            }
+                            posUpdatePrice();
+                        });
+                    var price = parseFloat(opt.price_modifier || 0);
+
+                    var itemName = '';
+                    if (opt.product) {
+                        itemName = opt.product['display_name_{{ $lang }}'] || opt.product['name_{{ $lang }}'] || opt.product.name_ar || '';
+                    } else if (opt.activity) {
+                        itemName = opt.activity['name_{{ $lang }}'] || opt.activity.name_ar || '';
+                    }
+                    var $text = $('<span class="flex-grow-1">').text(itemName);
+                    $label.append($inp).append($text);
+                    if (price !== 0) {
+                        $label.append($('<span class="badge badge-light-primary fs-8">').text(
+                            (price > 0 ? '+' : '') + price.toFixed(2)
+                        ));
+                    }
+                    $opts.append($('<div>').append($label));
+                });
+                $col.append($opts);
+                $row.append($col);
+            });
+            return $row;
+        }
+
+        function posUpdatePrice() {
+            var subId = $('#membership').val();
+            if (!subId) return;
+
+            var optionIds = [];
+            $('#pos_option_groups_body .pos-option-input:checked').each(function() {
+                optionIds.push(parseInt($(this).val()));
+            });
+
+            // Update hidden option_ids inputs for form submission
+            var $container = $('#pos_option_ids_container');
+            $container.empty();
+            optionIds.forEach(function(id) {
+                $container.append($('<input type="hidden" name="option_ids[]">').val(id));
+            });
+
+            // Ask server for confirmed pricing breakdown
+            $.ajax({
+                url: posCalcPriceUrl.replace(':id', subId),
+                method: 'POST',
+                data: { option_ids: optionIds },
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+                dataType: 'json',
+                success: function(res) {
+                    posOptionsTotal         = parseFloat(res.options_total || 0);
+                    selectedMembershipPrice = parseFloat(res.base_price || selectedMembershipPrice);
+
+                    // Rebuild the breakdown panel
+                    var $bd   = $('#pos_options_breakdown');
+                    var baseP = selectedMembershipPrice;
+                    var optsP = posOptionsTotal;
+
+                    var selectedOpts = res.selected_options || [];
+                    if (selectedOpts.length > 0) {
+                        var html = '<div class="p-3 rounded" style="background:#f0fdf4;border:1px dashed #16a34a">'
+                            + '<div class="fw-bold text-success mb-2 fs-7"><i class="bi bi-receipt me-1"></i>{{ trans("sw.price_breakdown") }}</div>'
+                            + '<div class="d-flex justify-content-between text-muted fs-7 mb-1">'
+                            + '<span>{{ trans("sw.base_price") }}</span><span>' + baseP.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+
+                        selectedOpts.forEach(function(o) {
+                            var mod  = parseFloat(o.price_modifier || 0);
+                            var name = o['name_{{ $lang }}'] || o.name_ar || o.name_en || '';
+                            if (!name) return;
+                            var modLabel = mod === 0 ? '{{ trans("sw.app_currency") == "ر.س" ? "مجاناً" : "Free" }}'
+                                : (mod > 0 ? '+' : '') + mod.toFixed(2) + ' {{ trans("sw.app_currency") }}';
+                            html += '<div class="d-flex justify-content-between text-success fs-7 mb-1">'
+                                + '<span><i class="bi bi-check2 me-1"></i>' + $('<span>').text(name).html() + '</span>'
+                                + '<span>' + modLabel + '</span></div>';
+                        });
+
+                        var subtotalBd = baseP + optsP;
+                        html += '<div class="d-flex justify-content-between fw-bold border-top border-success mt-2 pt-2">'
+                            + '<span>{{ trans("sw.total") }}</span>'
+                            + '<span>' + subtotalBd.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+
+                        if (SW_VAT_PCT > 0) {
+                            var vatAmtBd = parseFloat((subtotalBd * SW_VAT_PCT / 100).toFixed(2));
+                            html += '<div class="d-flex justify-content-between text-muted fs-7 mt-1">'
+                                + '<span>{{ trans("sw.vat") }} (' + SW_VAT_PCT + '%)</span>'
+                                + '<span>+' + vatAmtBd.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+                            html += '<div class="d-flex justify-content-between fw-bold text-primary mt-1">'
+                                + '<span>{{ trans("sw.total_after_vat") }}</span>'
+                                + '<span>' + (subtotalBd + vatAmtBd).toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+                        }
+
+                        html += '</div>';
+                        $bd.html(html).show();
+                    } else {
+                        $bd.hide();
+                    }
+
+                    posUpdateSideSummary(res, baseP, optsP);
+                    discount_value(); // refresh badges and amount_paid
+                },
+                error: function(xhr) {
+                    console.warn('calculate-price failed', xhr.status, xhr.responseText);
+                    // Fallback: compute options total client-side from visible price badges
+                    posOptionsTotal = 0;
+                    $('#pos_option_groups_body .pos-option-input:checked').each(function() {
+                        var $label = $(this).closest('label');
+                        var badgeText = $label.find('.badge').text().replace(/[^0-9.\-]/g, '');
+                        posOptionsTotal += parseFloat(badgeText) || 0;
+                    });
+                    discount_value();
+                }
+            });
+        }
+        function posUpdateSideSummary(res, baseP, optsP) {
+            var $card = $('#pos_side_summary');
+            var $body = $('#pos_side_summary_body');
+            var selectedOpts = res.selected_options || [];
+
+            // Hide if no options were selected at all
+            if (!selectedOpts.length) { $card.hide(); return; }
+
+            var subName = $('#membership option:selected').text().trim();
+            var html = '';
+
+            // Subscription name row
+            html += '<div class="d-flex justify-content-between py-2 border-bottom">'
+                + '<span class="text-muted fs-7">{{ trans("sw.membership") }}</span>'
+                + '<span class="fw-semibold fs-7 text-end">' + $('<span>').text(subName).html() + '</span></div>';
+
+            // Base price row
+            html += '<div class="d-flex justify-content-between py-2 border-bottom">'
+                + '<span class="text-muted fs-7">{{ trans("sw.base_price") }}</span>'
+                + '<span class="fs-7">' + baseP.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+
+            // One row per selected option (even if price_modifier = 0)
+            selectedOpts.forEach(function(o) {
+                var mod  = parseFloat(o.price_modifier || 0);
+                var name = o['name_{{ $lang }}'] || o.name_ar || o.name_en || '';
+                if (!name) return;
+                var modText = mod === 0
+                    ? '{{ trans("sw.app_currency") == "ر.س" ? "مجاناً" : "Free" }}'
+                    : (mod > 0 ? '+' : '') + mod.toFixed(2) + ' {{ trans("sw.app_currency") }}';
+                html += '<div class="d-flex justify-content-between align-items-center py-2 border-bottom">'
+                    + '<span class="fs-7 text-gray-700"><i class="bi bi-check2-circle text-success me-1"></i>' + $('<span>').text(name).html() + '</span>'
+                    + '<span class="badge badge-light-' + (mod > 0 ? 'success' : 'info') + ' fs-8">' + modText + '</span></div>';
+            });
+
+            // Subtotal (before VAT)
+            var subtotal = baseP + optsP;
+
+            // VAT row (only when VAT > 0)
+            if (SW_VAT_PCT > 0) {
+                var vatAmt = parseFloat((subtotal * SW_VAT_PCT / 100).toFixed(2));
+                html += '<div class="d-flex justify-content-between align-items-center py-2 border-bottom text-muted">'
+                    + '<span class="fs-7">{{ trans("sw.vat") }} (' + SW_VAT_PCT + '%)</span>'
+                    + '<span class="fs-7">+' + vatAmt.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+
+                // Total after VAT
+                html += '<div class="d-flex justify-content-between align-items-center pt-3 mt-1 fw-bold fs-6">'
+                    + '<span class="text-dark">{{ trans("sw.total") }}</span>'
+                    + '<span class="text-success">' + (subtotal + vatAmt).toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+            } else {
+                html += '<div class="d-flex justify-content-between align-items-center pt-3 mt-1 fw-bold fs-6">'
+                    + '<span class="text-dark">{{ trans("sw.total") }}</span>'
+                    + '<span class="text-success">' + subtotal.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+            }
+
+            $body.html(html);
+            $card.show();
+        }
+        // ── End POS Subscription Option Groups ───────────────────────────────
 
         apply_discount_subscription();
         function apply_discount_subscription(){

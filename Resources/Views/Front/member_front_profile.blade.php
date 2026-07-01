@@ -201,6 +201,16 @@
                 <h3 class="card-title">{{ trans('sw.subscription_details') }}</h3>
             </div>
             <div class="card-body">
+                @if(!$member->member_subscription_info)
+                    <div class="text-center py-10">
+                        <div class="symbol symbol-75px mb-4">
+                            <div class="symbol-label bg-light-warning">
+                                <i class="ki-outline ki-information-5 fs-2x text-warning"></i>
+                            </div>
+                        </div>
+                        <div class="text-gray-600 fw-semibold fs-5">{{ trans('sw.no_active_subscription') }}</div>
+                    </div>
+                @else
                 <div class="row">
                     <div class="col-md-6">
                         <div class="d-flex flex-stack py-3">
@@ -313,9 +323,9 @@
                 @endif
                 
                 @php
-                    $freeze_history = @$member->member_subscription_info->freezes()
-                        ->orderBy('created_at', 'desc')
-                        ->get();
+                    $freeze_history = $member->member_subscription_info
+                        ? $member->member_subscription_info->freezes()->orderBy('created_at', 'desc')->get()
+                        : collect();
                 @endphp
                 @if($freeze_history && $freeze_history->count() > 0)
                 <div class="separator separator-dashed my-5"></div>
@@ -375,6 +385,7 @@
                         </tbody>
                     </table>
                 </div>
+                @endif
                 @endif
             </div>
         </div>

@@ -29,12 +29,15 @@
         $vatAmount      = ($vatPercentage / 100) * $priceBeforeVat;
         $priceWithVat   = (float) round($priceBeforeVat + $vatAmount, 2);
 
+        $hasOptions = isset($optionGroups) && $optionGroups instanceof \Illuminate\Database\Eloquent\Collection && $optionGroups->isNotEmpty();
+
         // Resolve which payment methods are configured
         $paymentsConfig = @$mainSettings->payments ?? [];
         $tabbyEnabled   = !empty($paymentsConfig['tabby']['public_key']);
         $tamaraEnabled  = !empty($paymentsConfig['tamara']['token']);
         $paytabsEnabled = !empty($paymentsConfig['paytabs']['server_key']);
         $paymobEnabled  = !empty($paymentsConfig['paymob']['api_key']);
+        $anyGatewayEnabled = $tabbyEnabled || $tamaraEnabled || $paytabsEnabled || $paymobEnabled;
     @endphp
     <style>
         * { box-sizing: border-box; }
@@ -169,6 +172,23 @@
         .btn-pay:active { background: #e06c00; }
         ::placeholder { color: #bbb !important; }
 
+        /* Option groups */
+        .option-group { margin-bottom: 14px; }
+        .option-group-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #333; }
+        .option-group-title .required-star { color: #e53; }
+        .option-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; margin-bottom: 6px;
+            border: 1px solid #ddd; border-radius: 8px;
+            cursor: pointer; transition: border-color 0.15s;
+        }
+        .option-item:hover { border-color: #f97d04; }
+        .option-item.selected { border-color: #f97d04; background: #fff8f2; }
+        .option-item input[type="radio"],
+        .option-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: #f97d04; }
+        .option-item-label { flex: 1; font-size: 14px; }
+        .option-item-price { font-size: 13px; color: #f97d04; font-weight: 600; white-space: nowrap; }
+
         @media (max-width: 420px) {
             .payment-option {
                 padding: 10px;
@@ -211,10 +231,18 @@
                     {{ $discountLabel }}: -{{ number_format($discountAmount, 2) }} {{ trans('front.pound_unit') }}
                 </small><br>
             @endif
-            {{ trans('front.price') }}: {{ number_format($priceBeforeVat, 2) }} {{ trans('front.pound_unit') }}<br>
+            {{ trans('front.price') }}: <span id="js-base-display">{{ number_format($priceBeforeVat, 2) }}</span> {{ trans('front.pound_unit') }}
+            @if($hasOptions)
+            <span id="js-options-line" style="display:none;"><br>
+                <small id="js-options-display" style="color:#555;"></small>
+            </span>
+            @endif
+            <br>
             @if($vatPercentage > 0)
-                <small>{{ trans('front.vat') }} ({{ $vatPercentage }}%): {{ number_format($vatAmount, 2) }} {{ trans('front.pound_unit') }}</small><br>
-                <strong>{{ trans('global.total') }}: {{ $priceWithVat }} {{ trans('front.pound_unit') }}</strong>
+                <small>{{ trans('front.vat') }} ({{ $vatPercentage }}%): <span id="js-vat-display">{{ number_format($vatAmount, 2) }}</span> {{ trans('front.pound_unit') }}</small><br>
+                <strong>{{ trans('global.total') }}: <span id="js-total-display">{{ $priceWithVat }}</span> {{ trans('front.pound_unit') }}</strong>
+            @else
+                <strong>{{ trans('global.total') }}: <span id="js-total-display">{{ $priceWithVat }}</span> {{ trans('front.pound_unit') }}</strong>
             @endif
         </div>
     </div>
@@ -222,7 +250,7 @@
     <form method="post" action="{{ route('sw.invoice-mobile.submit') }}">
         {{ csrf_field() }}
         <input type="hidden" name="subscription_id" value="{{ $record['id'] }}">
-        <input type="hidden" name="amount"          value="{{ $priceWithVat }}">
+        <input type="hidden" id="js-amount-input" name="amount" value="{{ $priceWithVat }}">
         <input type="hidden" name="vat_percentage"  value="{{ $vatPercentage }}">
         <input type="hidden" name="token"           value="{{ request('payment_link_token') ?: request('token') ?: 'null' }}">
         <input type="hidden" name="member_id"       value="{{ optional($currentUser)->id ?: 'null' }}">
@@ -275,6 +303,49 @@
                    max="{{ \Carbon\Carbon::now()->addMonths(12)->format('Y-m-d') }}"
                    required>
         </div>
+
+        {{-- Subscription option groups --}}
+        @if($hasOptions)
+        <div id="option-groups-wrapper">
+            <h5 class="section-title">{{ trans('sw.subscription_options', [], app()->getLocale()) }}:</h5>
+            @foreach($optionGroups as $group)
+            <div class="option-group" data-group-id="{{ $group->id }}"
+                 data-selection-type="{{ $group->selection_type }}"
+                 data-required="{{ $group->is_required ? '1' : '0' }}">
+                <div class="option-group-title">
+                    {{ $group->name }}
+                    @if($group->is_required)
+                        <span class="required-star">*</span>
+                    @endif
+                </div>
+                @foreach($group->options as $option)
+                @php
+                    $inputType  = $group->selection_type === 'multiple' ? 'checkbox' : 'radio';
+                    $groupName  = 'opt_group_' . $group->id;
+                @endphp
+                <label class="option-item" for="opt_{{ $option->id }}">
+                    <input type="{{ $inputType }}"
+                           id="opt_{{ $option->id }}"
+                           data-group="{{ $groupName }}"
+                           value="{{ $option->id }}"
+                           data-price="{{ (float) $option->price_modifier }}"
+                           data-option-id="{{ $option->id }}"
+                           class="option-input">
+                    <span class="option-item-label">{{ $option->name }}</span>
+                    @if($option->price_modifier != 0)
+                    <span class="option-item-price">
+                        {{ $option->price_modifier > 0 ? '+' : '' }}{{ number_format((float)$option->price_modifier, 2) }} {{ trans('front.pound_unit') }}
+                    </span>
+                    @endif
+                </label>
+                @endforeach
+            </div>
+            @endforeach
+        </div>
+
+        {{-- Hidden inputs to collect all selected option_ids --}}
+        <div id="js-option-ids-container"></div>
+        @endif
 
         {{-- Payment method selection --}}
         <h5 class="section-title">{{ trans('front.choose_payment_methods') }}:</h5>
@@ -356,7 +427,15 @@
         </div>
         @endif
 
+        @if(!$anyGatewayEnabled)
+        <div style="background:#fff3f3;border:1px solid #f5c6cb;border-radius:8px;padding:14px;margin-bottom:14px;text-align:center;color:#721c24;font-size:14px;">
+            <strong>{{ app()->getLocale() === 'ar' ? 'لا توجد طريقة دفع متاحة حالياً' : 'No payment method available' }}</strong><br>
+            <small style="color:#999;">{{ app()->getLocale() === 'ar' ? 'يرجى التواصل مع الإدارة' : 'Please contact administration' }}</small>
+        </div>
+        <button type="button" class="btn-pay" disabled style="opacity:0.5;cursor:not-allowed;">{{ trans('front.pay_now') }}</button>
+        @else
         <button type="submit" class="btn-pay">{{ trans('front.pay_now') }}</button>
+        @endif
     </form>
 
     <div style="padding-bottom: 60px;"></div>
@@ -420,6 +499,117 @@
                 resizeTimer = setTimeout(renderTabbyCard, 140);
             });
         })();
+    </script>
+    @endif
+
+    @if($hasOptions)
+    <script>
+    var SW_BASE_BEFORE_VAT = {{ $priceBeforeVat }};
+    var SW_VAT_PCT         = {{ $vatPercentage }};
+    var SW_CURRENCY        = '{{ trans("front.pound_unit") }}';
+
+    function swGetSelectedOptionIds() {
+        var ids = [];
+        document.querySelectorAll('.option-input:checked').forEach(function(el) {
+            ids.push(parseInt(el.value));
+        });
+        return ids;
+    }
+
+    function swGetOptionsTotal() {
+        var total = 0;
+        document.querySelectorAll('.option-input:checked').forEach(function(el) {
+            total += parseFloat(el.getAttribute('data-price')) || 0;
+        });
+        return total;
+    }
+
+    function swUpdateOptionPrice() {
+        var optionsTotal   = swGetOptionsTotal();
+        var newBeforeVat   = SW_BASE_BEFORE_VAT + optionsTotal;
+        var vatAmount      = (SW_VAT_PCT / 100) * newBeforeVat;
+        var totalWithVat   = newBeforeVat + vatAmount;
+
+        // Update displayed values
+        var baseEl = document.getElementById('js-base-display');
+        if (baseEl) baseEl.textContent = newBeforeVat.toFixed(2);
+
+        var vatEl = document.getElementById('js-vat-display');
+        if (vatEl) vatEl.textContent = vatAmount.toFixed(2);
+
+        var totalEl = document.getElementById('js-total-display');
+        if (totalEl) totalEl.textContent = totalWithVat.toFixed(2);
+
+        // Show/hide options modifier line
+        var optLine = document.getElementById('js-options-line');
+        var optDisp = document.getElementById('js-options-display');
+        if (optLine && optDisp) {
+            if (optionsTotal !== 0) {
+                optDisp.textContent = (optionsTotal > 0 ? '+' : '') + optionsTotal.toFixed(2) + ' ' + SW_CURRENCY + ' ({{ app()->getLocale() === "ar" ? "خيارات إضافية" : "options" }})';
+                optLine.style.display = 'inline';
+            } else {
+                optLine.style.display = 'none';
+            }
+        }
+
+        // Update the hidden amount submitted to the payment gateway
+        var amountInput = document.getElementById('js-amount-input');
+        if (amountInput) amountInput.value = totalWithVat.toFixed(2);
+
+        // Update option_ids hidden container
+        var container = document.getElementById('js-option-ids-container');
+        if (container) {
+            container.innerHTML = '';
+            swGetSelectedOptionIds().forEach(function(id) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'option_ids[]';
+                inp.value = id;
+                container.appendChild(inp);
+            });
+        }
+    }
+
+    // Style selected items, enforce radio mutual-exclusion, then update price
+    document.querySelectorAll('.option-input').forEach(function(el) {
+        el.addEventListener('change', function() {
+            var group = this.closest('.option-group');
+            if (!group) return;
+            if (this.type === 'radio') {
+                // Deselect all siblings first, then re-check the clicked one
+                group.querySelectorAll('.option-input[type="radio"]').forEach(function(sibling) {
+                    sibling.checked = false;
+                    sibling.closest('.option-item').classList.remove('selected');
+                });
+                this.checked = true;
+            }
+            if (this.checked) {
+                this.closest('.option-item').classList.add('selected');
+            } else {
+                this.closest('.option-item').classList.remove('selected');
+            }
+            // Always recalculate AFTER deselection is complete
+            swUpdateOptionPrice();
+        });
+    });
+
+    // Validate required groups on submit
+    document.querySelector('form').addEventListener('submit', function(e) {
+        var valid = true;
+        document.querySelectorAll('.option-group[data-required="1"]').forEach(function(group) {
+            var checked = group.querySelectorAll('.option-input:checked').length;
+            if (checked === 0) {
+                valid = false;
+                group.querySelector('.option-group-title').style.color = '#e53';
+            } else {
+                group.querySelector('.option-group-title').style.color = '';
+            }
+        });
+        if (!valid) {
+            e.preventDefault();
+            alert('{{ app()->getLocale() === "ar" ? "يرجى اختيار الخيارات المطلوبة" : "Please select the required options" }}');
+        }
+    });
     </script>
     @endif
 

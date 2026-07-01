@@ -442,4 +442,19 @@ class TypeConstants {
 
     const YES = 1;
     const NO = 2;
+
+    // Subscription Products CRUD (195–197)
+    const CreateSubscriptionProduct = 195;
+    const EditSubscriptionProduct   = 196;
+    const DeleteSubscriptionProduct = 197;
+
+    // Subscription Option Groups CRUD (198–200)
+    const CreateSubscriptionOptionGroup = 198;
+    const EditSubscriptionOptionGroup   = 199;
+    const DeleteSubscriptionOptionGroup = 200;
+
+    // Subscription Options CRUD (201–203)
+    const CreateSubscriptionOption = 201;
+    const EditSubscriptionOption   = 202;
+    const DeleteSubscriptionOption = 203;
 }

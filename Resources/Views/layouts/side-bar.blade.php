@@ -1594,12 +1594,25 @@
             {{-- Subscriptions (moved under Settings) --}}
             @if (@$mainSettings->active_subscription && ($swUser && (isset($permissionsMap['listSubscription']) || $isSuperUser)))  
                 <div class="menu-item">
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription*')) active @endif"
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription*') && !Request::is(($lang ?? 'ar') . '/subscription-category*')) active @endif"
                         href="{{ route('sw.listSubscription') }}">
                         <span class="menu-bullet">
                             <span class="bullet bullet-dot"></span>
                         </span>
                         <span class="menu-title">{{ trans('sw.memberships') }}</span>
+                    </a>
+                </div>
+            @endif
+
+            {{-- Subscription Categories --}}
+            @if (@$mainSettings->active_subscription && ($swUser && (isset($permissionsMap['listSubscriptionCategory']) || $isSuperUser)))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription-category*')) active @endif"
+                        href="{{ route('sw.listSubscriptionCategory') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.subscription_categories') }}</span>
                     </a>
                 </div>
             @endif
@@ -1692,7 +1705,7 @@
             @endif -->
 
 {{-- Categories --}}
-            @if ($swUser && (isset($permissionsMap['listCategory']) || $isSuperUser))
+            <!-- @if ($swUser && (isset($permissionsMap['listCategory']) || $isSuperUser))
                 <div class="menu-item">
                     <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/category*')) active @endif"
                         href="{{ route('sw.listCategory') }}">
@@ -1702,7 +1715,7 @@
                         <span class="menu-title">{{ trans('sw.categories') }}</span>
                     </a>
                 </div>
-            @endif
+            @endif -->
 
             @if ($swUser && (isset($permissionsMap['listSaleChannel']) || $isSuperUser))
                 <!--begin:Menu item-->

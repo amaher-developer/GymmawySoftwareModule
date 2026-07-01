@@ -36,6 +36,7 @@ use Modules\Software\Models\GymTrainingPlan;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserLog;
 use Modules\Software\Services\NotificationService;
+use Modules\Software\Services\SubscriptionPricingService;
 
 /**
  * GymMobileSubscriptionFrontController
@@ -99,7 +100,18 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         $title = $record->name;
         $mainSettings = $this->mainSettings;
 
-        return view('software::Front.subscription_mobile', compact('title', 'record', 'mainSettings'));
+        $optionGroups = [];
+        try {
+            $optionGroups = \Modules\Software\Models\GymSubscriptionOptionGroup::where('subscription_id', $record->id)
+                ->where('is_mobile', true)
+                ->with(['options' => fn($q) => $q->orderBy('list_order')])
+                ->orderBy('list_order')
+                ->get();
+        } catch (\Throwable $e) {
+            // table may not exist in older deployments
+        }
+
+        return view('software::Front.subscription_mobile', compact('title', 'record', 'mainSettings', 'optionGroups'));
     }
 
     public function showActivityMobile($id)
@@ -823,6 +835,18 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             $memberData['vat'] = 0;
         }
 
+        $memberData['option_ids'] = array_values(
+            array_filter(array_map('intval', (array) $request->input('option_ids', [])))
+        );
+
+        // ── Re-calculate amount server-side to prevent tampering ───────────
+        $pricingResult = (new SubscriptionPricingService())->calculate($subscription, $memberData['option_ids']);
+        $vatPct        = (float) $memberData['vat_percentage'];
+        $baseTotal     = $pricingResult['total']; // base + options, before VAT
+        $vatAmount     = $vatPct > 0 ? round(($baseTotal * $vatPct) / 100, 2) : 0;
+        $memberData['amount'] = round($baseTotal + $vatAmount, 2);
+        $memberData['vat']    = $vatAmount;
+
         // ── Route to correct gateway ───────────────────────────────────────
         $paymentMethod = $memberData['payment_method'];
 
@@ -1227,7 +1251,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'vat_percentage'  => $member['vat_percentage'],
             'payment_method'  => TypeConstants::TABBY_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
-            'response_code'   => ['joining_date' => $member['joining_date']],
+            'response_code'   => array_filter([
+                'joining_date' => $member['joining_date'],
+                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+            ], fn($v) => $v !== null),
         ]);
 
         // Build order history for Tabby buyer_history
@@ -1317,7 +1344,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'vat_percentage'  => $member['vat_percentage'],
             'payment_method'  => TypeConstants::TAMARA_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
-            'response_code'   => ['joining_date' => $member['joining_date']],
+            'response_code'   => array_filter([
+                'joining_date' => $member['joining_date'],
+                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+            ], fn($v) => $v !== null),
         ]);
 
         [, , $tamaraCurrency] = $this->getTamaraCredentials();
@@ -1398,7 +1428,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'vat_percentage'  => $member['vat_percentage'],
             'payment_method'  => TypeConstants::PAYTABS_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
-            'response_code'   => ['joining_date' => $member['joining_date']],
+            'response_code'   => array_filter([
+                'joining_date' => $member['joining_date'],
+                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+            ], fn($v) => $v !== null),
         ]);
 
         $ptSettings = \Modules\Generic\Models\Setting::first();
@@ -1911,7 +1944,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'vat_percentage'  => $member['vat_percentage'],
             'payment_method'  => TypeConstants::PAYMOB_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
-            'response_code'   => ['joining_date' => $member['joining_date']],
+            'response_code'   => array_filter([
+                'joining_date' => $member['joining_date'],
+                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+            ], fn($v) => $v !== null),
         ]);
 
         $errorRoute = route('sw.subscription-mobile', $this->mobileContextParams(['id' => $subscription['id']]));
@@ -2042,7 +2078,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
 
     public function invoiceMobile($id)
     {
-        $invoice = GymMemberSubscription::with(['subscription', 'member'])->where('id', $id)->first();
+        $invoice = GymMemberSubscription::with(['subscription', 'member', 'selected_options.option.group', 'selected_options.option.product', 'selected_options.option.activity'])->where('id', $id)->first();
 
         if (!$invoice) {
             return abort(404);
@@ -2201,6 +2237,10 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $periodDays = (int) ($subscription->period ?? 0);
                 $expire     = (clone $joining)->addDays(max($periodDays - 1, 0));
 
+                // ── Calculate options pricing before creating the record ───
+                $optionIds     = array_values(array_filter(array_map('intval', (array) ($rc['option_ids'] ?? []))));
+                $pricingResult = (new SubscriptionPricingService())->calculate($subscription, $optionIds);
+
                 $memberSub = GymMemberSubscription::create([
                     'subscription_id'        => $invoice->subscription_id,
                     'member_id'              => $member->id,
@@ -2213,11 +2253,28 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'status'                 => TypeConstants::Active,
                     'freeze_limit'           => $subscription->freeze_limit ?? 0,
                     'number_times_freeze'    => $subscription->number_times_freeze ?? 0,
-                    'amount_before_discount' => $subscription->price ?? 0,
+                    'amount_before_discount' => $pricingResult['total'], // base + options, before discount/VAT
                     'discount_value'         => $this->calculateDiscountValue($subscription),
                     'discount_type'          => $this->getDiscountType($subscription),
                     'payment_type'           => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
+                    'notes'                  => !empty($pricingResult['selected_options'])
+                        ? (new SubscriptionPricingService())->buildOptionsNote($pricingResult['selected_options'], app()->getLocale())
+                        : null,
                 ]);
+
+                // ── Save selected subscription options (customization) ─────
+                if (!empty($optionIds)) {
+                    try {
+                        (new SubscriptionPricingService())
+                            ->saveSelectedOptions($memberSub, $optionIds, (int) ($member->branch_setting_id ?? 1));
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('Failed to save subscription options', [
+                            'member_subscription_id' => $memberSub->id,
+                            'option_ids'             => $optionIds,
+                            'error'                  => $e->getMessage(),
+                        ]);
+                    }
+                }
 
                 // ── Update invoice ─────────────────────────────────────────
                 $invoice->status                 = TypeConstants::SUCCESS;

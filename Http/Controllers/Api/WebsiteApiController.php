@@ -216,6 +216,23 @@ class WebsiteApiController extends GenericApiController
             , 'member_subscription_id' => @$member_subscription->id
         ]);
 
+        // Save selected subscription options if provided
+        $optionIds = array_values(array_filter(array_map('intval', (array) request('option_ids', []))));
+        if (!empty($optionIds) && $member_subscription) {
+            try {
+                $subId = @$member_subscription->subscription_id ?: 0;
+                $gymSub = $subId ? \Modules\Software\Models\GymSubscription::find($subId) : null;
+                if ($gymSub) {
+                    (new \Modules\Software\Services\SubscriptionPricingService())
+                        ->saveSelectedOptions($member_subscription, $optionIds, (int) ($member_subscription->branch_setting_id ?? 1));
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('createMemberSubscription: failed to save options', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         $this->userLog($notes, TypeConstants::RenewMember);
 
         return $this->successResponse();

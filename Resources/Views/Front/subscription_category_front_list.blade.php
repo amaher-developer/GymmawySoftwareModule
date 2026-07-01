@@ -128,7 +128,7 @@
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-50px me-3">
                                         @if($category->image)
-                                            <img src="{{ $category->image_url }}" alt="{{ $category->name }}" class="symbol-label" />
+                                            <img src="{{ $category->image_url }}" alt="{{ $category->name }}" class="symbol-label" style="object-fit:cover;" />
                                         @else
                                             <div class="symbol-label fs-3 bg-light-primary text-primary">
                                                 <i class="ki-outline ki-credit-cart fs-2"></i>
@@ -174,9 +174,18 @@
             <!--end::Table-->
             
             <!--begin::Pagination-->
-            @if(method_exists($categories, 'links'))
-                <div class="d-flex justify-content-center">
-                    {{ $categories->appends($search_query)->links('software::layouts.pagination') }}
+            @if(method_exists($categories, 'render'))
+                <div class="d-flex flex-stack flex-wrap pt-10">
+                    <div class="fs-6 fw-semibold text-gray-700">
+                        {{ trans('sw.showing_entries', [
+                            'from' => $categories->firstItem() ?? 0,
+                            'to'   => $categories->lastItem() ?? 0,
+                            'total'=> $categories->total()
+                        ]) }}
+                    </div>
+                    <ul class="pagination">
+                        {!! $categories->appends($search_query)->render() !!}
+                    </ul>
                 </div>
             @endif
             <!--end::Pagination-->
