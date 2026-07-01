@@ -12,9 +12,7 @@ return new class extends Migration
         Schema::create('sw_gym_subscription_option_groups', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('branch_setting_id')->nullable()->index();
-            $table->foreign('branch_setting_id')->references('id')->on('settings')->onDelete('set null');
             $table->unsignedInteger('subscription_id')->index();
-            $table->foreign('subscription_id')->references('id')->on('sw_gym_subscriptions')->onDelete('cascade');
             $table->string('name_ar');
             $table->string('name_en');
             $table->enum('selection_type', ['single', 'multiple'])->default('single');
