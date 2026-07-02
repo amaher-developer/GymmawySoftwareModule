@@ -180,6 +180,49 @@
                 <hr class="divider">
             @endif
 
+            @php
+                $subActs  = optional($invoice->subscription)->activities->load('activity') ?? collect();
+                $subProds = $invoice->subscription
+                    ? $invoice->subscription->subscription_products()->with('product')->get()
+                    : collect();
+            @endphp
+            @if($subActs->count() || $subProds->count())
+                <div class="invoice-row" style="align-items: flex-start; flex-direction: column; gap: 6px;">
+                    <span class="label" style="font-size:12px;">{{ trans('sw.included_in_subscription') }}</span>
+                    <div>
+                        @foreach($subActs as $actSub)
+                            @php
+                                $actName = $lang === 'ar'
+                                    ? ($actSub->activity->name_ar ?? $actSub->activity->name_en ?? '')
+                                    : ($actSub->activity->name_en ?? $actSub->activity->name_ar ?? '');
+                                $times = (int)($actSub->training_times ?? 0);
+                            @endphp
+                            @if($actName)
+                                <span class="option-chip">
+                                    {{ $actName }}
+                                    @if($times > 0)&nbsp;·&nbsp;{{ $times }} {{ trans('sw.training_times') }}@endif
+                                    &nbsp;<span style="color:#888;font-size:11px;">— {{ trans('sw.included') }}</span>
+                                </span>
+                            @endif
+                        @endforeach
+                        @foreach($subProds as $subProd)
+                            @php
+                                $prodName = $lang === 'ar'
+                                    ? ($subProd->product->getRawOriginal('display_name_ar') ?: ($subProd->product->name_ar ?? ''))
+                                    : ($subProd->product->getRawOriginal('display_name_en') ?: ($subProd->product->name_en ?? $subProd->product->name_ar ?? ''));
+                            @endphp
+                            @if($prodName)
+                                <span class="option-chip">
+                                    {{ $prodName }}
+                                    &nbsp;<span style="color:#888;font-size:11px;">— {{ trans('sw.included') }}</span>
+                                </span>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+                <hr class="divider">
+            @endif
+
             @if($invoice->joining_date)
             <div class="invoice-row">
                 <span class="label">{{ trans('front.register_info_joining_date') }}</span>
