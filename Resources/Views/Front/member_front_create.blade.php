@@ -35,6 +35,13 @@
           type="text/css"/>
 
         <style>
+        /* ── Option-group compact UI ── */
+        .pos-pill{display:inline-flex;align-items:center;padding:3px 10px;border:1.5px solid #e4e6ef;border-radius:20px;font-size:12px;background:#f5f8fa;cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap;}
+        .pos-pill:hover{border-color:#009ef7;color:#009ef7;}
+        .pos-pill.active{background:#009ef7;color:#fff;border-color:#009ef7;}
+        .pos-prod-thumb{width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+        .pos-product-grid::-webkit-scrollbar,.pos-option-list::-webkit-scrollbar{width:4px;}
+        .pos-product-grid::-webkit-scrollbar-thumb,.pos-option-list::-webkit-scrollbar-thumb{background:#d1d3e0;border-radius:4px;}
         .tag-green {
             background-color: #4caf50 !important;
             color: #fff;
@@ -647,6 +654,7 @@
         var posOptionsUrl       = '{{ route("sw.subscription.options", ":id") }}';
         var posCalcPriceUrl     = '{{ route("sw.subscription.calculatePrice", ":id") }}';
         var SW_VAT_PCT          = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
+        var _posCalcXhr         = null; // track in-flight calculate-price XHR to abort stale ones
 
         $("#membership").select2();
 
@@ -914,56 +922,136 @@
             });
         }
 
-        function posRenderGroups(groups) {
-            var $row = $('<div class="row g-5">');
+        function posRenderGroups(groups, preSelectedIds) {
+            preSelectedIds = preSelectedIds || [];
+            var $row = $('<div class="row g-3">');
             groups.forEach(function(group) {
                 var isSingle  = group.selection_type === 'single';
-                var isRequired = group.is_required;
-                var $col = $('<div class="col-md-6 col-lg-4">');
+                var isRequired= group.is_required;
+                var optCount  = (group.options || []).length;
+                var isProduct = group.source_type === 'product';
+                var isPill    = !isProduct && optCount <= 6;
 
-                var $lbl = $('<div class="fw-semibold fs-6 mb-3">');
-                $lbl.append($('<span>').text(group.name_ar + ' / ' + group.name_en));
-                if (isRequired) {
-                    $lbl.append($('<span class="badge badge-light-danger ms-2 fs-8">').text('{{ trans("sw.mandatory") }}'));
-                }
-                $lbl.append($('<span class="badge badge-light-secondary ms-1 fs-8">').text(
+                var $col = $('<div class="col-md-6">');
+
+                // ── Header ──────────────────────────────────────────────────
+                var $hdr = $('<div class="d-flex flex-wrap align-items-center gap-1 mb-1">');
+                $hdr.append($('<span class="fw-semibold fs-7">').text(group.name_ar));
+                if (isRequired) $hdr.append($('<span class="badge badge-light-danger fs-9 px-1">').text('{{ trans("sw.mandatory") }}'));
+                $hdr.append($('<span class="badge badge-light-secondary fs-9 px-1">').text(
                     isSingle ? '{{ trans("sw.single") }}' : '{{ trans("sw.multiple") }}'
                 ));
-                $col.append($lbl);
+                $col.append($hdr);
 
-                var $opts = $('<div class="d-flex flex-column gap-3">');
-                (group.options || []).forEach(function(opt) {
-                    var $label = $('<label class="d-flex align-items-center gap-3 cursor-pointer p-2 rounded border-hover-primary">');
-                    var $inp = $('<input class="form-check-input pos-option-input mt-0">')
-                        .attr('type', isSingle ? 'radio' : 'checkbox')
-                        .attr('data-group-id', group.id)
-                        .attr('data-single', isSingle ? '1' : '0')
-                        .val(opt.id)
-                        .on('change', function() {
-                            if (isSingle) {
-                                // Uncheck siblings in same group
-                                $('#pos_option_groups_body .pos-option-input[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
-                            }
-                            posUpdatePrice();
-                        });
-                    var price = parseFloat(opt.price_modifier || 0);
+                if (isPill) {
+                    // ── Pill / chip row ─────────────────────────────────────
+                    var $pills = $('<div class="d-flex flex-wrap gap-1">');
+                    (group.options || []).forEach(function(opt) {
+                        var price = parseFloat(opt.price_modifier || 0);
+                        var name  = opt['name_{{ $lang }}'] || opt.name_ar || '';
+                        var $pill = $('<label class="pos-pill">');
+                        var $inp  = $('<input class="d-none pos-option-input">')
+                            .attr('type', isSingle ? 'radio' : 'checkbox')
+                            .attr('name', 'create_grp_' + group.id)
+                            .attr('data-group-id', group.id)
+                            .val(opt.id)
+                            .on('change', function() {
+                                if (isSingle) {
+                                    $pills.find('.pos-pill').removeClass('active');
+                                    $('#pos_option_groups_body .pos-option-input[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                                }
+                                $(this).closest('.pos-pill').toggleClass('active', $(this).is(':checked'));
+                                posUpdatePrice();
+                            });
+                        var lbl = name + (price !== 0 ? ' (' + (price > 0 ? '+' : '') + Math.round(price) + ')' : '');
+                        $pill.append($inp).append($('<span>').text(lbl));
+                        if (preSelectedIds.indexOf(opt.id) !== -1) { $inp.prop('checked', true); $pill.addClass('active'); }
+                        $pills.append($pill);
+                    });
+                    $col.append($pills);
 
-                    var itemName = '';
-                    if (opt.product) {
-                        itemName = opt.product['display_name_{{ $lang }}'] || opt.product['name_{{ $lang }}'] || opt.product.name_ar || '';
-                    } else if (opt.activity) {
-                        itemName = opt.activity['name_{{ $lang }}'] || opt.activity.name_ar || '';
+                } else if (isProduct) {
+                    // ── Image thumbnail grid ────────────────────────────────
+                    if (optCount > 6) {
+                        $col.append(
+                            $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث...">').on('input', function() {
+                                var q = $(this).val().toLowerCase();
+                                $(this).next('.pos-product-grid').find('.pos-prod-item').each(function() {
+                                    $(this).toggle($(this).data('name').toLowerCase().indexOf(q) !== -1);
+                                });
+                            })
+                        );
                     }
-                    var $text = $('<span class="flex-grow-1">').text(itemName);
-                    $label.append($inp).append($text);
-                    if (price !== 0) {
-                        $label.append($('<span class="badge badge-light-primary fs-8">').text(
-                            (price > 0 ? '+' : '') + price.toFixed(2)
-                        ));
-                    }
-                    $opts.append($('<div>').append($label));
-                });
-                $col.append($opts);
+                    var $grid = $('<div class="row g-1 pos-product-grid" style="max-height:200px;overflow-y:auto;padding:2px;">');
+                    (group.options || []).forEach(function(opt) {
+                        var price  = parseFloat(opt.price_modifier || 0);
+                        var name   = '', imgSrc = null;
+                        if (opt.product) {
+                            name   = opt.product['display_name_{{ $lang }}'] || opt.product['name_{{ $lang }}'] || opt.product.name_ar || '';
+                            imgSrc = opt.product.image || null;
+                        } else if (opt.activity) {
+                            name   = opt.activity['name_{{ $lang }}'] || opt.activity.name_ar || '';
+                            imgSrc = opt.activity.image || null;
+                        } else {
+                            name = opt['name_{{ $lang }}'] || opt.name_ar || '';
+                        }
+                        var $cell  = $('<div class="col-6 pos-prod-item">').data('name', name);
+                        var $label = $('<label class="d-flex align-items-center gap-1 p-1 rounded border-hover-primary cursor-pointer" style="min-height:44px;">');
+                        var $inp   = $('<input class="form-check-input pos-option-input flex-shrink-0 mt-0">')
+                            .attr('type', isSingle ? 'radio' : 'checkbox')
+                            .attr('name', 'create_grp_' + group.id)
+                            .attr('data-group-id', group.id)
+                            .val(opt.id)
+                            .on('change', function() {
+                                if (isSingle) $('#pos_option_groups_body .pos-option-input[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                                posUpdatePrice();
+                            });
+                        if (preSelectedIds.indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                        $label.append($inp);
+                        if (imgSrc) $label.append($('<img>').attr('src', imgSrc).addClass('pos-prod-thumb'));
+                        var $info = $('<div class="overflow-hidden lh-sm">');
+                        $info.append($('<div class="fs-9 text-truncate" style="max-width:80px;" title="' + name + '">').text(name));
+                        if (price !== 0) $info.append($('<span class="badge badge-light-primary px-1" style="font-size:10px;">').text((price > 0 ? '+' : '') + Math.round(price)));
+                        $label.append($info);
+                        $cell.append($label);
+                        $grid.append($cell);
+                    });
+                    $col.append($grid);
+
+                } else {
+                    // ── Large scrollable list + search ──────────────────────
+                    $col.append(
+                        $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث / Search...">').on('input', function() {
+                            var q = $(this).val().toLowerCase();
+                            $(this).siblings('.pos-option-list').find('.pos-option-item').each(function() {
+                                $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
+                            });
+                        })
+                    );
+                    var $list = $('<div class="d-flex flex-column gap-1 pos-option-list" style="max-height:180px;overflow-y:auto;">');
+                    (group.options || []).forEach(function(opt) {
+                        var price = parseFloat(opt.price_modifier || 0);
+                        var name  = opt['name_{{ $lang }}'] || opt.name_ar || '';
+                        if (opt.product) name = opt.product['display_name_{{ $lang }}'] || opt.product['name_{{ $lang }}'] || opt.product.name_ar || '';
+                        else if (opt.activity) name = opt.activity['name_{{ $lang }}'] || opt.activity.name_ar || '';
+                        var $label = $('<label class="d-flex align-items-center gap-2 cursor-pointer p-1 rounded border-hover-primary">');
+                        var $inp   = $('<input class="form-check-input pos-option-input mt-0">')
+                            .attr('type', isSingle ? 'radio' : 'checkbox')
+                            .attr('name', 'create_grp_' + group.id)
+                            .attr('data-group-id', group.id)
+                            .val(opt.id)
+                            .on('change', function() {
+                                if (isSingle) $('#pos_option_groups_body .pos-option-input[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                                posUpdatePrice();
+                            });
+                        if (preSelectedIds.indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                        $label.append($inp).append($('<span class="flex-grow-1 fs-8">').text(name));
+                        if (price !== 0) $label.append($('<span class="badge badge-light-primary fs-9">').text((price > 0 ? '+' : '') + Math.round(price)));
+                        $list.append($('<div class="pos-option-item">').append($label));
+                    });
+                    $col.append($list);
+                }
+
                 $row.append($col);
             });
             return $row;
@@ -985,16 +1073,18 @@
                 $container.append($('<input type="hidden" name="option_ids[]">').val(id));
             });
 
-            // Ask server for confirmed pricing breakdown
-            $.ajax({
+            // Ask server for confirmed pricing breakdown (abort any stale in-flight request)
+            if (_posCalcXhr) { _posCalcXhr.abort(); _posCalcXhr = null; }
+            _posCalcXhr = $.ajax({
                 url: posCalcPriceUrl.replace(':id', subId),
                 method: 'POST',
                 data: { option_ids: optionIds },
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
                 dataType: 'json',
                 success: function(res) {
-                    posOptionsTotal         = parseFloat(res.options_total || 0);
-                    selectedMembershipPrice = parseFloat(res.base_price || selectedMembershipPrice);
+                    _posCalcXhr = null;
+                    posOptionsTotal         = parseFloat(res.options_total) || 0;
+                    selectedMembershipPrice = (res.base_price != null) ? parseFloat(res.base_price) : selectedMembershipPrice;
 
                     // Rebuild the breakdown panel
                     var $bd   = $('#pos_options_breakdown');
@@ -1044,8 +1134,9 @@
                     discount_value(); // refresh badges and amount_paid
                 },
                 error: function(xhr) {
+                    if (xhr.statusText === 'abort') return;
+                    _posCalcXhr = null;
                     console.warn('calculate-price failed', xhr.status, xhr.responseText);
-                    // Fallback: compute options total client-side from visible price badges
                     posOptionsTotal = 0;
                     $('#pos_option_groups_body .pos-option-input:checked').each(function() {
                         var $label = $(this).closest('label');

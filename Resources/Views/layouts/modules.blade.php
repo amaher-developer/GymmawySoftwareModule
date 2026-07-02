@@ -3,6 +3,14 @@
         display: none;
     }
 
+    /* ── Renew modal option-group UI ── */
+    .pos-pill{display:inline-flex;align-items:center;padding:3px 10px;border:1.5px solid #e4e6ef;border-radius:20px;font-size:12px;background:#f5f8fa;cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap;}
+    .pos-pill:hover{border-color:#009ef7;color:#009ef7;}
+    .pos-pill.active{background:#009ef7;color:#fff;border-color:#009ef7;}
+    .pos-prod-thumb{width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+    .pos-product-grid::-webkit-scrollbar,.pos-option-list::-webkit-scrollbar{width:4px;}
+    .pos-product-grid::-webkit-scrollbar-thumb,.pos-option-list::-webkit-scrollbar-thumb{background:#d1d3e0;border-radius:4px;}
+
     /* ── Payment Gateway Cards ── */
     .pgw-section {
         background: linear-gradient(135deg, #f8fbff 0%, #f0f5ff 100%);
@@ -193,7 +201,7 @@
 
 <!-- start model Renew -->
 <div class="modal" id="modelRenew">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content modal-content-demo">
             <div class="modal-header">
                 <h6 class="modal-title">{{trans('sw.renew_membership')}}</h6>
@@ -510,34 +518,135 @@ window.renewLastPaidTotal = 0;
     function renewPosRenderGroups(groups, preSelectedIds, subId) {
         var $body = $('#renew_pos_option_groups_body');
         $body.empty();
+        var $row = $('<div class="row g-3">');
         groups.forEach(function(group) {
-            var isSingle = group.selection_type === 'single';
-            var $grp = $('<div class="mb-3">');
-            $grp.append($('<div class="fw-semibold mb-2 fs-7">').text(group['name_' + renewLang] || group.name_ar || ''));
-            var $opts = $('<div class="d-flex flex-column gap-2">');
-            (group.options || []).forEach(function(opt) {
-                var $label = $('<label class="d-flex align-items-center gap-2 cursor-pointer p-2 rounded border-hover-primary">');
-                var $inp = $('<input class="form-check-input renew-pos-opt-check mt-0">')
-                    .attr('type', isSingle ? 'radio' : 'checkbox')
-                    .attr('data-group-id', group.id)
-                    .attr('data-price', parseFloat(opt.price_modifier || 0))
-                    .val(opt.id)
-                    .on('change', function() {
-                        if (isSingle) {
-                            $('#renew_pos_option_groups_body .renew-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
-                        }
-                        renewPosUpdatePrice(subId);
-                    });
-                if ((preSelectedIds || []).indexOf(opt.id) !== -1) $inp.prop('checked', true);
-                var name = (opt.product ? (opt.product['display_name_' + renewLang] || opt.product['name_' + renewLang] || opt.product.name_ar || '') : '') || (opt.activity ? (opt.activity['name_' + renewLang] || opt.activity.name_ar || '') : '');
-                var price = parseFloat(opt.price_modifier || 0);
-                $label.append($inp).append($('<span class="flex-grow-1 fs-7">').text(name));
-                if (price !== 0) $label.append($('<span class="badge badge-light-primary fs-8">').text((price > 0 ? '+' : '') + price.toFixed(2)));
-                $opts.append($('<div>').append($label));
-            });
-            $grp.append($opts);
-            $body.append($grp);
+            var isSingle   = group.selection_type === 'single';
+            var isRequired = group.is_required;
+            var optCount   = (group.options || []).length;
+            var isProduct  = group.source_type === 'product';
+            var isPill     = !isProduct && optCount <= 6;
+            var $col = $('<div class="col-md-6">');
+
+            var $hdr = $('<div class="d-flex flex-wrap align-items-center gap-1 mb-1">');
+            $hdr.append($('<span class="fw-semibold fs-7">').text(group['name_' + renewLang] || group.name_ar || ''));
+            if (isRequired) $hdr.append($('<span class="badge badge-light-danger fs-9 px-1">').text('{{ trans("sw.mandatory") }}'));
+            $hdr.append($('<span class="badge badge-light-secondary fs-9 px-1">').text(
+                isSingle ? '{{ trans("sw.single") }}' : '{{ trans("sw.multiple") }}'
+            ));
+            $col.append($hdr);
+
+            if (isPill) {
+                var $pills = $('<div class="d-flex flex-wrap gap-1">');
+                (group.options || []).forEach(function(opt) {
+                    var price = parseFloat(opt.price_modifier || 0);
+                    var name  = opt['name_' + renewLang] || opt.name_ar || '';
+                    var $pill = $('<label class="pos-pill">');
+                    var $inp  = $('<input class="d-none renew-pos-opt-check">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'renew_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) {
+                                $pills.find('.pos-pill').removeClass('active');
+                                $('#renew_pos_option_groups_body .renew-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            }
+                            $(this).closest('.pos-pill').toggleClass('active', $(this).is(':checked'));
+                            renewPosUpdatePrice(subId);
+                        });
+                    var lbl = name + (price !== 0 ? ' (' + (price > 0 ? '+' : '') + Math.round(price) + ')' : '');
+                    $pill.append($inp).append($('<span>').text(lbl));
+                    if ((preSelectedIds || []).indexOf(opt.id) !== -1) { $inp.prop('checked', true); $pill.addClass('active'); }
+                    $pills.append($pill);
+                });
+                $col.append($pills);
+
+            } else if (isProduct) {
+                if (optCount > 6) {
+                    $col.append(
+                        $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث...">').on('input', function() {
+                            var q = $(this).val().toLowerCase();
+                            $(this).next('.pos-product-grid').find('.pos-prod-item').each(function() {
+                                $(this).toggle($(this).data('name').toLowerCase().indexOf(q) !== -1);
+                            });
+                        })
+                    );
+                }
+                var $grid = $('<div class="row g-1 pos-product-grid" style="max-height:200px;overflow-y:auto;padding:2px;">');
+                (group.options || []).forEach(function(opt) {
+                    var price  = parseFloat(opt.price_modifier || 0);
+                    var name   = '', imgSrc = null;
+                    if (opt.product) {
+                        name   = opt.product['display_name_' + renewLang] || opt.product['name_' + renewLang] || opt.product.name_ar || '';
+                        imgSrc = opt.product.image || null;
+                    } else if (opt.activity) {
+                        name   = opt.activity['name_' + renewLang] || opt.activity.name_ar || '';
+                        imgSrc = opt.activity.image || null;
+                    } else {
+                        name = opt['name_' + renewLang] || opt.name_ar || '';
+                    }
+                    var $cell  = $('<div class="col-6 pos-prod-item">').data('name', name);
+                    var $label = $('<label class="d-flex align-items-center gap-1 p-1 rounded border-hover-primary cursor-pointer" style="min-height:44px;">');
+                    var $inp   = $('<input class="form-check-input renew-pos-opt-check flex-shrink-0 mt-0">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'renew_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) $('#renew_pos_option_groups_body .renew-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            renewPosUpdatePrice(subId);
+                        });
+                    if ((preSelectedIds || []).indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                    $label.append($inp);
+                    if (imgSrc) $label.append($('<img>').attr('src', imgSrc).addClass('pos-prod-thumb'));
+                    var $info = $('<div class="overflow-hidden lh-sm">');
+                    $info.append($('<div class="fs-9 text-truncate" style="max-width:80px;" title="' + name + '">').text(name));
+                    if (price !== 0) $info.append($('<span class="badge badge-light-primary px-1" style="font-size:10px;">').text((price > 0 ? '+' : '') + Math.round(price)));
+                    $label.append($info);
+                    $cell.append($label);
+                    $grid.append($cell);
+                });
+                $col.append($grid);
+
+            } else {
+                $col.append(
+                    $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث / Search...">').on('input', function() {
+                        var q = $(this).val().toLowerCase();
+                        $(this).siblings('.pos-option-list').find('.pos-option-item').each(function() {
+                            $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
+                        });
+                    })
+                );
+                var $list = $('<div class="d-flex flex-column gap-1 pos-option-list" style="max-height:180px;overflow-y:auto;">');
+                (group.options || []).forEach(function(opt) {
+                    var price = parseFloat(opt.price_modifier || 0);
+                    var name  = opt['name_' + renewLang] || opt.name_ar || '';
+                    if (opt.product) name = opt.product['display_name_' + renewLang] || opt.product['name_' + renewLang] || opt.product.name_ar || '';
+                    else if (opt.activity) name = opt.activity['name_' + renewLang] || opt.activity.name_ar || '';
+                    var $label = $('<label class="d-flex align-items-center gap-2 cursor-pointer p-1 rounded border-hover-primary">');
+                    var $inp   = $('<input class="form-check-input renew-pos-opt-check mt-0">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'renew_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) $('#renew_pos_option_groups_body .renew-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            renewPosUpdatePrice(subId);
+                        });
+                    if ((preSelectedIds || []).indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                    $label.append($inp).append($('<span class="flex-grow-1 fs-8">').text(name));
+                    if (price !== 0) $label.append($('<span class="badge badge-light-primary fs-9">').text((price > 0 ? '+' : '') + Math.round(price)));
+                    $list.append($('<div class="pos-option-item">').append($label));
+                });
+                $col.append($list);
+            }
+
+            $row.append($col);
         });
+        $body.append($row);
         if ((preSelectedIds || []).length) renewPosUpdatePrice(subId);
     }
 

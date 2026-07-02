@@ -77,18 +77,27 @@ class SubscriptionPricingService
             return;
         }
 
-        $options = GymSubscriptionOption::whereIn('id', $selectedOptionIds)->get()->keyBy('id');
+        $options = GymSubscriptionOption::with('group')->whereIn('id', $selectedOptionIds)->get()->keyBy('id');
 
         $rows = [];
+        $usedSingleGroups = [];
         foreach ($selectedOptionIds as $optionId) {
             if (!isset($options[$optionId])) {
                 continue;
+            }
+            $opt   = $options[$optionId];
+            $group = $opt->group;
+            if ($group && $group->selection_type === 'single') {
+                if (isset($usedSingleGroups[$group->id])) {
+                    continue; // only keep first selection for single-select groups
+                }
+                $usedSingleGroups[$group->id] = true;
             }
             $rows[] = [
                 'branch_setting_id'       => $branchSettingId,
                 'member_subscription_id'  => $memberSubscription->id,
                 'option_id'               => $optionId,
-                'price_snapshot'          => (float) $options[$optionId]->price_modifier,
+                'price_snapshot'          => (float) $opt->price_modifier,
                 'created_at'              => now(),
                 'updated_at'              => now(),
             ];
