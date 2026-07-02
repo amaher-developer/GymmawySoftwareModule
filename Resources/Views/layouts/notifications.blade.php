@@ -194,15 +194,46 @@
 <!-- end Notifications-->
 
 <!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+<style>
+    @keyframes bell-shake {
+        0%,100% { transform: rotate(0deg); }
+        10%      { transform: rotate(-18deg); }
+        20%      { transform: rotate(18deg); }
+        30%      { transform: rotate(-14deg); }
+        40%      { transform: rotate(14deg); }
+        50%      { transform: rotate(-10deg); }
+        60%      { transform: rotate(10deg); }
+        70%      { transform: rotate(-6deg); }
+        80%      { transform: rotate(6deg); }
+        90%      { transform: rotate(-2deg); }
+    }
+    .bell-ringing {
+        display: inline-block;
+        animation: bell-shake 0.9s ease both;
+        transform-origin: top center;
+    }
+</style>
+
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
-    function notifytone() {
-        console.log('{{ asset("public/mixkit-correct-answer-reward-952.wav") }}');
-        var snd = new Audio('{{ asset("public/mixkit-correct-answer-reward-952.wav") }}');
-        snd.play();
+    if (typeof window.notifytone === 'undefined') {
+        window.notifytone = function notifytone() {
+            var snd = new Audio('{{ asset("mixkit-correct-answer-reward-952.wav") }}');
+            snd.play().catch(function() {});
+        };
     }
-    // Enable pusher logging - don't include this in production
-    Pusher.logToConsole = true;
+
+    function ringBell() {
+        var bell = document.getElementById('notification_bell_icon');
+        if (!bell) return;
+        bell.classList.remove('bell-ringing');
+        // force reflow so the animation restarts if already running
+        void bell.offsetWidth;
+        bell.classList.add('bell-ringing');
+        setTimeout(function() { bell.classList.remove('bell-ringing'); }, 900);
+    }
+
+    Pusher.logToConsole = false;
 
     var pusher = new Pusher('098b6ce982918904e9e7', {
         cluster: 'eu'
@@ -210,39 +241,42 @@
 
     var channel = pusher.subscribe('my-channel.{{$mainSettings['token']}}');
     channel.bind('my-event', function (data) {
-        var getData = JSON.stringify(data);
-        // alert(getData.message+ '  '+getData["user_id"]);
-        var notifications_badge = $('#notifications_badge').html();
-        notifications_badge = parseInt(notifications_badge) + 1;
-        $('.notifications_badge').html(notifications_badge);
+        // Update badge count
+        var notifications_badge = parseInt($('#notifications_badge').html()) || 0;
+        $('.notifications_badge').html(notifications_badge + 1);
 
-        $('#notifications_result').prepend('<li><a href="javascript:;" onclick="markAsRead(' + data.user_id + ', '+"'"+data.message+"'"+', '+"'"+data.url+"'"+');" class="main-header-notification">\n' +
-            '                                                <span class="time">' + data.created_at + '</span>\n' +
-            '                                                <span class="details">\n' +
-            '                                                        <span class="label label-sm label-icon label-warning ">\n' +
-            '                                                        <i class="fa fa-bell-o"></i>\n' +
-            '                                                        </span>' + data.title + '</span>\n' +
-            '                                            </a></li>');
+        // Add to dropdown list
+        $('#notifications_result').prepend(
+            '<li><a href="javascript:;" onclick="markAsRead(' + data.user_id + ', \'' + data.message + '\', \'' + data.url + '\');" class="main-header-notification">' +
+            '<span class="time">' + (data.created_at || '') + '</span>' +
+            '<span class="details"><span class="label label-sm label-icon label-warning"><i class="fa fa-bell-o"></i></span>' + (data.title || '') + '</span>' +
+            '</a></li>'
+        );
 
-        // Play notification sound immediately
+        // 1. Play sound
         notifytone();
 
-        // Show automatic popup notification
+        // 2. Shake the bell icon
+        ringBell();
+
+        // 3. Toast popup in top-end corner
         var popupMsg = data.message || '';
         if (data.url && data.url !== 'null' && data.url !== '') {
-            popupMsg += '<br><br><a href="' + data.url + '" style="color:#4e73df;font-weight:bold;">{{ trans("sw.press_here") }}</a>';
+            popupMsg += '<br><a href="' + data.url + '" style="color:#fff;font-weight:bold;text-decoration:underline;">{{ trans("sw.press_here") }}</a>';
         }
         Swal.fire({
-            title: '<i class="fa fa-bell" style="color:#f6c23e;margin-left:6px;"></i> ' + (data.title || '{{ trans("sw.new_notification") }}'),
+            title: (data.title || '{{ trans("sw.new_notification") }}'),
             html: popupMsg,
             icon: 'info',
+            toast: true,
             position: 'top-end',
-            showConfirmButton: true,
-            confirmButtonText: '{{ trans("sw.ok") }}',
-            confirmButtonColor: '#4e73df',
+            showConfirmButton: false,
             timer: 8000,
             timerProgressBar: true,
-            toast: false,
+            didOpen: function(toast) {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
         });
     });
     // Some useful debug msgs

@@ -650,7 +650,7 @@
                                 <div class="topbar-item px-3 px-lg-4 position-relative" data-kt-menu-trigger="click"
                                      data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end"
                                      data-kt-menu-flip="bottom">
-                                    <i class="ki-outline  ki-notification fs-1"></i>
+                                    <i class="ki-outline ki-notification fs-1" id="notification_bell_icon"></i>
                                     @if(($unreadNotificationsCount ?? 0) > 0)
                                         <span
                                             class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 mt-4 start-50 animation-blink"></span>
