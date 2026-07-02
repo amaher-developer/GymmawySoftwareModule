@@ -35,6 +35,7 @@ use Modules\Software\Models\GymAiRecommendation;
 use Modules\Software\Models\GymTrainingPlan;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserLog;
+use Modules\Software\Http\Controllers\Front\GymNotificationFrontController;
 use Modules\Software\Services\NotificationService;
 use Modules\Software\Services\SubscriptionPricingService;
 
@@ -2348,6 +2349,12 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     $notificationPayload['phone'],
                     $notificationPayload['branch_setting_id']
                 );
+                GymNotificationFrontController::pushNotificationAsync([
+                    'title'             => trans('sw.app_payment_short_msg'),
+                    'content'           => trans('sw.app_payment_msg'),
+                    'url'               => route('sw.listMember'),
+                    'branch_setting_id' => $notificationPayload['branch_setting_id'] ?? null,
+                ]);
             }
 
             return $memberSub;

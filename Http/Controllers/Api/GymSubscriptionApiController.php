@@ -96,11 +96,10 @@ class GymSubscriptionApiController extends GymGenericApiController
             $queryUpdate
         );
 
-        $notify = new GymNotificationFrontController();
-        $notify->appToUsers([
-            'title' => trans('sw.app_subscription_short_msg'),
-            'content'=> trans('sw.app_subscription_msg'),
-            'url' => route('sw.listPotentialMember'),
+        GymNotificationFrontController::pushNotificationAsync([
+            'title'             => trans('sw.app_subscription_short_msg'),
+            'content'           => trans('sw.app_subscription_msg'),
+            'url'               => route('sw.listPotentialMember'),
             'branch_setting_id' => @$subscription->branch_setting_id,
         ]);
 

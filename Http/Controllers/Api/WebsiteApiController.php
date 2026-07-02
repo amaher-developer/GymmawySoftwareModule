@@ -236,18 +236,13 @@ class WebsiteApiController extends GenericApiController
 
         $this->userLog($notes, TypeConstants::RenewMember);
 
-        // Pusher notification → panel staff
-        try {
-            $notify = new GymNotificationFrontController();
-            $notify->appToUsers([
-                'title'             => trans('sw.app_payment_short_msg'),
-                'content'           => trans('sw.app_payment_msg'),
-                'url'               => route('sw.listMember'),
-                'branch_setting_id' => @$member_subscription->branch_setting_id,
-            ]);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('createMemberSubscription: Pusher notify failed', ['error' => $e->getMessage()]);
-        }
+        // Pusher notification → panel staff (fire-and-forget, runs after response)
+        GymNotificationFrontController::pushNotificationAsync([
+            'title'             => trans('sw.app_payment_short_msg'),
+            'content'           => trans('sw.app_payment_msg'),
+            'url'               => route('sw.listMember'),
+            'branch_setting_id' => @$member_subscription->branch_setting_id,
+        ]);
 
         return $this->successResponse();
     }
