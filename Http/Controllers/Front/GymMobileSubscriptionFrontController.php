@@ -842,7 +842,21 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         // ── Re-calculate amount server-side to prevent tampering ───────────
         $pricingResult = (new SubscriptionPricingService())->calculate($subscription, $memberData['option_ids']);
         $vatPct        = (float) $memberData['vat_percentage'];
-        $baseTotal     = $pricingResult['total']; // base + options, before VAT
+
+        // Apply the subscription's default discount to the base price only,
+        // mirroring the calculation in subscription_mobile.blade.php.
+        $basePrice     = $pricingResult['base_price'];
+        $discountType  = (int) ($subscription->default_discount_type ?? 0);
+        $discountValue = (float) ($subscription->default_discount_value ?? 0);
+        if ($discountType === 1 && $discountValue > 0) {
+            $discountAmount = round(($discountValue / 100) * $basePrice, 2);
+        } elseif ($discountType === 2 && $discountValue > 0) {
+            $discountAmount = round($discountValue, 2);
+        } else {
+            $discountAmount = 0;
+        }
+        $baseTotal = round($basePrice - $discountAmount, 2) + $pricingResult['options_total'];
+
         $vatAmount     = $vatPct > 0 ? round(($baseTotal * $vatPct) / 100, 2) : 0;
         $memberData['amount'] = round($baseTotal + $vatAmount, 2);
         $memberData['vat']    = $vatAmount;
