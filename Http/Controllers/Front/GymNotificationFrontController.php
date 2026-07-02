@@ -119,6 +119,30 @@ class GymNotificationFrontController extends GymGenericFrontController
             'data'    => $data,
         ]);
     }
+
+    /** Simulate a mobile-app payment notification sent to all branch staff */
+    public function testAppPayment(Request $request)
+    {
+        $this->appToUsers([
+            'title'   => trans('sw.app_payment_short_msg'),
+            'content' => trans('sw.app_payment_msg'),
+            'url'     => route('sw.listMember'),
+        ]);
+
+        return response()->json(['status' => 'fired', 'type' => 'app_payment']);
+    }
+
+    /** Simulate a mobile-app reservation notification sent to all branch staff */
+    public function testAppReservation(Request $request)
+    {
+        $this->appToUsers([
+            'title'   => trans('sw.app_subscription_short_msg'),
+            'content' => trans('sw.app_subscription_msg'),
+            'url'     => route('sw.listPotentialMember'),
+        ]);
+
+        return response()->json(['status' => 'fired', 'type' => 'app_reservation']);
+    }
 }
 ?>
 

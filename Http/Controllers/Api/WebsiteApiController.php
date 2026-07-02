@@ -10,6 +10,7 @@ use Modules\Generic\Http\Controllers\Api\FirebaseApiController;
 use App\Modules\Notification\Models\Push_tokens;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Controllers\Front\GymMoneyBoxFrontController;
+use Modules\Software\Http\Controllers\Front\GymNotificationFrontController;
 use Modules\Software\Http\Resources\ActivityResource;
 use Modules\Software\Http\Resources\MemberResource;
 use Modules\Software\Http\Resources\SubscriptionResource;
@@ -234,6 +235,19 @@ class WebsiteApiController extends GenericApiController
         }
 
         $this->userLog($notes, TypeConstants::RenewMember);
+
+        // Pusher notification → panel staff
+        try {
+            $notify = new GymNotificationFrontController();
+            $notify->appToUsers([
+                'title'             => trans('sw.app_payment_short_msg'),
+                'content'           => trans('sw.app_payment_msg'),
+                'url'               => route('sw.listMember'),
+                'branch_setting_id' => @$member_subscription->branch_setting_id,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('createMemberSubscription: Pusher notify failed', ['error' => $e->getMessage()]);
+        }
 
         return $this->successResponse();
     }

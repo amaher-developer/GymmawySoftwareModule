@@ -15,4 +15,12 @@ Route::prefix('notification')
         Route::get('/test-pusher', 'Front\GymNotificationFrontController@testPusher')
             ->name('sw.testPusher');
 
+        // ── TEST: simulate mobile-app payment notification ──────────────────
+        Route::get('/test-app-payment', 'Front\GymNotificationFrontController@testAppPayment')
+            ->name('sw.testAppPayment');
+
+        // ── TEST: simulate mobile-app reservation notification ──────────────
+        Route::get('/test-app-reservation', 'Front\GymNotificationFrontController@testAppReservation')
+            ->name('sw.testAppReservation');
+
     });
