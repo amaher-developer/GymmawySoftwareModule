@@ -4035,6 +4035,15 @@ class GymMemberFrontController extends GymGenericFrontController
 
                     GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $membership->member_id, 'member_subscription_id' => @$membership->id, 'activity_id' => $activity['id'], 'date' => Carbon::now()->toDateTimeString(),  'attended_at' => Carbon::now()->toDateTimeString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
 
+                    // Sync any open reservation for this member+activity today to 'attended'
+                    // so the reservation page reflects the home-page attendance without double-counting.
+                    GymReservation::where('member_id', $membership->member_id)
+                        ->where('activity_id', $activity['id'])
+                        ->whereDate('date', Carbon::today())
+                        ->whereNotIn('status', ['attended', 'cancelled'])
+                        ->whereNull('attended_at') // booking row, not a log row
+                        ->update(['status' => 'attended']);
+
                 }
             }
             if (is_array($activity_result) && count($activity_result) > 0) {

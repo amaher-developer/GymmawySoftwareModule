@@ -11,8 +11,12 @@ use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymNonMember;
 use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Models\GymReservationUsage;
+use Modules\Software\Models\GymMemberSubscription;
+use Modules\Software\Models\GymNonMemberTime;
+use Modules\Software\Classes\TypeConstants;
 use Illuminate\Container\Container as Application;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class GymReservationFrontController extends GymGenericFrontController
@@ -1026,7 +1030,12 @@ class GymReservationFrontController extends GymGenericFrontController
         if (!$record) {
             return response()->json(['success' => false, 'message' => trans('sw.reservation_not_found')], 404);
         }
-        $record->update(['status' => 'cancelled','cancelled_at'=>now()]);
+
+        if ($record->status === 'attended') {
+            $this->reverseAttendanceFromReservation($record);
+        }
+
+        $record->update(['status' => 'cancelled', 'cancelled_at' => now()]);
 
         return response()->json(['success' => true, 'status' => 'cancelled']);
     }
@@ -1042,9 +1051,155 @@ class GymReservationFrontController extends GymGenericFrontController
         if (!$record) {
             return response()->json(['success' => false, 'message' => trans('sw.reservation_not_found')], 404);
         }
+
+        // Guard against double-counting if already attended
+        $alreadyAttended = $record->status === 'attended';
+
         $record->update(['status' => 'attended']);
 
+        if (!$alreadyAttended) {
+            $this->recordAttendanceFromReservation($record);
+        }
+
         return response()->json(['success' => true, 'status' => 'attended']);
+    }
+
+    /**
+     * Deduct activity visit from subscription and create attendance log (GymNonMemberTime).
+     * Mirrors GymMemberFrontController::memberActivityMembershipAttendees() (home page flow).
+     *
+     * Guards:
+     *  - If a log row for this member+activity already exists today with attended_at set
+     *    (home page already recorded it), we skip creating another log and skip incrementing
+     *    visits, but we still mark the reservation as attended so the page reflects reality.
+     *  - Stores source_reservation_id on the created log row so reversal can find it exactly.
+     */
+    private function recordAttendanceFromReservation(GymReservation $record): void
+    {
+        $activityId = $record->activity_id;
+        if (!$activityId) return;
+
+        $attendedAt = Carbon::now()->toDateTimeString();
+        $branchId   = $this->user_sw->branch_setting_id ?? null;
+        $staffId    = $this->user_sw->id ?? null;
+
+        // ── Member: deduct from subscription + log ────────────────────────
+        if ($record->member_id) {
+            // If home page already recorded attendance for same member+activity today,
+            // don't double-count visits or create a duplicate log row.
+            $alreadyLoggedToday = GymNonMemberTime::where('member_id', $record->member_id)
+                ->where('activity_id', $activityId)
+                ->whereDate('attended_at', Carbon::today())
+                ->whereNotNull('attended_at')
+                ->whereNull('source_reservation_id') // only rows not already owned by a reservation
+                ->exists();
+
+            if ($alreadyLoggedToday) {
+                return; // visits already decremented by home page; nothing to do
+            }
+
+            $membership = GymMemberSubscription::where('member_id', $record->member_id)
+                ->where('status', TypeConstants::Active)
+                ->first();
+
+            if ($membership && is_array($membership->activities) && count($membership->activities) > 0) {
+                $activityResult = [];
+                $deducted = false;
+
+                foreach ($membership->activities as $i => $activity) {
+                    $activityResult[$i] = $activity;
+
+                    if (!$deducted
+                        && (int) ($activity['id'] ?? 0) === (int) $activityId
+                        && (int) ($activity['training_times'] ?? 0) > (int) ($activity['visits'] ?? 0)
+                    ) {
+                        $activityResult[$i]['visits'] = (int) ($activity['visits'] ?? 0) + 1;
+                        $deducted = true;
+
+                        GymNonMemberTime::create([
+                            'user_id'                => $staffId,
+                            'member_id'              => $record->member_id,
+                            'member_subscription_id' => $membership->id,
+                            'activity_id'            => $activityId,
+                            'date'                   => $attendedAt,
+                            'attended_at'            => $attendedAt,
+                            'branch_setting_id'      => $branchId,
+                            'source_reservation_id'  => $record->id,
+                        ]);
+                    }
+                }
+
+                DB::table('sw_gym_member_subscription')
+                    ->where('id', $membership->id)
+                    ->update(['activities' => json_encode($activityResult), 'updated_at' => now()]);
+            }
+        }
+
+        // ── Non-member: log only ──────────────────────────────────────────
+        if ($record->non_member_id) {
+            $alreadyLoggedToday = GymNonMemberTime::where('non_member_id', $record->non_member_id)
+                ->where('activity_id', $activityId)
+                ->whereDate('attended_at', Carbon::today())
+                ->whereNotNull('attended_at')
+                ->whereNull('source_reservation_id')
+                ->exists();
+
+            if (!$alreadyLoggedToday) {
+                GymNonMemberTime::create([
+                    'user_id'               => $staffId,
+                    'non_member_id'         => $record->non_member_id,
+                    'activity_id'           => $activityId,
+                    'date'                  => $attendedAt,
+                    'attended_at'           => $attendedAt,
+                    'branch_setting_id'     => $branchId,
+                    'source_reservation_id' => $record->id,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Reverse the attendance recorded when this reservation was marked attended:
+     * delete the linked log row and restore one visit on the member's subscription.
+     * Called before changing status away from 'attended' (cancel / missed).
+     */
+    private function reverseAttendanceFromReservation(GymReservation $record): void
+    {
+        $activityId = $record->activity_id;
+        if (!$activityId) return;
+
+        // Find the log row that was created by this reservation (linked via source_reservation_id)
+        $logRow = GymNonMemberTime::where('source_reservation_id', $record->id)->first();
+
+        if (!$logRow) return; // attendance was recorded from home page — don't touch it
+
+        $logRow->delete();
+
+        // Restore one visit on the member's subscription
+        if ($record->member_id) {
+            $membership = GymMemberSubscription::where('member_id', $record->member_id)
+                ->where('status', TypeConstants::Active)
+                ->first();
+
+            if ($membership && is_array($membership->activities) && count($membership->activities) > 0) {
+                $activityResult = [];
+                $restored = false;
+
+                foreach ($membership->activities as $i => $activity) {
+                    $activityResult[$i] = $activity;
+
+                    if (!$restored && (int) ($activity['id'] ?? 0) === (int) $activityId) {
+                        $currentVisits = (int) ($activity['visits'] ?? 0);
+                        $activityResult[$i]['visits'] = max(0, $currentVisits - 1);
+                        $restored = true;
+                    }
+                }
+
+                DB::table('sw_gym_member_subscription')
+                    ->where('id', $membership->id)
+                    ->update(['activities' => json_encode($activityResult), 'updated_at' => now()]);
+            }
+        }
     }
 
     public function missed($id)
@@ -1058,6 +1213,11 @@ class GymReservationFrontController extends GymGenericFrontController
         if (!$record) {
             return response()->json(['success' => false, 'message' => trans('sw.reservation_not_found')], 404);
         }
+
+        if ($record->status === 'attended') {
+            $this->reverseAttendanceFromReservation($record);
+        }
+
         $record->update(['status' => 'missed']);
 
         return response()->json(['success' => true, 'status' => 'missed']);
