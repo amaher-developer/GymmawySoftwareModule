@@ -652,8 +652,11 @@
                                      data-kt-menu-flip="bottom">
                                     <i class="ki-outline ki-notification fs-1" id="notification_bell_icon"></i>
                                     @if(($unreadNotificationsCount ?? 0) > 0)
-                                        <span
+                                        <span id="notification_dot"
                                             class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 mt-4 start-50 animation-blink"></span>
+                                    @else
+                                        <span id="notification_dot"
+                                            class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 mt-4 start-50 animation-blink d-none"></span>
                                     @endif
                                 </div>
                                 <!--begin::Menu-->
@@ -671,7 +674,7 @@
                                     <!--begin::Tab panel-->
                                     <div>
                                         <!--begin::Items-->
-                                        <div class="scroll-y mh-325px my-5 px-8">
+                                        <div class="scroll-y mh-325px my-5 px-8" id="notifications_list_container">
                                             @if(($unreadNotificationsCount ?? 0) == 0)
                                                 <!--begin::Item-->
                                                 <div class="d-flex flex-stack py-4">

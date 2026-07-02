@@ -326,15 +326,15 @@
                                             $optionsTotal = $selectedOpts->sum('price_snapshot');
                                             $lang = app()->getLocale();
 
-                                            // Activities included in the subscription definition
-                                            $subActivities = $order->subscription
-                                                ? $order->subscription->activities->load('activity')
-                                                : collect();
-
-                                            // Products included in the subscription definition
-                                            $subProducts = $order->subscription
-                                                ? $order->subscription->subscription_products()->with('product')->get()
-                                                : collect();
+                                            // Activities / products from subscription definition
+                                            // Guard: subscription may be stdClass (JSON) or Eloquent model
+                                            $sub = $order->subscription ?? null;
+                                            if ($sub && !($sub instanceof \Illuminate\Database\Eloquent\Model)) {
+                                                $subId = is_object($sub) ? ($sub->id ?? null) : (is_array($sub) ? ($sub['id'] ?? null) : null);
+                                                $sub = $subId ? \Modules\Software\Models\GymSubscription::find($subId) : null;
+                                            }
+                                            $subActivities = $sub ? $sub->activities()->with('activity')->get() : collect();
+                                            $subProducts   = $sub ? $sub->subscription_products()->with('product')->get() : collect();
                                         @endphp
 
                                         @if($subActivities->count() || $subProducts->count())
