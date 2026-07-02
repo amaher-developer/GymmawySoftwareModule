@@ -155,7 +155,7 @@
             </div>
             <div class="d-flex flex-column">
                 <span class="fs-6 fw-semibold text-gray-900">{{ trans('admin.total_count')}}</span>
-                <span class="fs-2 fw-bold text-primary">{{ count($orders) }}</span>
+                <span class="fs-2 fw-bold text-primary">{{ $total }}</span>
             </div>
         </div>
         <!--end::Total count-->
