@@ -44,7 +44,8 @@ class SubscriptionPricingService
                 $nameAr = $opt->activity->name_ar ?? '';
                 $nameEn = $opt->activity->name_en ?? $nameAr;
             } else {
-                $nameAr = $nameEn = '';
+                $nameAr = $opt->name_ar ?? '';
+                $nameEn = $opt->name_en ?? $nameAr;
             }
             return [
                 'option_id'      => $opt->id,
