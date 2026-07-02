@@ -1137,7 +1137,7 @@
 <!--End of Tawk.to Script-->
 
 <!-- Internal Select2.min js -->
-<script src="{{asset('resources/assets/new_front/global/scripts/js/select2.min.js')}}" defer></script>
+<script src="{{asset('resources/assets/new_front/global/scripts/js/select2.min.js')}}"></script>
 <script src="{{asset('resources/assets/new_front/global/scripts/js/bootstrap-datepicker.js')}}" defer></script>
 
 {{--<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>--}}
