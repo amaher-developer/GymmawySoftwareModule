@@ -136,12 +136,10 @@
 
 
 <script>
-    // Pusher already loaded and notifytone() already defined by notifications.blade.php (via master layout).
-    // Use separate variable names to avoid overwriting the notifications channel.
-    var fpPusher  = new Pusher('098b6ce982918904e9e7', { cluster: 'eu' });
-    var fpChannel = fpPusher.subscribe('fp-member');
+    // Reuse the pusher instance created by notifications.blade.php (already connected).
+    // Subscribing a new channel on the same connection avoids a second WebSocket.
+    var fpChannel = pusher.subscribe('fp-member');
     fpChannel.bind('member-attendance', function (data) {
-        console.log('fp-member attendance', data);
         barcode_scanner(data.code);
         setTimeout(function () {
             if (typeof notifytone === 'function') notifytone();
@@ -150,5 +148,4 @@
 </script>
 
 @endsection
-
 
