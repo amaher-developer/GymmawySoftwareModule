@@ -86,11 +86,19 @@ class GymMemberFrontController extends GymGenericFrontController
     public function showProfile($id)
     {
         $title = trans('sw.member_profile');
-        $member =  GymMember::with(['member_subscription_info', 'member_subscriptions' => function ($q) {
-           $q->orderBy('id', 'desc');
-        },'member_subscriptions.subscription' => function ($q) {
-            $q->withTrashed();
-        }, 'member_attendees'])
+        $member =  GymMember::with([
+            'member_subscription_info',
+            'member_subscription_info.selected_options.option.group',
+            'member_subscription_info.selected_options.option.product',
+            'member_subscription_info.selected_options.option.activity',
+            'member_subscriptions' => function ($q) {
+                $q->orderBy('id', 'desc');
+            },
+            'member_subscriptions.subscription' => function ($q) {
+                $q->withTrashed();
+            },
+            'member_attendees',
+        ])
             ->withCount([ 'member_remain_amount_subscriptions AS total_amount_remaining' => function ($query) {
                 $query->select(DB::raw("SUM(amount_remaining) as total_amount_remaining"));
             }
@@ -1495,7 +1503,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $amount_paid = round(@$request->amount_paid, 2);
         $discount_value = round(@$request->discount_value, 2);
         $group_discount_id = @(int)$request->group_discount_id;
-        $payment_type = @$request->payment_type;
+        $payment_type = (int)($request->payment_type ?? 0);
         $workouts = @$request->workouts;
         $number_times_freeze = @$request->number_times_freeze;
         $freeze_limit = @$request->freeze_limit;
@@ -1509,11 +1517,9 @@ class GymMemberFrontController extends GymGenericFrontController
         $optionIds = array_values(array_filter(array_map('intval', (array) $request->input('option_ids', []))));
         $pricingService = new \Modules\Software\Services\SubscriptionPricingService();
 
-        if ($member_subscription->subscription_id == $subscription_id) {
-            $get_subscription_price = $member_subscription->amount_before_discount;
-        } else {
-            $get_subscription_price = $subscription->price;
-        }
+        // Always start from subscription's current base price so option additions/removals
+        // are reflected correctly (pricing service also uses $subscription->price as base).
+        $get_subscription_price = $subscription->price;
         if (!empty($optionIds)) {
             $pricing = $pricingService->calculate($subscription, $optionIds);
             $get_subscription_price = $pricing['total'];

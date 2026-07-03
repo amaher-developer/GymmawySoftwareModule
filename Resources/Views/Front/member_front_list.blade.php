@@ -1173,7 +1173,7 @@
 
     <!-- start model pay -->
     <div class="modal" id="modalProfileMember">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content modal-content-demo">
                 <div class="modal-header">
                     <h6 class="modal-title" id="modalProfile_member_name"></h6>

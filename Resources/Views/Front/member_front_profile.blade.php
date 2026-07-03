@@ -116,9 +116,25 @@
         .mb-5 {
             margin-bottom: 2rem !important;
         }
+        #print-btn {
+            position: fixed;
+            top: 16px;
+            {{ $lang == 'ar' ? 'left' : 'right' }}: 16px;
+            z-index: 9999;
+        }
+        @media print {
+            #print-btn { display: none !important; }
+            body { background: #fff !important; padding: 0 !important; }
+            .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+            .nav-tabs, .tab-content > .tab-pane:not(.show.active) { display: none !important; }
+        }
     </style>
 </head>
 <body class="p-10">
+
+<button id="print-btn" class="btn btn-sm btn-light-primary" onclick="window.print()">
+    <i class="ki-outline ki-printer fs-4 me-1"></i>{{ trans('sw.print') }}
+</button>
 
 <!--begin::Layout-->
 <div class="d-flex flex-column flex-lg-row">
@@ -386,6 +402,83 @@
                     </table>
                 </div>
                 @endif
+                @endif
+
+                @php
+                    $selectedOpts = $member->member_subscription_info
+                        ? $member->member_subscription_info->selected_options
+                        : collect();
+                    $lang = app()->getLocale();
+                @endphp
+                @if($selectedOpts->count() > 0)
+                <div class="separator separator-dashed my-5"></div>
+                <h3 class="fw-bold text-gray-800 mb-5">{{ trans('sw.subscription_options') }}</h3>
+                @php
+                    $groupedOpts = $selectedOpts->groupBy(function($so) {
+                        return $so->option?->group?->id ?? 0;
+                    });
+                @endphp
+                <div class="row g-4">
+                    @foreach($groupedOpts as $groupId => $groupOptions)
+                        @php
+                            $grp      = $groupOptions->first()->option?->group;
+                            $grpName  = $grp ? ($grp->{'name_' . $lang} ?? $grp->name_ar ?? '') : trans('sw.options');
+                        @endphp
+                        <div class="col-md-6">
+                            <div class="card border border-dashed border-gray-300 h-100">
+                                <div class="card-header min-h-40px py-3" style="border-bottom:1px solid #e4e6ef;">
+                                    <h5 class="card-title fw-bold text-gray-700 fs-5 mb-0">{{ $grpName }}</h5>
+                                </div>
+                                <div class="card-body py-3 px-4">
+                                    @foreach($groupOptions as $selectedOpt)
+                                        @php $opt = $selectedOpt->option; @endphp
+                                        @if($opt)
+                                        <div class="d-flex align-items-center py-3 @if(!$loop->first) border-top border-gray-200 @endif">
+                                            @if($opt->product)
+                                                <div class="flex-shrink-0 me-3">
+                                                    <img src="{{ $opt->product->image }}"
+                                                         alt="{{ $opt->product->display_name }}"
+                                                         style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #e4e6ef;"/>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <span class="fw-semibold fs-5 text-gray-800">{{ $opt->product->display_name }}</span>
+                                                </div>
+                                            @elseif($opt->activity)
+                                                <div class="symbol symbol-40px flex-shrink-0 me-3">
+                                                    <div class="symbol-label bg-light-info">
+                                                        <i class="ki-outline ki-abstract-26 fs-3 text-info"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <span class="fw-semibold fs-5 text-gray-800">{{ $opt->activity->{'name_' . $lang} ?? $opt->activity->name_ar ?? '' }}</span>
+                                                </div>
+                                            @else
+                                                <div class="symbol symbol-40px flex-shrink-0 me-3">
+                                                    <div class="symbol-label bg-light-primary">
+                                                        <i class="ki-outline ki-check-circle fs-3 text-primary"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <span class="fw-semibold fs-5 text-gray-800">{{ $opt->{'name_' . $lang} ?? $opt->name_ar ?? '' }}</span>
+                                                </div>
+                                            @endif
+                                            @if((float)$selectedOpt->price_snapshot > 0)
+                                                <div class="ms-3 flex-shrink-0">
+                                                    <span class="badge badge-light-success fs-6 fw-bold">+{{ number_format((float)$selectedOpt->price_snapshot, 2) }}</span>
+                                                </div>
+                                            @elseif((float)$selectedOpt->price_snapshot < 0)
+                                                <div class="ms-3 flex-shrink-0">
+                                                    <span class="badge badge-light-danger fs-6 fw-bold">{{ number_format((float)$selectedOpt->price_snapshot, 2) }}</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
                 @endif
             </div>
         </div>
