@@ -333,6 +333,8 @@
                                                 $subId = is_object($sub) ? ($sub->id ?? null) : (is_array($sub) ? ($sub['id'] ?? null) : null);
                                                 $sub = $subId ? \Modules\Software\Models\GymSubscription::find($subId) : null;
                                             }
+                                            // PT subscriptions (and other non-regular subscription types) have no activities/products tables
+                                            $sub = ($sub instanceof \Modules\Software\Models\GymSubscription) ? $sub : null;
                                             $subActivities = $sub ? $sub->activities()->with('activity')->get() : collect();
                                             $subProducts   = $sub ? $sub->subscription_products()->with('product')->get() : collect();
                                         @endphp
