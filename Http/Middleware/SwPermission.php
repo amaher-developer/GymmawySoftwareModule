@@ -143,7 +143,7 @@ class SwPermission
             , 'subscription.calculatePrice', 'subscription.options'
             , 'showOrderSubscription', 'showOrderSubscriptionPOS'
             , 'showOrderPTSubscription', 'showOrderPTSubscriptionPOS'
-            , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS'
+            , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS', 'posSearchMembers'
             , 'listSwPayment', 'updatePotentialMember'
             , 'listHelperTools',  'calculateCalories', 'calculateCaloriesResult', 'calculateBMI', 'calculateBMIResult', 'calculateIBW', 'calculateIBWResult', 'calculateWater', 'calculateWaterResult', 'calculateVatPercentage', 'calculateVatPercentageResult'
             , 'storePTMember', 'listPTMemberCalendar', 'listPTMemberInClassCalendar'
