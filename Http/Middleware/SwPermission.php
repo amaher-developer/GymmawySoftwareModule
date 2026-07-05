@@ -132,7 +132,7 @@ class SwPermission
         
         $route = \Request::route()->getName();
         $route = str_replace('sw.', '', $route);
-        $default_permissions = ['dashboard', 'dashboardMini', 'dashboardPTMini', 'showStoreOrder', 'showOrderSubscriptionNonMember', 'showOrderSubscriptionPOSNonMember', 'showStoreOrderVendor', 'showOrder', 'memberAttendees', 'membersRefresh', 'showMemberProfile', 'creditMemberBalance'
+        $default_permissions = ['dashboard', 'dashboardMini', 'dashboardPTMini', 'optimizeClear', 'showStoreOrder', 'showOrderSubscriptionNonMember', 'showOrderSubscriptionPOSNonMember', 'showStoreOrderVendor', 'showOrder', 'memberAttendees', 'membersRefresh', 'showMemberProfile', 'creditMemberBalance'
             , 'pendingPTTrainerCommissions', 'memberPTAttendees', 'getPTMemberAjax', 'getStoreMemberAjax', 'getPTTrainerAjax'
             , 'memberActivityMembershipAttendees'
             , 'memberInvitationAttendees', 'editUserProfile', 'listUserJson'

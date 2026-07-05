@@ -9,6 +9,13 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('list_title') {{ @$title }} @endsection
+@section('list_add_button')
+    @if(in_array('optimizeClear', (array)$swUser->permissions) || $swUser->is_super_user)
+        <button type="button" class="btn btn-icon btn-sm btn-light-primary" id="optimize_clear_btn" style="width:26px;height:26px;" data-bs-toggle="tooltip" >
+            <i class="ki-outline ki-arrows-circle fs-7"></i>
+        </button>
+    @endif
+@endsection
 @section('styles')
     <style>
         .normal_search {
@@ -556,6 +563,33 @@
 @endsection
 @section('scripts')
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js" defer></script>
+    <script>
+        $(document).on('click', '#optimize_clear_btn', function () {
+            var $btn = $(this);
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                url: '{{ route('sw.optimizeClear') }}',
+                type: 'POST',
+                dataType: 'json',
+                data: { _token: '{{ csrf_token() }}' },
+                success: function (response) {
+                    $btn.prop('disabled', false);
+                    Swal.fire({
+                        title: "{{ trans('admin.success') }}",
+                        text: response.message || "{{ trans('admin.completed_successfully') }}",
+                        icon: "success",
+                        timer: 1200,
+                        showConfirmButton: false
+                    });
+                },
+                error: function () {
+                    $btn.prop('disabled', false);
+                    Swal.fire("{{ trans('admin.operation_failed') }}", "{{ trans('admin.something_went_wrong') }}", 'error');
+                }
+            });
+        });
+    </script>
     <script>
         // Optimize: Lazy initialize DataTables only when tabs are shown
         // This prevents initializing 7 tables at once, reducing scripting time from ~938ms to ~200ms

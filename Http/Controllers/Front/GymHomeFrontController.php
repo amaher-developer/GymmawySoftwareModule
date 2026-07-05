@@ -29,6 +29,7 @@ use Modules\Software\Models\GymReservation;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -136,6 +137,16 @@ class GymHomeFrontController extends GymGenericFrontController
         $title = trans('sw.dashboard');
         $lang = $this->lang ?? 'ar';
         return view('software::Front.dashboard', compact(['title', 'subscriptions', 'activities', 'money_box_now', 'last_created_member', 'last_created_non_member', 'last_enter_member', 'last_expired_members', 'last_new_members', 'birthday_members', 'last_expiring_members', 'last_attendance_members', 'lang']));
+    }
+
+    public function optimizeClear()
+    {
+        Artisan::call('optimize:clear');
+
+        return response()->json([
+            'success' => true,
+            'message' => trans('admin.completed_successfully'),
+        ]);
     }
     public function home_mini(){
 

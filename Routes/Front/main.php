@@ -20,6 +20,8 @@ Route::prefix('/')
 
         Route::name('sw.dashboard')
             ->get('', 'Front\GymHomeFrontController@home');
+        Route::name('sw.optimizeClear')
+            ->post('optimize-clear', 'Front\GymHomeFrontController@optimizeClear');
         Route::name('sw.dashboardMini')
             ->get('home-mini', 'Front\GymHomeFrontController@home_mini');
         Route::name('sw.dashboardPTMini')
