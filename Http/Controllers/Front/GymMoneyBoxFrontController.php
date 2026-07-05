@@ -251,6 +251,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                     });
                 }
             })
+            ->orderBy('created_at', 'desc')
             ->orderBy('id', 'desc')
             ->get();
         $this->fileName = 'reports-' . Carbon::now()->toDateTimeString();
@@ -339,6 +340,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                             });
                         }
                     })
+                    ->orderBy('created_at', 'desc')
                     ->orderBy('id', 'desc')
                     ->get();
 

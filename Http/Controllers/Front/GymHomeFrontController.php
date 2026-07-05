@@ -50,7 +50,7 @@ class GymHomeFrontController extends GymGenericFrontController
         // Optimize: Use select to limit columns and reduce memory
         $activities = GymActivity::branch()->select('id', 'name_ar', 'name_en')->get();
         $subscriptions = GymSubscription::branch()->select('id', 'name_ar', 'name_en', 'price', 'period')->get();
-        $money_box = GymMoneyBox::branch()->select('id', 'amount', 'amount_before', 'operation', 'created_at')->orderBy('created_at', 'desc')->first();
+        $money_box = GymMoneyBox::branch()->select('id', 'amount', 'amount_before', 'operation', 'created_at')->orderBy('created_at', 'desc')->orderBy('id', 'desc')->first();
         $money_box_now = @GymMoneyBoxFrontController::amountAfter($money_box['amount'] ?? 0, $money_box['amount_before'] ?? 0, $money_box['operation'] ?? 0);
 
         $last_created_member = GymMember::branch()->select('id', 'name')->orderBy('created_at', 'desc')->first();
@@ -363,7 +363,7 @@ class GymHomeFrontController extends GymGenericFrontController
 //        $activities_count = GymActivity::count();
 //        $subscription_count = GymSubscription::count();
 
-        $money_box = GymMoneyBox::branch()->select(['id', 'amount', 'operation', 'amount_before', 'created_at'])->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('id', 'DESC');
+        $money_box = GymMoneyBox::branch()->select(['id', 'amount', 'operation', 'amount_before', 'created_at'])->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC')->orderBy('id', 'DESC');
         
         if ($from_date && $to_date) {
             $money_box = $money_box->whereBetween('created_at', [$from_date . ' 00:00:00', $to_date . ' 23:59:59']);
@@ -378,7 +378,7 @@ class GymHomeFrontController extends GymGenericFrontController
 
         $earnings = ($revenues - $expenses);
 
-        $money_box_daily = @$money_box[0] ? $money_box[0] : GymMoneyBox::branch()->orderBy('id', 'desc')->first();
+        $money_box_daily = @$money_box[0] ? $money_box[0] : GymMoneyBox::branch()->orderBy('created_at', 'desc')->orderBy('id', 'desc')->first();
 //        $money_box = GymMoneyBox::branch()->orderBy('id', 'desc')->first();
 
         $money_box_now = @GymMoneyBoxFrontController::amountAfter($money_box_daily['amount'], $money_box_daily['amount_before'], $money_box_daily['operation']);
