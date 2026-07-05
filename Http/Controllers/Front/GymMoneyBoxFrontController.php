@@ -925,8 +925,19 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         }
 
         $branchId = $user->branch_setting_id ?? 1;
+        $from     = request('from') ?: null;
+        $to       = request('to') ?: null;
+
+        // No explicit range and not asking for full history -> default to last week
+        if (!$from && !$to && !request('all')) {
+            $from = now()->subWeek()->toDateString();
+            $to   = now()->toDateString();
+        }
+
         $service  = new \Modules\Software\Services\MoneyBoxAuditService();
-        $result   = $service->scan($branchId);
+        $result   = $service->scan($branchId, 100, $from, $to);
+        $result['from'] = $from;
+        $result['to']   = $to;
 
         return response()->json(['success' => true] + $result);
     }

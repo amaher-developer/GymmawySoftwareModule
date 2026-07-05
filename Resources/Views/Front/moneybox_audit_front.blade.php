@@ -30,14 +30,23 @@
                 </div>
             </div>
             <div class="card-toolbar">
-                <button type="button" class="btn btn-primary" id="run_audit_btn">
-                    <i class="ki-outline ki-arrows-circle fs-6 me-1"></i>
-                    <span id="run_audit_btn_label">{{ trans('sw.moneybox_audit_run') }}</span>
-                    <span class="spinner-border spinner-border-sm ms-2 d-none" id="run_audit_spinner"></span>
-                </button>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <input type="date" class="form-control form-control-sm w-150px" id="audit_from" placeholder="{{ trans('sw.from') }}">
+                    <span class="text-muted">{{ trans('sw.to') }}</span>
+                    <input type="date" class="form-control form-control-sm w-150px" id="audit_to" placeholder="{{ trans('sw.to') }}">
+                    <button type="button" class="btn btn-sm btn-light-secondary" id="clear_audit_period_btn">
+                        {{ trans('sw.moneybox_audit_full_history') }}
+                    </button>
+                    <button type="button" class="btn btn-primary" id="run_audit_btn">
+                        <i class="ki-outline ki-arrows-circle fs-6 me-1"></i>
+                        <span id="run_audit_btn_label">{{ trans('sw.moneybox_audit_run') }}</span>
+                        <span class="spinner-border spinner-border-sm ms-2 d-none" id="run_audit_spinner"></span>
+                    </button>
+                </div>
             </div>
         </div>
         <div class="card-body pt-0">
+            <div class="text-muted fs-8 mb-3">{{ trans('sw.moneybox_audit_period_note') }}</div>
             <div id="audit_results">
                 <div class="text-muted text-center py-10">{{ trans('sw.moneybox_audit_run') }} &rarr;</div>
             </div>
@@ -68,7 +77,7 @@
             return html;
         }
 
-        function runAudit() {
+        function runAudit(fullHistory) {
             $('#run_audit_btn').prop('disabled', true);
             $('#run_audit_spinner').removeClass('d-none');
 
@@ -76,7 +85,12 @@
                 url: auditScanUrl,
                 type: 'POST',
                 dataType: 'json',
-                data: { _token: csrfToken },
+                data: {
+                    _token: csrfToken,
+                    from: $('#audit_from').val(),
+                    to: $('#audit_to').val(),
+                    all: fullHistory ? 1 : 0
+                },
                 success: function (response) {
                     $('#run_audit_btn').prop('disabled', false);
                     $('#run_audit_spinner').addClass('d-none');
@@ -97,11 +111,26 @@
                                 + '<td>#' + r.id + '</td>'
                                 + '<td>' + r.created_at + '</td>'
                                 + '<td class="text-danger fw-bold">' + numberFmt(r.stored_amount) + '</td>'
-                                + '<td>#' + r.invoice_id + ' (' + numberFmt(r.invoice_total) + ')</td>'
+                                + '<td>#' + r.invoice_id + ' (' + numberFmt(r.invoice_amount_paid) + ')</td>'
                                 + '<td class="text-success fw-bold">'
                                 + '<input type="number" step="0.01" class="form-control form-control-sm d-inline-block w-100px suggested-amount-input" value="' + r.suggested_amount + '">'
                                 + '</td>'
                                 + '<td><button class="btn btn-sm btn-light-primary apply-fix-btn" data-id="' + r.id + '">{{ trans('sw.moneybox_audit_apply_fix') }}</button></td>'
+                                + '</tr>';
+                        }
+                    );
+
+                    html += renderSection(
+                        "{{ trans('sw.moneybox_audit_source_mismatches') }}",
+                        response.source_mismatches,
+                        ["{{ trans('sw.moneybox_audit_source') }}", "ID", "{{ trans('sw.moneybox_audit_money_box_net') }}", "{{ trans('sw.moneybox_audit_source_amount_paid') }}", "Diff"],
+                        function (r) {
+                            return '<tr>'
+                                + '<td>' + r.source + '</td>'
+                                + '<td>#' + r.source_id + '</td>'
+                                + '<td>' + numberFmt(r.money_box_net) + '</td>'
+                                + '<td>' + numberFmt(r.source_amount_paid) + '</td>'
+                                + '<td class="text-danger fw-bold">' + numberFmt(r.diff) + '</td>'
                                 + '</tr>';
                         }
                     );
@@ -127,9 +156,13 @@
                         }
                     );
 
-                    if (!response.amount_mismatches.length && !response.order_issues.length && !response.chain_breaks.length) {
+                    if (!response.amount_mismatches.length && !response.source_mismatches.length && !response.order_issues.length && !response.chain_breaks.length) {
                         html += '<div class="alert alert-success">{{ trans('sw.moneybox_audit_no_issues') }}</div>';
                     }
+
+                    // Reflect the period the server actually used (e.g. the last-week default)
+                    if (response.from) $('#audit_from').val(response.from);
+                    if (response.to) $('#audit_to').val(response.to);
 
                     $('#audit_results').html(html);
                 },
@@ -141,7 +174,18 @@
             });
         }
 
-        $('#run_audit_btn').on('click', runAudit);
+        $('#run_audit_btn').on('click', function () { runAudit(false); });
+
+        $('#clear_audit_period_btn').on('click', function () {
+            $('#audit_from').val('');
+            $('#audit_to').val('');
+            runAudit(true);
+        });
+
+        // Default view: last week only (server-side default matches this)
+        $(document).ready(function () {
+            runAudit(false);
+        });
 
         $(document).on('click', '.apply-fix-btn', function () {
             const id = $(this).data('id');
