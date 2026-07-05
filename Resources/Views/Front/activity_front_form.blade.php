@@ -480,6 +480,33 @@
                 <!--end::Card body-->
             </div>
             <!--end::Reservation Settings-->
+
+            <!--begin::Additional Trainers-->
+            <div class="card card-flush py-4">
+                <div class="card-header">
+                    <div class="card-title">
+                        <h2><i class="fa fa-users"></i> {{ trans('sw.additional_trainers') }}</h2>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="text-muted fs-7 mb-5">{{ trans('sw.additional_trainers_hint') }}</div>
+
+                    <div id="activity_trainers_container">
+                        @foreach($activity->activityTrainers ?? [] as $i => $at)
+                            @include('software::Front.partials._activity_trainer_row', ['index' => $i, 'at' => $at, 'trainers' => $trainers, 'weekDays' => $weekDays])
+                        @endforeach
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-light-primary" id="add_activity_trainer_btn">
+                        <i class="fa fa-plus"></i> {{ trans('sw.add_trainer') }}
+                    </button>
+
+                    <template id="activity_trainer_row_template">
+                        @include('software::Front.partials._activity_trainer_row', ['index' => '__INDEX__', 'at' => null, 'trainers' => $trainers, 'weekDays' => $weekDays])
+                    </template>
+                </div>
+            </div>
+            <!--end::Additional Trainers-->
             @endif
             <!--begin::Form Actions-->
             <div class="d-flex justify-content-end">
@@ -611,13 +638,50 @@
                 if (!hasActiveDay) {
                     // Remove any existing reservation_details inputs
                     $('input[name^="reservation_details"]').remove();
-                    
+
                     // Add hidden input to explicitly set reservation_details to null
                     $('<input>').attr({
                         type: 'hidden',
                         name: 'reservation_details',
                         value: ''
                     }).appendTo($(this));
+                }
+            });
+
+            // ==========================================
+            // Additional Trainers (multiple trainers per activity, each with own schedule)
+            // ==========================================
+            var activityTrainerNextIndex = $('#activity_trainers_container .activity-trainer-row').length;
+
+            function toggleAtDayRow($checkbox) {
+                var checked = $checkbox.is(':checked');
+                var $row = $checkbox.closest('.at-day-row');
+                $row.toggleClass('disabled-row', !checked);
+                $row.find('.at-time-input').prop('disabled', !checked);
+                if (!checked) $row.find('.at-time-input').val('');
+            }
+
+            $('#activity_trainers_container').on('change', '.at-day-checkbox', function() {
+                toggleAtDayRow($(this));
+            });
+
+            $('#add_activity_trainer_btn').on('click', function() {
+                var template = document.getElementById('activity_trainer_row_template');
+                var html = template.innerHTML.split('__INDEX__').join(activityTrainerNextIndex);
+                $('#activity_trainers_container').append(html);
+                activityTrainerNextIndex++;
+            });
+
+            $('#activity_trainers_container').on('click', '.remove-activity-trainer-btn', function() {
+                var $row = $(this).closest('.activity-trainer-row');
+                var existingId = $row.find('.at-id-input').val();
+                if (existingId) {
+                    // Existing assignment: flag for soft-delete server-side, hide visually
+                    $row.find('.at-delete-input').val('1');
+                    $row.hide();
+                } else {
+                    // Unsaved new row: just remove it
+                    $row.remove();
                 }
             });
         });

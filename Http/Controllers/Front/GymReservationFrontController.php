@@ -13,6 +13,8 @@ use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Models\GymReservationUsage;
 use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymNonMemberTime;
+use Modules\Software\Models\GymActivityTrainer;
+use Modules\Software\Services\ActivityAvailabilityService;
 use Modules\Software\Classes\TypeConstants;
 use Illuminate\Container\Container as Application;
 use Illuminate\Http\Request;
@@ -22,6 +24,7 @@ use Carbon\Carbon;
 class GymReservationFrontController extends GymGenericFrontController
 {
     public $ReservationRepository;
+    private ActivityAvailabilityService $availabilityService;
 
     public function __construct()
     {
@@ -29,7 +32,58 @@ class GymReservationFrontController extends GymGenericFrontController
 
         $this->ReservationRepository =
             new GymReservationRepository(new Application);
+        $this->availabilityService = new ActivityAvailabilityService();
+    }
 
+    /**
+     * Resolves which trainer a booking should be scoped to:
+     * 1. An explicitly given activity_trainer_id (staff override) - validated.
+     * 2. For a member booking, the trainer already pinned on their own
+     *    subscription for this activity (chosen once at subscription time).
+     * 3. The activity's sole active trainer, if there's exactly one.
+     * Returns an error when the activity has multiple trainers and none of
+     * the above resolved one - staff must pick explicitly in that case
+     * (e.g. non-member walk-ins, or a member without a prior pin).
+     *
+     * @return array{trainer: ?GymActivityTrainer, error: ?string}
+     */
+    private function resolveActivityTrainerForBooking(GymActivity $activity, ?int $activityTrainerId, string $clientType, ?int $memberId): array
+    {
+        if ($activityTrainerId) {
+            $trainer = $activity->activeActivityTrainers()->where('id', $activityTrainerId)->first();
+            if (!$trainer) {
+                return ['trainer' => null, 'error' => trans('sw.trainer_not_valid_for_activity')];
+            }
+            return ['trainer' => $trainer, 'error' => null];
+        }
+
+        if ($clientType === 'member' && $memberId) {
+            $subscription = GymMemberSubscription::where('member_id', $memberId)
+                ->where('expire_date', '>=', Carbon::today())
+                ->get()
+                ->first(function ($ms) use ($activity) {
+                    $entries = is_array($ms->activities) ? $ms->activities : (array) $ms->activities;
+                    foreach ($entries as $entry) {
+                        if ((int) (((object) $entry)->activity_id ?? 0) === $activity->id) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+
+            if ($subscription) {
+                $pinned = $this->availabilityService->resolveActivityTrainerFromSubscription($subscription, $activity->id);
+                if ($pinned) {
+                    return ['trainer' => $pinned, 'error' => null];
+                }
+            }
+        }
+
+        if ($this->availabilityService->requiresTrainerSelection($activity)) {
+            return ['trainer' => null, 'error' => trans('sw.trainer_selection_required')];
+        }
+
+        return ['trainer' => $this->availabilityService->resolveActivityTrainer($activity, null), 'error' => null];
     }
 
     public function index()
@@ -68,7 +122,16 @@ class GymReservationFrontController extends GymGenericFrontController
         $reservations->when($activity_id, fn($q) => $q->where('activity_id', $activity_id));
         $reservations->when($member_id, fn($q) => $q->where('member_id', $member_id));
         $reservations->when($non_member_id, fn($q) => $q->where('non_member_id', $non_member_id));
-        $reservations->when($trainer_id, fn($q) => $q->whereHas('activity', fn($aq) => $aq->where('trainer_id', $trainer_id)));
+        // Match the reservation's own resolved trainer (set on every booking going forward,
+        // whether pinned via a member's subscription or picked by staff) OR, for legacy rows
+        // that predate this column, fall back to the activity's single default trainer.
+        $reservations->when($trainer_id, fn($q) => $q->where(function ($q2) use ($trainer_id) {
+            $q2->where('trainer_id', $trainer_id)
+               ->orWhere(function ($q3) use ($trainer_id) {
+                   $q3->whereNull('trainer_id')
+                      ->whereHas('activity', fn($aq) => $aq->where('trainer_id', $trainer_id));
+               });
+        }));
         $reservations->when($status, fn($q) => $q->where('status', $status));
         $reservations->when($date, fn($q) => $q->whereDate('reservation_date', $date));
 
@@ -420,194 +483,36 @@ class GymReservationFrontController extends GymGenericFrontController
             'duration' => 'nullable|integer',
             'slot_interval' => 'nullable|integer',
             'branch_setting_id' => 'nullable|integer',
+            'activity_trainer_id' => 'nullable|integer',
+            'client_type' => 'nullable|in:member,non_member',
+            'member_id' => 'nullable|integer',
         ]);
 
         $activity = GymActivity::find($data['activity_id']);
-        
-        // Get duration - priority: request > activity reservation_duration > activity duration_minutes > default
-        $duration = (int)($data['duration'] ?? ($activity->reservation_duration ?? ($activity->duration_minutes ?? 60)));
-        $interval = (int)($data['slot_interval'] ?? 30);
-        
-        // Get reservation limit (0 or null means unlimited, >0 means max reservations at same time)
-        $reservationLimit = (int)($activity->reservation_limit ?? 0);
-        $hasLimit = $reservationLimit > 0;
-
-        $date = Carbon::parse($data['reservation_date'])->format('Y-m-d');
-        $dateCarbon = Carbon::parse($data['reservation_date']);
-        $dayOfWeek = $dateCarbon->dayOfWeek; // 0 (Sunday) to 6 (Saturday)
-
-        // Check if this day is available for reservations
-        // If reservation_details is null, all days and times are available
-        $reservationDetails = $activity->reservation_details ?? null;
-        $isDayAvailable = true;
-        $dayWorkHours = null;
-
-        if ($reservationDetails !== null && isset($reservationDetails['work_days']) && is_array($reservationDetails['work_days']) && count($reservationDetails['work_days']) > 0) {
-            // If reservation_details exists and has work_days configured, check if this day is available
-            if (isset($reservationDetails['work_days'][$dayOfWeek])) {
-                $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
-                $isDayAvailable = isset($dayConfig['status']) && $dayConfig['status'] == 1;
-                
-                if ($isDayAvailable && isset($dayConfig['start']) && isset($dayConfig['end'])) {
-                    $dayWorkHours = [
-                        'start' => $dayConfig['start'],
-                        'end' => $dayConfig['end']
-                    ];
-                }
-            } else {
-                // Day not configured in work_days = not available (only when reservation_details is configured)
-                $isDayAvailable = false;
-            }
-        }
-        // If reservation_details is null or empty, all days are available (default behavior - reservation anytime)
-
-        // If day is not available, return empty slots
-        if (!$isDayAvailable) {
-            return response()->json([
-                'date' => $date,
-                'duration' => $duration,
-                'interval' => $interval,
-                'reservation_limit' => $reservationLimit,
-                'has_limit' => $hasLimit,
-                'day_available' => false,
-                'message' => trans('sw.day_not_available_for_reservation'),
-                'slots' => []
-            ]);
+        if (!$activity) {
+            return response()->json(['day_available' => false, 'message' => trans('sw.activity_not_found'), 'slots' => []], 422);
         }
 
-        // Determine working hours for this day
-        if ($dayWorkHours) {
-            // Use day-specific working hours from reservation_details
-            $startOfDay = $dayWorkHours['start'];
-            $endOfDay = $dayWorkHours['end'];
-        } else {
-            // Default working hours (adjust to your branch settings if available)
-            $startOfDay = '08:00';
-            $endOfDay = '20:00';
+        $resolved = $this->resolveActivityTrainerForBooking(
+            $activity,
+            $data['activity_trainer_id'] ?? null,
+            $data['client_type'] ?? 'member',
+            $data['member_id'] ?? null
+        );
+
+        if ($resolved['error']) {
+            return response()->json(['day_available' => false, 'message' => $resolved['error'], 'slots' => []], 422);
         }
 
-        $cursor = Carbon::parse("$date $startOfDay");
-        $endDay = Carbon::parse("$date $endOfDay");
-        $slots = [];
+        $result = $this->availabilityService->getAvailableSlots(
+            $activity,
+            $resolved['trainer'],
+            $data['reservation_date'],
+            $data['duration'] ?? null,
+            (int) ($data['slot_interval'] ?? 30)
+        );
 
-        while ($cursor->copy()->addMinutes($duration) <= $endDay) {
-            $s = $cursor->format('H:i');
-            $e = $cursor->copy()->addMinutes($duration)->format('H:i');
-            $slots[] = ['start_time' => $s, 'end_time' => $e];
-            $cursor->addMinutes($interval);
-        }
-
-        // Load existing reservations for that activity & date
-        // Exclude cancelled and missed reservations
-        $existing = GymReservation::where('activity_id', $data['activity_id'])
-            ->whereDate('reservation_date', $date)
-            ->whereNotIn('status', ['cancelled', 'missed'])
-            ->get()
-            ->map(function($r){
-                // Ensure time format is correct (H:i)
-                $start = $r->start_time;
-                $end = $r->end_time;
-                
-                // If time contains seconds or other data, extract only H:i
-                if ($start && strlen($start) > 5) {
-                    $start = substr($start, 0, 5);
-                }
-                if ($end && strlen($end) > 5) {
-                    $end = substr($end, 0, 5);
-                }
-                
-                return [
-                    'start' => $start,
-                    'end' => $end,
-                    'id' => $r->id
-                ];
-            })
-            ->filter(function($r) {
-                return $r['start'] && $r['end'];
-            })
-            ->toArray();
-
-        // Count overlapping reservations for a given time slot
-        $countOverlaps = function($s, $e) use ($existing) {
-            $count = 0;
-            foreach ($existing as $ex) {
-                // Ensure time format is correct (H:i)
-                $exStart = $ex['start'];
-                $exEnd = $ex['end'];
-                $slotStart = $s;
-                $slotEnd = $e;
-                
-                // Extract only H:i format if there's trailing data
-                if (strlen($exStart) > 5) {
-                    $exStart = substr($exStart, 0, 5);
-                }
-                if (strlen($exEnd) > 5) {
-                    $exEnd = substr($exEnd, 0, 5);
-                }
-                if (strlen($slotStart) > 5) {
-                    $slotStart = substr($slotStart, 0, 5);
-                }
-                if (strlen($slotEnd) > 5) {
-                    $slotEnd = substr($slotEnd, 0, 5);
-                }
-                
-                try {
-                    $aStart = Carbon::createFromFormat('H:i', $exStart);
-                    $aEnd = Carbon::createFromFormat('H:i', $exEnd);
-                    $sTime = Carbon::createFromFormat('H:i', $slotStart);
-                    $eTime = Carbon::createFromFormat('H:i', $slotEnd);
-                    
-                    // Check if times overlap
-                    // Two time slots overlap if: start1 < end2 && start2 < end1
-                    if ($sTime->lt($aEnd) && $eTime->gt($aStart)) {
-                        $count++;
-                    }
-                } catch (\Exception $e) {
-                    // Skip invalid time formats
-                    continue;
-                }
-            }
-            return $count;
-        };
-
-        $result = [];
-        foreach ($slots as $slot) {
-            $overlapCount = $countOverlaps($slot['start_time'], $slot['end_time']);
-            
-            // Determine availability based on reservation limit
-            if ($hasLimit) {
-                // If limit is set, check if we've reached it
-                $isAvailable = $overlapCount < $reservationLimit;
-                $remainingSlots = max(0, $reservationLimit - $overlapCount);
-            } else {
-                // No limit - always available (unlimited reservations allowed)
-                $isAvailable = true;
-                $remainingSlots = null; // null means unlimited
-            }
-            
-            $result[] = [
-                'start_time' => $slot['start_time'],
-                'end_time' => $slot['end_time'],
-                'available' => $isAvailable,
-                'current_bookings' => $overlapCount,
-                'reservation_limit' => $reservationLimit,
-                'remaining_slots' => $remainingSlots,
-            ];
-        }
-
-        return response()->json([
-            'date' => $date,
-            'duration' => $duration,
-            'interval' => $interval,
-            'reservation_limit' => $reservationLimit,
-            'has_limit' => $hasLimit,
-            'day_available' => true,
-            'work_hours' => [
-                'start' => $startOfDay,
-                'end' => $endOfDay
-            ],
-            'slots' => $result
-        ]);
+        return response()->json($result);
     }
 
     /**
@@ -621,87 +526,35 @@ class GymReservationFrontController extends GymGenericFrontController
             'start_time' => 'required',
             'end_time' => 'required',
             'reservation_id' => 'nullable|integer', // For edit mode - exclude current reservation
+            'activity_trainer_id' => 'nullable|integer',
+            'client_type' => 'nullable|in:member,non_member',
+            'member_id' => 'nullable|integer',
         ]);
 
         $activity = GymActivity::find($data['activity_id']);
         if (!$activity) {
-            return response()->json([
-                'conflict' => true,
-                'message' => trans('sw.activity_not_found')
-            ]);
+            return response()->json(['conflict' => true, 'message' => trans('sw.activity_not_found')]);
         }
 
-        // Check if day is available for reservations
-        // If reservation_details is null, all days and times are available (reservation anytime)
-        $dateCarbon = Carbon::parse($data['reservation_date']);
-        $dayOfWeek = $dateCarbon->dayOfWeek;
-        $reservationDetails = $activity->reservation_details ?? null;
-        
-        if ($reservationDetails !== null && isset($reservationDetails['work_days']) && is_array($reservationDetails['work_days']) && count($reservationDetails['work_days']) > 0) {
-            // Only check restrictions if reservation_details is configured
-            if (isset($reservationDetails['work_days'][$dayOfWeek])) {
-                $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
-                $isDayAvailable = isset($dayConfig['status']) && $dayConfig['status'] == 1;
-                
-                if (!$isDayAvailable) {
-                    return response()->json([
-                        'conflict' => true,
-                        'message' => trans('sw.day_not_available_for_reservation')
-                    ]);
-                }
-                
-                // Check if time is within working hours
-                if (isset($dayConfig['start']) && isset($dayConfig['end'])) {
-                    $startTime = substr($data['start_time'], 0, 5);
-                    $endTime = substr($data['end_time'], 0, 5);
-                    $dayStart = substr($dayConfig['start'], 0, 5);
-                    $dayEnd = substr($dayConfig['end'], 0, 5);
-                    
-                    if ($startTime < $dayStart || $endTime > $dayEnd || $startTime >= $dayEnd) {
-                        return response()->json([
-                            'conflict' => true,
-                            'message' => trans('sw.time_outside_working_hours', ['start' => $dayStart, 'end' => $dayEnd])
-                        ]);
-                    }
-                }
-            } else {
-                // Day not configured = not available (only when reservation_details is configured)
-                return response()->json([
-                    'conflict' => true,
-                    'message' => trans('sw.day_not_available_for_reservation')
-                ]);
-            }
-        }
-        // If reservation_details is null or empty, skip all restrictions (allow reservation anytime)
+        $resolved = $this->resolveActivityTrainerForBooking(
+            $activity,
+            $data['activity_trainer_id'] ?? null,
+            $data['client_type'] ?? 'member',
+            $data['member_id'] ?? null
+        );
 
-        $query = GymReservation::where('activity_id', $data['activity_id'])
-            ->whereDate('reservation_date', $data['reservation_date']);
-
-        // Exclude current reservation if editing
-        if (!empty($data['reservation_id'])) {
-            $query->where('id', '!=', $data['reservation_id']);
+        if ($resolved['error']) {
+            return response()->json(['conflict' => true, 'message' => $resolved['error']]);
         }
 
-        $exists = $query->get()
-            ->filter(function($r) use ($data) {
-                $s = substr($data['start_time'], 0, 5);
-                $e = substr($data['end_time'], 0, 5);
-                $rStart = substr($r->start_time ?? '', 0, 5);
-                $rEnd = substr($r->end_time ?? '', 0, 5);
-                
-                if (!$rStart || !$rEnd) return false;
-                
-                return (
-                    ($rStart >= $s && $rStart < $e) ||
-                    ($rEnd > $s && $rEnd <= $e) ||
-                    ($rStart <= $s && $rEnd >= $e)
-                );
-            })->count() > 0;
-
-        return response()->json([
-            'conflict' => $exists,
-            'message' => $exists ? trans('sw.time_conflict_detected') : trans('sw.time_slot_available')
-        ]);
+        return response()->json($this->availabilityService->checkConflict(
+            $activity,
+            $resolved['trainer'],
+            $data['reservation_date'],
+            $data['start_time'],
+            $data['end_time'],
+            $data['reservation_id'] ?? null
+        ));
     }
 
     /**
@@ -719,6 +572,7 @@ class GymReservationFrontController extends GymGenericFrontController
             'member_id' => 'nullable|integer',
             'non_member_id' => 'nullable|integer',
             'activity_id' => 'required|integer',
+            'activity_trainer_id' => 'nullable|integer',
             'reservation_date' => 'required|date',
             'start_time' => 'required',
             'end_time' => 'required',
@@ -730,82 +584,34 @@ class GymReservationFrontController extends GymGenericFrontController
             return response()->json(['success' => false, 'message' => trans('sw.activity_not_found')], 422);
         }
 
-        // Check if day is available for reservations
-        // If reservation_details is null, all days and times are available (reservation anytime)
-        $dateCarbon = Carbon::parse($inputs['reservation_date']);
-        $dayOfWeek = $dateCarbon->dayOfWeek;
-        $reservationDetails = $activity->reservation_details ?? null;
-        
-        if ($reservationDetails !== null && isset($reservationDetails['work_days']) && is_array($reservationDetails['work_days']) && count($reservationDetails['work_days']) > 0) {
-            // Only check restrictions if reservation_details is configured
-            if (isset($reservationDetails['work_days'][$dayOfWeek])) {
-                $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
-                $isDayAvailable = isset($dayConfig['status']) && $dayConfig['status'] == 1;
-                
-                if (!$isDayAvailable) {
-                    return response()->json(['success' => false, 'message' => trans('sw.day_not_available_for_reservation')], 422);
-                }
-                
-                // Check if time is within working hours
-                if (isset($dayConfig['start']) && isset($dayConfig['end'])) {
-                    $startTime = substr($inputs['start_time'], 0, 5);
-                    $endTime = substr($inputs['end_time'], 0, 5);
-                    $dayStart = substr($dayConfig['start'], 0, 5);
-                    $dayEnd = substr($dayConfig['end'], 0, 5);
-                    
-                    if ($startTime < $dayStart || $endTime > $dayEnd || $startTime >= $dayEnd) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => trans('sw.time_outside_working_hours', ['start' => $dayStart, 'end' => $dayEnd])
-                        ], 422);
-                    }
-                }
-            } else {
-                // Day not configured = not available (only when reservation_details is configured)
-                return response()->json(['success' => false, 'message' => trans('sw.day_not_available_for_reservation')], 422);
-            }
+        $resolved = $this->resolveActivityTrainerForBooking(
+            $activity,
+            $inputs['activity_trainer_id'] ?? null,
+            $inputs['client_type'],
+            $inputs['member_id'] ?? null
+        );
+
+        if ($resolved['error']) {
+            return response()->json(['success' => false, 'message' => $resolved['error']], 422);
         }
-        // If reservation_details is null or empty, skip all restrictions (allow reservation anytime)
+
+        $conflict = $this->availabilityService->checkConflict(
+            $activity,
+            $resolved['trainer'],
+            $inputs['reservation_date'],
+            $inputs['start_time'],
+            $inputs['end_time']
+        );
+
+        if ($conflict['conflict']) {
+            return response()->json(['success' => false, 'message' => $conflict['message']], 422);
+        }
 
         if (@$this->user_sw->branch_setting_id) {
             $inputs['branch_setting_id'] = $this->user_sw->branch_setting_id;
         }
-
-        // Check reservation limit
-        $reservationLimit = (int)($activity->reservation_limit ?? 0);
-        if ($reservationLimit > 0) {
-            // Count overlapping reservations
-            $overlapCount = GymReservation::where('activity_id', $inputs['activity_id'])
-                ->whereDate('reservation_date', $inputs['reservation_date'])
-                ->whereNotIn('status', ['cancelled', 'missed'])
-                ->get()
-                ->filter(function ($r) use ($inputs) {
-                    $s = substr($inputs['start_time'], 0, 5);
-                    $e = substr($inputs['end_time'], 0, 5);
-                    $rStart = substr($r->start_time ?? '', 0, 5);
-                    $rEnd = substr($r->end_time ?? '', 0, 5);
-                    
-                    if (!$rStart || !$rEnd) return false;
-                    
-                    try {
-                        $aStart = Carbon::createFromFormat('H:i', $rStart);
-                        $aEnd = Carbon::createFromFormat('H:i', $rEnd);
-                        $sTime = Carbon::createFromFormat('H:i', $s);
-                        $eTime = Carbon::createFromFormat('H:i', $e);
-                        
-                        return ($sTime->lt($aEnd) && $eTime->gt($aStart));
-                    } catch (\Exception $e) {
-                        return false;
-                    }
-                })->count();
-            
-            if ($overlapCount >= $reservationLimit) {
-                return response()->json([
-                    'success' => false,
-                    'message' => trans('sw.reservation_limit_reached', ['limit' => $reservationLimit])
-                ], 422);
-            }
-        }
+        $inputs['activity_trainer_id'] = $resolved['trainer'] ? $resolved['trainer']->id : null;
+        $inputs['trainer_id'] = $resolved['trainer'] ? $resolved['trainer']->trainer_id : null;
 
         $reservation = $this->ReservationRepository->create($inputs);
 
@@ -827,6 +633,7 @@ class GymReservationFrontController extends GymGenericFrontController
             'member_id' => 'nullable|integer',
             'non_member_id' => 'nullable|integer',
             'activity_id' => 'required|integer',
+            'activity_trainer_id' => 'nullable|integer',
             'reservation_date' => 'required|date',
             'start_time' => 'required',
             'end_time' => 'required',
@@ -843,107 +650,32 @@ class GymReservationFrontController extends GymGenericFrontController
             return response()->json(['success' => false, 'message' => trans('sw.activity_not_found')], 422);
         }
 
-        // Check if day is available for reservations
-        $dateCarbon = Carbon::parse($inputs['reservation_date']);
-        $dayOfWeek = $dateCarbon->dayOfWeek;
-        $reservationDetails = $activity->reservation_details ?? null;
-        
-        if ($reservationDetails !== null && isset($reservationDetails['work_days']) && is_array($reservationDetails['work_days']) && count($reservationDetails['work_days']) > 0) {
-            if (isset($reservationDetails['work_days'][$dayOfWeek])) {
-                $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
-                $isDayAvailable = isset($dayConfig['status']) && $dayConfig['status'] == 1;
-                
-                if (!$isDayAvailable) {
-                    return response()->json(['success' => false, 'message' => trans('sw.day_not_available_for_reservation')], 422);
-                }
-                
-                // Check if time is within working hours
-                if (isset($dayConfig['start']) && isset($dayConfig['end'])) {
-                    $startTime = substr($inputs['start_time'], 0, 5);
-                    $endTime = substr($inputs['end_time'], 0, 5);
-                    $dayStart = substr($dayConfig['start'], 0, 5);
-                    $dayEnd = substr($dayConfig['end'], 0, 5);
-                    
-                    if ($startTime < $dayStart || $endTime > $dayEnd || $startTime >= $dayEnd) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => trans('sw.time_outside_working_hours', ['start' => $dayStart, 'end' => $dayEnd])
-                        ], 422);
-                    }
-                }
-            } else {
-                return response()->json(['success' => false, 'message' => trans('sw.day_not_available_for_reservation')], 422);
-            }
+        $resolved = $this->resolveActivityTrainerForBooking(
+            $activity,
+            $inputs['activity_trainer_id'] ?? null,
+            $inputs['client_type'],
+            $inputs['member_id'] ?? null
+        );
+
+        if ($resolved['error']) {
+            return response()->json(['success' => false, 'message' => $resolved['error']], 422);
         }
 
-        // Check for conflicts (exclude current reservation)
-        $reservationLimit = (int)($activity->reservation_limit ?? 0);
-        if ($reservationLimit > 0) {
-            $overlapCount = GymReservation::where('activity_id', $inputs['activity_id'])
-                ->whereDate('reservation_date', $inputs['reservation_date'])
-                ->where('id', '!=', $id)
-                ->whereNotIn('status', ['cancelled', 'missed'])
-                ->get()
-                ->filter(function ($r) use ($inputs) {
-                    $s = substr($inputs['start_time'], 0, 5);
-                    $e = substr($inputs['end_time'], 0, 5);
-                    $rStart = substr($r->start_time ?? '', 0, 5);
-                    $rEnd = substr($r->end_time ?? '', 0, 5);
-                    
-                    if (!$rStart || !$rEnd) return false;
-                    
-                    try {
-                        $aStart = Carbon::createFromFormat('H:i', $rStart);
-                        $aEnd = Carbon::createFromFormat('H:i', $rEnd);
-                        $sTime = Carbon::createFromFormat('H:i', $s);
-                        $eTime = Carbon::createFromFormat('H:i', $e);
-                        
-                        return ($sTime->lt($aEnd) && $eTime->gt($aStart));
-                    } catch (\Exception $e) {
-                        return false;
-                    }
-                })->count();
-            
-            if ($overlapCount >= $reservationLimit) {
-                return response()->json([
-                    'success' => false,
-                    'message' => trans('sw.reservation_limit_reached', ['limit' => $reservationLimit])
-                ], 422);
-            }
-        } else {
-            // Check for simple conflicts
-            $exists = GymReservation::where('activity_id', $inputs['activity_id'])
-                ->whereDate('reservation_date', $inputs['reservation_date'])
-                ->where('id', '!=', $id)
-                ->whereNotIn('status', ['cancelled', 'missed'])
-                ->get()
-                ->filter(function($r) use ($inputs) {
-                    $s = substr($inputs['start_time'], 0, 5);
-                    $e = substr($inputs['end_time'], 0, 5);
-                    $rStart = substr($r->start_time ?? '', 0, 5);
-                    $rEnd = substr($r->end_time ?? '', 0, 5);
-                    
-                    if (!$rStart || !$rEnd) return false;
-                    
-                    try {
-                        $aStart = Carbon::createFromFormat('H:i', $rStart);
-                        $aEnd = Carbon::createFromFormat('H:i', $rEnd);
-                        $sTime = Carbon::createFromFormat('H:i', $s);
-                        $eTime = Carbon::createFromFormat('H:i', $e);
-                        
-                        return ($sTime->lt($aEnd) && $eTime->gt($aStart));
-                    } catch (\Exception $e) {
-                        return false;
-                    }
-                })->count() > 0;
+        $conflict = $this->availabilityService->checkConflict(
+            $activity,
+            $resolved['trainer'],
+            $inputs['reservation_date'],
+            $inputs['start_time'],
+            $inputs['end_time'],
+            (int) $id
+        );
 
-            if ($exists) {
-                return response()->json([
-                    'success' => false,
-                    'message' => trans('sw.slot_conflict')
-                ], 422);
-            }
+        if ($conflict['conflict']) {
+            return response()->json(['success' => false, 'message' => $conflict['message']], 422);
         }
+
+        $inputs['activity_trainer_id'] = $resolved['trainer'] ? $resolved['trainer']->id : null;
+        $inputs['trainer_id'] = $resolved['trainer'] ? $resolved['trainer']->trainer_id : null;
 
         $reservation->update($inputs);
 

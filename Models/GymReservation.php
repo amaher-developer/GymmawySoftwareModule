@@ -13,6 +13,8 @@ class GymReservation extends GenericModel
         'member_id',
         'non_member_id',
         'activity_id',
+        'activity_trainer_id',
+        'trainer_id',
         'reservation_date',
         'start_time',
         'end_time',
@@ -45,6 +47,16 @@ class GymReservation extends GenericModel
     public function activity()
     {
         return $this->belongsTo(GymActivity::class, 'activity_id')->withTrashed();
+    }
+
+    public function activityTrainer()
+    {
+        return $this->belongsTo(GymActivityTrainer::class, 'activity_trainer_id')->withTrashed();
+    }
+
+    public function trainer()
+    {
+        return $this->belongsTo(GymPTTrainer::class, 'trainer_id')->withTrashed();
     }
 }
 

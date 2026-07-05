@@ -83,6 +83,43 @@ class GymSubscriptionPricingFrontController extends GymGenericFrontController
     }
 
     /**
+     * GET /sw/subscriptions/{subscriptionId}/member-activities
+     * Returns the membership's allowed activities (+ activity_limit) for
+     * staff to pick from when creating/renewing a specific member's
+     * subscription, including which activities need an explicit trainer
+     * choice (more than one active trainer assigned).
+     */
+    public function memberActivities(int $subscriptionId)
+    {
+        $subscription = GymSubscription::branch()
+            ->with(['activities.activity.activeActivityTrainers.trainer'])
+            ->findOrFail($subscriptionId);
+
+        $availabilityService = new \Modules\Software\Services\ActivityAvailabilityService();
+
+        $activities = $subscription->activities->map(function ($entry) use ($availabilityService) {
+            $activity = $entry->activity;
+
+            return [
+                'activity_id' => $entry->activity_id,
+                'name' => $activity->name ?? null,
+                'training_times' => $entry->training_times,
+                'requires_trainer_selection' => $activity ? $availabilityService->requiresTrainerSelection($activity) : false,
+                'trainers' => $activity ? $activity->activeActivityTrainers->map(fn ($at) => [
+                    'activity_trainer_id' => $at->id,
+                    'trainer_name' => optional($at->trainer)->name,
+                ])->values() : [],
+            ];
+        })->values();
+
+        return response()->json([
+            'subscription_id' => $subscription->id,
+            'activity_limit' => $subscription->activity_limit,
+            'activities' => $activities,
+        ]);
+    }
+
+    /**
      * Returns the DB column name that corresponds to the requested channel.
      */
     private function channelFilter(int $channel): string

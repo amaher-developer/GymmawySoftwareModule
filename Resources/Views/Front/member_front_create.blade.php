@@ -306,6 +306,27 @@
                 </div>
                 <!--end::Membership & Subscription Card-->
 
+                <!--begin::Member Activities Card-->
+                <div class="card card-flush mb-7" id="member_activities_card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <h3 class="fw-bold">
+                                <i class="ki-outline ki-shield-tick fs-2 me-2"></i>
+                                {{ trans('sw.select_activities_for_member') }}
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div class="text-muted fs-7 mb-3" id="member_activities_hint"></div>
+                        <div id="member_activities_body">
+                            <div class="text-center py-4">
+                                <span class="spinner-border spinner-border-sm text-primary"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--end::Member Activities Card-->
+
                 <!--begin::Subscription Options Card-->
                 <div class="card card-flush mb-7" id="pos_option_groups_card" style="display:none">
                     <div class="card-header">
@@ -652,6 +673,7 @@
         var posOptionsTotal = 0; // server-confirmed options total (0 when no options selected)
         let loyaltyMoneyToPointRate = 0;
         var posOptionsUrl       = '{{ route("sw.subscription.options", ":id") }}';
+        var memberActivitiesUrl = '{{ route("sw.subscription.memberActivities", ":id") }}';
         var posCalcPriceUrl     = '{{ route("sw.subscription.calculatePrice", ":id") }}';
         var SW_VAT_PCT          = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
         var _posCalcXhr         = null; // track in-flight calculate-price XHR to abort stale ones
@@ -789,6 +811,7 @@
             $('#pos_options_breakdown').hide();
             $('#pos_side_summary').hide();
             posLoadOptionGroups($(this).val());
+            loadMemberActivities($(this).val());
         });
 
         $('#editCustomStartDate').change(function () {
@@ -920,6 +943,90 @@
                 },
                 error: function() { $card.hide(); }
             });
+        }
+
+        // ── Member Activities (allowed by membership, limited + trainer pinning) ──
+        var memberActivityLimit = null;
+
+        function loadMemberActivities(subId) {
+            var $card = $('#member_activities_card');
+            var $body = $('#member_activities_body');
+            memberActivityLimit = null;
+
+            if (!subId) { $card.hide(); return; }
+
+            $body.html('<div class="text-center py-4"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+            $card.show();
+
+            $.ajax({
+                url: memberActivitiesUrl.replace(':id', subId),
+                method: 'GET',
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+                dataType: 'json',
+                success: function(res) {
+                    var activities = res.activities || [];
+                    if (activities.length === 0) { $card.hide(); return; }
+
+                    memberActivityLimit = res.activity_limit;
+                    $('#member_activities_hint').text(
+                        memberActivityLimit
+                            ? '{{ trans("sw.select_activities_for_member_hint", ["limit" => ":limit"]) }}'.replace(':limit', memberActivityLimit)
+                            : ''
+                    );
+                    $card.show();
+                    $body.empty().append(renderMemberActivities(activities));
+                },
+                error: function() { $card.hide(); }
+            });
+        }
+
+        function renderMemberActivities(activities) {
+            var $row = $('<div class="row g-3">');
+
+            activities.forEach(function(item) {
+                var $col = $('<div class="col-md-6">');
+                var $wrap = $('<div class="d-flex align-items-center gap-3 p-3 border rounded">');
+
+                var $check = $('<input type="checkbox" class="form-check-input member-activity-check" name="selected_activities[]">')
+                    .val(item.activity_id)
+                    .prop('checked', true);
+
+                var $label = $('<label class="form-check-label fw-semibold flex-grow-1">').text(item.name || '');
+
+                $wrap.append($('<div class="form-check form-check-custom form-check-solid">').append($check).append($label));
+
+                if (item.requires_trainer_selection && item.trainers && item.trainers.length > 0) {
+                    var $select = $('<select class="form-select form-select-sm w-150px" name="activity_trainer[' + item.activity_id + ']">');
+                    $select.append($('<option value="">{{ trans("sw.select_trainer_for_activity") }}...</option>'));
+                    item.trainers.forEach(function(t) {
+                        $select.append($('<option>').val(t.activity_trainer_id).text(t.trainer_name || ''));
+                    });
+                    $wrap.append($select);
+
+                    // Disable trainer select when the activity checkbox is unchecked
+                    $check.on('change', function() {
+                        $select.prop('disabled', !$(this).is(':checked'));
+                    });
+                }
+
+                $check.on('change', function() {
+                    enforceMemberActivityLimit();
+                });
+
+                $col.append($wrap);
+                $row.append($col);
+            });
+
+            return $row;
+        }
+
+        function enforceMemberActivityLimit() {
+            if (!memberActivityLimit) return;
+
+            var $checks = $('#member_activities_body .member-activity-check');
+            var checkedCount = $checks.filter(':checked').length;
+
+            $checks.not(':checked').prop('disabled', checkedCount >= memberActivityLimit);
         }
 
         function posRenderGroups(groups, preSelectedIds) {

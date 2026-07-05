@@ -204,9 +204,10 @@ class GymActivityFrontController extends GymGenericFrontController
 
     public function store(GymActivityRequest $request)
     {
-        $activity_inputs = $this->prepare_inputs($request->except(['_token']));
+        $activity_inputs = $this->prepare_inputs($request->except(['_token', 'activity_trainers']));
         $activity_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
-        $this->ActivityRepository->create($activity_inputs);
+        $activity = $this->ActivityRepository->create($activity_inputs);
+        $this->syncActivityTrainers($activity, (array) $request->input('activity_trainers', []));
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_added'),
@@ -221,6 +222,7 @@ class GymActivityFrontController extends GymGenericFrontController
     public function edit($id)
     {
         $activity =$this->ActivityRepository->withTrashed()->find($id);
+        $activity->loadMissing('activityTrainers.trainer');
         $title = trans('sw.activity_edit');
         $trainers = \Modules\Software\Models\GymPTTrainer::branch()->orderBy('name')->get();
         return view('software::Front.activity_front_form', ['activity' => $activity,'title'=>$title, 'trainers' => $trainers]);
@@ -229,11 +231,12 @@ class GymActivityFrontController extends GymGenericFrontController
     public function update(GymActivityRequest $request, $id)
     {
         $activity =$this->ActivityRepository->withTrashed()->find($id);
-        $activity_inputs = $this->prepare_inputs($request->except(['_token']));
+        $activity_inputs = $this->prepare_inputs($request->except(['_token', 'activity_trainers']));
         $activity_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $activity_inputs['is_web'] = @(int)$activity_inputs['is_web'];
         $activity_inputs['is_mobile'] = @(int)$activity_inputs['is_mobile'];
         $activity->update($activity_inputs);
+        $this->syncActivityTrainers($activity, (array) $request->input('activity_trainers', []));
 
         $notes = str_replace(':name', $activity['name'], trans('sw.edit_activity'));
         $this->userLog($notes, TypeConstants::EditActivity);
@@ -244,6 +247,76 @@ class GymActivityFrontController extends GymGenericFrontController
             'type' => 'success'
         ]);
         return redirect(route('sw.listActivity'));
+    }
+
+    /**
+     * Syncs an activity's optional multiple-trainers-each-with-own-schedule
+     * rows (Modules\Software\Models\GymActivityTrainer), mirroring
+     * GymPTClassFrontController::syncClassTrainers(). An activity with zero
+     * rows here keeps using its legacy single trainer_id + reservation_details
+     * (nothing about this method's absence of input changes that behaviour).
+     */
+    private function syncActivityTrainers(GymActivity $activity, array $trainerPayloads): void
+    {
+        $existing = $activity->activityTrainers()->withTrashed()->get()->keyBy('id');
+        $processedIds = [];
+        $hasMeaningfulRow = false;
+
+        foreach ($trainerPayloads as $payload) {
+            $assignmentId = $payload['id'] ?? null;
+            $trainerId = $payload['trainer_id'] ?? null;
+            $shouldDelete = !empty($payload['_delete']);
+
+            if (!$trainerId && !$assignmentId) {
+                continue;
+            }
+
+            $hasMeaningfulRow = true;
+
+            if ($assignmentId && isset($existing[$assignmentId])) {
+                $assignment = $existing[$assignmentId];
+                if ($shouldDelete) {
+                    $assignment->delete();
+                    continue;
+                }
+                if ($assignment->trashed()) {
+                    $assignment->restore();
+                }
+            } else {
+                if ($shouldDelete || !$trainerId) {
+                    continue;
+                }
+                $assignment = new \Modules\Software\Models\GymActivityTrainer();
+                $assignment->activity_id = $activity->id;
+                $assignment->branch_setting_id = $activity->branch_setting_id ?? ($this->user_sw->branch_setting_id ?? null);
+            }
+
+            $assignment->trainer_id = $trainerId;
+            $assignment->is_active = array_key_exists('is_active', $payload) ? (bool) $payload['is_active'] : true;
+
+            if (array_key_exists('reservation_limit', $payload)) {
+                $assignment->reservation_limit = $payload['reservation_limit'] !== '' ? (int) $payload['reservation_limit'] : null;
+            }
+
+            if (array_key_exists('schedule', $payload)) {
+                $schedule = $payload['schedule'];
+                if (is_string($schedule) && $schedule !== '') {
+                    $schedule = json_decode($schedule, true) ?: [];
+                }
+                $assignment->schedule = $schedule ?: null;
+            }
+
+            $assignment->save();
+            $processedIds[] = $assignment->id;
+        }
+
+        if ($hasMeaningfulRow) {
+            if (!empty($processedIds)) {
+                $activity->activityTrainers()->whereNotIn('id', $processedIds)->delete();
+            } else {
+                $activity->activityTrainers()->delete();
+            }
+        }
     }
 
     public function destroy($id)

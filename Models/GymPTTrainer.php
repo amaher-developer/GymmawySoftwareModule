@@ -40,6 +40,11 @@ class GymPTTrainer extends GenericModel
         return $this->hasMany(GymPTClassTrainer::class, 'trainer_id');
     }
 
+    public function activityAssignments()
+    {
+        return $this->hasMany(GymActivityTrainer::class, 'trainer_id');
+    }
+
     public function classTrainers()
     {
         return $this->classAssignments();

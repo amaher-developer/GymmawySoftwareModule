@@ -236,6 +236,15 @@
                 <!-- Options Breakdown -->
                 <div id="renew_pos_breakdown" class="mb-4" style="display:none"></div>
 
+                <!-- Member Activities -->
+                <div id="renew_member_activities_card" class="mb-4" style="display:none">
+                    <label class="form-label fw-bold">{{ trans('sw.select_activities_for_member') }}</label>
+                    <div class="text-muted fs-8 mb-2" id="renew_member_activities_hint"></div>
+                    <div id="renew_member_activities_body" class="border rounded p-3">
+                        <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                    </div>
+                </div>
+
                 <!-- Price Information -->
                 <div class="mb-4">
                     <label class="form-label fw-bold">{{trans('sw.price')}}</label>
@@ -707,6 +716,111 @@ window.renewLastPaidTotal = 0;
         html += '</div>';
         $wrap.html(html).show();
     }
+
+    // ── Renew Modal: Member Activities (allowed by membership, limited + trainer pinning) ──
+    var renewMemberActivitiesUrl = '{{ route("sw.subscription.memberActivities", ":id") }}';
+    window.renewMemberActivityLimit = null;
+
+    window.renewLoadMemberActivities = function(subId, preSelected) {
+        preSelected = preSelected || {};
+        var $card = $('#renew_member_activities_card');
+        var $body = $('#renew_member_activities_body');
+        window.renewMemberActivityLimit = null;
+
+        if (!subId) { $card.hide(); return; }
+
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $card.show();
+
+        $.ajax({
+            url: renewMemberActivitiesUrl.replace(':id', subId),
+            method: 'GET',
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+            dataType: 'json',
+            success: function(res) {
+                var activities = res.activities || [];
+                if (!activities.length) { $card.hide(); return; }
+
+                window.renewMemberActivityLimit = res.activity_limit;
+                $('#renew_member_activities_hint').text(
+                    window.renewMemberActivityLimit
+                        ? '{{ trans("sw.select_activities_for_member_hint", ["limit" => ":limit"]) }}'.replace(':limit', window.renewMemberActivityLimit)
+                        : ''
+                );
+                renewRenderMemberActivities(activities, preSelected);
+            },
+            error: function() { $card.hide(); }
+        });
+    };
+
+    function renewRenderMemberActivities(activities, preSelected) {
+        var $body = $('#renew_member_activities_body');
+        $body.empty();
+        var $row = $('<div class="row g-3">');
+
+        activities.forEach(function(item) {
+            var isChecked = preSelected && Object.keys(preSelected).length ? !!preSelected[item.activity_id] : true;
+            var $col = $('<div class="col-md-6">');
+            var $wrap = $('<div class="d-flex align-items-center gap-3 p-2 border rounded">');
+
+            var $check = $('<input type="checkbox" class="form-check-input renew-member-activity-check">')
+                .val(item.activity_id)
+                .prop('checked', isChecked);
+
+            var $label = $('<label class="form-check-label fw-semibold flex-grow-1">').text(item.name || '');
+            $wrap.append($('<div class="form-check form-check-custom form-check-solid">').append($check).append($label));
+
+            if (item.requires_trainer_selection && item.trainers && item.trainers.length > 0) {
+                var $select = $('<select class="form-select form-select-sm w-150px renew-member-activity-trainer" data-activity-id="' + item.activity_id + '">');
+                $select.append($('<option value="">{{ trans("sw.select_trainer_for_activity") }}...</option>'));
+                item.trainers.forEach(function(t) {
+                    var selectedAttr = (preSelected[item.activity_id] == t.activity_trainer_id) ? 'selected' : null;
+                    var $opt = $('<option>').val(t.activity_trainer_id).text(t.trainer_name || '');
+                    if (selectedAttr) $opt.prop('selected', true);
+                    $select.append($opt);
+                });
+                $select.prop('disabled', !isChecked);
+                $wrap.append($select);
+
+                $check.on('change', function() {
+                    $select.prop('disabled', !$(this).is(':checked'));
+                });
+            }
+
+            $check.on('change', renewEnforceMemberActivityLimit);
+
+            $col.append($wrap);
+            $row.append($col);
+        });
+
+        $body.append($row);
+    }
+
+    function renewEnforceMemberActivityLimit() {
+        if (!window.renewMemberActivityLimit) return;
+
+        var $checks = $('#renew_member_activities_body .renew-member-activity-check');
+        var checkedCount = $checks.filter(':checked').length;
+
+        $checks.not(':checked').prop('disabled', checkedCount >= window.renewMemberActivityLimit);
+    }
+
+    /** Collects {activity_id: activity_trainer_id|true} from the renew modal's activity picker, for submission. */
+    window.renewCollectSelectedActivities = function() {
+        var selected = [];
+        var trainerChoices = {};
+
+        $('#renew_member_activities_body .renew-member-activity-check:checked').each(function() {
+            selected.push(parseInt($(this).val()));
+        });
+        $('#renew_member_activities_body .renew-member-activity-trainer').each(function() {
+            var activityId = $(this).data('activity-id');
+            var val = $(this).val();
+            if (val) trainerChoices[activityId] = parseInt(val);
+        });
+
+        return { selected_activities: selected, activity_trainer: trainerChoices };
+    };
 })();
 // ── End Renew Modal Option Groups ────────────────────────────────────────────
 </script>

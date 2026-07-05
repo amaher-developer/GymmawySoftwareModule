@@ -466,6 +466,15 @@
                         </div>
                     </div>
                     <div class="card-body pt-0">
+                        <div class="row g-4 mb-5">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">{{ trans('sw.activity_limit') }}</label>
+                                <input type="number" name="activity_limit" class="form-control" min="1"
+                                       value="{{ old('activity_limit', @$subscription->activity_limit) }}"
+                                       placeholder="{{ trans('sw.activity_limit_placeholder') }}" />
+                                <div class="form-text">{{ trans('sw.activity_limit_hint') }}</div>
+                            </div>
+                        </div>
                         @if(@$activities && count($activities) > 0)
                             <div class="row g-4 mb-5">
                                 <div class="col-md-7">

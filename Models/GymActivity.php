@@ -99,6 +99,15 @@ class GymActivity extends GenericModel
         return $this->belongsTo(GymPTTrainer::class, 'trainer_id')->withTrashed();
     }
 
+    public function activityTrainers()
+    {
+        return $this->hasMany(GymActivityTrainer::class, 'activity_id');
+    }
+
+    public function activeActivityTrainers()
+    {
+        return $this->activityTrainers()->where('is_active', true);
+    }
 
     public function toArray()
     {

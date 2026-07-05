@@ -660,6 +660,68 @@ class GymMemberFrontController extends GymGenericFrontController
     }
 
 
+    /**
+     * Filters a membership's allowed activities down to what staff selected
+     * for this specific member (respecting activity_limit), and pins a
+     * specific trainer per activity when the activity has more than one.
+     * Kept exception-free (matches this controller's early-return style):
+     * returns ['error' => string|null, 'json' => string|null].
+     *
+     * Backward compatible: if the form doesn't submit a selection at all
+     * (no 'selected_activities' key), every activity the membership allows
+     * is included, exactly like before this feature existed.
+     */
+    private function resolveMemberSubscriptionActivitiesJson(GymSubscription $subscription, $request): array
+    {
+        $allowedActivities = $subscription->activities;
+
+        $selectedIds = $request->input('selected_activities');
+        $trainerChoices = (array) $request->input('activity_trainer', []);
+
+        if ($selectedIds === null) {
+            $selectedIds = $allowedActivities->pluck('activity_id')->all();
+        }
+        $selectedIds = array_values(array_unique(array_map('intval', (array) $selectedIds)));
+
+        if ($subscription->activity_limit && count($selectedIds) > (int) $subscription->activity_limit) {
+            return ['error' => trans('sw.activity_limit_exceeded', ['limit' => $subscription->activity_limit]), 'json' => null];
+        }
+
+        $availabilityService = new \Modules\Software\Services\ActivityAvailabilityService();
+        $result = collect();
+
+        foreach ($allowedActivities as $entry) {
+            if (!in_array((int) $entry->activity_id, $selectedIds, true)) {
+                continue;
+            }
+
+            $activity = $entry->activity;
+            $activityTrainerId = $trainerChoices[$entry->activity_id] ?? null;
+
+            if ($activityTrainerId) {
+                $valid = $activity ? $activity->activeActivityTrainers()->where('id', $activityTrainerId)->exists() : false;
+                if (!$valid) {
+                    return ['error' => trans('sw.trainer_not_valid_for_activity'), 'json' => null];
+                }
+                $entry->activity_trainer_id = (int) $activityTrainerId;
+            } else {
+                if ($activity && $availabilityService->requiresTrainerSelection($activity)) {
+                    return ['error' => trans('sw.trainer_selection_required'), 'json' => null];
+                }
+                $resolved = $activity ? $availabilityService->resolveActivityTrainer($activity, null) : null;
+                $entry->activity_trainer_id = $resolved ? $resolved->id : null;
+            }
+
+            $result->push($entry);
+        }
+
+        if ($result->count() < count($selectedIds)) {
+            return ['error' => trans('sw.activity_not_allowed_for_subscription'), 'json' => null];
+        }
+
+        return ['error' => null, 'json' => $result->values()->toJson()];
+    }
+
     public function store(GymMemberRequest $request)
     {
         $checkBlockUser = GymBlockMember::branch()->where('phone', $request->phone)->count();
@@ -705,13 +767,19 @@ class GymMemberFrontController extends GymGenericFrontController
                 return redirect(route('sw.createMember'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less')]);
             }
 
+            $activitiesResolution = $this->resolveMemberSubscriptionActivitiesJson($subscription, $request);
+            if ($activitiesResolution['error']) {
+                return redirect(route('sw.createMember'))->withErrors(['selected_activities' => $activitiesResolution['error']]);
+            }
+            $activitiesJson = $activitiesResolution['json'];
+
             $member = null;
             $member_subscription = null;
             $moneyBox = null;
             $sub = [];
 
             try {
-                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes, $optionIds, $baseTotal) {
+                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes, $optionIds, $baseTotal, $activitiesJson) {
             $member = $this->MemberRepository->create($member_inputs);
 
             $this->incrementLastBarcodeNumber();
@@ -736,7 +804,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'amount_before_discount' => $baseTotal, // base + options, before discount/VAT
                         'vat' => $vat,
                         'vat_percentage' => @$this->mainSettings->vat_details['vat_percentage'],
-                        'activities' => @$subscription->activities->toJson(),
+                        'activities' => $activitiesJson,
                         'time_week' => @json_encode($subscription->time_week),
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
                         'notes' => @$notes,
@@ -2819,6 +2887,12 @@ class GymMemberFrontController extends GymGenericFrontController
         } else if (($amount_paid < 0) && ($amount_remaining < 0)) {
             return Response::json(['msg' => trans('sw.error_amount_paid'), 'code' => 'amount_paid'], 200);
         }
+
+        $activitiesResolution = $this->resolveMemberSubscriptionActivitiesJson($subscription, $request);
+        if ($activitiesResolution['error']) {
+            return Response::json(['msg' => $activitiesResolution['error'], 'code' => 'selected_activities'], 200);
+        }
+
         $member_id = @$membership ? @$membership->member_id : @$request->member_id;
         $member = $this->MemberRepository->with(['member_subscription_info'])->withTrashed()->find($member_id);
         $start_date = $custom_start_date ?? Carbon::now()->toDateString();
@@ -2864,7 +2938,7 @@ class GymMemberFrontController extends GymGenericFrontController
             'payment_type' => $payment_type,
             'status' => TypeConstants::Active,
             'amount_before_discount' => $basePrice,
-            'activities' => @$subscription->activities->toJson(),
+            'activities' => $activitiesResolution['json'],
             'time_week' =>  @json_encode($subscription->time_week),
             'updated_at' => Carbon::now(),
             'branch_setting_id' => @$this->user_sw->branch_setting_id,
