@@ -106,6 +106,7 @@ class TypeConstants {
     const CreateMoneyBoxWithdrawEarnings = 22;
     const DeleteMoneyBox = 185;
     const RestoreMoneyBox = 186;
+    const FixMoneyBoxAudit = 204;
 
 
     const ExportActivityPDF = 23;

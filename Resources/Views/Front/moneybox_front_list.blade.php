@@ -187,6 +187,15 @@
                     </button>
                     <!--end::Refresh-->
 
+                    <!--begin::Audit-->
+                    /* @if($swUser->is_super_user)
+                        <a href="{{ route('sw.auditMoneyBox') }}" class="btn btn-sm btn-flex btn-light-danger" data-bs-toggle="tooltip" title="{{ trans('sw.moneybox_audit') }}">
+                            <i class="ki-outline ki-shield-search fs-6"></i>
+                            <span class="d-none d-md-inline ms-1">{{ trans('sw.moneybox_audit') }}</span>
+                        </a>
+                    @endif */
+                    <!--end::Audit-->
+
                     <!--begin::Trashed-->
                     @if($swUser->is_super_user)
                         @if(request('trashed'))

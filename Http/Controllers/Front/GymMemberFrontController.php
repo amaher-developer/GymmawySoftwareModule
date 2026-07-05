@@ -398,10 +398,10 @@ class GymMemberFrontController extends GymGenericFrontController
 
     private function updateMoneyBox()
     {
-        $oneMonthAgo = GymMoneyBox::whereDate('created_at', '<=',Carbon::now()->subMonth()->toDateString())->orderBy('created_at','desc')->first();
-        if(@$oneMonthAgo){
+        $oneWeekAgo = GymMoneyBox::branch()->whereDate('created_at', '<=',Carbon::now()->subWeek()->toDateString())->orderBy('created_at','desc')->first();
+        if(@$oneWeekAgo){
             $moneyBox= new GymMoneyBoxFrontController();
-            $moneyBox->scriptForRebuildMoneybox($oneMonthAgo->id, $oneMonthAgo->amount);
+            $moneyBox->scriptForRebuildMoneybox($oneWeekAgo->id, $oneWeekAgo->amount);
         }
     }
 

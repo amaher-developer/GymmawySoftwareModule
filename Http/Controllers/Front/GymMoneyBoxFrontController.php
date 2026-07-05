@@ -626,18 +626,13 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
     public function scriptForRebuildMoneybox($id = null, $amount = null){
         $id = $id ?? request('id');
-        $amount = $amount ?? request('amount');
         if($id){
-            $gymMoneyBox = GymMoneyBox::branch()->where('id', '>=', $id)->orderBy('created_at', 'asc')->get();
-            foreach($gymMoneyBox as $i => $moneyBox){
-                if($i == 0){
-                    $moneyBox->amount = $amount;
-                }else{
-                    $moneyBox->amount_before = self::amountAfter(round($gymMoneyBox[$i-1]->amount, 2), round($gymMoneyBox[$i-1]->amount_before, 2), round($gymMoneyBox[$i-1]->operation, 2));
-                    var_dump('i: '.$i, 'id: '.$moneyBox->id, ' '.'amount_before: '.$moneyBox->amount_before);
-                }
-                $moneyBox->save();
+            $anchor = GymMoneyBox::branch()->where('id', $id)->first();
+            if(!$anchor){
+                return;
             }
+            $previousAmountAfter = self::amountAfter(round($anchor->amount, 2), round($anchor->amount_before, 2), $anchor->operation);
+            $this->rebuildMoneyboxFromId($id, $previousAmountAfter);
         }
     }
 
@@ -905,6 +900,61 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                 'message' => trans('admin.operation_failed') . ' - ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Audit page - super admin only. Lets staff scan the running-balance
+     * chain for corrupted amounts and fix them from the UI instead of a CLI.
+     */
+    public function auditMoneyBox()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return redirect()->route('sw.dashboard');
+        }
+
+        $title = trans('sw.moneybox_audit');
+        return view('software::Front.moneybox_audit_front', compact('title'));
+    }
+
+    public function auditMoneyBoxScan()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - Not authorized']);
+        }
+
+        $branchId = $user->branch_setting_id ?? 1;
+        $service  = new \Modules\Software\Services\MoneyBoxAuditService();
+        $result   = $service->scan($branchId);
+
+        return response()->json(['success' => true] + $result);
+    }
+
+    public function auditMoneyBoxFix()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - Not authorized']);
+        }
+
+        $id     = (int) request('id');
+        $amount = request('amount');
+
+        if (!$id || $amount === null || !is_numeric($amount)) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - ' . trans('admin.missing_data')]);
+        }
+
+        $branchId = $user->branch_setting_id ?? 1;
+        $service  = new \Modules\Software\Services\MoneyBoxAuditService();
+        $result   = $service->fix($branchId, $id, (float) $amount);
+
+        if (@$result['success']) {
+            $notes = trans('sw.moneybox_audit_fix_log', ['id' => $id, 'amount' => number_format((float) $amount, 2)]);
+            $this->userLog($notes, TypeConstants::FixMoneyBoxAudit);
+        }
+
+        return response()->json($result);
     }
 
     /**
