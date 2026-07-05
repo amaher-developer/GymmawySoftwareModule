@@ -348,9 +348,9 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $keys = ['amount', 'total_amount_before', 'total_amount_after', 'operation', 'notes', 'created_at', 'by'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
         for($i = 0; count($records) > $i;$i++ ){
-            $records[$i]['operation'] = strip_tags($records[$i]['operation_name']);
             $records[$i]['total_amount_before'] = ($records[$i]['amount_before']);
             $records[$i]['total_amount_after'] = $this->amountAfter($records[$i]['amount'], $records[$i]['amount_before'], $records[$i]['operation']);
+            $records[$i]['operation'] = strip_tags($records[$i]['operation_name']);
             $records[$i]['date'] = Carbon::parse($records[$i]['created_at'])->format('Y-m-d') . ' ' . Carbon::parse($records[$i]['created_at'])->format('h:i a');
             $records[$i]['by'] = @$records[$i]['user']['name'];
         }
