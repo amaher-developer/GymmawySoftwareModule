@@ -956,7 +956,8 @@
                 var $label = $('<label class="form-check-label ms-1">')
                     .attr('for', 'member_activity_' + activity.activity_id)
                     .html('<span class="fw-bold">' + activity.name + '</span>'
-                        + (activity.trainer_name ? '<span class="text-muted fs-8 d-block"><i class="bi bi-person-badge me-1"></i>' + activity.trainer_name + '</span>' : ''));
+                        + (activity.trainer_name ? '<span class="text-muted fs-8 d-block"><i class="bi bi-person-badge me-1"></i>' + activity.trainer_name + '</span>' : '')
+                        + '<span class="text-muted fs-8 d-block"><i class="bi bi-repeat me-1"></i>{{ trans("sw.training_times") }}: ' + (activity.training_times || 0) + '</span>');
                 $wrap.append($input).append($label);
                 $col.append($wrap);
                 $row.append($col);
