@@ -30,6 +30,7 @@
         $priceWithVat   = (float) round($priceBeforeVat + $vatAmount, 2);
 
         $hasOptions = isset($optionGroups) && $optionGroups instanceof \Illuminate\Database\Eloquent\Collection && $optionGroups->isNotEmpty();
+        $hasActivities = isset($activities) && $activities instanceof \Illuminate\Support\Collection && $activities->isNotEmpty();
 
         // Resolve which payment methods are configured
         $paymentsConfig = @$mainSettings->payments ?? [];
@@ -188,6 +189,8 @@
         .option-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: #f97d04; }
         .option-item-label { flex: 1; font-size: 14px; }
         .option-item-price { font-size: 13px; color: #f97d04; font-weight: 600; white-space: nowrap; }
+        .activity-item-sub { display: block; font-size: 12px; color: #888; }
+        .activity-input:disabled { accent-color: #ccc; }
 
         @media (max-width: 420px) {
             .payment-option {
@@ -345,6 +348,31 @@
 
         {{-- Hidden inputs to collect all selected option_ids --}}
         <div id="js-option-ids-container"></div>
+        @endif
+
+        {{-- Allowed activities (does not affect price) --}}
+        @if($hasActivities)
+        <div id="activities-wrapper">
+            <h5 class="section-title">{{ trans('sw.select_activities_for_member', [], app()->getLocale()) }}:</h5>
+            @foreach($activities as $pivot)
+            @php $activity = $pivot->activity; @endphp
+            <label class="option-item activity-item" for="act_{{ $activity->id }}">
+                <input type="checkbox"
+                       id="act_{{ $activity->id }}"
+                       name="activity_ids[]"
+                       value="{{ $activity->id }}"
+                       class="activity-input"
+                       {{ (!$activityLimit || $loop->index < $activityLimit) ? 'checked' : '' }}>
+                <span class="option-item-label">
+                    {{ $activity->name }}
+                    @if($activity->trainer)
+                        <span class="activity-item-sub">{{ $activity->trainer->name }}</span>
+                    @endif
+                    <span class="activity-item-sub">{{ trans('sw.training_times', [], app()->getLocale()) }}: {{ (int) $pivot->training_times }}</span>
+                </span>
+            </label>
+            @endforeach
+        </div>
         @endif
 
         {{-- Payment method selection --}}
@@ -610,6 +638,24 @@
             alert('{{ app()->getLocale() === "ar" ? "يرجى اختيار الخيارات المطلوبة" : "Please select the required options" }}');
         }
     });
+    </script>
+    @endif
+
+    @if($hasActivities && $activityLimit)
+    <script>
+    (function() {
+        var ACTIVITY_LIMIT = {{ (int) $activityLimit }};
+        function enforceActivityLimit() {
+            var checked = document.querySelectorAll('.activity-input:checked').length;
+            document.querySelectorAll('.activity-input:not(:checked)').forEach(function(el) {
+                el.disabled = checked >= ACTIVITY_LIMIT;
+            });
+        }
+        document.querySelectorAll('.activity-input').forEach(function(el) {
+            el.addEventListener('change', enforceActivityLimit);
+        });
+        enforceActivityLimit();
+    })();
     </script>
     @endif
 

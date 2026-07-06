@@ -112,7 +112,19 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             // table may not exist in older deployments
         }
 
-        return view('software::Front.subscription_mobile', compact('title', 'record', 'mainSettings', 'optionGroups'));
+        $activities = [];
+        try {
+            $activities = \Modules\Software\Models\GymActivitySubscription::where('subscription_id', $record->id)
+                ->with(['activity.trainer'])
+                ->get()
+                ->filter(fn($pivot) => $pivot->activity)
+                ->values();
+        } catch (\Throwable $e) {
+            // table may not exist in older deployments
+        }
+        $activityLimit = $record->activity_limit;
+
+        return view('software::Front.subscription_mobile', compact('title', 'record', 'mainSettings', 'optionGroups', 'activities', 'activityLimit'));
     }
 
     public function showActivityMobile($id)
@@ -840,6 +852,19 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             array_filter(array_map('intval', (array) $request->input('option_ids', [])))
         );
 
+        // ── Activities (does not affect price, only gated by activity_limit) ──
+        $allowedActivityIds = \Modules\Software\Models\GymActivitySubscription::where('subscription_id', $subscriptionId)
+            ->pluck('activity_id')
+            ->map(fn($id) => (int) $id)
+            ->all();
+        $memberData['activity_ids'] = array_values(array_intersect(
+            array_filter(array_map('intval', (array) $request->input('activity_ids', []))),
+            $allowedActivityIds
+        ));
+        if ($subscription->activity_limit && count($memberData['activity_ids']) > $subscription->activity_limit) {
+            return redirect()->back()->with('error', trans('sw.activity_limit_exceeded'));
+        }
+
         // ── Re-calculate amount server-side to prevent tampering ───────────
         $pricingResult = (new SubscriptionPricingService())->calculate($subscription, $memberData['option_ids']);
         $vatPct        = (float) $memberData['vat_percentage'];
@@ -1267,8 +1292,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'payment_method'  => TypeConstants::TABBY_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
             'response_code'   => array_filter([
-                'joining_date' => $member['joining_date'],
-                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'joining_date'  => $member['joining_date'],
+                'option_ids'    => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'activity_ids'  => !empty($member['activity_ids']) ? $member['activity_ids'] : null,
             ], fn($v) => $v !== null),
         ]);
 
@@ -1360,8 +1386,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'payment_method'  => TypeConstants::TAMARA_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
             'response_code'   => array_filter([
-                'joining_date' => $member['joining_date'],
-                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'joining_date'  => $member['joining_date'],
+                'option_ids'    => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'activity_ids'  => !empty($member['activity_ids']) ? $member['activity_ids'] : null,
             ], fn($v) => $v !== null),
         ]);
 
@@ -1444,8 +1471,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'payment_method'  => TypeConstants::PAYTABS_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
             'response_code'   => array_filter([
-                'joining_date' => $member['joining_date'],
-                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'joining_date'  => $member['joining_date'],
+                'option_ids'    => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'activity_ids'  => !empty($member['activity_ids']) ? $member['activity_ids'] : null,
             ], fn($v) => $v !== null),
         ]);
 
@@ -1960,8 +1988,9 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             'payment_method'  => TypeConstants::PAYMOB_TRANSACTION,
             'payment_channel' => $member['payment_channel'],
             'response_code'   => array_filter([
-                'joining_date' => $member['joining_date'],
-                'option_ids'   => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'joining_date'  => $member['joining_date'],
+                'option_ids'    => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'activity_ids'  => !empty($member['activity_ids']) ? $member['activity_ids'] : null,
             ], fn($v) => $v !== null),
         ]);
 
@@ -2262,6 +2291,15 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 $optionIds     = array_values(array_filter(array_map('intval', (array) ($rc['option_ids'] ?? []))));
                 $pricingResult = (new SubscriptionPricingService())->calculate($subscription, $optionIds);
 
+                // ── Resolve the selected activity subset (does not affect price) ───
+                $selectedActivityIds = array_values(array_filter(array_map('intval', (array) ($rc['activity_ids'] ?? []))));
+                $selectedActivities  = \Modules\Software\Models\GymActivitySubscription::where('subscription_id', $invoice->subscription_id)
+                    ->select('id', 'activity_id', 'subscription_id', 'training_times')
+                    ->with(['activity' => fn($q) => $q->select('id', 'name_ar', 'name_en')])
+                    ->get()
+                    ->whereIn('activity_id', $selectedActivityIds)
+                    ->values();
+
                 $memberSub = GymMemberSubscription::create([
                     'subscription_id'        => $invoice->subscription_id,
                     'member_id'              => $member->id,
@@ -2278,6 +2316,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'discount_value'         => $this->calculateDiscountValue($subscription),
                     'discount_type'          => $this->getDiscountType($subscription),
                     'payment_type'           => $this->resolveGatewayPaymentTypeId((int) ($invoice->payment_method ?? TypeConstants::ONLINE_PAYMENT)),
+                    'activities'             => $selectedActivities->toArray(),
                     'notes'                  => !empty($pricingResult['selected_options'])
                         ? (new SubscriptionPricingService())->buildOptionsNote($pricingResult['selected_options'], app()->getLocale())
                         : null,

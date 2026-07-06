@@ -1112,6 +1112,8 @@ class GymReservationFrontController extends GymGenericFrontController
                 foreach ($membership->activities as $i => $activity) {
                     $activityResult[$i] = $activity;
 
+                    if (!is_array($activity)) continue;
+
                     if (!$deducted
                         && (int) ($activity['activity_id'] ?? 0) === (int) $activityId
                         && (int) ($activity['training_times'] ?? 0) > (int) ($activity['visits'] ?? 0)
@@ -1190,6 +1192,8 @@ class GymReservationFrontController extends GymGenericFrontController
 
                 foreach ($membership->activities as $i => $activity) {
                     $activityResult[$i] = $activity;
+
+                    if (!is_array($activity)) continue;
 
                     if (!$restored && (int) ($activity['activity_id'] ?? 0) === (int) $activityId) {
                         $currentVisits = (int) ($activity['visits'] ?? 0);

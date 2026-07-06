@@ -546,7 +546,7 @@
                                         $activities = @$member->member_subscription_info->activities ?? [];
                                         if (is_array($activities) && count($activities) > 0) {
                                             echo implode('', array_map(function ($name) use ($member, $lang) {
-                                                if (@$name['activity']['id']) {
+                                                if (is_array($name) && @$name['activity']['id']) {
                                                     static $i = 0;
                                                     return '<button class="btn btn-'.(@$name['training_times'] > @$name['visits'] ? 'primary' : 'gray').' btn-sm rounded-2" id="activity_'.@$member->id.'_'.@$name['activity']['id'].'"  style="font-size: 10px; padding: 2px 6px;">'.$name['activity']['name_'.$lang].'</button>';
                                                     $i++;

@@ -747,6 +747,7 @@ class GymGenericApiController extends GenericController
             $subStart = $ms->start_date ? Carbon::parse($ms->start_date)->format('Y-m-d') : null;
             $subEnd   = $ms->expire_date ? Carbon::parse($ms->expire_date)->format('Y-m-d') : null;
             foreach ($memberActivities as $item) {
+                if (!is_array($item)) continue;
                 $id = (int)($item['activity_id'] ?? 0);
                 if (!$id) continue;
                 $sessionAllowance = (int)($item['training_times'] ?? 0);
@@ -902,7 +903,7 @@ class GymGenericApiController extends GenericController
             ->get()
             ->first(function ($ms) use ($activityId) {
                 return collect($ms->activities ?? [])
-                    ->contains(fn($item) => (int)($item['activity_id'] ?? 0) === (int)$activityId);
+                    ->contains(fn($item) => is_array($item) && (int)($item['activity_id'] ?? 0) === (int)$activityId);
             });
 
         if (!$activeSubscription) {
@@ -917,6 +918,7 @@ class GymGenericApiController extends GenericController
         $totalSessions = 0;
         foreach ($allActiveSubs as $ms) {
             foreach (($ms->activities ?? []) as $item) {
+                if (!is_array($item)) continue;
                 if ((int)($item['activity_id'] ?? 0) === (int)$activityId) {
                     $totalSessions += (int)($item['training_times'] ?? 0);
                 }

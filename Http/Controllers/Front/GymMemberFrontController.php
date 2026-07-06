@@ -1554,12 +1554,12 @@ class GymMemberFrontController extends GymGenericFrontController
         // ambiguous than a single swap falls back to starting the new activity fresh at 0.
         $transferVisits = null;
         if (count($removedActivityIds) === 1 && count($addedActivityIds) === 1) {
-            $removedActivity = $existingActivities->first(fn($item) => (int) ($item['activity_id'] ?? 0) === $removedActivityIds[0]);
+            $removedActivity = $existingActivities->first(fn($item) => is_array($item) && (int) ($item['activity_id'] ?? 0) === $removedActivityIds[0]);
             $transferVisits = (int) ($removedActivity['visits'] ?? 0);
         }
 
         $selectedActivities = collect($selectedActivityIds)->map(function ($activityId) use ($existingActivities, $subscriptionActivities, $addedActivityIds, $transferVisits) {
-            $existing = $existingActivities->first(fn($item) => (int) ($item['activity_id'] ?? 0) === (int) $activityId);
+            $existing = $existingActivities->first(fn($item) => is_array($item) && (int) ($item['activity_id'] ?? 0) === (int) $activityId);
             if ($existing) {
                 return $existing;
             }
@@ -4103,13 +4103,15 @@ class GymMemberFrontController extends GymGenericFrontController
             $membership = $membership->branch();
         }
         $membership = $membership->first();
-        if ($membership && (count($membership->activities) > 0)) {
+        if ($membership && is_array($membership->activities) && count($membership->activities) > 0) {
             $visits = 0;
             $training_times = 0;
             $activity_name = '';
             $activity_result = [];
             foreach ($membership->activities as $i => $activity) {
                 $activity_result[$i] = $activity;
+
+                if (!is_array($activity)) continue;
 
                 if (($activity['activity_id'] == $id) && ($activity['training_times'] > @(int)$activity['visits'])) {
                     $activity_name = $activity['activity']['name_' . $this->lang];

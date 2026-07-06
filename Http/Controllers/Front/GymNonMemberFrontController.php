@@ -737,7 +737,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
             $non_member = GymMember::select('id', 'name', 'phone')->with('member_subscription_info')->where('id', $non_member_id)->first();
             $activities = GymMemberSubscription::select('id', 'member_id', 'activities')->where('member_id', $non_member->id)->where('status', TypeConstants::Active)->first();
             if($activities){
-                $reservation_arr_check =  array_map(function ($name) use ($activity_id){ static $i = 0;  if(@$name['activity']['id'] == $activity_id){ return (@$name['training_times'] > @$name['visits'] ? 0 : 1); } $i++; }, @$activities->activities ?? []);
+                $reservation_arr_check =  array_map(function ($name) use ($activity_id){ static $i = 0;  if(is_array($name) && @$name['activity']['id'] == $activity_id){ return (@$name['training_times'] > @$name['visits'] ? 0 : 1); } $i++; }, @$activities->activities ?? []);
                 if(in_array(1, $reservation_arr_check)){ $reservation_check = 1;} // exceed all visits
             }else
                 $reservation_check = 2; // no activities for this member
@@ -843,7 +843,8 @@ class GymNonMemberFrontController extends GymGenericFrontController
     }
 
     private function getActivityByActivityId($activities, $activity_id){
-        foreach ($activities as $activity){
+        foreach ((array) $activities as $activity){
+            if(!is_array($activity)) continue;
             if($activity['activity_id'] == (int)$activity_id){
                 return $activity;
             }
