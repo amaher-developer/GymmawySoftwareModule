@@ -83,6 +83,37 @@ class GymSubscriptionPricingFrontController extends GymGenericFrontController
     }
 
     /**
+     * GET /sw/subscriptions/{subscriptionId}/member-activities
+     *
+     * Returns the membership's allowed activities (id, name, trainer, training_times)
+     * plus activity_limit, for staff to pick a subset when creating/renewing a member.
+     */
+    public function memberActivities(int $subscriptionId)
+    {
+        $subscription = GymSubscription::branch()
+            ->with(['activities.activity.trainer'])
+            ->findOrFail($subscriptionId);
+
+        $activities = $subscription->activities
+            ->filter(fn($pivot) => $pivot->activity)
+            ->map(function ($pivot) {
+                $activity = $pivot->activity;
+                return [
+                    'activity_id'    => $activity->id,
+                    'name'           => $activity->name,
+                    'trainer_name'   => $activity->trainer ? $activity->trainer->name : '',
+                    'training_times' => (int) $pivot->training_times,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'activity_limit' => $subscription->activity_limit,
+            'activities'     => $activities,
+        ]);
+    }
+
+    /**
      * Returns the DB column name that corresponds to the requested channel.
      */
     private function channelFilter(int $channel): string

@@ -77,6 +77,14 @@
                                 </a>
                             </div>
                         @endif
+                        @if($swUser && @$mainSettings->active_activity_reservation && (in_array('listReservation', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
+                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
+                                <a href="{{route('sw.listReservation')}}" class="btn btn-light-warning btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">
+                                    <i class="ki-outline ki-calendar-tick fs-1 mb-2"></i>
+                                    <span class="fw-bold fs-7 text-center">{{ trans('sw.reservations')}}</span>
+                                </a>
+                            </div>
+                        @endif
                         @if($swUser && @$mainSettings->active_subscription && (in_array('listMember', (array)($swUser->permissions ?? [])) || $swUser->is_super_user))
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 col-6">
                                 <a href="{{route('sw.listMember')}}" class="btn btn-light-danger btn-sm w-100 d-flex flex-column align-items-center justify-content-center p-2" style="height: 90px;">

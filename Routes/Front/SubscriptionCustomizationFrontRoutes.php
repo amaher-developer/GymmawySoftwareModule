@@ -32,5 +32,6 @@ Route::prefix('sw/subscriptions/{subscriptionId}')
         Route::group(['defaults' => ['permission' => 'editSubscription']], function () {
             Route::name('sw.subscription.calculatePrice')->post('/calculate-price', 'Front\GymSubscriptionPricingFrontController@calculate');
             Route::name('sw.subscription.options')->get('/options', 'Front\GymSubscriptionPricingFrontController@options');
+            Route::name('sw.subscription.memberActivities')->get('/member-activities', 'Front\GymSubscriptionPricingFrontController@memberActivities');
         });
     });

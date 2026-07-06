@@ -236,6 +236,14 @@
                 <!-- Options Breakdown -->
                 <div id="renew_pos_breakdown" class="mb-4" style="display:none"></div>
 
+                <!-- Member Activities -->
+                <div id="renew_member_activities_card" class="mb-4" style="display:none">
+                    <label class="form-label fw-bold">{{ trans('sw.select_activities_for_member') }}</label>
+                    <div id="renew_member_activities_body" class="border rounded p-3">
+                        <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                    </div>
+                </div>
+
                 <!-- Price Information -->
                 <div class="mb-4">
                     <label class="form-label fw-bold">{{trans('sw.price')}}</label>
@@ -515,6 +523,68 @@ window.renewLastPaidTotal = 0;
         });
     };
 
+    var renewMemberActivitiesUrl = '{{ route("sw.subscription.memberActivities", ":id") }}';
+
+    window.renewLoadMemberActivities = function(subId) {
+        var $card = $('#renew_member_activities_card');
+        var $body = $('#renew_member_activities_body');
+        if (!subId) { $card.hide(); $body.empty(); return; }
+        $card.show();
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $.ajax({
+            url: renewMemberActivitiesUrl.replace(':id', subId),
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            success: function(res) {
+                var activities = res.activities || [];
+                if (!activities.length) { $card.hide(); $body.empty(); return; }
+                renewRenderMemberActivities(activities, res.activity_limit);
+            },
+            error: function() { $card.hide(); $body.empty(); }
+        });
+    };
+
+    function renewRenderMemberActivities(activities, activityLimit) {
+        var $body = $('#renew_member_activities_body');
+        var hasLimit = !!activityLimit;
+        $body.empty();
+        var $row = $('<div class="row g-3">');
+        activities.forEach(function(activity, idx) {
+            var checked = !hasLimit || idx < activityLimit;
+            var $col = $('<div class="col-md-6">');
+            var $wrap = $('<div class="form-check form-check-custom form-check-solid p-2">');
+            var $input = $('<input type="checkbox" class="form-check-input renew-member-activity-check">')
+                .attr('name', 'renew_member_activity_' + activity.activity_id)
+                .attr('id', 'renew_member_activity_' + activity.activity_id)
+                .val(activity.activity_id)
+                .prop('checked', checked)
+                .on('change', function() { renewEnforceMemberActivityLimit(activityLimit); });
+            var $label = $('<label class="form-check-label ms-1">')
+                .attr('for', 'renew_member_activity_' + activity.activity_id)
+                .html('<span class="fw-bold">' + activity.name + '</span>'
+                    + (activity.trainer_name ? '<span class="text-muted fs-8 d-block"><i class="bi bi-person-badge me-1"></i>' + activity.trainer_name + '</span>' : ''));
+            $wrap.append($input).append($label);
+            $col.append($wrap);
+            $row.append($col);
+        });
+        $body.append($row);
+        renewEnforceMemberActivityLimit(activityLimit);
+    }
+
+    window.renewEnforceMemberActivityLimit = function(activityLimit) {
+        if (!activityLimit) return;
+        var checkedCount = $('.renew-member-activity-check:checked').length;
+        $('.renew-member-activity-check:not(:checked)').prop('disabled', checkedCount >= activityLimit);
+    };
+
+    window.renewCollectSelectedActivities = function() {
+        var ids = [];
+        $('.renew-member-activity-check:checked').each(function() {
+            ids.push(parseInt($(this).val()));
+        });
+        return ids;
+    };
+
     function renewPosRenderGroups(groups, preSelectedIds, subId) {
         var $body = $('#renew_pos_option_groups_body');
         $body.empty();
@@ -539,7 +609,14 @@ window.renewLastPaidTotal = 0;
                 var $pills = $('<div class="d-flex flex-wrap gap-1">');
                 (group.options || []).forEach(function(opt) {
                     var price = parseFloat(opt.price_modifier || 0);
-                    var name  = opt['name_' + renewLang] || opt.name_ar || '';
+                    var name;
+                    if (opt.product) {
+                        name = opt.product['display_name_' + renewLang] || opt.product['name_' + renewLang] || opt.product.name_ar || '';
+                    } else if (opt.activity) {
+                        name = opt.activity['name_' + renewLang] || opt.activity.name_ar || '';
+                    } else {
+                        name = opt['name_' + renewLang] || opt.name_ar || '';
+                    }
                     var $pill = $('<label class="pos-pill">');
                     var $inp  = $('<input class="d-none renew-pos-opt-check">')
                         .attr('type', isSingle ? 'radio' : 'checkbox')

@@ -734,25 +734,24 @@ class GymGenericApiController extends GenericController
             return $this->falseResponse(trans('sw.not_authorized'));
         }
 
-        $activeSubscriptions = GymMemberSubscription::with(['subscription.activities.activity.trainer'])
-            ->where('member_id', $member->id)
+        $activeSubscriptions = GymMemberSubscription::where('member_id', $member->id)
             ->whereIn('status', [TypeConstants::Active, TypeConstants::Freeze, TypeConstants::Coming])
             ->get();
 
-        // Aggregate training_times and used sessions per activity, scoped to each subscription's date range
+        // Aggregate training_times and used sessions per activity, scoped to each subscription's date range,
+        // sourced from the member's own persisted activity selection (not the full membership template).
         $activityMap = [];
         foreach ($activeSubscriptions as $ms) {
-            $sub = $ms->subscription;
-            if (!$sub) continue;
+            $memberActivities = is_array($ms->activities) ? $ms->activities : [];
+            if (empty($memberActivities)) continue;
             $subStart = $ms->start_date ? Carbon::parse($ms->start_date)->format('Y-m-d') : null;
             $subEnd   = $ms->expire_date ? Carbon::parse($ms->expire_date)->format('Y-m-d') : null;
-            foreach ($sub->activities ?? [] as $pivot) {
-                $activity = $pivot->activity ?? null;
-                if (!$activity) continue;
-                $id = $activity->id;
-                $sessionAllowance = (int)($pivot->training_times ?? 0);
+            foreach ($memberActivities as $item) {
+                $id = (int)($item['activity_id'] ?? 0);
+                if (!$id) continue;
+                $sessionAllowance = (int)($item['training_times'] ?? 0);
                 if (!isset($activityMap[$id])) {
-                    $activityMap[$id] = ['activity' => $activity, 'total_sessions' => 0, 'used_sessions' => 0];
+                    $activityMap[$id] = ['total_sessions' => 0, 'used_sessions' => 0];
                 }
                 $activityMap[$id]['total_sessions'] += $sessionAllowance;
                 // Count used sessions only within this subscription's date range
@@ -768,9 +767,12 @@ class GymGenericApiController extends GenericController
             }
         }
 
+        $activityModels = GymActivity::with('trainer')->whereIn('id', array_keys($activityMap))->get()->keyBy('id');
+
         $activities = [];
         foreach ($activityMap as $id => $item) {
-            $activity  = $item['activity'];
+            $activity = $activityModels->get($id);
+            if (!$activity) continue;
             $total     = $item['total_sessions'];
             $used      = $item['used_sessions'];
             $remaining = $total > 0 ? max(0, $total - $used) : null;
@@ -894,14 +896,13 @@ class GymGenericApiController extends GenericController
             return $this->falseResponse(trans('sw.required_fields'));
         }
 
-        // 1. Verify the member has an active subscription covering this activity
-        $activeSubscription = GymMemberSubscription::with(['subscription.activities'])
-            ->where('member_id', $member->id)
+        // 1. Verify the member has an active subscription that has this activity in its own selected set
+        $activeSubscription = GymMemberSubscription::where('member_id', $member->id)
             ->where('expire_date', '>=', Carbon::today())
             ->get()
             ->first(function ($ms) use ($activityId) {
-                return ($ms->subscription->activities ?? collect())
-                    ->contains('activity_id', $activityId);
+                return collect($ms->activities ?? [])
+                    ->contains(fn($item) => (int)($item['activity_id'] ?? 0) === (int)$activityId);
             });
 
         if (!$activeSubscription) {
@@ -909,16 +910,15 @@ class GymGenericApiController extends GenericController
         }
 
         // 2. Check session limit: sum training_times across all active subscriptions for this activity
-        $allActiveSubs = GymMemberSubscription::with(['subscription.activities'])
-            ->where('member_id', $member->id)
+        $allActiveSubs = GymMemberSubscription::where('member_id', $member->id)
             ->where('expire_date', '>=', Carbon::today())
             ->get();
 
         $totalSessions = 0;
         foreach ($allActiveSubs as $ms) {
-            foreach ($ms->subscription->activities ?? [] as $pivot) {
-                if ($pivot->activity_id == $activityId) {
-                    $totalSessions += (int)($pivot->training_times ?? 0);
+            foreach (($ms->activities ?? []) as $item) {
+                if ((int)($item['activity_id'] ?? 0) === (int)$activityId) {
+                    $totalSessions += (int)($item['training_times'] ?? 0);
                 }
             }
         }

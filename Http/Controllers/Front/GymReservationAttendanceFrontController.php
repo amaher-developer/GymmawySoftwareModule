@@ -107,7 +107,7 @@ class GymReservationAttendanceFrontController extends GymGenericFrontController
                     $activityResult[$i] = $activity;
 
                     if (!$deducted
-                        && (int) ($activity['id'] ?? 0) === (int) $activityId
+                        && (int) ($activity['activity_id'] ?? 0) === (int) $activityId
                         && (int) ($activity['training_times'] ?? 0) > (int) ($activity['visits'] ?? 0)
                     ) {
                         $activityResult[$i]['visits'] = (int) ($activity['visits'] ?? 0) + 1;

@@ -685,6 +685,16 @@ class GymMemberFrontController extends GymGenericFrontController
         }])->find($request->subscription_id);
 
         if ($subscription) {
+            $selectedActivityIds = array_values(array_filter(array_map('intval', (array) $request->input('member_activity_ids', []))));
+            $allowedActivityIds  = $subscription->activities->pluck('activity_id')->map(fn($id) => (int) $id)->all();
+            $selectedActivityIds = array_values(array_intersect($selectedActivityIds, $allowedActivityIds));
+
+            if ($subscription->activity_limit && count($selectedActivityIds) > $subscription->activity_limit) {
+                return redirect(route('sw.createMember'))->withErrors(['member_activity_ids' => trans('sw.activity_limit_exceeded')]);
+            }
+
+            $selectedActivities = $subscription->activities->whereIn('activity_id', $selectedActivityIds)->values();
+
             // Server-side pricing: base + any selected option add-ons
             $optionIds      = array_values(array_filter(array_map('intval', (array) $request->input('option_ids', []))));
             $_pricingSvc    = new \Modules\Software\Services\SubscriptionPricingService();
@@ -711,7 +721,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $sub = [];
 
             try {
-                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes, $optionIds, $baseTotal) {
+                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $selectedActivities, $amount_paid, $discount_value, $request, $vat, $notes, $optionIds, $baseTotal) {
             $member = $this->MemberRepository->create($member_inputs);
 
             $this->incrementLastBarcodeNumber();
@@ -736,7 +746,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'amount_before_discount' => $baseTotal, // base + options, before discount/VAT
                         'vat' => $vat,
                         'vat_percentage' => @$this->mainSettings->vat_details['vat_percentage'],
-                        'activities' => @$subscription->activities->toJson(),
+                        'activities' => $selectedActivities->toJson(),
                         'time_week' => @json_encode($subscription->time_week),
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
                         'notes' => @$notes,
@@ -1517,6 +1527,53 @@ class GymMemberFrontController extends GymGenericFrontController
         $optionIds = array_values(array_filter(array_map('intval', (array) $request->input('option_ids', []))));
         $pricingService = new \Modules\Software\Services\SubscriptionPricingService();
 
+        $subscription->load(['activities' => function ($q) {
+            $q->select('id', 'activity_id', 'subscription_id', 'training_times')->with(['activity' => function ($q) {
+                $q->select('id', 'name_ar', 'name_en');
+            }]);
+        }]);
+        $subscriptionActivities = $subscription->activities ?? collect();
+
+        $selectedActivityIds = array_values(array_filter(array_map('intval', (array) $request->input('member_activity_ids', []))));
+        $allowedActivityIds  = $subscriptionActivities->pluck('activity_id')->map(fn($id) => (int) $id)->all();
+        $selectedActivityIds = array_values(array_intersect($selectedActivityIds, $allowedActivityIds));
+
+        if ($subscription->activity_limit && count($selectedActivityIds) > $subscription->activity_limit) {
+            return Response::json(['msg' => trans('sw.activity_limit_exceeded'), 'code' => 'member_activity_ids'], 200);
+        }
+
+        // Preserve already-consumed visits for activities that remain selected — this is an
+        // in-place edit of the same subscription period, not a renewal, so consumption must carry over.
+        $existingActivities = collect($member_subscription->activities ?? []);
+        $existingActivityIds = $existingActivities->pluck('activity_id')->map(fn($id) => (int) $id)->all();
+        $removedActivityIds = array_values(array_diff($existingActivityIds, $selectedActivityIds));
+        $addedActivityIds   = array_values(array_diff($selectedActivityIds, $existingActivityIds));
+
+        // Simple one-for-one swap (e.g. "Yoga" -> "Swimming"): carry the consumed visit count
+        // over to the replacement activity, capped at its own training_times. Anything more
+        // ambiguous than a single swap falls back to starting the new activity fresh at 0.
+        $transferVisits = null;
+        if (count($removedActivityIds) === 1 && count($addedActivityIds) === 1) {
+            $removedActivity = $existingActivities->first(fn($item) => (int) ($item['activity_id'] ?? 0) === $removedActivityIds[0]);
+            $transferVisits = (int) ($removedActivity['visits'] ?? 0);
+        }
+
+        $selectedActivities = collect($selectedActivityIds)->map(function ($activityId) use ($existingActivities, $subscriptionActivities, $addedActivityIds, $transferVisits) {
+            $existing = $existingActivities->first(fn($item) => (int) ($item['activity_id'] ?? 0) === (int) $activityId);
+            if ($existing) {
+                return $existing;
+            }
+            $templateItem = $subscriptionActivities->firstWhere('activity_id', $activityId);
+            if (!$templateItem) {
+                return null;
+            }
+            $templateItem = $templateItem->toArray();
+            if ($transferVisits !== null && in_array($activityId, $addedActivityIds)) {
+                $templateItem['visits'] = min($transferVisits, (int) ($templateItem['training_times'] ?? 0));
+            }
+            return $templateItem;
+        })->filter()->values();
+
         // Always start from subscription's current base price so option additions/removals
         // are reflected correctly (pricing service also uses $subscription->price as base).
         $get_subscription_price = $subscription->price;
@@ -1577,7 +1634,19 @@ class GymMemberFrontController extends GymGenericFrontController
         $member_subscription->amount_before_discount = $get_subscription_price;
         $member_subscription->time_week = $subscription->time_week;
         $member_subscription->notes = $notes;
+        $member_subscription->activities = $selectedActivities->toArray();
         $member_subscription->save();
+
+        // An activity removed from the subscription is no longer valid for the member to attend —
+        // cancel any of their upcoming (not yet attended) reservations for it.
+        if (!empty($removedActivityIds)) {
+            GymReservation::where('member_id', $member_subscription->member_id)
+                ->where('client_type', 'member')
+                ->whereIn('activity_id', $removedActivityIds)
+                ->whereDate('reservation_date', '>=', Carbon::today())
+                ->whereNotIn('status', ['cancelled', 'attended', 'missed'])
+                ->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+        }
 
         $pricingService->saveSelectedOptions($member_subscription, $optionIds, (int)(@$this->user_sw->branch_setting_id ?? 0));
 
@@ -2791,6 +2860,16 @@ class GymMemberFrontController extends GymGenericFrontController
             return Response::json(['status' => false, 'msg' => trans('sw.error'), 'code' => 'subscription'], 200);
         }
 
+        $selectedActivityIds = array_values(array_filter(array_map('intval', (array) $request->input('member_activity_ids', []))));
+        $allowedActivityIds  = $subscription->activities->pluck('activity_id')->map(fn($id) => (int) $id)->all();
+        $selectedActivityIds = array_values(array_intersect($selectedActivityIds, $allowedActivityIds));
+
+        if ($subscription->activity_limit && count($selectedActivityIds) > $subscription->activity_limit) {
+            return Response::json(['status' => false, 'msg' => trans('sw.activity_limit_exceeded'), 'code' => 'member_activity_ids'], 200);
+        }
+
+        $selectedActivities = $subscription->activities->whereIn('activity_id', $selectedActivityIds)->values();
+
         $custom_expire_date = $request->custom_expire_date;
         $custom_start_date = $request->custom_start_date;
         $amount_paid = (float)@$request->amount_paid;
@@ -2864,7 +2943,7 @@ class GymMemberFrontController extends GymGenericFrontController
             'payment_type' => $payment_type,
             'status' => TypeConstants::Active,
             'amount_before_discount' => $basePrice,
-            'activities' => @$subscription->activities->toJson(),
+            'activities' => $selectedActivities->toJson(),
             'time_week' =>  @json_encode($subscription->time_week),
             'updated_at' => Carbon::now(),
             'branch_setting_id' => @$this->user_sw->branch_setting_id,
@@ -4032,19 +4111,19 @@ class GymMemberFrontController extends GymGenericFrontController
             foreach ($membership->activities as $i => $activity) {
                 $activity_result[$i] = $activity;
 
-                if (($activity['id'] == $id) && ($activity['training_times'] > @(int)$activity['visits'])) {
+                if (($activity['activity_id'] == $id) && ($activity['training_times'] > @(int)$activity['visits'])) {
                     $activity_name = $activity['activity']['name_' . $this->lang];
                     $training_times = $activity['training_times'];
                     $visits = @(int)$activity['visits'] + 1;
 
                     $activity_result[$i]['visits'] = $visits;
 
-                    GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $membership->member_id, 'member_subscription_id' => @$membership->id, 'activity_id' => $activity['id'], 'date' => Carbon::now()->toDateTimeString(),  'attended_at' => Carbon::now()->toDateTimeString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
+                    GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $membership->member_id, 'member_subscription_id' => @$membership->id, 'activity_id' => $activity['activity_id'], 'date' => Carbon::now()->toDateTimeString(),  'attended_at' => Carbon::now()->toDateTimeString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
 
                     // Sync any open reservation for this member+activity today to 'attended'
                     // so the reservation page reflects the home-page attendance without double-counting.
                     GymReservation::where('member_id', $membership->member_id)
-                        ->where('activity_id', $activity['id'])
+                        ->where('activity_id', $activity['activity_id'])
                         ->whereDate('date', Carbon::today())
                         ->whereNotIn('status', ['attended', 'cancelled'])
                         ->whereNull('attended_at') // booking row, not a log row

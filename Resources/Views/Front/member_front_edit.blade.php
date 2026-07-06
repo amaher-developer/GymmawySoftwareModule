@@ -597,6 +597,17 @@
                     </div>
                     <!--end::Option Groups-->
 
+                    <!--begin::Member Activities-->
+                    <div id="edit_member_activities_card" class="row mb-4" style="display:none">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">{{ trans('sw.select_activities_for_member') }}</label>
+                            <div id="edit_member_activities_body" class="border rounded p-3">
+                                <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--end::Member Activities-->
+
                     <!--begin::Date Range-->
                     <div class="row mb-3">
                         <div class="col-md-12">
@@ -997,6 +1008,10 @@
                     var savedIds = (data.selected_option_ids || []);
                     editPosOptionsTotal = 0;
                     editPosLoadOptionGroups(currentSubId, savedIds);
+
+                    var savedActivityIds = ((data.member_membership && data.member_membership['activities']) || [])
+                        .map(function(item) { return parseInt(item.activity_id); });
+                    editLoadMemberActivities(currentSubId, savedActivityIds);
                 },
                 error: (reject) => {
                     var response = $.parseJSON(reject.responseText);
@@ -1126,6 +1141,7 @@
     var selectedMembershipExpireDate = '';
     var editPosOptionsTotal = 0;
     var editPosOptionsUrl   = '{{ route("sw.subscription.options", ":id") }}';
+    var editMemberActivitiesUrl = '{{ route("sw.subscription.memberActivities", ":id") }}';
     var editPosCalcUrl      = '{{ route("sw.subscription.calculatePrice", ":id") }}';
     var EDIT_VAT_PCT        = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
     var _editPosCalcXhr     = null;
@@ -1189,10 +1205,15 @@
         $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
             editOptIds.push(parseInt($(this).val()));
         });
+        var editActivityIds = [];
+        $('.edit-member-activity-check:checked').each(function() {
+            editActivityIds.push(parseInt($(this).val()));
+        });
         var data = {
          'member_subscription_id': id,
          'subscription_id': $('#EditMembershipSelect').val(),
          'option_ids': editOptIds,
+         'member_activity_ids': editActivityIds,
          'joining_date': $('#start_date_membership').val(),
          'expire_date': $('#expire_date_membership').val(),
          'workouts': $('#EditMembershipWorkouts').val(),
@@ -1264,7 +1285,68 @@
         $('#edit_pos_option_ids_container').empty();
         $('#edit_pos_breakdown').hide();
         editPosLoadOptionGroups($(this).val(), []);
+        editLoadMemberActivities($(this).val(), []);
     });
+
+    function editLoadMemberActivities(subId, preSelectedActivityIds) {
+        var $card = $('#edit_member_activities_card');
+        var $body = $('#edit_member_activities_body');
+        preSelectedActivityIds = preSelectedActivityIds || [];
+
+        if (!subId) { $card.hide(); $body.empty(); return; }
+
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $card.show();
+
+        $.ajax({
+            url: editMemberActivitiesUrl.replace(':id', subId),
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            success: function(res) {
+                var activities = res.activities || [];
+                if (!activities.length) { $card.hide(); $body.empty(); return; }
+                $card.show();
+                editRenderMemberActivities(activities, res.activity_limit, preSelectedActivityIds);
+            },
+            error: function() { $card.hide(); $body.empty(); }
+        });
+    }
+
+    function editRenderMemberActivities(activities, activityLimit, preSelectedActivityIds) {
+        var $body = $('#edit_member_activities_body');
+        var hasLimit = !!activityLimit;
+        var hasPreSelection = preSelectedActivityIds.length > 0;
+        $body.empty();
+        var $row = $('<div class="row g-3">');
+        activities.forEach(function(activity, idx) {
+            var checked = hasPreSelection
+                ? preSelectedActivityIds.indexOf(activity.activity_id) !== -1
+                : (!hasLimit || idx < activityLimit);
+            var $col = $('<div class="col-md-6">');
+            var $wrap = $('<div class="form-check form-check-custom form-check-solid p-2">');
+            var $input = $('<input type="checkbox" class="form-check-input edit-member-activity-check">')
+                .attr('name', 'edit_member_activity_' + activity.activity_id)
+                .attr('id', 'edit_member_activity_' + activity.activity_id)
+                .val(activity.activity_id)
+                .prop('checked', checked)
+                .on('change', function() { editEnforceMemberActivityLimit(activityLimit); });
+            var $label = $('<label class="form-check-label ms-1">')
+                .attr('for', 'edit_member_activity_' + activity.activity_id)
+                .html('<span class="fw-bold">' + activity.name + '</span>'
+                    + (activity.trainer_name ? '<span class="text-muted fs-8 d-block"><i class="bi bi-person-badge me-1"></i>' + activity.trainer_name + '</span>' : ''));
+            $wrap.append($input).append($label);
+            $col.append($wrap);
+            $row.append($col);
+        });
+        $body.append($row);
+        editEnforceMemberActivityLimit(activityLimit);
+    }
+
+    function editEnforceMemberActivityLimit(activityLimit) {
+        if (!activityLimit) return;
+        var checkedCount = $('.edit-member-activity-check:checked').length;
+        $('.edit-member-activity-check:not(:checked)').prop('disabled', checkedCount >= activityLimit);
+    }
 
     function editPosLoadOptionGroups(subId, preSelectedIds) {
         var $card = $('#edit_pos_option_groups_card');
@@ -1315,7 +1397,14 @@
                 var $pills = $('<div class="d-flex flex-wrap gap-1">');
                 (group.options || []).forEach(function(opt) {
                     var price = parseFloat(opt.price_modifier || 0);
-                    var name  = opt['name_' + lang] || opt.name_ar || '';
+                    var name;
+                    if (opt.product) {
+                        name = opt.product['display_name_' + lang] || opt.product['name_' + lang] || opt.product.name_ar || '';
+                    } else if (opt.activity) {
+                        name = opt.activity['name_' + lang] || opt.activity.name_ar || '';
+                    } else {
+                        name = opt['name_' + lang] || opt.name_ar || '';
+                    }
                     var $pill = $('<label class="pos-pill">');
                     var $inp  = $('<input class="d-none edit-pos-opt-check">')
                         .attr('type', isSingle ? 'radio' : 'checkbox')

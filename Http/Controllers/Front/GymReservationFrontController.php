@@ -318,6 +318,9 @@ class GymReservationFrontController extends GymGenericFrontController
         if ($reservation->trashed()) {
             $reservation->restore();
         } else {
+            if ($reservation->status === 'attended') {
+                $this->reverseAttendanceFromReservation($reservation);
+            }
             $reservation->delete();
         }
 
@@ -1110,7 +1113,7 @@ class GymReservationFrontController extends GymGenericFrontController
                     $activityResult[$i] = $activity;
 
                     if (!$deducted
-                        && (int) ($activity['id'] ?? 0) === (int) $activityId
+                        && (int) ($activity['activity_id'] ?? 0) === (int) $activityId
                         && (int) ($activity['training_times'] ?? 0) > (int) ($activity['visits'] ?? 0)
                     ) {
                         $activityResult[$i]['visits'] = (int) ($activity['visits'] ?? 0) + 1;
@@ -1188,7 +1191,7 @@ class GymReservationFrontController extends GymGenericFrontController
                 foreach ($membership->activities as $i => $activity) {
                     $activityResult[$i] = $activity;
 
-                    if (!$restored && (int) ($activity['id'] ?? 0) === (int) $activityId) {
+                    if (!$restored && (int) ($activity['activity_id'] ?? 0) === (int) $activityId) {
                         $currentVisits = (int) ($activity['visits'] ?? 0);
                         $activityResult[$i]['visits'] = max(0, $currentVisits - 1);
                         $restored = true;

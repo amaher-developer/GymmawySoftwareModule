@@ -306,6 +306,20 @@
                 </div>
                 <!--end::Membership & Subscription Card-->
 
+                <!--begin::Member Activities Card-->
+                <div class="card card-flush mb-7" id="member_activities_card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <h3 class="fw-bold"><i class="ki-outline ki-basketball fs-2 me-2"></i>{{ trans('sw.select_activities_for_member') }}</h3>
+                        </div>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div class="text-muted fs-7 mb-3" id="member_activities_hint"></div>
+                        <div id="member_activities_body"></div>
+                    </div>
+                </div>
+                <!--end::Member Activities Card-->
+
                 <!--begin::Subscription Options Card-->
                 <div class="card card-flush mb-7" id="pos_option_groups_card" style="display:none">
                     <div class="card-header">
@@ -652,6 +666,7 @@
         var posOptionsTotal = 0; // server-confirmed options total (0 when no options selected)
         let loyaltyMoneyToPointRate = 0;
         var posOptionsUrl       = '{{ route("sw.subscription.options", ":id") }}';
+        var memberActivitiesUrl = '{{ route("sw.subscription.memberActivities", ":id") }}';
         var posCalcPriceUrl     = '{{ route("sw.subscription.calculatePrice", ":id") }}';
         var SW_VAT_PCT          = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
         var _posCalcXhr         = null; // track in-flight calculate-price XHR to abort stale ones
@@ -789,6 +804,7 @@
             $('#pos_options_breakdown').hide();
             $('#pos_side_summary').hide();
             posLoadOptionGroups($(this).val());
+            loadMemberActivities($(this).val());
         });
 
         $('#editCustomStartDate').change(function () {
@@ -894,6 +910,71 @@
             }
         });
 
+        // ── Member Activities Selection ─────────────────────────────────────
+        function loadMemberActivities(subId) {
+            var $card = $('#member_activities_card');
+            var $body = $('#member_activities_body');
+
+            if (!subId) { $card.hide(); $body.empty(); return; }
+
+            $body.html('<div class="text-center py-3"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+            $card.show();
+
+            $.ajax({
+                url: memberActivitiesUrl.replace(':id', subId),
+                method: 'GET',
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+                dataType: 'json',
+                success: function (res) {
+                    var activities = res.activities || [];
+                    if (activities.length === 0) { $card.hide(); $body.empty(); return; }
+                    $card.show();
+                    renderMemberActivities(activities, res.activity_limit);
+                },
+                error: function () { $card.hide(); $body.empty(); }
+            });
+        }
+
+        function renderMemberActivities(activities, activityLimit) {
+            var $body = $('#member_activities_body');
+            var hasLimit = !!activityLimit;
+
+            $('#member_activities_hint').text(hasLimit
+                ? '{{ trans("sw.activity_limit_hint") }}'.replace(':limit', activityLimit)
+                : '');
+
+            var $row = $('<div class="row g-3">');
+            activities.forEach(function (activity, idx) {
+                var checked = !hasLimit || idx < activityLimit;
+                var $col = $('<div class="col-md-6">');
+                var $wrap = $('<div class="form-check form-check-custom form-check-solid p-3 bg-light rounded">');
+                var $input = $('<input type="checkbox" class="form-check-input member-activity-check">')
+                    .attr('name', 'member_activity_ids[]')
+                    .attr('id', 'member_activity_' + activity.activity_id)
+                    .val(activity.activity_id)
+                    .prop('checked', checked);
+                var $label = $('<label class="form-check-label ms-1">')
+                    .attr('for', 'member_activity_' + activity.activity_id)
+                    .html('<span class="fw-bold">' + activity.name + '</span>'
+                        + (activity.trainer_name ? '<span class="text-muted fs-8 d-block"><i class="bi bi-person-badge me-1"></i>' + activity.trainer_name + '</span>' : ''));
+                $wrap.append($input).append($label);
+                $col.append($wrap);
+                $row.append($col);
+            });
+            $body.empty().append($row);
+
+            enforceMemberActivityLimit(activityLimit);
+            $body.off('change', '.member-activity-check').on('change', '.member-activity-check', function () {
+                enforceMemberActivityLimit(activityLimit);
+            });
+        }
+
+        function enforceMemberActivityLimit(activityLimit) {
+            if (!activityLimit) return;
+            var checkedCount = $('.member-activity-check:checked').length;
+            $('.member-activity-check:not(:checked)').prop('disabled', checkedCount >= activityLimit);
+        }
+
         // ── POS Subscription Option Groups ────────────────────────────────────
         function posLoadOptionGroups(subId) {
             var $card = $('#pos_option_groups_card');
@@ -948,7 +1029,14 @@
                     var $pills = $('<div class="d-flex flex-wrap gap-1">');
                     (group.options || []).forEach(function(opt) {
                         var price = parseFloat(opt.price_modifier || 0);
-                        var name  = opt['name_{{ $lang }}'] || opt.name_ar || '';
+                        var name;
+                        if (opt.product) {
+                            name = opt.product['display_name_{{ $lang }}'] || opt.product['name_{{ $lang }}'] || opt.product.name_ar || '';
+                        } else if (opt.activity) {
+                            name = opt.activity['name_{{ $lang }}'] || opt.activity.name_ar || '';
+                        } else {
+                            name = opt['name_{{ $lang }}'] || opt.name_ar || '';
+                        }
                         var $pill = $('<label class="pos-pill">');
                         var $inp  = $('<input class="d-none pos-option-input">')
                             .attr('type', isSingle ? 'radio' : 'checkbox')

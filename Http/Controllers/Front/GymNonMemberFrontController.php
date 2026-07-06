@@ -364,6 +364,7 @@ class GymNonMemberFrontController extends GymGenericFrontController
         $non_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $non_member_inputs['discount_value'] = (float) ($non_member_inputs['discount_value'] ?? 0);
         $non_member_inputs['discount_type'] = $non_member_inputs['discount_type'] ?? null;
+        $non_member_inputs['payment_type'] = (int) ($non_member_inputs['payment_type'] ?? 0);
         $activities = GymActivity::branch()->whereIn('id', $request->activities);
         $non_member_inputs['amount_before_discount'] = $activities->pluck('price')->sum();
         if(@$this->mainSettings->vat_details['vat_percentage']) {
