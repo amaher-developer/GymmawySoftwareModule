@@ -256,14 +256,21 @@
                                 </div>
                             </div>
                             <div class="row mb-5">
-                                <div class="col-md-4 fv-row">
+                                <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.paytabs_client_key') }}</label>
                                     <input type="text" class="form-control form-control-solid"
                                            name="payments[paytabs][client_key]"
                                            value="{{ $paymentsSettings['paytabs']['client_key'] ?? '' }}"
                                            placeholder="CXXX-XXXX-XXXX">
                                 </div>
-                                <div class="col-md-4 fv-row">
+                                <div class="col-md-3 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_merchant_id') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][merchant_id]"
+                                           value="{{ $paymentsSettings['paytabs']['merchant_id'] ?? '' }}"
+                                           placeholder="88091">
+                                </div>
+                                <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.paytabs_region') }}</label>
                                     <select class="form-select form-select-solid" name="payments[paytabs][region]">
                                         @foreach(['SAU' => 'Saudi Arabia', 'ARE' => 'UAE', 'EGY' => 'Egypt', 'OMN' => 'Oman', 'JOR' => 'Jordan', 'KWT' => 'Kuwait', 'BHR' => 'Bahrain'] as $code => $name)
@@ -273,7 +280,7 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-4 fv-row">
+                                <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.paytabs_currency') }}</label>
                                     <input type="text" class="form-control form-control-solid"
                                            name="payments[paytabs][currency]"
@@ -337,9 +344,7 @@
                                 <i class="ki-outline ki-information-5 fs-2tx text-primary me-4"></i>
                                 <div class="fs-7 text-gray-700">
                                     <strong>{{ trans('sw.paytabs_callback_url') }}:</strong>
-                                    <code>{{ url('paytabs/callback') }}</code><br>
-                                    <strong>Profile ID:</strong> 150281 &nbsp;|&nbsp;
-                                    <strong>Merchant ID:</strong> 88091
+                                    <code>{{ url('paytabs/callback') }}</code>
                                 </div>
                             </div>
                         </div>
