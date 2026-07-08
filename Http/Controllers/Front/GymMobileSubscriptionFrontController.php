@@ -2269,14 +2269,16 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     $member = GymMember::where('email', $invoice->email)->first();
                 }
                 if (!$member) {
-                    $maxCode = str_pad(((int) GymMember::branch()->withTrashed()->max('code') + 1), 14, '0', STR_PAD_LEFT);
+                    $memberBranchId = $invoice->branch_setting_id ?? 1;
+                    $maxCode = str_pad(((int) GymMember::withTrashed()->where('branch_setting_id', $memberBranchId)->max('code') + 1), 14, '0', STR_PAD_LEFT);
                     $member  = GymMember::create([
-                        'code'    => $maxCode,
-                        'name'    => $invoice->name,
-                        'gender'  => $invoice->gender,
-                        'phone'   => $invoice->phone,
-                        'address' => $invoice->address,
-                        'dob'     => $invoice->dob,
+                        'code'              => $maxCode,
+                        'name'              => $invoice->name,
+                        'gender'            => $invoice->gender,
+                        'phone'             => $invoice->phone,
+                        'address'           => $invoice->address,
+                        'dob'               => $invoice->dob,
+                        'branch_setting_id' => $memberBranchId,
                     ]);
                     $typeOfPayment = TypeConstants::CreateMember;
                     $isNewMember = true;
@@ -3870,14 +3872,16 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     $member = GymMember::where('phone', $invoice->phone)->first();
                 }
                 if (!$member) {
-                    $maxCode = str_pad(((int) GymMember::branch()->withTrashed()->max('code') + 1), 14, '0', STR_PAD_LEFT);
+                    $memberBranchId = $invoice->branch_setting_id ?? 1;
+                    $maxCode = str_pad(((int) GymMember::withTrashed()->where('branch_setting_id', $memberBranchId)->max('code') + 1), 14, '0', STR_PAD_LEFT);
                     $member  = GymMember::create([
-                        'code'    => $maxCode,
-                        'name'    => $invoice->name,
-                        'gender'  => $invoice->gender,
-                        'phone'   => $invoice->phone,
-                        'address' => $invoice->address,
-                        'dob'     => $invoice->dob,
+                        'code'              => $maxCode,
+                        'name'              => $invoice->name,
+                        'gender'            => $invoice->gender,
+                        'phone'             => $invoice->phone,
+                        'address'           => $invoice->address,
+                        'dob'               => $invoice->dob,
+                        'branch_setting_id' => $memberBranchId,
                     ]);
                 }
 
