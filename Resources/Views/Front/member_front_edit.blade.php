@@ -1539,6 +1539,7 @@
                 editPosOptionsTotal = parseFloat(res.options_total) || 0;
                 var baseP = (res.base_price != null) ? parseFloat(res.base_price) : 0;
                 editPosRenderBreakdown(res, baseP, editPosOptionsTotal);
+                editPosApplyOverrides(res.overrides || {});
                 // If no options selected, reset price display to base
                 if (!(res.selected_options || []).length) {
                     var discount = parseFloat($('#discount_value').val() || 0);
@@ -1555,6 +1556,15 @@
             },
             error: function(xhr) { if (xhr.statusText !== 'abort') { _editPosCalcXhr = null; editPosOptionsTotal = 0; } }
         });
+    }
+
+    // When a selected option carries a field_overrides value (e.g. a "14 days" text option
+    // set to override `workouts`), auto-suggest it into the matching manual input. Staff can
+    // still retype a different value afterward — this only pre-fills, it never disables the field.
+    function editPosApplyOverrides(overrides) {
+        if (overrides.workouts !== undefined)            $('#EditMembershipWorkouts').val(overrides.workouts);
+        if (overrides.freeze_limit !== undefined)        $('#EditMembershipFreezeLimit').val(overrides.freeze_limit);
+        if (overrides.number_times_freeze !== undefined) $('#EditMembershipNumberTimesFreeze').val(overrides.number_times_freeze);
     }
 
     function editPosRenderBreakdown(res, baseP, optsP) {

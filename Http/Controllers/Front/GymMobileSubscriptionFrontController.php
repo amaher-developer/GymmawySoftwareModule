@@ -2284,14 +2284,16 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     $isNewMember = true;
                 }
 
-                // ── Create member subscription ─────────────────────────────
-                $joining    = Carbon::parse($joiningDate);
-                $periodDays = (int) ($subscription->period ?? 0);
-                $expire     = (clone $joining)->addDays(max($periodDays - 1, 0));
-
-                // ── Calculate options pricing before creating the record ───
+                // ── Calculate options pricing (and any field overrides) first ───
                 $optionIds     = array_values(array_filter(array_map('intval', (array) ($rc['option_ids'] ?? []))));
                 $pricingResult = (new SubscriptionPricingService())->calculate($subscription, $optionIds);
+                $overrides     = $pricingResult['overrides'] ?? [];
+
+                // ── Create member subscription ─────────────────────────────
+                $joining       = Carbon::parse($joiningDate);
+                $periodDays    = (int) ($overrides['period'] ?? $subscription->period ?? 0);
+                $expire        = (clone $joining)->addDays(max($periodDays - 1, 0));
+                $memberSubOverrides = collect($overrides)->except('period')->all();
 
                 // ── Resolve the selected activity subset (does not affect price) ───
                 $selectedActivityIds = array_values(array_filter(array_map('intval', (array) ($rc['activity_ids'] ?? []))));
@@ -2302,7 +2304,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     ->whereIn('activity_id', $selectedActivityIds)
                     ->values();
 
-                $memberSub = GymMemberSubscription::create([
+                $memberSub = GymMemberSubscription::create(array_merge([
                     'subscription_id'        => $invoice->subscription_id,
                     'member_id'              => $member->id,
                     'workouts'               => $subscription->workouts ?? 0,
@@ -2322,7 +2324,7 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                     'notes'                  => !empty($pricingResult['selected_options'])
                         ? (new SubscriptionPricingService())->buildOptionsNote($pricingResult['selected_options'], app()->getLocale())
                         : null,
-                ]);
+                ], $memberSubOverrides));
 
                 // ── Save selected subscription options (customization) ─────
                 if (!empty($optionIds)) {

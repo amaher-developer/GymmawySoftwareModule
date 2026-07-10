@@ -20,6 +20,7 @@ use Modules\Software\Models\GymMemberSubscriptionOption;
 use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Models\GymSubscriptionCategory;
 use Modules\Software\Repositories\GymCategoryRepository;
+use Modules\Software\Services\SubscriptionPricingService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Illuminate\Container\Container as Application;
@@ -319,6 +320,16 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         $subscription = $this->GymSubscriptionRepository->branch()
             ->with($eagerRelations)
             ->withTrashed()->find($id);
+
+        if (!$subscription) {
+            session()->flash('sweet_flash_message', [
+                'title'   => 'error',
+                'message' => trans('sw.subscription_not_found'),
+                'type'    => 'error',
+            ]);
+            return redirect(route('sw.listSubscription'));
+        }
+
         $title           = trans('sw.subscription_edit');
         $activities      = GymActivity::branch()->with('trainer')->get();
         $trainers        = GymPTTrainer::branch()->orderBy('name')->get();
@@ -351,6 +362,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
             'list_order'     => $g->list_order,
             'options'        => $g->options->map(function($o) use ($lang) {
                 $isText = !$o->product_id && !$o->activity_id;
+                $fieldOverrides = $o->field_overrides ?: [];
+                $overrideField  = array_key_first($fieldOverrides);
                 return [
                     'id'           => $o->id,
                     'is_text'      => $isText,
@@ -367,6 +380,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                         ? ($o->product ? $this->resolveProductImage($o->product) : null)
                         : ($o->activity ? $this->resolveActivityImage($o->activity) : null)),
                     'price_modifier' => (float) ($o->price_modifier ?? 0),
+                    'override_field' => $overrideField,
+                    'override_value' => $overrideField !== null ? $fieldOverrides[$overrideField] : null,
                     'list_order'     => $o->list_order ?? 0,
                 ];
             })->values()->all(),
@@ -737,13 +752,18 @@ class GymSubscriptionFrontController extends GymGenericFrontController
             if ($isText) {
                 $nameAr = trim($od['item_name_ar'] ?? $od['item_name'] ?? '');
                 if (!$nameAr) continue;
+                $overrideField = $od['override_field'] ?? null;
+                $fieldOverrides = ($overrideField && in_array($overrideField, SubscriptionPricingService::OVERRIDABLE_FIELDS, true) && is_numeric($od['override_value'] ?? null))
+                    ? [$overrideField => (float) $od['override_value']]
+                    : null;
                 $optData = [
-                    'product_id'     => null,
-                    'activity_id'    => null,
-                    'name_ar'        => $nameAr,
-                    'name_en'        => trim($od['item_name_en'] ?? '') ?: $nameAr,
-                    'price_modifier' => (float) ($od['price_modifier'] ?? 0),
-                    'list_order'     => (int) ($od['list_order'] ?? $j),
+                    'product_id'      => null,
+                    'activity_id'     => null,
+                    'name_ar'         => $nameAr,
+                    'name_en'         => trim($od['item_name_en'] ?? '') ?: $nameAr,
+                    'price_modifier'  => (float) ($od['price_modifier'] ?? 0),
+                    'field_overrides' => $fieldOverrides,
+                    'list_order'      => (int) ($od['list_order'] ?? $j),
                 ];
             } else {
                 $itemId = (int) ($isActivity ? ($od['activity_id'] ?? 0) : ($od['product_id'] ?? 0));

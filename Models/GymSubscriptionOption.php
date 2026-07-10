@@ -10,8 +10,9 @@ class GymSubscriptionOption extends GenericModel
     protected $guarded = ['id'];
     protected $dates = ['deleted_at'];
     protected $casts = [
-        'product_id'  => 'integer',
-        'activity_id' => 'integer',
+        'product_id'      => 'integer',
+        'activity_id'     => 'integer',
+        'field_overrides' => 'array',
     ];
     protected $appends = ['name'];
 

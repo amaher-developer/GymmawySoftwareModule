@@ -8,13 +8,25 @@ use Modules\Software\Models\GymSubscriptionOption;
 class SubscriptionPricingService
 {
     /**
-     * Calculate the final price for a subscription given selected option IDs.
+     * Subscription/member-subscription fields an option's `field_overrides` JSON is allowed to
+     * set. Whitelisted to prevent a crafted option from overwriting arbitrary columns
+     * (id, amount_paid, status, member_id, ...).
+     */
+    public const OVERRIDABLE_FIELDS = ['workouts', 'workouts_per_day', 'period', 'freeze_limit', 'number_times_freeze'];
+
+    /**
+     * Calculate the final price (and any option-driven field overrides) for a subscription
+     * given selected option IDs.
      *
      * Returns:
      *   base_price        — subscription base price (no options)
      *   options_total     — sum of price_modifier for selected options
      *   total             — base_price + options_total
-     *   selected_options  — array of ['option_id', 'name', 'price_modifier'] for snapshot storage
+     *   overrides         — map of subscription-field => value, merged from each selected
+     *                       option's `field_overrides` JSON (later option wins on conflict),
+     *                       filtered to self::OVERRIDABLE_FIELDS. Empty when no option overrides
+     *                       anything — callers should merge this over their own defaults.
+     *   selected_options  — array of ['option_id', 'name', 'price_modifier', 'field_overrides'] for snapshot storage
      */
     public function calculate(GymSubscription $subscription, array $selectedOptionIds): array
     {
@@ -25,6 +37,7 @@ class SubscriptionPricingService
                 'base_price'       => $basePrice,
                 'options_total'    => 0,
                 'total'            => $basePrice,
+                'overrides'        => [],
                 'selected_options' => [],
             ];
         }
@@ -35,6 +48,15 @@ class SubscriptionPricingService
             ->get();
 
         $optionsTotal = $options->sum('price_modifier');
+
+        $overrides = [];
+        foreach ($options as $opt) {
+            foreach ((array) $opt->field_overrides as $field => $value) {
+                if (in_array($field, self::OVERRIDABLE_FIELDS, true)) {
+                    $overrides[$field] = $value;
+                }
+            }
+        }
 
         $selectedOptions = $options->map(function ($opt) {
             if ($opt->product_id && $opt->product) {
@@ -48,12 +70,13 @@ class SubscriptionPricingService
                 $nameEn = $opt->name_en ?? $nameAr;
             }
             return [
-                'option_id'      => $opt->id,
-                'product_id'     => $opt->product_id,
-                'activity_id'    => $opt->activity_id,
-                'name_ar'        => $nameAr,
-                'name_en'        => $nameEn,
-                'price_modifier' => (float) $opt->price_modifier,
+                'option_id'       => $opt->id,
+                'product_id'      => $opt->product_id,
+                'activity_id'     => $opt->activity_id,
+                'name_ar'         => $nameAr,
+                'name_en'         => $nameEn,
+                'price_modifier'  => (float) $opt->price_modifier,
+                'field_overrides' => $opt->field_overrides ?: null,
             ];
         })->values()->all();
 
@@ -61,6 +84,7 @@ class SubscriptionPricingService
             'base_price'       => $basePrice,
             'options_total'    => (float) $optionsTotal,
             'total'            => $basePrice + (float) $optionsTotal,
+            'overrides'        => $overrides,
             'selected_options' => $selectedOptions,
         ];
     }

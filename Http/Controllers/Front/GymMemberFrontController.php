@@ -700,6 +700,9 @@ class GymMemberFrontController extends GymGenericFrontController
             $_pricingSvc    = new \Modules\Software\Services\SubscriptionPricingService();
             $pricing        = $_pricingSvc->calculate($subscription, $optionIds);
             $baseTotal      = $pricing['total']; // base + options, before discount/VAT
+            $overrides      = $pricing['overrides'] ?? [];
+            $effectivePeriod = (int) ($overrides['period'] ?? $subscription->period);
+            $entitlementOverrides = collect($overrides)->except('period')->all();
 
             $vat = ($baseTotal - @$request->discount_value) * (@$this->mainSettings->vat_details['vat_percentage'] / 100);
             $vat = round($vat, 2);
@@ -721,12 +724,12 @@ class GymMemberFrontController extends GymGenericFrontController
             $sub = [];
 
             try {
-                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $selectedActivities, $amount_paid, $discount_value, $request, $vat, $notes, $optionIds, $baseTotal) {
+                DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $selectedActivities, $amount_paid, $discount_value, $request, $vat, $notes, $optionIds, $baseTotal, $effectivePeriod, $entitlementOverrides) {
             $member = $this->MemberRepository->create($member_inputs);
 
             $this->incrementLastBarcodeNumber();
 
-                    $sub = [
+                    $sub = array_merge([
                         'subscription_id' => $subscription->id,
                         'member_id' => $member->id,
                         'workouts' => $subscription->workouts,
@@ -738,7 +741,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'max_extension_days' => $subscription->max_extension_days,
                         'max_freeze_extension_sum' => $subscription->max_freeze_extension_sum,
                         'joining_date' => $member_inputs['joining_date'] ? Carbon::parse($member_inputs['joining_date']) : Carbon::now(),
-                        'expire_date' => $member_inputs['expire_date'] ? Carbon::parse($member_inputs['expire_date']) : Carbon::parse($member_inputs['joining_date'])->addDays($subscription->period - 1),
+                        'expire_date' => $member_inputs['expire_date'] ? Carbon::parse($member_inputs['expire_date']) : Carbon::parse($member_inputs['joining_date'])->addDays($effectivePeriod - 1),
                         'amount_remaining' => (($baseTotal - $amount_paid - @$discount_value) + (($baseTotal - @$discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100))),
                         'amount_paid' => (float)($amount_paid),
                         'discount_value' => (float)$discount_value,
@@ -751,7 +754,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
                         'notes' => @$notes,
                         'invitations' => (int) ($subscription->invitations ?? 0),
-                    ];
+                    ], $entitlementOverrides);
 
             $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
 
@@ -2880,8 +2883,11 @@ class GymMemberFrontController extends GymGenericFrontController
         $renewPricingService = new \Modules\Software\Services\SubscriptionPricingService();
         $renewPricing        = !empty($renewOptionIds)
             ? $renewPricingService->calculate($subscription, $renewOptionIds)
-            : ['total' => (float) $subscription->price, 'selected_options' => []];
+            : ['total' => (float) $subscription->price, 'overrides' => [], 'selected_options' => []];
         $basePrice           = $renewPricing['total'];
+        $renewOverrides      = $renewPricing['overrides'] ?? [];
+        $renewEffectivePeriod = (int) ($renewOverrides['period'] ?? $subscription->period);
+        $renewEntitlementOverrides = collect($renewOverrides)->except('period')->all();
         $vat = ($basePrice - $discount_value) * ((float)@$this->mainSettings->vat_details['vat_percentage'] / 100);
         $vat = round(@$vat, 2);
         $vat_percentage = @$this->mainSettings->vat_details['vat_percentage'];
@@ -2901,7 +2907,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $member_id = @$membership ? @$membership->member_id : @$request->member_id;
         $member = $this->MemberRepository->with(['member_subscription_info'])->withTrashed()->find($member_id);
         $start_date = $custom_start_date ?? Carbon::now()->toDateString();
-        $expire_date = @$request->custom_expire_date ? Carbon::parse(@$request->custom_expire_date)->toDateString() : Carbon::parse($start_date)->addDays((int)$subscription->period - 1)->toDateString();
+        $expire_date = @$request->custom_expire_date ? Carbon::parse(@$request->custom_expire_date)->toDateString() : Carbon::parse($start_date)->addDays($renewEffectivePeriod - 1)->toDateString();
 
         $other_subscriptions = GymMemberSubscription::branch()->
         where(function ($query) use ($custom_start_date, $expire_date) {
@@ -2922,7 +2928,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 return Response::json(['msg' => trans('sw.error_date_between'), 'code' => 'custom_expire_date'], 200);
         }
 
-        $renew_subscription = [
+        $renew_subscription = array_merge([
             'member_id' => $member->id,
             'subscription_id' => $subscription->id,
             'workouts' => $subscription->workouts,
@@ -2949,7 +2955,7 @@ class GymMemberFrontController extends GymGenericFrontController
             'branch_setting_id' => @$this->user_sw->branch_setting_id,
             'notes' => @$notes,
             'invitations' => (int) ($subscription->invitations ?? 0),
-        ];
+        ], $renewEntitlementOverrides);
         $member_subscription = GymMemberSubscription::insertGetId($renew_subscription);
 
         if (!empty($renewOptionIds)) {

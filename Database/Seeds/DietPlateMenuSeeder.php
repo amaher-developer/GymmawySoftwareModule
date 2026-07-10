@@ -192,6 +192,7 @@ class DietPlateMenuSeeder extends Seeder
                     'name_ar'           => $nameAr,
                     'name_en'           => $nameEn,
                     'price_modifier'    => $price,
+                    'field_overrides'   => ['workouts' => $days],
                     'list_order'        => $i + 1,
                 ]
             );
