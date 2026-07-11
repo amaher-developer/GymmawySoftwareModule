@@ -820,28 +820,29 @@
                                 <input type="text" id="modal_option_text_name_en" class="form-control" placeholder="{{ trans('sw.enter_name_in_english') }}" />
                             </div>
                         </div>
-                        <hr class="my-3" />
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">
-                                    <i class="bi bi-sliders me-1 text-info"></i>
-                                    {{ trans('sw.override_field') }}
-                                    <span class="text-muted fs-8 ms-1 fw-normal">({{ trans('sw.override_field_hint') }})</span>
-                                </label>
-                                <select id="modal_option_override_field" class="form-select">
-                                    <option value="">— {{ trans('sw.no_override') }} —</option>
-                                    <option value="workouts">{{ trans('sw.workouts') }}</option>
-                                    <option value="workouts_per_day">{{ trans('sw.workouts_per_day') }}</option>
-                                    <option value="period">{{ trans('sw.period') }}</option>
-                                    <option value="freeze_limit">{{ trans('sw.freeze_limit') }}</option>
-                                    <option value="number_times_freeze">{{ trans('sw.number_times_freeze') }}</option>
-                                </select>
-                                <div class="form-text text-muted">{{ trans('sw.override_field_description') }}</div>
-                            </div>
-                            <div class="col-md-6 d-none" id="modal_option_override_value_wrap">
-                                <label class="form-label required">{{ trans('sw.override_value') }}</label>
-                                <input type="number" id="modal_option_override_value" class="form-control" step="1" placeholder="0" />
-                            </div>
+                    </div>
+                    <hr class="my-3" />
+                    {{-- Field override (available for every source type: product, activity, text) --}}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                <i class="bi bi-sliders me-1 text-info"></i>
+                                {{ trans('sw.override_field') }}
+                                <span class="text-muted fs-8 ms-1 fw-normal">({{ trans('sw.override_field_hint') }})</span>
+                            </label>
+                            <select id="modal_option_override_field" class="form-select">
+                                <option value="">— {{ trans('sw.no_override') }} —</option>
+                                <option value="workouts">{{ trans('sw.workouts') }}</option>
+                                <option value="workouts_per_day">{{ trans('sw.workouts_per_day') }}</option>
+                                <option value="period">{{ trans('sw.period') }}</option>
+                                <option value="freeze_limit">{{ trans('sw.freeze_limit') }}</option>
+                                <option value="number_times_freeze">{{ trans('sw.number_times_freeze') }}</option>
+                            </select>
+                            <div class="form-text text-muted">{{ trans('sw.override_field_description') }}</div>
+                        </div>
+                        <div class="col-md-6 d-none" id="modal_option_override_value_wrap">
+                            <label class="form-label required">{{ trans('sw.override_value') }}</label>
+                            <input type="number" id="modal_option_override_value" class="form-control" step="1" placeholder="0" />
                         </div>
                     </div>
                     <hr class="my-3" />
@@ -1377,14 +1378,14 @@
             } else if (isText) {
                 $('#modal_option_text_name_ar').val(opt ? (opt.item_name_ar || '') : '');
                 $('#modal_option_text_name_en').val(opt ? (opt.item_name_en || '') : '');
-                var ovField = opt ? (opt.override_field || '') : '';
-                $('#modal_option_override_field').val(ovField);
-                $('#modal_option_override_value').val(opt && opt.override_value !== null && opt.override_value !== undefined ? opt.override_value : '');
-                $('#modal_option_override_value_wrap').toggleClass('d-none', !ovField);
             } else {
                 swPopulateProductSelect(group ? (group.category_id || '') : '');
                 $('#modal_option_product_id').val(opt ? (opt.product_id || '') : '');
             }
+            var ovField = opt ? (opt.override_field || '') : '';
+            $('#modal_option_override_field').val(ovField);
+            $('#modal_option_override_value').val(opt && opt.override_value !== null && opt.override_value !== undefined ? opt.override_value : '');
+            $('#modal_option_override_value_wrap').toggleClass('d-none', !ovField);
             $('#modal_option_price').val(opt ? (opt.price_modifier || 0) : 0);
             $('#modal_option_order').val(opt ? (opt.list_order || 0) : (group && group.options ? group.options.length : 0));
             swModalShow('modalAddOption');
@@ -1399,6 +1400,14 @@
             var srcType    = group.source_type || 'product';
             var isActivity = srcType === 'activity';
             var isText     = srcType === 'text';
+
+            var ovField = $('#modal_option_override_field').val() || null;
+            var ovValue = ovField ? parseFloat($('#modal_option_override_value').val()) : null;
+            if (ovField && (ovValue === null || isNaN(ovValue))) {
+                swToast('{{ trans("sw.override_value") }}', 'error');
+                return;
+            }
+
             var odata;
             if (isActivity) {
                 var actId = parseInt($('#modal_option_activity_id').val());
@@ -1419,12 +1428,6 @@
                 var nameAr = $('#modal_option_text_name_ar').val().trim();
                 if (!nameAr) { swToast('{{ trans("sw.name_required") }}', 'error'); return; }
                 var nameEn = $('#modal_option_text_name_en').val().trim() || nameAr;
-                var ovField = $('#modal_option_override_field').val() || null;
-                var ovValue = ovField ? parseFloat($('#modal_option_override_value').val()) : null;
-                if (ovField && (ovValue === null || isNaN(ovValue))) {
-                    swToast('{{ trans("sw.override_value") }}', 'error');
-                    return;
-                }
                 odata = {
                     is_text:       true,
                     product_id:    null,
@@ -1435,8 +1438,6 @@
                     item_image:    null,
                     price_modifier: parseFloat($('#modal_option_price').val()) || 0,
                     list_order:    parseInt($('#modal_option_order').val()) || 0,
-                    override_field: ovField,
-                    override_value: ovField ? ovValue : null,
                 };
             } else {
                 var $sel = $('#modal_option_product_id');
@@ -1455,6 +1456,8 @@
                     list_order:    parseInt($('#modal_option_order').val()) || 0,
                 };
             }
+            odata.override_field = ovField;
+            odata.override_value = ovField ? ovValue : null;
             group.options = group.options || [];
             if (swEditOptIdx >= 0) {
                 group.options[swEditOptIdx] = $.extend({}, group.options[swEditOptIdx], odata);

@@ -749,13 +749,14 @@ class GymSubscriptionFrontController extends GymGenericFrontController
             if (!GymMemberSubscriptionOption::where('option_id', $opt->id)->exists()) $opt->forceDelete();
         }
         foreach ($options as $j => $od) {
+            $overrideField = $od['override_field'] ?? null;
+            $fieldOverrides = ($overrideField && in_array($overrideField, SubscriptionPricingService::OVERRIDABLE_FIELDS, true) && is_numeric($od['override_value'] ?? null))
+                ? [$overrideField => (float) $od['override_value']]
+                : null;
+
             if ($isText) {
                 $nameAr = trim($od['item_name_ar'] ?? $od['item_name'] ?? '');
                 if (!$nameAr) continue;
-                $overrideField = $od['override_field'] ?? null;
-                $fieldOverrides = ($overrideField && in_array($overrideField, SubscriptionPricingService::OVERRIDABLE_FIELDS, true) && is_numeric($od['override_value'] ?? null))
-                    ? [$overrideField => (float) $od['override_value']]
-                    : null;
                 $optData = [
                     'product_id'      => null,
                     'activity_id'     => null,
@@ -769,10 +770,11 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                 $itemId = (int) ($isActivity ? ($od['activity_id'] ?? 0) : ($od['product_id'] ?? 0));
                 if (!$itemId) continue;
                 $optData = [
-                    'product_id'     => $isActivity ? null : $itemId,
-                    'activity_id'    => $isActivity ? $itemId : null,
-                    'price_modifier' => (float) ($od['price_modifier'] ?? 0),
-                    'list_order'     => (int) ($od['list_order'] ?? $j),
+                    'product_id'      => $isActivity ? null : $itemId,
+                    'activity_id'     => $isActivity ? $itemId : null,
+                    'price_modifier'  => (float) ($od['price_modifier'] ?? 0),
+                    'field_overrides' => $fieldOverrides,
+                    'list_order'      => (int) ($od['list_order'] ?? $j),
                 ];
             }
             if (!empty($od['id'])) {

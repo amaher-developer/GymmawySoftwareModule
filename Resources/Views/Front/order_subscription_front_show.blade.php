@@ -404,6 +404,10 @@
                                                         : ($opt->product->getRawOriginal('display_name_en') ?: $opt->product->name_en ?? $opt->product->name_ar ?? '');
                                                 } elseif ($opt->activity_id && $opt->activity) {
                                                     $optName = $lang === 'ar' ? ($opt->activity->name_ar ?? '') : ($opt->activity->name_en ?? $opt->activity->name_ar ?? '');
+                                                } else {
+                                                    $optName = $lang === 'ar'
+                                                        ? ($opt->getRawOriginal('name_ar') ?: $opt->getRawOriginal('name_en'))
+                                                        : ($opt->getRawOriginal('name_en') ?: $opt->getRawOriginal('name_ar'));
                                                 }
                                             }
                                             $optPrice = (float)($selOpt->price_snapshot ?? 0);
