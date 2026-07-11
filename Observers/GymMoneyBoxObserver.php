@@ -3,6 +3,7 @@
 namespace Modules\Software\Observers;
 
 use Illuminate\Support\Facades\Log;
+use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMoneyBox;
@@ -253,6 +254,14 @@ class GymMoneyBoxObserver
     {
         try {
             $vatAmount = round((float) ($moneyBox->vat ?? 0), 2);
+
+            // The moneybox "Including VAT" checkbox was left unchecked for this entry.
+            // If the system has VAT configured, an untaxed manual entry is not a tax
+            // invoice and must not be reported in the invoices report.
+            if ($vatAmount <= 0 && $this->systemVatConfigured($moneyBox->branch_setting_id)) {
+                return;
+            }
+
             $amount    = round((float) $moneyBox->amount, 2);
             $subtotal  = round($amount - $vatAmount, 2);
             $service   = new GymSwInvoiceService();
@@ -288,5 +297,12 @@ class GymMoneyBoxObserver
                 'error'        => $e->getMessage(),
             ]);
         }
+    }
+
+    private function systemVatConfigured(?int $branchSettingId): bool
+    {
+        $setting = ($branchSettingId ? Setting::find($branchSettingId) : null) ?? Setting::query()->first();
+
+        return (float) data_get($setting, 'vat_details.vat_percentage', 0) > 0;
     }
 }

@@ -19,6 +19,12 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
     private $data;
     private $settings;
 
+    // Number of rows inserted above the report by applyReportHeader() (0 until it runs).
+    // All row constants below are offset by this at style time, so styles/merges are
+    // always applied to their final positions instead of relying on PhpSpreadsheet to
+    // shift merged ranges correctly when insertNewRowBefore() runs after styling.
+    private int $rowOffset = 0;
+
     // Row numbers for each section (before header insertion)
     private const ROW_TITLE      = 1;
     private const ROW_DATE       = 2;
@@ -136,14 +142,18 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
                 $rtl   = ($this->lang === 'ar');
                 $sheet->setRightToLeft($rtl);
 
+                // Insert the business header (if any) BEFORE any merges/styles are
+                // applied below, so there are no merged ranges yet for
+                // insertNewRowBefore() to (mis)shift.
+                if ($this->settings) {
+                    $this->applyReportHeader($event, 8);
+                    $this->rowOffset = self::$headerRowCount;
+                }
+
                 $this->applyStyles($sheet);
 
                 foreach (range('A', 'H') as $col) {
                     $sheet->getColumnDimension($col)->setAutoSize(true);
-                }
-
-                if ($this->settings) {
-                    $this->applyReportHeader($event, 8);
                 }
             },
         ];
@@ -151,18 +161,20 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
 
     private function applyStyles($sheet): void
     {
+        $o = $this->rowOffset;
+
         // ── Title row ──────────────────────────────────────────────────────────
-        $sheet->mergeCells('A1:H1');
-        $sheet->getStyle('A1')->applyFromArray([
+        $sheet->mergeCells('A' . (1 + $o) . ':H' . (1 + $o));
+        $sheet->getStyle('A' . (1 + $o))->applyFromArray([
             'font'      => ['bold' => true, 'size' => 16, 'color' => ['argb' => self::COLOR_WHITE]],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_DARK_PURPLE]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
-        $sheet->getRowDimension(1)->setRowHeight(36);
+        $sheet->getRowDimension(1 + $o)->setRowHeight(36);
 
         // ── Date range row ─────────────────────────────────────────────────────
-        $sheet->mergeCells('A2:H2');
-        $sheet->getStyle('A2')->applyFromArray([
+        $sheet->mergeCells('A' . (2 + $o) . ':H' . (2 + $o));
+        $sheet->getStyle('A' . (2 + $o))->applyFromArray([
             'font'      => ['italic' => true, 'size' => 10, 'color' => ['argb' => 'FF666666']],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF5F5F5']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -170,10 +182,10 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
 
         // ── Summary card rows (4–7) ────────────────────────────────────────────
         $summaryCards = [
-            self::ROW_SUM_START     => [self::COLOR_TOTAL_BG,   'ki'],  // total invoices
-            self::ROW_SUM_START + 1 => [self::COLOR_GREEN_BG,   'ki'],  // total amount
-            self::ROW_SUM_START + 2 => [self::COLOR_SUCCESS_BG, 'ki'],  // amount paid
-            self::ROW_SUM_START + 3 => [self::COLOR_DANGER_BG,  'ki'],  // amount remaining
+            self::ROW_SUM_START + $o     => [self::COLOR_TOTAL_BG,   'ki'],  // total invoices
+            self::ROW_SUM_START + 1 + $o => [self::COLOR_GREEN_BG,   'ki'],  // total amount
+            self::ROW_SUM_START + 2 + $o => [self::COLOR_SUCCESS_BG, 'ki'],  // amount paid
+            self::ROW_SUM_START + 3 + $o => [self::COLOR_DANGER_BG,  'ki'],  // amount remaining
         ];
 
         foreach ($summaryCards as $rowNum => [$bgColor, $_]) {
@@ -189,9 +201,9 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
 
         // ── Section title helper ───────────────────────────────────────────────
         $sectionTitles = [
-            self::ROW_TYPE_TITLE => [self::COLOR_TYPE_TITLE, 'C'],
-            self::ROW_STAT_TITLE => [self::COLOR_STAT_TITLE, 'C'],
-            self::ROW_LIST_TITLE => [self::COLOR_LIST_TITLE, 'H'],
+            self::ROW_TYPE_TITLE + $o => [self::COLOR_TYPE_TITLE, 'C'],
+            self::ROW_STAT_TITLE + $o => [self::COLOR_STAT_TITLE, 'C'],
+            self::ROW_LIST_TITLE + $o => [self::COLOR_LIST_TITLE, 'H'],
         ];
 
         foreach ($sectionTitles as $rowNum => [$bgColor, $lastCol]) {
@@ -205,7 +217,7 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
         }
 
         // ── Column headers for by-type and by-status ──────────────────────────
-        foreach ([self::ROW_TYPE_HDR, self::ROW_STAT_HDR] as $hdrRow) {
+        foreach ([self::ROW_TYPE_HDR + $o, self::ROW_STAT_HDR + $o] as $hdrRow) {
             $sheet->getStyle("A{$hdrRow}:C{$hdrRow}")->applyFromArray([
                 'font'      => ['bold' => true, 'color' => ['argb' => self::COLOR_HDR_FONT]],
                 'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_HDR_BG]],
@@ -218,9 +230,9 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
 
         // ── Data rows: by-type ────────────────────────────────────────────────
         $typeColors = [
-            self::ROW_TYPE_START     => 'FFEFF8EC', // sales – light green
-            self::ROW_TYPE_START + 1 => 'FFECF5FD', // purchase – light blue
-            self::ROW_TYPE_START + 2 => 'FFFFF8E1', // credit_note – light yellow
+            self::ROW_TYPE_START + $o     => 'FFEFF8EC', // sales – light green
+            self::ROW_TYPE_START + 1 + $o => 'FFECF5FD', // purchase – light blue
+            self::ROW_TYPE_START + 2 + $o => 'FFFFF8E1', // credit_note – light yellow
         ];
         foreach ($typeColors as $rowNum => $bg) {
             $sheet->getStyle("A{$rowNum}:C{$rowNum}")->applyFromArray([
@@ -231,10 +243,10 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
 
         // ── Data rows: by-status ──────────────────────────────────────────────
         $statusColors = [
-            self::ROW_STAT_START     => 'FFF5F5F5', // draft – light gray
-            self::ROW_STAT_START + 1 => 'FFFFF3CD', // partial – light amber
-            self::ROW_STAT_START + 2 => 'FFD4EDDA', // paid – light green
-            self::ROW_STAT_START + 3 => 'FFF8D7DA', // cancelled – light red
+            self::ROW_STAT_START + $o     => 'FFF5F5F5', // draft – light gray
+            self::ROW_STAT_START + 1 + $o => 'FFFFF3CD', // partial – light amber
+            self::ROW_STAT_START + 2 + $o => 'FFD4EDDA', // paid – light green
+            self::ROW_STAT_START + 3 + $o => 'FFF8D7DA', // cancelled – light red
         ];
         foreach ($statusColors as $rowNum => $bg) {
             $sheet->getStyle("A{$rowNum}:C{$rowNum}")->applyFromArray([
@@ -244,7 +256,8 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
         }
 
         // ── Invoice list header ───────────────────────────────────────────────
-        $sheet->getStyle('A' . self::ROW_LIST_HDR . ':H' . self::ROW_LIST_HDR)->applyFromArray([
+        $listHdrRow = self::ROW_LIST_HDR + $o;
+        $sheet->getStyle('A' . $listHdrRow . ':H' . $listHdrRow)->applyFromArray([
             'font'      => ['bold' => true, 'color' => ['argb' => self::COLOR_HDR_FONT]],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::COLOR_HDR_BG]],
             'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => self::COLOR_BORDER]]],
@@ -252,9 +265,10 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
         ]);
 
         // ── Invoice list data rows (alternating) ──────────────────────────────
-        $lastRow = self::ROW_LIST_START + count($this->data['invoices']) - 1;
-        if ($lastRow >= self::ROW_LIST_START) {
-            for ($r = self::ROW_LIST_START; $r <= $lastRow; $r++) {
+        $listStartRow = self::ROW_LIST_START + $o;
+        $lastRow      = $listStartRow + count($this->data['invoices']) - 1;
+        if ($lastRow >= $listStartRow) {
+            for ($r = $listStartRow; $r <= $lastRow; $r++) {
                 $bg = ($r % 2 === 0) ? self::COLOR_ROW_ALT : self::COLOR_WHITE;
                 $sheet->getStyle("A{$r}:H{$r}")->applyFromArray([
                     'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $bg]],
@@ -264,7 +278,7 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
         }
 
         // ── Outer border around summary block ─────────────────────────────────
-        $sheet->getStyle('A' . self::ROW_SUM_START . ':H' . self::ROW_SUM_END)->applyFromArray([
+        $sheet->getStyle('A' . (self::ROW_SUM_START + $o) . ':H' . (self::ROW_SUM_END + $o))->applyFromArray([
             'borders' => ['outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => self::COLOR_DARK_PURPLE]]],
         ]);
     }
