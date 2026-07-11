@@ -1004,6 +1004,13 @@
             });
         }
 
+        // String-normalize before comparing — option IDs can come back as either
+        // numbers or numeric strings depending on the DB driver, and a strict
+        // indexOf() would silently fail to match "324" against 324.
+        function swIdMatch(list, id) {
+            return (list || []).map(String).indexOf(String(id)) !== -1;
+        }
+
         function posRenderGroups(groups, preSelectedIds) {
             preSelectedIds = preSelectedIds || [];
             var $row = $('<div class="row g-3">');
@@ -1054,7 +1061,7 @@
                             });
                         var lbl = name + (price !== 0 ? ' (' + (price > 0 ? '+' : '') + Math.round(price) + ')' : '');
                         $pill.append($inp).append($('<span>').text(lbl));
-                        if (preSelectedIds.indexOf(opt.id) !== -1) { $inp.prop('checked', true); $pill.addClass('active'); }
+                        if (swIdMatch(preSelectedIds, opt.id)) { $inp.prop('checked', true); $pill.addClass('active'); }
                         $pills.append($pill);
                     });
                     $col.append($pills);
@@ -1095,7 +1102,7 @@
                                 if (isSingle) $('#pos_option_groups_body .pos-option-input[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
                                 posUpdatePrice();
                             });
-                        if (preSelectedIds.indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                        if (swIdMatch(preSelectedIds, opt.id)) $inp.prop('checked', true);
                         $label.append($inp);
                         if (imgSrc) $label.append($('<img>').attr('src', imgSrc).addClass('pos-prod-thumb'));
                         var $info = $('<div class="overflow-hidden lh-sm">');
@@ -1133,7 +1140,7 @@
                                 if (isSingle) $('#pos_option_groups_body .pos-option-input[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
                                 posUpdatePrice();
                             });
-                        if (preSelectedIds.indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                        if (swIdMatch(preSelectedIds, opt.id)) $inp.prop('checked', true);
                         $label.append($inp).append($('<span class="flex-grow-1 fs-8">').text(name));
                         if (price !== 0) $label.append($('<span class="badge badge-light-primary fs-9">').text((price > 0 ? '+' : '') + Math.round(price)));
                         $list.append($('<div class="pos-option-item">').append($label));
