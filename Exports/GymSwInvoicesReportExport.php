@@ -78,20 +78,20 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
 
         $rows[] = [trans('sw.invoices_report')];                                            // 1
         $rows[] = [trans('sw.from') . ': ' . $from . '   ' . trans('sw.to') . ': ' . $to]; // 2
-        $rows[] = [];                                                                         // 3
+        $rows[] = [null];                                                                     // 3
 
         $rows[] = [trans('sw.total_invoices'),   $insights['total_count']];                           // 4
         $rows[] = [trans('sw.total'),            number_format($insights['total_amount'], 2)];         // 5
         $rows[] = [trans('sw.amount_paid'),      number_format($insights['total_paid'], 2)];           // 6
         $rows[] = [trans('sw.amount_remaining'), number_format($insights['total_remaining'], 2)];      // 7
-        $rows[] = [];                                                                                   // 8
+        $rows[] = [null];                                                                               // 8
 
         $rows[] = [trans('sw.invoices_by_type')];                                                      // 9
         $rows[] = [trans('sw.type'), trans('admin.total_count'), trans('sw.total')];                   // 10
         $rows[] = [trans('sw.sales'),       $insights['by_type']['sales']['count'],       number_format($insights['by_type']['sales']['amount'], 2)];       // 11
         $rows[] = [trans('sw.purchase'),    $insights['by_type']['purchase']['count'],    number_format($insights['by_type']['purchase']['amount'], 2)];    // 12
         $rows[] = [trans('sw.credit_note'), $insights['by_type']['credit_note']['count'], number_format($insights['by_type']['credit_note']['amount'], 2)]; // 13
-        $rows[] = [];                                                                                   // 14
+        $rows[] = [null];                                                                               // 14
 
         $rows[] = [trans('sw.invoices_by_status')];                                                    // 15
         $rows[] = [trans('sw.status'), trans('admin.total_count'), trans('sw.total')];                 // 16
@@ -99,7 +99,7 @@ class GymSwInvoicesReportExport implements FromArray, WithEvents, WithTitle
         $rows[] = [trans('sw.partial'),   $insights['by_status']['partial']['count'],   number_format($insights['by_status']['partial']['amount'], 2)];   // 18
         $rows[] = [trans('sw.paid'),      $insights['by_status']['paid']['count'],      number_format($insights['by_status']['paid']['amount'], 2)];      // 19
         $rows[] = [trans('sw.cancelled'), $insights['by_status']['cancelled']['count'], number_format($insights['by_status']['cancelled']['amount'], 2)]; // 20
-        $rows[] = [];                                                                                   // 21
+        $rows[] = [null];                                                                               // 21
 
         $rows[] = [trans('sw.invoices')];                                                              // 22
         $rows[] = [                                                                                     // 23
