@@ -150,11 +150,11 @@
     <div class="card-body pt-0">
         @php $storeOrderModals = []; @endphp
         <!--begin::Filter-->
-        <div class="collapse" id="kt_store_orders_report_filter_collapse">
+        <div class="collapse {{ request()->hasAny(['from','to','product']) ? 'show' : '' }}" id="kt_store_orders_report_filter_collapse">
             <div class="card card-body mb-5">
                 <form id="form_filter" action="" method="get">
                     <div class="row g-6">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.date_range')}}</label>
                             <div class="input-group date-picker input-daterange">
                                 <input type="text" class="form-control" name="from" id="from_date" value="@php echo @strip_tags($_GET['from']) @endphp" placeholder="{{ trans('sw.from')}}" autocomplete="off">
@@ -162,7 +162,7 @@
                                 <input type="text" class="form-control" name="to" id="to_date" value="@php echo @strip_tags($_GET['to']) @endphp" placeholder="{{ trans('sw.to')}}" autocomplete="off">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.product')}}</label>
                             <select name="product" class="form-select form-select-solid" data-control="select2" data-placeholder="{{ trans('sw.all') }}" data-allow-clear="true">
                                 <option value="">{{ trans('sw.all') }}</option>
