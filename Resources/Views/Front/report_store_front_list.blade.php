@@ -162,6 +162,15 @@
                                 <input type="text" class="form-control" name="to" id="to_date" value="@php echo @strip_tags($_GET['to']) @endphp" placeholder="{{ trans('sw.to')}}" autocomplete="off">
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.product')}}</label>
+                            <select name="product" class="form-select form-select-solid" data-control="select2" data-placeholder="{{ trans('sw.all') }}" data-allow-clear="true">
+                                <option value="">{{ trans('sw.all') }}</option>
+                                @foreach($storeProducts as $storeProduct)
+                                    <option value="{{ $storeProduct->id }}" {{ request('product') == $storeProduct->id ? 'selected' : '' }}>{{ $storeProduct->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-end mt-5">
                         <button type="reset" class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6">{{ trans('admin.reset')}}</button>
@@ -251,45 +260,47 @@
                         </h6>
                     </div>
                     <div class="card-body p-0">
-                        <table class="table table-sm align-middle mb-0 fs-7">
-                            <thead class="bg-light">
-                                <tr class="fw-semibold text-gray-500 text-uppercase fs-8">
-                                    <th class="ps-4 pe-2 py-3 w-50">{{ trans('sw.product') }}</th>
-                                    <th class="text-center px-2 py-3 text-nowrap">{{ trans('sw.units_sold') }}</th>
-                                    <th class="text-center px-2 py-3 text-nowrap">{{ trans('sw.unit_price') }}</th>
-                                    <th class="text-end ps-2 pe-4 py-3 text-nowrap">{{ trans('sw.total_revenue') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($products as $i => $product)
-                                @php
-                                    $productName = optional($product->product)->name ?? trans('sw.not_specified');
-                                    $productRevenue = (float)($product->price ?? 0);
-                                    $productUnits = (float)($product->products ?? 0);
-                                    $unitPrice = $productUnits > 0 ? ($productRevenue / $productUnits) : 0;
-                                    $pct = $stats->total_paid > 0 ? ($productRevenue / $stats->total_paid * 100) : 0;
-                                @endphp
-                                <tr>
-                                    <td class="ps-4 pe-2 py-3">
-                                        <div class="fw-semibold text-gray-800">{{ $productName }}</div>
-                                        <div class="mt-1" style="height:3px;background:#f1f1f1;border-radius:2px;">
-                                            <div style="height:3px;width:{{ min(100,round($pct)) }}%;background:#009ef7;border-radius:2px;"></div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center px-2 py-3 fw-semibold">{{ number_format($productUnits, 0) }}</td>
-                                    <td class="text-center px-2 py-3 text-gray-600">{{ number_format($unitPrice, 2) }}</td>
-                                    <td class="text-end ps-2 pe-4 py-3 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot class="bg-light">
-                                <tr class="fw-bold text-gray-700 fs-7">
-                                    <td colspan="2" class="ps-4 pe-2 py-3">{{ trans('sw.total') }}</td>
-                                    <td class="text-center px-2 py-3 text-muted">—</td>
-                                    <td class="text-end ps-2 pe-4 py-3">{{ number_format($products->sum('price'), 2) }}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                        <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                            <table class="table table-sm align-middle mb-0 fs-7">
+                                <thead class="bg-light" style="position: sticky; top: 0; z-index: 1;">
+                                    <tr class="fw-semibold text-gray-500 text-uppercase fs-8">
+                                        <th class="ps-4 pe-2 py-3 w-50">{{ trans('sw.product') }}</th>
+                                        <th class="text-center px-2 py-3 text-nowrap">{{ trans('sw.units_sold') }}</th>
+                                        <th class="text-center px-2 py-3 text-nowrap">{{ trans('sw.unit_price') }}</th>
+                                        <th class="text-end ps-2 pe-4 py-3 text-nowrap">{{ trans('sw.total_revenue') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($products as $i => $product)
+                                    @php
+                                        $productName = optional($product->product)->name ?? trans('sw.not_specified');
+                                        $productRevenue = (float)($product->price ?? 0);
+                                        $productUnits = (float)($product->products ?? 0);
+                                        $unitPrice = $productUnits > 0 ? ($productRevenue / $productUnits) : 0;
+                                        $pct = $stats->total_paid > 0 ? ($productRevenue / $stats->total_paid * 100) : 0;
+                                    @endphp
+                                    <tr>
+                                        <td class="ps-4 pe-2 py-3">
+                                            <div class="fw-semibold text-gray-800">{{ $productName }}</div>
+                                            <div class="mt-1" style="height:3px;background:#f1f1f1;border-radius:2px;">
+                                                <div style="height:3px;width:{{ min(100,round($pct)) }}%;background:#009ef7;border-radius:2px;"></div>
+                                            </div>
+                                        </td>
+                                        <td class="text-center px-2 py-3 fw-semibold">{{ number_format($productUnits, 0) }}</td>
+                                        <td class="text-center px-2 py-3 text-gray-600">{{ number_format($unitPrice, 2) }}</td>
+                                        <td class="text-end ps-2 pe-4 py-3 fw-bold text-primary">{{ number_format($productRevenue, 2) }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot class="bg-light" style="position: sticky; bottom: 0;">
+                                    <tr class="fw-bold text-gray-700 fs-7">
+                                        <td colspan="2" class="ps-4 pe-2 py-3">{{ trans('sw.total') }}</td>
+                                        <td class="text-center px-2 py-3 text-muted">—</td>
+                                        <td class="text-end ps-2 pe-4 py-3">{{ number_format($products->sum('price'), 2) }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

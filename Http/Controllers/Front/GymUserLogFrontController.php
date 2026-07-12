@@ -25,6 +25,7 @@ use Modules\Software\Models\GymPTSubscription;
 use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Models\GymStoreOrder;
 use Modules\Software\Models\GymStoreOrderProduct;
+use Modules\Software\Models\GymStoreProduct;
 use Modules\Software\Models\GymSubscription;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserLog;
@@ -1657,15 +1658,21 @@ class GymUserLogFrontController extends GymGenericFrontController
         $from = request('from');
         $to = request('to');
         $search = request('search');
+        $product = request('product');
 
         $fromDate = $from ? Carbon::parse($from)->format('Y-m-d') : null;
         $toDate   = $to   ? Carbon::parse($to)->format('Y-m-d')   : null;
+
+        $storeProducts = GymStoreProduct::branch()->orderBy('name_' . $this->lang)->get();
 
         $productsQuery = GymStoreOrderProduct::branch()
             ->selectRaw('product_id, SUM(price) AS price, SUM(quantity) AS products')
             ->with(['product' => function ($q) {
                 $q->withTrashed();
             }])
+            ->when($product, function ($query) use ($product) {
+                $query->where('product_id', $product);
+            })
             ->groupBy('product_id')
             ->orderByDesc('price');
 
@@ -1703,6 +1710,12 @@ class GymUserLogFrontController extends GymGenericFrontController
             $paymentBreakdownQuery->whereDate('created_at', '<=', $toDate);
         }
 
+        if ($product) {
+            $ordersQuery->whereHas('order_product', function ($query) use ($product) {
+                $query->where('product_id', $product);
+            });
+        }
+
         if ($search) {
             $ordersQuery->where(function ($query) use ($search) {
                 $searchValue = trim($search);
@@ -1719,6 +1732,9 @@ class GymUserLogFrontController extends GymGenericFrontController
                     $query->whereHas('member', function ($memberQuery) use ($searchValue) {
                         $memberQuery->where('name', 'like', '%' . $searchValue . '%')
                             ->orWhere('phone', 'like', '%' . $searchValue . '%');
+                    })->orWhereHas('order_product.product', function ($productQuery) use ($searchValue) {
+                        $productQuery->where('name_ar', 'like', '%' . $searchValue . '%')
+                            ->orWhere('name_en', 'like', '%' . $searchValue . '%');
                     });
                 }
             });
@@ -1746,7 +1762,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-        return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'stats', 'paymentBreakdown', 'title', 'total'));
+        return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'stats', 'paymentBreakdown', 'title', 'total', 'storeProducts'));
 
     }
 
