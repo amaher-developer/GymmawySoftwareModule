@@ -109,6 +109,52 @@ class GymActivityFrontController extends GymGenericFrontController
 
     }
 
+    public function exportWhatsAppCatalog()
+    {
+        $records = $this->ActivityRepository->get();
+        $gymName = $this->mainSettings->name_ar ?: $this->mainSettings->name_en ?: 'Gym';
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $currency = strtoupper($this->mainSettings->currency ?? 'EGP');
+
+        $rows   = [];
+        $rows[] = ['id','title','description','availability','condition','price','link','image_link','brand'];
+
+        foreach ($records as $a) {
+            $title = $this->lang === 'ar' ? ($a->name_ar ?: $a->name_en) : ($a->name_en ?: $a->name_ar);
+            $desc  = $this->lang === 'ar' ? ($a->content_ar ?: $a->content_en) : ($a->content_en ?: $a->content_ar);
+            $desc  = $desc ?: $title;
+            $price = number_format((float)$a->price, 2, '.', '') . ' ' . $currency;
+            $image = $a->image ? $baseUrl . '/uploads/activities/' . $a->getRawOriginal('image') : '';
+
+            $rows[] = [
+                'activity_' . $a->id,
+                $title,
+                strip_tags($desc),
+                'in stock',
+                'new',
+                $price,
+                $baseUrl,
+                $image,
+                $gymName,
+            ];
+        }
+
+        $filename = 'whatsapp-catalog-activities-' . now()->format('Y-m-d') . '.csv';
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
     private function prepareForExport($data)
     {
         $name = [trans('sw.name'), trans('sw.price')];

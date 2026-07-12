@@ -113,6 +113,22 @@
         <!--end::Card title-->
         <div class="card-toolbar">
             <div class="d-flex align-items-center gap-2 gap-lg-3">
+                <!--begin::WhatsApp Catalog Export-->
+                <div class="m-0">
+                    <button class="btn btn-sm btn-flex btn-light-success" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">
+                        <i class="ki-outline ki-exit-down fs-6"></i>
+                        {{ trans('sw.download') }}
+                    </button>
+                    <div class="menu menu-sub menu-sub-dropdown w-220px" data-kt-menu="true">
+                        <div class="menu-item px-3">
+                            <a href="{{ route('sw.exportStoreProductWhatsApp') }}" class="menu-link px-3">
+                                <i class="ki-outline ki-whatsapp fs-6 me-2 text-success"></i>
+                                WhatsApp Catalog CSV
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <!--end::WhatsApp Catalog Export-->
                 <!--begin::Add Store Product-->
                 @if(in_array('createStoreProduct', (array)$swUser->permissions) || $swUser->is_super_user)
                     <a href="{{route('sw.createStoreProduct')}}" class="btn btn-sm btn-flex btn-light-primary">

@@ -136,6 +136,52 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 //        })->download('xlsx');
     }
 
+    public function exportWhatsAppCatalog()
+    {
+        $records = $this->GymSubscriptionRepository->branch()->get();
+        $gymName = $this->mainSettings->name_ar ?: $this->mainSettings->name_en ?: 'Gym';
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $currency = strtoupper($this->mainSettings->currency ?? 'EGP');
+
+        $rows   = [];
+        $rows[] = ['id','title','description','availability','condition','price','link','image_link','brand'];
+
+        foreach ($records as $s) {
+            $title = $this->lang === 'ar' ? ($s->name_ar ?: $s->name_en) : ($s->name_en ?: $s->name_ar);
+            $desc  = $this->lang === 'ar' ? ($s->content_ar ?: $s->content_en) : ($s->content_en ?: $s->content_ar);
+            $desc  = $desc ?: $title;
+            $price = number_format((float)$s->price, 2, '.', '') . ' ' . $currency;
+            $image = $s->image ? $baseUrl . '/uploads/subscriptions/' . $s->getRawOriginal('image') : '';
+
+            $rows[] = [
+                'subscription_' . $s->id,
+                $title,
+                strip_tags($desc),
+                'in stock',
+                'new',
+                $price,
+                $baseUrl,
+                $image,
+                $gymName,
+            ];
+        }
+
+        $filename = 'whatsapp-catalog-subscriptions-' . now()->format('Y-m-d') . '.csv';
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
     private function prepareForExport($data)
     {
         $name = [trans('sw.name'), trans('sw.price'), trans('sw.period'), trans('sw.workouts'), trans('sw.freeze_limit'), trans('sw.number_times_freeze')];

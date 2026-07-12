@@ -13,6 +13,8 @@ Route::prefix('activity')
             ->get('/pdf', 'Front\GymActivityFrontController@exportPDF');
         Route::name('sw.exportActivityExcel')
             ->get('/excel', 'Front\GymActivityFrontController@exportExcel');
+        Route::name('sw.exportActivityWhatsApp')
+            ->get('/whatsapp-catalog', 'Front\GymActivityFrontController@exportWhatsAppCatalog');
 
         // Create activity - create permission
         Route::group(['defaults' => ['permission' => 'createActivity']], function () {

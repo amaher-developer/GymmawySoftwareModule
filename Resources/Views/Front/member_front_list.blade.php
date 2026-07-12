@@ -388,11 +388,8 @@
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.membership')}}
                             </th>
-                            <th class="min-w-100px text-nowrap">
-                                <i class="ki-outline ki-chart-line fs-6 me-2"></i>{{ trans('sw.workouts')}}
-                            </th>
-                            <th class="min-w-100px text-nowrap">
-                                <i class="ki-outline ki-chart-simple fs-6 me-2"></i>{{ trans('sw.number_of_visits')}}
+                            <th class="text-nowrap" style="min-width:110px;">
+                                <i class="ki-outline ki-chart-line fs-6 me-1 text-primary"></i>التدريبات / <i class="ki-outline ki-entrance-right fs-6 me-2 text-info"></i>الزيارات
                             </th>
                             <th class="min-w-200px text-nowrap">
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.activities')}}
@@ -535,10 +532,23 @@
                                 </div>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->workouts : '-' }}</span>
-                            </td>
-                            <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->visits : '-' }}</span>
+                                @if(@$member->member_subscription_info)
+                                    @php
+                                        $wrk = @$member->member_subscription_info->workouts ?? '—';
+                                        $vis = @$member->member_subscription_info->visits    ?? '—';
+                                    @endphp
+                                    <div class="d-flex align-items-center gap-2 text-nowrap">
+                                        <span class="text-primary fw-bold" title="{{ trans('sw.workouts') }}">
+                                            <i class="ki-outline ki-chart-line fs-7"></i> {{ $wrk }}
+                                        </span>
+                                        <span class="text-muted" style="opacity:.4;">|</span>
+                                        <span class="text-info fw-bold" title="{{ trans('sw.number_of_visits') }}">
+                                            <i class="ki-outline ki-entrance-right fs-7"></i> {{ $vis }}
+                                        </span>
+                                    </div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
                             </td>
                             <td class="pe-0">
                                 <div class="d-flex flex-wrap gap-1">

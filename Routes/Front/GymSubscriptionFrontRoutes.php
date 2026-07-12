@@ -15,6 +15,8 @@ Route::prefix('subscription')
             ->get('/pdf', 'Front\GymSubscriptionFrontController@exportPDF');
         Route::name('sw.exportSubscriptionExcel')
             ->get('/excel', 'Front\GymSubscriptionFrontController@exportExcel');
+        Route::name('sw.exportSubscriptionWhatsApp')
+            ->get('/whatsapp-catalog', 'Front\GymSubscriptionFrontController@exportWhatsAppCatalog');
 
         // Create subscription - create permission
         Route::group(['defaults' => ['permission' => 'createSubscription']], function () {

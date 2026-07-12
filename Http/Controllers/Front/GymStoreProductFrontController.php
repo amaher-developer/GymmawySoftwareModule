@@ -109,6 +109,54 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
     }
 
+    public function exportWhatsAppCatalog()
+    {
+        $records = $this->StoreProductRepository->branch()->get();
+        $gymName = $this->mainSettings->name_ar ?: $this->mainSettings->name_en ?: 'Gym';
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $currency = strtoupper($this->mainSettings->currency ?? 'EGP');
+
+        $rows   = [];
+        $rows[] = ['id','title','description','availability','condition','price','link','image_link','brand'];
+
+        foreach ($records as $p) {
+            $title = $this->lang === 'ar'
+                ? ($p->display_name_ar ?: $p->name_ar ?: $p->name_en)
+                : ($p->display_name_en ?: $p->name_en ?: $p->name_ar);
+            $desc  = $this->lang === 'ar' ? ($p->content_ar ?: $p->content_en) : ($p->content_en ?: $p->content_ar);
+            $desc  = $desc ?: $title;
+            $price = number_format((float)$p->price, 2, '.', '') . ' ' . $currency;
+            $image = $p->image ? $baseUrl . '/uploads/store_products/' . $p->getRawOriginal('image') : '';
+
+            $rows[] = [
+                'product_' . $p->id,
+                $title,
+                strip_tags($desc),
+                ($p->quantity > 0) ? 'in stock' : 'out of stock',
+                'new',
+                $price,
+                $baseUrl,
+                $image,
+                $gymName,
+            ];
+        }
+
+        $filename = 'whatsapp-catalog-products-' . now()->format('Y-m-d') . '.csv';
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
     private function prepareForExport($data)
     {
         $name = [trans('sw.name'), trans('sw.price')];

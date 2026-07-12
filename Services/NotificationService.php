@@ -73,13 +73,19 @@ class NotificationService
             $result['sms_sent'] = $this->sendSMS($memberPhone, $msg, @$member->id);
         }
 
-        // Send WhatsApp via Ultramsg
-        if ($this->mainSettings->active_wa && env('WA_GATEWAY') == 'ULTRA') {
+        // Send WhatsApp via WhatsApp Module (configured at /ar/whatsapp — takes priority)
+        $waDetails = $this->mainSettings->wa_details ?? [];
+        if ($this->mainSettings->active_wa && !empty($waDetails['provider'])) {
+            $result['wa_sent'] = $this->sendWhatsAppViaModule($memberPhone, $msg, @$member->id);
+        }
+
+        // Legacy: Send WhatsApp via Ultramsg env config
+        if ($this->mainSettings->active_wa && !$result['wa_sent'] && env('WA_GATEWAY') == 'ULTRA') {
             $result['wa_sent'] = $this->sendWhatsAppUltra($memberPhone, $msg, @$member->id);
         }
 
-        // Send WhatsApp via WA Token
-        if ($this->mainSettings->active_wa && env('WA_USER_TOKEN')) {
+        // Legacy: Send WhatsApp via WA Token env config
+        if ($this->mainSettings->active_wa && !$result['wa_sent'] && env('WA_USER_TOKEN')) {
             $result['wa_sent'] = $this->sendWhatsAppToken($memberPhone, $msg, @$member->id);
         }
 
@@ -108,6 +114,32 @@ class NotificationService
                 'member_id' => $memberId,
                 'phone' => $phone,
                 'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Send WhatsApp via the WhatsApp Module (MessagingManager).
+     * Uses the provider configured at /ar/whatsapp (local gateway, ultramsg, or cloud).
+     */
+    public function sendWhatsAppViaModule(string $phone, string $message, ?int $memberId = null): bool
+    {
+        try {
+            $manager = app(\Modules\WhatsApp\Services\MessagingManager::class);
+            $res     = $manager->channel((int) $this->mainSettings->id)->send($phone, $message);
+            $success = $res['success'] ?? false;
+            if ($success) {
+                Log::info('WhatsApp sent via module', ['member_id' => $memberId, 'phone' => $phone]);
+            } else {
+                Log::warning('WhatsApp module returned failure', ['result' => $res, 'phone' => $phone]);
+            }
+            return $success;
+        } catch (\Throwable $e) {
+            Log::error('Failed to send WhatsApp via module', [
+                'member_id' => $memberId,
+                'phone'     => $phone,
+                'error'     => $e->getMessage(),
             ]);
             return false;
         }

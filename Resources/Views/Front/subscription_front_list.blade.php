@@ -102,6 +102,12 @@
                                     </a>
                                 </div>
                             @endif
+                            <div class="menu-item px-3">
+                                <a href="{{ route('sw.exportSubscriptionWhatsApp') }}" class="menu-link px-3">
+                                    <i class="ki-outline ki-whatsapp fs-6 me-2 text-success"></i>
+                                    WhatsApp Catalog CSV
+                                </a>
+                            </div>
                         </div>
                     </div>
                 @endif

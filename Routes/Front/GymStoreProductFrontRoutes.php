@@ -9,6 +9,8 @@ Route::prefix('store/product')
             ->get('/', 'Front\GymStoreProductFrontController@index');
         Route::name('sw.downloadStoreProductBarcode')
             ->get('download-barcode/{product}', 'Front\GymStoreProductFrontController@downloadBarcode');
+        Route::name('sw.exportStoreProductWhatsApp')
+            ->get('/whatsapp-catalog', 'Front\GymStoreProductFrontController@exportWhatsAppCatalog');
 
         // Create store product - create permission
         Route::group(['defaults' => ['permission' => 'createStoreProduct']], function () {
