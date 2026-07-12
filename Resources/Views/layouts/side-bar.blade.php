@@ -1183,7 +1183,7 @@
     @endif
     <!--end:Menu item-->
 
-    @if ($swUser && ($isSuperUser || isset($permissionsMap['aiEmployee'])))
+    @if ($swUser && ($isSuperUser || isset($permissionsMap['aiEmployee'])) && Route::has('sw.ai_employee.index'))
         <!--begin:Menu item - AI Employee-->
         <div class="menu-item">
             <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai-employee*')) active @endif" href="{{ route('sw.ai_employee.index') }}">
