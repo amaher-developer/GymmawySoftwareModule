@@ -389,7 +389,7 @@
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.membership')}}
                             </th>
                             <th class="text-nowrap" style="min-width:110px;">
-                                <i class="ki-outline ki-chart-line fs-6 me-1 text-primary"></i>التدريبات / <i class="ki-outline ki-entrance-right fs-6 me-2 text-info"></i>الزيارات
+                                <i class="ki-outline ki-chart-line fs-6 me-1 text-primary"></i>{{ trans('sw.trainings') }} / <i class="ki-outline ki-entrance-right fs-6 me-2 text-info"></i>{{ trans('sw.visits') }}
                             </th>
                             <th class="min-w-200px text-nowrap">
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.activities')}}
