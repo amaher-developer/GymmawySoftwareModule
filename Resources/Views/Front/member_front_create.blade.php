@@ -490,6 +490,23 @@
                                         </div>
                                         @endif
 
+                                        @if(!empty($mainSettings->payments['paymob_intention']['secret_key'] ?? null) && !empty($mainSettings->payments['paymob_intention']['public_key'] ?? null))
+                                        <div class="pgw-card" id="paymob_intention_payment_option">
+                                            <input type="checkbox" name="send_paymob_intention_link" id="send_paymob_intention_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/paymob.png') }}" alt="Paymob Flash" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.paymob_payment_description') }}</div>
+                                        </div>
+                                        @endif
+
                                         @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
                                         <div class="pgw-card" id="paytabs_payment_option">
                                             <input type="checkbox" name="send_paytabs_link" id="send_paytabs_link" value="1" class="pgw-checkbox" style="display:none"/>
@@ -1390,6 +1407,7 @@
             if ($('#send_tabby_link').is(':checked')) return 'tabby';
             if ($('#send_tamara_link').is(':checked')) return 'tamara';
             if ($('#send_paymob_link').is(':checked')) return 'paymob';
+            if ($('#send_paymob_intention_link').is(':checked')) return 'paymob_intention';
             if ($('#send_paytabs_link').is(':checked')) return 'paytabs';
             return null;
         }
@@ -1462,7 +1480,7 @@
                     cancelButtonText: '{{ trans('admin.cancel') }}'
                 }).then(function (confirm) {
                     if (confirm) {
-                        $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paytabs_link').prop('checked', false);
+                        $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paymob_intention_link, #send_paytabs_link').prop('checked', false);
                         $('form.form').off('submit').submit();
                     }
                 });
@@ -1504,7 +1522,7 @@
                         gateway,
                         function () {
                             // Step 3: payment confirmed or "complete" — submit form as normal (no gateway)
-                            $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paytabs_link').prop('checked', false);
+                            $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paymob_intention_link, #send_paytabs_link').prop('checked', false);
                             $('form.form').off('submit').submit();
                         },
                         pw_check_invoice_url,

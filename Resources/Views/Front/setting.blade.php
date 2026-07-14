@@ -907,12 +907,8 @@
     <script type="text/javascript"
             src="{{asset('resources/assets/new_front/custom/bootstrapValidator.js')}}"></script>
     
-    <!--CKEditor Build Bundles:: Only include the relevant bundles accordingly-->
+    <!--CKEditor Build Bundle:: only ClassicEditor is used on this page-->
     <script src="{{asset('resources/assets/new_front/plugins/custom/ckeditor/ckeditor-classic.bundle.js')}}"></script>
-    <script src="{{asset('resources/assets/new_front/plugins/custom/ckeditor/ckeditor-inline.bundle.js')}}"></script>
-    <script src="{{asset('resources/assets/new_front/plugins/custom/ckeditor/ckeditor-balloon.bundle.js')}}"></script>
-    <script src="{{asset('resources/assets/new_front/plugins/custom/ckeditor/ckeditor-balloon-block.bundle.js')}}"></script>
-    <script src="{{asset('resources/assets/new_front/plugins/custom/ckeditor/ckeditor-document.bundle.js')}}"></script>
 
         <script>
         $(document).ready(function() {

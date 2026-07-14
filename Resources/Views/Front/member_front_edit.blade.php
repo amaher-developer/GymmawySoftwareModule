@@ -889,6 +889,23 @@
                     @endif
                     <!--end::Paymob Payment Option-->
 
+                    <!--begin::Paymob Flash (Intention API) Payment Option-->
+                    @if(!empty($mainSettings->payments['paymob_intention']['secret_key'] ?? null) && !empty($mainSettings->payments['paymob_intention']['public_key'] ?? null))
+                    <div class="row mb-5" id="edit_paymob_intention_payment_row" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.paymob_payment')}}</label>
+                            <div class="form-check form-switch form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="send_paymob_intention_link" id="edit_send_paymob_intention_link" value="1"/>
+                                <label class="form-check-label" for="edit_send_paymob_intention_link">
+                                    {{ trans('sw.send_paymob_payment_link')}}
+                                </label>
+                            </div>
+                            <div class="text-muted fs-7 mt-1">{{ trans('sw.paymob_payment_description')}}</div>
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Paymob Flash (Intention API) Payment Option-->
+
                     <!--begin::PayTabs Payment Option-->
                     @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
                     <div class="row mb-5" id="edit_paytabs_payment_row" style="display: none;">
@@ -1230,6 +1247,7 @@
          'send_tabby_link': $('#edit_send_tabby_link').is(':checked') ? 1 : 0,
          'send_tamara_link': $('#edit_send_tamara_link').is(':checked') ? 1 : 0,
          'send_paymob_link': $('#edit_send_paymob_link').is(':checked') ? 1 : 0,
+         'send_paymob_intention_link': $('#edit_send_paymob_intention_link').is(':checked') ? 1 : 0,
          'send_paytabs_link': $('#edit_send_paytabs_link').is(':checked') ? 1 : 0,
          "_token": "{{ csrf_token() }}"
         }
@@ -1647,6 +1665,13 @@
         } else {
             $('#edit_paymob_payment_row').hide();
             $('#edit_send_paymob_link').prop('checked', false);
+        }
+        // Show Paymob Flash (Intention API) option only when diff amount paid > 0
+        if (diffAmount > 0) {
+            $('#edit_paymob_intention_payment_row').show();
+        } else {
+            $('#edit_paymob_intention_payment_row').hide();
+            $('#edit_send_paymob_intention_link').prop('checked', false);
         }
         // Show PayTabs option only when diff amount paid > 0
         if (diffAmount > 0) {

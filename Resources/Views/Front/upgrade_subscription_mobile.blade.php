@@ -16,6 +16,7 @@
         $tamaraEnabled  = !empty($paymentsConfig['tamara']['token']);
         $paytabsEnabled = !empty($paymentsConfig['paytabs']['server_key']);
         $paymobEnabled  = !empty($paymentsConfig['paymob']['api_key']);
+        $paymobIntentionEnabled = !empty($paymentsConfig['paymob_intention']['secret_key']) && !empty($paymentsConfig['paymob_intention']['public_key']);
         $currency       = trans('front.pound_unit');
     @endphp
     <style>
@@ -319,6 +320,24 @@
         </div>
         @endif
 
+        @if($paymobIntentionEnabled)
+        <div class="payment-option" id="payOpt_paymob_intention" style="display:none;">
+            <input type="radio" name="payment_method" value="7" id="paymob_intention_u">
+            <div class="payment-details">
+                <label for="paymob_intention_u">{{ trans('front.paymob_payment_msg') }}</label>
+                <p style="margin:5px 0 0;">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                         src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                         src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
+                    <img style="height: 40px; width: auto; padding: 5px; margin: 4px 2px; border: 1px solid #ccc; border-radius: 5px; object-fit: contain;"
+                         src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
+                </p>
+                <span class="policy-msg">{{ trans('front.paymob_policy_msg') }}</span>
+            </div>
+        </div>
+        @endif
+
         <button type="submit" class="btn-pay" id="payBtn" disabled>{{ trans('front.pay_now') }}</button>
     </form>
 
@@ -346,7 +365,7 @@
     <script src="https://cdn.jsdelivr.net/npm/toastr@2.1.4/build/toastr.min.js"></script>
     <script>
         var selectedPlanId  = null;
-        var paymentOpts     = ['tabby','tamara','paytabs','paymob'];
+        var paymentOpts     = ['tabby','tamara','paytabs','paymob','paymob_intention'];
         var tabbyCardInstance = null;
 
         function updateTabbyCard(price) {

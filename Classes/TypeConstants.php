@@ -431,6 +431,10 @@ class TypeConstants {
     const TAMARA_TRANSACTION = 6;
     const PAYTABS_TRANSACTION = 8;
 
+    // Paymob Flash / Intention API (parallel integration, kept distinct from the legacy PAYMOB_TRANSACTION* above)
+    const PAYMOB_INTENTION_TRANSACTION_FEES = 205;
+    const PAYMOB_INTENTION_TRANSACTION = 206;
+
     // Payment Channels
     const CHANNEL_SYSTEM = 1;
     const CHANNEL_WEBSITE = 2;

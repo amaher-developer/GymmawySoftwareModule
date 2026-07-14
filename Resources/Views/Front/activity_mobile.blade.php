@@ -14,6 +14,7 @@
         $tamaraEnabled  = !empty($paymentsConfig['tamara']['token']);
         $paytabsEnabled = !empty($paymentsConfig['paytabs']['server_key']);
         $paymobEnabled  = !empty($paymentsConfig['paymob']['api_key']);
+        $paymobIntentionEnabled = !empty($paymentsConfig['paymob_intention']['secret_key']) && !empty($paymentsConfig['paymob_intention']['public_key']);
 
         // Per-activity price lookup for JS
         $activityPriceMap = $activities->mapWithKeys(fn($a) => [(string)$a->id => (float)($a->price ?? 0)])->toArray();
@@ -149,6 +150,21 @@
                 <input type="radio" name="payment_method" value="6" id="paymob_a">
                 <div class="payment-details">
                     <label for="paymob_a">{{ trans('front.paymob_payment_msg') }}</label>
+                    <p style="margin:5px 0 0;">
+                        <img style="height:40px;width:auto;padding:5px;margin:4px 2px;border:1px solid #ccc;border-radius:5px;object-fit:contain;" src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
+                        <img style="height:40px;width:auto;padding:5px;margin:4px 2px;border:1px solid #ccc;border-radius:5px;object-fit:contain;" src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">
+                        <img style="height:40px;width:auto;padding:5px;margin:4px 2px;border:1px solid #ccc;border-radius:5px;object-fit:contain;" src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada">
+                    </p>
+                    <span class="policy-msg">{{ trans('front.paymob_policy_msg') }}</span>
+                </div>
+            </div>
+        @endif
+
+        @if($paymobIntentionEnabled)
+            <div class="payment-option">
+                <input type="radio" name="payment_method" value="7" id="paymob_intention_a">
+                <div class="payment-details">
+                    <label for="paymob_intention_a">{{ trans('front.paymob_payment_msg') }}</label>
                     <p style="margin:5px 0 0;">
                         <img style="height:40px;width:auto;padding:5px;margin:4px 2px;border:1px solid #ccc;border-radius:5px;object-fit:contain;" src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa">
                         <img style="height:40px;width:auto;padding:5px;margin:4px 2px;border:1px solid #ccc;border-radius:5px;object-fit:contain;" src="{{ asset('resources/assets/new_front/images/mastercard-logo.svg') }}" alt="Mastercard">

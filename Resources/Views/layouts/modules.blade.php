@@ -329,6 +329,7 @@
                     $hasAnyRenewGateway = !empty($mainSettings->payments['tabby']['merchant_code'] ?? null)
                         || !empty($mainSettings->payments['tamara']['token'] ?? null)
                         || !empty($mainSettings->payments['paymob']['api_key'] ?? null)
+                        || (!empty($mainSettings->payments['paymob_intention']['secret_key'] ?? null) && !empty($mainSettings->payments['paymob_intention']['public_key'] ?? null))
                         || (!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null));
                 @endphp
                 @if($hasAnyRenewGateway)
@@ -374,6 +375,23 @@
                             <div class="pgw-check"></div>
                             <div class="pgw-logo-wrap">
                                 <img src="{{ asset('resources/assets/new_front/images/paymob.png') }}" alt="Paymob" class="pgw-logo">
+                            </div>
+                            <div class="pgw-methods">
+                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                            </div>
+                            <div class="pgw-desc">{{ trans('sw.paymob_payment_description') }}</div>
+                        </div>
+                        @endif
+
+                        @if(!empty($mainSettings->payments['paymob_intention']['secret_key'] ?? null) && !empty($mainSettings->payments['paymob_intention']['public_key'] ?? null))
+                        <div class="pgw-card" id="renew_paymob_intention_payment_option">
+                            <input type="checkbox" name="send_paymob_intention_link" id="renew_send_paymob_intention_link" value="1" class="pgw-checkbox" style="display:none"/>
+                            <div class="pgw-check"></div>
+                            <div class="pgw-logo-wrap">
+                                <img src="{{ asset('resources/assets/new_front/images/paymob.png') }}" alt="Paymob Flash" class="pgw-logo">
                             </div>
                             <div class="pgw-methods">
                                 <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">

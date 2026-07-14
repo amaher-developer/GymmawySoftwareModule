@@ -12,6 +12,7 @@ use Modules\Software\Classes\SMSFactory;
 use Modules\Software\Services\TabbyPaymentService;
 use Modules\Software\Services\TamaraPaymentService;
 use Modules\Software\Services\PaymobPaymentService;
+use Modules\Software\Services\PaymobIntentionPaymentService;
 use Modules\Software\Services\PayTabsPaymentService;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
@@ -1088,6 +1089,41 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
+            // Send Paymob Flash (Intention API) payment link if checkbox is checked
+            if ($request->input('send_paymob_intention_link')) {
+                try {
+                    $paymobIntentionService = new PaymobIntentionPaymentService();
+                    if ($paymobIntentionService->isPaymobConfigured()) {
+                        $paymobIntentionResult = $paymobIntentionService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
+
+                        if ($paymobIntentionResult['success']) {
+                            $store_payment_url = $paymobIntentionResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $paymobIntentionResult['sent_whatsapp'], 'sms' => $paymobIntentionResult['sent_sms'], 'email' => $paymobIntentionResult['sent_email'] ?? false];
+                            Log::info('Paymob Intention payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $paymobIntentionResult['payment_url'],
+                                'sent_whatsapp' => $paymobIntentionResult['sent_whatsapp'],
+                                'sent_sms' => $paymobIntentionResult['sent_sms'],
+                                'sent_email' => $paymobIntentionResult['sent_email'] ?? false,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process Paymob Intention payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             // Send PayTabs payment link if checkbox is checked
             if ($request->input('send_paytabs_link')) {
                 try {
@@ -1893,6 +1929,44 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to process Paymob payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send Paymob Flash (Intention API) payment link if checkbox is checked and member has paid amount difference > 0
+        if ($request->input('send_paymob_intention_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $paymobIntentionService = new PaymobIntentionPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member && $paymobIntentionService->isPaymobConfigured()) {
+                    $paymobIntentionResult = $paymobIntentionService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paymobIntentionResult['success']) {
+                        Log::info('Paymob Intention payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $paymobIntentionResult['payment_url'],
+                            'sent_whatsapp' => $paymobIntentionResult['sent_whatsapp'],
+                            'sent_sms' => $paymobIntentionResult['sent_sms'],
+                            'sent_email' => $paymobIntentionResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Paymob Intention payment for membership edit', [
                     'member_id' => $member_subscription->member_id,
                     'subscription_id' => $member_subscription->id,
                     'error' => $e->getMessage(),
@@ -3228,6 +3302,42 @@ class GymMemberFrontController extends GymGenericFrontController
             }
         }
 
+        // Send Paymob Flash (Intention API) payment link if checkbox is checked and member has remaining amount
+        if ($request->input('send_paymob_intention_link')) {
+            try {
+                $paymobIntentionService = new PaymobIntentionPaymentService();
+                if ($member_subscription && $paymobIntentionService->isPaymobConfigured()) {
+                    $paymobIntentionResult = $paymobIntentionService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paymobIntentionResult['success']) {
+                        $renew_payment_url = $paymobIntentionResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $paymobIntentionResult['sent_whatsapp'], 'sms' => $paymobIntentionResult['sent_sms'], 'email' => $paymobIntentionResult['sent_email'] ?? false];
+                        Log::info('Paymob Intention payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $paymobIntentionResult['payment_url'],
+                            'sent_whatsapp' => $paymobIntentionResult['sent_whatsapp'],
+                            'sent_sms' => $paymobIntentionResult['sent_sms'],
+                            'sent_email' => $paymobIntentionResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Paymob Intention payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Send PayTabs payment link if checkbox is checked
         if ($request->input('send_paytabs_link')) {
             try {
@@ -3358,6 +3468,11 @@ class GymMemberFrontController extends GymGenericFrontController
                 if ($svc->isPaymobConfigured()) {
                     $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
                 }
+            } elseif ($gateway === 'paymob_intention') {
+                $svc = new PaymobIntentionPaymentService();
+                if ($svc->isPaymobConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
             } elseif ($gateway === 'paytabs') {
                 $svc = new PayTabsPaymentService();
                 if ($svc->isPayTabsConfigured()) {
@@ -3424,6 +3539,11 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             } elseif ($gateway === 'paymob') {
                 $svc = new PaymobPaymentService();
+                if ($svc->isPaymobConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paymob_intention') {
+                $svc = new PaymobIntentionPaymentService();
                 if ($svc->isPaymobConfigured()) {
                     $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
                 }
@@ -3550,6 +3670,14 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             } elseif ($gateway === 'paymob') {
                 $service = new PaymobPaymentService();
+                if ($service->isPaymobConfigured()) {
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
+                }
+            } elseif ($gateway === 'paymob_intention') {
+                $service = new PaymobIntentionPaymentService();
                 if ($service->isPaymobConfigured()) {
                     $result = $memberSubscription
                         ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Modules\Generic\Http\Controllers\Front\PaymobFrontController;
+use Modules\Generic\Http\Controllers\Front\PaymobIntentionFrontController;
 use Modules\Generic\Http\Controllers\Front\PayTabsFrontController;
 use Modules\Generic\Http\Controllers\Front\TabbyFrontController;
 use Modules\Generic\Http\Controllers\Front\TamaraFrontController;
@@ -899,6 +900,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             $paymentUrl = $this->initiatePaytabs($subscription->toArray(), $memberData);
         } elseif ($paymentMethod === 6) {
             $paymentUrl = $this->initiatePaymob($subscription->toArray(), $memberData);
+        } elseif ($paymentMethod === 7) {
+            $paymentUrl = $this->initiatePaymobIntention($subscription->toArray(), $memberData);
         } else {
             return redirect()->back()->with('error', trans('front.error_in_data'));
         }
@@ -970,6 +973,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             $paymentUrl = $this->initiateGenericPaytabs('activity', $primaryId, $itemName, $memberData);
         } elseif ($paymentMethod === 6) {
             $paymentUrl = $this->initiateGenericPaymob('activity', $primaryId, $itemName, $memberData);
+        } elseif ($paymentMethod === 7) {
+            $paymentUrl = $this->initiateGenericPaymobIntention('activity', $primaryId, $itemName, $memberData);
         } else {
             return redirect()->back()->with('error', trans('front.error_in_data'));
         }
@@ -1043,6 +1048,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             $paymentUrl = $this->initiateGenericPaytabs('store', $primaryProductId, $itemName, $memberData);
         } elseif ($paymentMethod === 6) {
             $paymentUrl = $this->initiateGenericPaymob('store', $primaryProductId, $itemName, $memberData);
+        } elseif ($paymentMethod === 7) {
+            $paymentUrl = $this->initiateGenericPaymobIntention('store', $primaryProductId, $itemName, $memberData);
         } else {
             return redirect()->back()->with('error', trans('front.error_in_data'));
         }
@@ -1263,6 +1270,46 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $errorRoute;
         }
         return $iframeUrl;
+    }
+
+    /**
+     * Paymob Flash (Intention API) counterpart to initiateGenericPaymob() — parallel,
+     * standalone gateway. redirect_url carries ?gw=paymob_intention so paymobVerify()
+     * checks the intention HMAC secret instead of the legacy one.
+     */
+    protected function initiateGenericPaymobIntention(string $type, int $itemId, string $itemName, array $member): string
+    {
+        $uniqueId   = uniqid();
+        $invoice    = $this->createGenericInvoice($member, TypeConstants::PAYMOB_INTENTION_TRANSACTION, $uniqueId, $type, $itemId);
+        $errorRoute = $this->genericErrorRoute($type, $itemId);
+
+        $nameParts   = explode(' ', $member['name'], 2);
+        $billingData = [
+            'first_name' => $nameParts[0] ?? 'Gym', 'last_name' => $nameParts[1] ?? 'Member',
+            'email' => $member['email'] ?: 'member@gym.com', 'phone_number' => $member['phone'],
+            'apartment' => 'NA', 'floor' => 'NA', 'street' => $member['address'] ?: 'NA',
+            'building' => 'NA', 'shipping_method' => 'NA', 'postal_code' => 'NA',
+            'city' => 'NA', 'country' => 'EG', 'state' => 'NA',
+        ];
+
+        $paymob      = new PaymobIntentionFrontController();
+        $checkoutUrl = $paymob->payment([
+            'name'         => $itemName,
+            'price'        => round($member['amount'], 2),
+            'desc'         => $itemName,
+            'qty'          => 1,
+            'no_fee'       => true,
+            'billing_data' => $billingData,
+            'redirect_url' => route('sw.paymob-mobile.verify', ['invoice_id' => $uniqueId, 'gw' => 'paymob_intention']),
+        ]);
+
+        if (!$checkoutUrl) {
+            \Session::flash('error', trans('front.error_in_data'));
+            $invoice->status = TypeConstants::FAILURE;
+            $invoice->save();
+            return $errorRoute;
+        }
+        return $checkoutUrl;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2039,6 +2086,82 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         return $iframeUrl;
     }
 
+    /**
+     * Paymob Flash (Intention API) counterpart to initiatePaymob() — parallel, standalone
+     * gateway. redirect_url carries ?gw=paymob_intention so paymobVerify() checks the
+     * intention HMAC secret instead of the legacy one.
+     */
+    protected function initiatePaymobIntention(array $subscription, array $member): string
+    {
+        $totalAmount = round($member['amount'], 2);
+        $uniqueId    = uniqid();
+
+        $invoice = GymOnlinePaymentInvoice::create([
+            'payment_id'      => $uniqueId,
+            'member_id'       => optional($this->currentMember)->id,
+            'status'          => TypeConstants::PENDING,
+            'subscription_id' => $member['subscription_id'],
+            'name'            => $member['name'],
+            'email'           => $member['email'] ?? '',
+            'phone'           => $member['phone'],
+            'dob'             => $member['dob'],
+            'address'         => $member['address'],
+            'gender'          => $member['gender'],
+            'amount'          => $totalAmount,
+            'vat'             => $member['vat'],
+            'vat_percentage'  => $member['vat_percentage'],
+            'payment_method'  => TypeConstants::PAYMOB_INTENTION_TRANSACTION,
+            'payment_channel' => $member['payment_channel'],
+            'response_code'   => array_filter([
+                'joining_date'  => $member['joining_date'],
+                'option_ids'    => !empty($member['option_ids']) ? $member['option_ids'] : null,
+                'activity_ids'  => !empty($member['activity_ids']) ? $member['activity_ids'] : null,
+            ], fn($v) => $v !== null),
+        ]);
+
+        $errorRoute = route('sw.subscription-mobile', $this->mobileContextParams(['id' => $subscription['id']]));
+
+        $nameParts   = explode(' ', $member['name'], 2);
+        $billingData = [
+            'first_name'      => $nameParts[0] ?? 'Gym',
+            'last_name'       => $nameParts[1] ?? 'Member',
+            'email'           => $member['email'] ?? 'member@gym.com',
+            'phone_number'    => $member['phone'] ?? '01000000000',
+            'apartment'       => 'NA',
+            'floor'           => 'NA',
+            'street'          => $member['address'] ?? 'NA',
+            'building'        => 'NA',
+            'shipping_method' => 'NA',
+            'postal_code'     => 'NA',
+            'city'            => 'NA',
+            'country'         => 'EG',
+            'state'           => 'NA',
+        ];
+
+        $verifyUrl = route('sw.paymob-mobile.verify', ['invoice_id' => $uniqueId, 'gw' => 'paymob_intention']);
+
+        $paymob      = new PaymobIntentionFrontController();
+        $checkoutUrl = $paymob->payment([
+            'name'         => $subscription['name'] ?? 'Gym Subscription',
+            'price'        => $totalAmount,
+            'desc'         => $subscription['name'] ?? 'Gym Subscription',
+            'qty'          => 1,
+            'no_fee'       => true,
+            'billing_data' => $billingData,
+            'redirect_url' => $verifyUrl,
+        ]);
+
+        if (!$checkoutUrl) {
+            Log::error('Paymob Intention Mobile: failed to get checkout URL', ['invoice_id' => $uniqueId]);
+            \Session::flash('error', trans('front.error_in_data'));
+            $invoice->status = TypeConstants::FAILURE;
+            $invoice->save();
+            return $errorRoute;
+        }
+
+        return $checkoutUrl;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 4d — Paymob: verify payment callback
     // ─────────────────────────────────────────────────────────────────────────
@@ -2070,8 +2193,12 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         // Verify HMAC if secret is configured
+        // ?gw=paymob_intention (set by the Intention/Flash flow's redirect_url) picks the
+        // Intention gateway's own HMAC secret instead of the legacy one — everything else
+        // in this method is unchanged and behaves identically for the legacy flow.
         $pmSettings  = \Modules\Generic\Models\Setting::first();
-        $hmacSecret  = $pmSettings ? ($pmSettings->payments['paymob']['hmac_secret'] ?? '') : '';
+        $paymobGatewayKey = $request->query('gw') === 'paymob_intention' ? 'paymob_intention' : 'paymob';
+        $hmacSecret  = $pmSettings ? ($pmSettings->payments[$paymobGatewayKey]['hmac_secret'] ?? '') : '';
 
         if ($hmacSecret && !$this->verifyPaymobHmac($request, $hmacSecret)) {
             Log::error('Paymob Mobile: HMAC verification failed', ['invoice_id' => $invoiceId]);
@@ -3215,6 +3342,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             $url = $this->initiateUpgradePaytabs($subscriptionData, $memberData);
         } elseif ($paymentMethod === 6) {
             $url = $this->initiateUpgradePaymob($subscriptionData, $memberData);
+        } elseif ($paymentMethod === 7) {
+            $url = $this->initiateUpgradePaymobIntention($subscriptionData, $memberData);
         } else {
             return redirect()->back()->with('error', trans('front.error_in_data'));
         }
@@ -3386,6 +3515,43 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             return $errorRoute;
         }
         return $iframeUrl;
+    }
+
+    /**
+     * Paymob Flash (Intention API) counterpart to initiateUpgradePaymob() — parallel,
+     * standalone gateway. redirect_url carries ?gw=paymob_intention so paymobVerify()
+     * checks the intention HMAC secret instead of the legacy one.
+     */
+    protected function initiateUpgradePaymobIntention(array $sub, array $member): string
+    {
+        $uniqueId   = uniqid();
+        $invoice    = $this->createUpgradeInvoice($member, TypeConstants::PAYMOB_INTENTION_TRANSACTION, $uniqueId);
+        $errorRoute = route('sw.upgrade-subscription-mobile', $this->mobileContextParams());
+
+        $parts       = explode(' ', $member['name'], 2);
+        $billingData = [
+            'first_name' => $parts[0] ?? 'Gym', 'last_name' => $parts[1] ?? 'Member',
+            'email' => $member['email'] ?: 'member@gym.com', 'phone_number' => $member['phone'],
+            'apartment' => 'NA', 'floor' => 'NA', 'street' => $member['address'] ?: 'NA',
+            'building' => 'NA', 'shipping_method' => 'NA', 'postal_code' => 'NA',
+            'city' => 'NA', 'country' => 'EG', 'state' => 'NA',
+        ];
+
+        $paymob      = new PaymobIntentionFrontController();
+        $checkoutUrl = $paymob->payment([
+            'name'         => $sub['name'], 'price' => $member['amount'],
+            'desc'         => $sub['name'], 'qty' => 1, 'no_fee' => true,
+            'billing_data' => $billingData,
+            'redirect_url' => route('sw.paymob-mobile.verify', ['invoice_id' => $uniqueId, 'gw' => 'paymob_intention']),
+        ]);
+
+        if (!$checkoutUrl) {
+            \Session::flash('error', trans('front.error_in_data'));
+            $invoice->status = TypeConstants::FAILURE;
+            $invoice->save();
+            return $errorRoute;
+        }
+        return $checkoutUrl;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -3644,6 +3810,8 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
             $paymentUrl = $this->initiatePtPaytabs($ptSubscriptionData, $memberData);
         } elseif ($paymentMethod === 6) {
             $paymentUrl = $this->initiatePtPaymob($ptSubscriptionData, $memberData);
+        } elseif ($paymentMethod === 7) {
+            $paymentUrl = $this->initiatePtPaymobIntention($ptSubscriptionData, $memberData);
         } else {
             return redirect()->back()->with('error', trans('front.error_in_data'));
         }
@@ -3831,6 +3999,48 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         }
 
         return $iframeUrl;
+    }
+
+    /**
+     * Paymob Flash (Intention API) counterpart to initiatePtPaymob() — parallel, standalone
+     * gateway. redirect_url carries ?gw=paymob_intention so paymobVerify() checks the
+     * intention HMAC secret instead of the legacy one.
+     */
+    protected function initiatePtPaymobIntention(array $ptSub, array $member): string
+    {
+        $totalAmount = round($member['amount'], 2);
+        $uniqueId    = uniqid();
+        $invoice     = $this->createPtInvoice($member, TypeConstants::PAYMOB_INTENTION_TRANSACTION, $uniqueId);
+        $errorRoute  = route('sw.pt-subscription-mobile', $this->mobileContextParams(['id' => $ptSub['id']]));
+
+        $nameParts   = explode(' ', $member['name'], 2);
+        $billingData = [
+            'first_name' => $nameParts[0] ?? 'Gym', 'last_name' => $nameParts[1] ?? 'Member',
+            'email' => $member['email'] ?? 'member@gym.com', 'phone_number' => $member['phone'] ?? '01000000000',
+            'apartment' => 'NA', 'floor' => 'NA', 'street' => $member['address'] ?? 'NA',
+            'building' => 'NA', 'shipping_method' => 'NA', 'postal_code' => 'NA',
+            'city' => 'NA', 'country' => 'EG', 'state' => 'NA',
+        ];
+
+        $paymob      = new PaymobIntentionFrontController();
+        $checkoutUrl = $paymob->payment([
+            'name'         => $ptSub['name'],
+            'price'        => $totalAmount,
+            'desc'         => $ptSub['name'],
+            'qty'          => 1,
+            'no_fee'       => true,
+            'billing_data' => $billingData,
+            'redirect_url' => route('sw.paymob-mobile.verify', ['invoice_id' => $uniqueId, 'gw' => 'paymob_intention']),
+        ]);
+
+        if (!$checkoutUrl) {
+            \Session::flash('error', trans('front.error_in_data'));
+            $invoice->status = TypeConstants::FAILURE;
+            $invoice->save();
+            return $errorRoute;
+        }
+
+        return $checkoutUrl;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

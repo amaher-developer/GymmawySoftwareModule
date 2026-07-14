@@ -108,6 +108,68 @@
                         </div>
                     </div>
 
+                    {{-- PAYMOB INTENTION (Flash / Unified Checkout) --}}
+                    <div class="card card-bordered mb-8">
+                        <div class="card-header min-h-50px">
+                            <h3 class="card-title fw-bold text-dark">
+                                <i class="ki-outline ki-wallet fs-2 me-2 text-info"></i>{{ trans('sw.paymob_intention_settings') }}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-5">
+                                <div class="col-md-6 fv-row">
+                                    <label class="form-label">{{ trans('sw.paymob_intention_secret_key') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paymob_intention][secret_key]"
+                                           value="{{ $paymentsSettings['paymob_intention']['secret_key'] ?? '' }}"
+                                           placeholder="Secret Key">
+                                </div>
+                                <div class="col-md-6 fv-row">
+                                    <label class="form-label">{{ trans('sw.paymob_intention_public_key') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paymob_intention][public_key]"
+                                           value="{{ $paymentsSettings['paymob_intention']['public_key'] ?? '' }}"
+                                           placeholder="Public Key">
+                                </div>
+                            </div>
+                            <div class="row mb-5">
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paymob_integration_id') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paymob_intention][integration_id]"
+                                           value="{{ $paymentsSettings['paymob_intention']['integration_id'] ?? '' }}"
+                                           placeholder="Integration ID">
+                                </div>
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paymob_hmac_secret') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paymob_intention][hmac_secret]"
+                                           value="{{ $paymentsSettings['paymob_intention']['hmac_secret'] ?? '' }}"
+                                           placeholder="HMAC Secret">
+                                </div>
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.paymob_currency') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paymob_intention][currency]"
+                                           value="{{ $paymentsSettings['paymob_intention']['currency'] ?? 'SAR' }}"
+                                           placeholder="SAR">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 fv-row d-flex align-items-end">
+                                    <div class="form-check form-switch mt-7">
+                                        <input type="hidden" name="payments[paymob_intention][is_test]" value="0">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="payments[paymob_intention][is_test]"
+                                               value="1"
+                                               {{ ($paymentsSettings['paymob_intention']['is_test'] ?? true) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold">{{ trans('sw.paymob_intention_is_test') }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- TABBY --}}
                     <div class="card card-bordered mb-8">
                         <div class="card-header min-h-50px">
@@ -752,6 +814,7 @@
                             <div class="separator separator-dashed my-6"></div>
 
                             {{-- Quick link to AI Employee --}}
+                            @if(Route::has('sw.ai_employee.index'))
                             <div class="d-flex align-items-center gap-3">
                                 <a href="{{ route('sw.ai_employee.index') }}" class="btn btn-light-primary btn-sm">
                                     <i class="ki-outline ki-robot fs-4 me-1"></i>
@@ -766,6 +829,7 @@
                                     المحادثات
                                 </a>
                             </div>
+                            @endif
 
                         </div>
                     </div>
