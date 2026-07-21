@@ -2625,8 +2625,14 @@ class GymMemberFrontController extends GymGenericFrontController
         $enquiry = intval($request->enquiry);
         $msg = '';
 
-        if (@$this->mainSettings->enable_dynamic_qr && !$enquiry) {
-            $qrMember = GymMember::where('qr_token', $request->code)->first();
+        $scannedValue = trim($request->code ?? '');
+        $isDynamicToken = @$this->mainSettings->enable_dynamic_qr
+            && !$enquiry
+            && strlen($scannedValue) >= 20
+            && !ctype_digit($scannedValue);
+
+        if ($isDynamicToken) {
+            $qrMember = GymMember::where('qr_token', $scannedValue)->first();
             if (!$qrMember || !$qrMember->qr_token_expires_at || Carbon::now()->gt($qrMember->qr_token_expires_at)) {
                 return Response::json([
                     'msg' => trans('sw.qr_code_expired'),
@@ -2636,7 +2642,7 @@ class GymMemberFrontController extends GymGenericFrontController
             }
             $code = $qrMember->code;
         } else {
-            $code = preg_replace("/[^0-9]/", "", $request->code);
+            $code = preg_replace("/[^0-9]/", "", $scannedValue);
         }
 
         $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
