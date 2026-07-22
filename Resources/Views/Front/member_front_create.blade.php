@@ -268,8 +268,8 @@
                             <!-- Membership Selection -->
                             <div class="col-md-12">
                                 <label class="form-label required">{{ trans('sw.membership')}}</label>
-                                <select id="membership" name="subscription_id" class="form-select select2" data-control="select2">
-                                    <option >{{trans('sw.choose')}}</option>
+                                <select id="membership" name="subscription_id" class="form-select select2" data-control="select2"  data-placeholder="{{ trans('sw.choose')}}">
+                                    <option value="">{{ trans('sw.choose')}}</option>
                                     @foreach($subscriptions as $subscription)
                                         @php
                                             $periodDays = is_numeric($subscription->period) ? (int)$subscription->period : 0;
