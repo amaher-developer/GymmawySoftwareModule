@@ -140,7 +140,7 @@ class SwPermission
             , 'subscriptionProducts.index', 'subscriptionProducts.store', 'subscriptionProducts.update', 'subscriptionProducts.destroy', 'subscriptionProducts.reorder'
             , 'subscriptionOptionGroups.index', 'subscriptionOptionGroups.store', 'subscriptionOptionGroups.update', 'subscriptionOptionGroups.destroy'
             , 'subscriptionOptions.store', 'subscriptionOptions.update', 'subscriptionOptions.destroy'
-            , 'subscription.calculatePrice', 'subscription.options'
+            , 'subscription.calculatePrice', 'subscription.options', 'subscription.memberActivities'
             , 'showOrderSubscription', 'showOrderSubscriptionPOS'
             , 'showOrderPTSubscription', 'showOrderPTSubscriptionPOS'
             , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS', 'posSearchMembers'

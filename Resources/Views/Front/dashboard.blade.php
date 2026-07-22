@@ -10,11 +10,11 @@
 @endsection
 @section('list_title') {{ @$title }} @endsection
 @section('list_add_button')
-    @if(in_array('optimizeClear', (array)$swUser->permissions) || $swUser->is_super_user)
+    <!-- @if(in_array('optimizeClear', (array)$swUser->permissions) || $swUser->is_super_user) -->
         <button type="button" class="btn btn-icon btn-sm btn-light-primary" id="optimize_clear_btn" style="width:26px;height:26px;" data-bs-toggle="tooltip" >
             <i class="ki-outline ki-arrows-circle fs-7"></i>
         </button>
-    @endif
+    <!-- @endif -->
 @endsection
 @section('styles')
     <style>
