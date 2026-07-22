@@ -28,10 +28,8 @@ Route::prefix('sw/subscriptions/{subscriptionId}')
             Route::name('sw.subscriptionOptions.destroy')->delete('/option-groups/{groupId}/options/{id}', 'Front\GymSubscriptionOptionFrontController@destroy');
         });
 
-        // Live Pricing — mapped to editSubscription permission
-        Route::group(['defaults' => ['permission' => 'editSubscription']], function () {
-            Route::name('sw.subscription.calculatePrice')->post('/calculate-price', 'Front\GymSubscriptionPricingFrontController@calculate');
-            Route::name('sw.subscription.options')->get('/options', 'Front\GymSubscriptionPricingFrontController@options');
-            Route::name('sw.subscription.memberActivities')->get('/member-activities', 'Front\GymSubscriptionPricingFrontController@memberActivities');
-        });
+        // Live Pricing — allowed by default (whitelisted in SwPermission::$default_permissions)
+        Route::name('sw.subscription.calculatePrice')->post('/calculate-price', 'Front\GymSubscriptionPricingFrontController@calculate');
+        Route::name('sw.subscription.options')->get('/options', 'Front\GymSubscriptionPricingFrontController@options');
+        Route::name('sw.subscription.memberActivities')->get('/member-activities', 'Front\GymSubscriptionPricingFrontController@memberActivities');
     });
