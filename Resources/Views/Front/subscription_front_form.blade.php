@@ -854,6 +854,13 @@
                         </label>
                         <input type="number" id="modal_option_price" class="form-control form-control-lg" value="0" step="0.01" placeholder="0.00" />
                         <div class="form-text text-muted">{{ trans('sw.price_modifier_description') }}</div>
+                        @if(($vatPercentage ?? 0) > 0)
+                            <div class="mt-2">
+                                <small class="text-muted" style="font-size:0.85rem;">
+                                    {{ trans('sw.after_vat') }}: <span id="modal_option_price_with_vat" class="fw-semibold">0.00</span>
+                                </small>
+                            </div>
+                        @endif
                     </div>
                     <div>
                         <label class="form-label">{{ trans('sw.order') }}</label>
@@ -916,6 +923,16 @@
             }
         }
         if ($priceInput.length) { $priceInput.on('input', updatePriceWithVat); updatePriceWithVat(); }
+
+        const $optPriceInput = $('#modal_option_price');
+        const $optPriceVat   = $('#modal_option_price_with_vat');
+        function updateOptionPriceWithVat() {
+            if ($optPriceInput.length && $optPriceVat.length && vatPercentage > 0) {
+                var p = parseFloat($optPriceInput.val()) || 0;
+                $optPriceVat.text((p + p * vatPercentage / 100).toFixed(2));
+            }
+        }
+        if ($optPriceInput.length) { $optPriceInput.on('input', updateOptionPriceWithVat); }
 
         $('#gym_image').change(function() {
             if (this.files && this.files[0]) {
@@ -1388,6 +1405,7 @@
             $('#modal_option_override_value_wrap').toggleClass('d-none', !ovField);
             $('#modal_option_price').val(opt ? (opt.price_modifier || 0) : 0);
             $('#modal_option_order').val(opt ? (opt.list_order || 0) : (group && group.options ? group.options.length : 0));
+            updateOptionPriceWithVat();
             swModalShow('modalAddOption');
         }
 
