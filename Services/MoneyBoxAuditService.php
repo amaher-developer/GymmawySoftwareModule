@@ -242,4 +242,27 @@ class MoneyBoxAuditService
 
         return ['success' => true];
     }
+
+    /**
+     * Repair a chain_breaks entry: $anchorId is the LAST KNOWN-GOOD row (the
+     * chain break's prev_id), whose own amount/amount_before/operation are
+     * trusted as-is. Every row after it (by created_at, id order) gets its
+     * amount_before recomputed from that point forward - this also silently
+     * fixes any later breaks caused by the same race, since each row's
+     * amount_before is derived from the freshly-recomputed row before it.
+     * Never touches any row's `amount`, only `amount_before`.
+     */
+    public function rebuildChain(int $branchId, int $anchorId): array
+    {
+        $anchor = GymMoneyBox::where('branch_setting_id', $branchId)->where('id', $anchorId)->first();
+
+        if (!$anchor) {
+            return ['success' => false, 'message' => 'Anchor record not found'];
+        }
+
+        $controller = new GymMoneyBoxFrontController();
+        $controller->scriptForRebuildMoneybox($anchorId);
+
+        return ['success' => true];
+    }
 }

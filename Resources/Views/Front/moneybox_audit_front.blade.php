@@ -56,8 +56,9 @@
 
 @section('scripts')
     <script>
-        const auditScanUrl = '{{ route('sw.auditMoneyBoxScan') }}';
-        const auditFixUrl  = '{{ route('sw.auditMoneyBoxFix') }}';
+        const auditScanUrl         = '{{ route('sw.auditMoneyBoxScan') }}';
+        const auditFixUrl          = '{{ route('sw.auditMoneyBoxFix') }}';
+        const auditRebuildChainUrl = '{{ route('sw.auditMoneyBoxRebuildChain') }}';
         const csrfToken    = '{{ csrf_token() }}';
 
         function numberFmt(n) {
@@ -147,12 +148,14 @@
                     html += renderSection(
                         "{{ trans('sw.moneybox_audit_chain_breaks') }}",
                         response.chain_breaks,
-                        ["ID", "{{ trans('sw.date') }}", "Prev ID", "Expected amount_before", "Stored amount_before", "Diff"],
+                        ["ID", "{{ trans('sw.date') }}", "Prev ID", "Expected amount_before", "Stored amount_before", "Diff", "{{ trans('admin.actions') }}"],
                         function (r) {
                             return '<tr><td>#' + r.id + '</td><td>' + r.created_at + '</td><td>#' + r.prev_id + '</td>'
                                 + '<td>' + numberFmt(r.expected_amount_before) + '</td>'
                                 + '<td>' + numberFmt(r.stored_amount_before) + '</td>'
-                                + '<td>' + numberFmt(r.diff) + '</td></tr>';
+                                + '<td>' + numberFmt(r.diff) + '</td>'
+                                + '<td><button class="btn btn-sm btn-light-primary rebuild-chain-btn" data-prev-id="' + r.prev_id + '">{{ trans('sw.moneybox_audit_rebuild_chain') }}</button></td>'
+                                + '</tr>';
                         }
                     );
 
@@ -229,6 +232,55 @@
                     Swal.fire({
                         title: "{{ trans('admin.success') }}",
                         text: "{{ trans('sw.moneybox_audit_fix_success') }}",
+                        icon: "success",
+                        timer: 1200,
+                        showConfirmButton: false
+                    });
+                    setTimeout(runAudit, 1200);
+                }
+            });
+        });
+
+        $(document).on('click', '.rebuild-chain-btn', function () {
+            const prevId = $(this).data('prev-id');
+
+            Swal.fire({
+                title: "{{ trans('admin.are_you_sure') }}",
+                text: "{{ trans('sw.moneybox_audit_rebuild_chain_warning') }}",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "{{ trans('admin.yes_delete') }}",
+                cancelButtonText: "{{ trans('admin.cancel') }}",
+                showLoaderOnConfirm: true,
+                allowOutsideClick: () => !Swal.isLoading(),
+                preConfirm: () => {
+                    return new Promise((resolve, reject) => {
+                        $.ajax({
+                            url: auditRebuildChainUrl,
+                            type: 'POST',
+                            dataType: 'json',
+                            data: { prev_id: prevId, _token: csrfToken },
+                            success: function (response) {
+                                if (response.success) {
+                                    resolve(response);
+                                } else {
+                                    reject(response.message || "{{ trans('admin.something_went_wrong') }}");
+                                }
+                            },
+                            error: function () {
+                                reject("{{ trans('admin.something_went_wrong') }}");
+                            }
+                        });
+                    }).catch(error => {
+                        Swal.showValidationMessage(error);
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "{{ trans('admin.success') }}",
+                        text: "{{ trans('sw.moneybox_audit_rebuild_chain_success') }}",
                         icon: "success",
                         timer: 1200,
                         showConfirmButton: false

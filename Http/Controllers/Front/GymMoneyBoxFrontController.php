@@ -9,6 +9,7 @@ use Modules\Software\Exports\NonMembersExport;
 use Modules\Software\Http\Requests\GymMoneyBoxRequest;
 use Modules\Software\Http\Requests\GymOrderRequest;
 use Modules\Software\Models\GymMoneyBox;
+use Modules\Software\Models\GymMoneyBoxBalance;
 use Modules\Software\Models\GymMoneyBoxType;
 use Modules\Software\Models\GymOrder;
 use Modules\Software\Models\GymPaymentType;
@@ -21,6 +22,7 @@ use Mpdf\Mpdf;
 use Carbon\Carbon;
 use Illuminate\Container\Container as Application;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Excel;
 
@@ -971,6 +973,36 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     }
 
     /**
+     * Repair a chain_breaks entry from the audit page: rebuilds amount_before
+     * for every row after the given anchor (the chain break's prev_id, i.e.
+     * the last known-good row) without touching any row's amount.
+     */
+    public function auditMoneyBoxRebuildChain()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - Not authorized']);
+        }
+
+        $anchorId = (int) request('prev_id');
+
+        if (!$anchorId) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - ' . trans('admin.missing_data')]);
+        }
+
+        $branchId = $user->branch_setting_id ?? 1;
+        $service  = new \Modules\Software\Services\MoneyBoxAuditService();
+        $result   = $service->rebuildChain($branchId, $anchorId);
+
+        if (@$result['success']) {
+            $notes = trans('sw.moneybox_audit_rebuild_chain_log', ['id' => $anchorId]);
+            $this->userLog($notes, TypeConstants::FixMoneyBoxAudit);
+        }
+
+        return response()->json($result);
+    }
+
+    /**
      * Rebuild moneybox calculations starting from a specific ID
      * This recalculates amount_before for all records after deletion
      */
@@ -996,6 +1028,23 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                 $moneyBox->operation
             );
         }
+
+        // $currentAmountBefore now holds the amount_after of whichever row is
+        // truly last (the last one processed above, or $previousAmountAfter
+        // itself if nothing followed $startId). New inserts read their
+        // amount_before from this locked balance row (see GymMoneyBox::save()),
+        // so it must be resynced here any time the chain's tail is edited
+        // retroactively (delete/restore/audit fix/rebuild-chain/payment-type edit).
+        $branchId = GymMoneyBox::getCurrentBranchId();
+        DB::transaction(function () use ($branchId, $currentAmountBefore) {
+            $balance = GymMoneyBoxBalance::where('branch_setting_id', $branchId)->lockForUpdate()->first();
+            if ($balance) {
+                $balance->amount = round($currentAmountBefore, 2);
+                $balance->save();
+            } else {
+                GymMoneyBoxBalance::create(['branch_setting_id' => $branchId, 'amount' => round($currentAmountBefore, 2)]);
+            }
+        });
     }
 
     public function indexDaily()

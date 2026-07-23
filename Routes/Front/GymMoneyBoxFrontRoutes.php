@@ -84,6 +84,8 @@ Route::prefix('moneybox')
             ->post('audit/scan', 'Front\GymMoneyBoxFrontController@auditMoneyBoxScan');
         Route::name('sw.auditMoneyBoxFix')
             ->post('audit/fix', 'Front\GymMoneyBoxFrontController@auditMoneyBoxFix');
+        Route::name('sw.auditMoneyBoxRebuildChain')
+            ->post('audit/rebuild-chain', 'Front\GymMoneyBoxFrontController@auditMoneyBoxRebuildChain');
 
         // Delete moneybox entry - super admin only
         Route::name('sw.deleteMoneyBox')
