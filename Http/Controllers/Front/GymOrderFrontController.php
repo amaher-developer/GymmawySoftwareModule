@@ -23,6 +23,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Milon\Barcode\DNS2D;
@@ -78,7 +79,7 @@ class GymOrderFrontController extends GymGenericFrontController
 
     public function show($id)
     {
-        $order = GymMoneyBox::branch()->with(['swInvoice', 'member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
+        $order = GymMoneyBox::branch()->with(['invoice', 'member', 'member_subscription', 'store_order.loyaltyRedemption.rule'])->where('id', $id)->first();
         $transaction_value = 1;
         if(in_array($order->type, [TypeConstants::DeleteMember, TypeConstants::DeleteStoreOrder, TypeConstants::DeleteNonMember, TypeConstants::DeletePTMember, TypeConstants::DeleteSubscription, TypeConstants::DeleteStorePurchaseOrder]))
         {
@@ -121,23 +122,8 @@ class GymOrderFrontController extends GymGenericFrontController
             // Convert absolute path to relative path for asset() function
             $qr_img_invoice = str_replace(base_path(), '', $qr_img_invoice);
         }
-        // Load ZATCA invoice via any FK path
-        $zatcaInvoice = $order->swInvoice;
-        if (!$zatcaInvoice && $order->member_subscription_id) {
-            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('member_subscription_id', $order->member_subscription_id)->first();
-        }
-        if (!$zatcaInvoice && $order->non_member_subscription_id) {
-            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('non_member_id', $order->non_member_subscription_id)->first();
-        }
-        if (!$zatcaInvoice && $order->store_order_id) {
-            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('store_order_id', $order->store_order_id)->first();
-        }
-        if (!$zatcaInvoice && $order->member_pt_subscription_id) {
-            $zatcaInvoice = \Modules\Billing\Models\SwBillingInvoice::where('member_pt_subscription_id', $order->member_pt_subscription_id)->first();
-        }
-
         $payment_types = GymPaymentType::get();
-        return view('software::Front.order_front_show', ['title_details' => $title_details,'order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'payment_types' => $payment_types, 'zatcaInvoice' => $zatcaInvoice]);
+        return view('software::Front.order_front_show', ['title_details' => $title_details,'order' => $order, 'qr_img_invoice' => @$qr_img_invoice, 'title'=>$title, 'payment_types' => $payment_types]);
     }
 
 
@@ -171,9 +157,18 @@ class GymOrderFrontController extends GymGenericFrontController
     public function showSubscription($id)
     {
         $title = trans('sw.subscription_contract');
-        $order = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pay_type', 'member' => function($q){$q->withTrashed();}, 'subscription' => function($q){$q->withTrashed();}])->where('id', $id)->first();
-        $money_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $order->member_id)->where('member_subscription_id', $order->id)->get();
-        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $orderRelations = [
+            'pay_type',
+            'member' => function($q){$q->withTrashed();},
+            'subscription' => function($q){$q->withTrashed();},
+        ];
+        if (Schema::hasTable('sw_gym_member_subscription_options')) {
+            $orderRelations[] = 'selected_options.option.product';
+            $orderRelations[] = 'selected_options.option.activity';
+        }
+        $order = GymMemberSubscription::branch()->with($orderRelations)->where('id', $id)->first();
+        $money_box = GymMoneyBox::branch()->where('member_id', $order->member_id)->where('member_subscription_id', $order->id)->get();
+        $payment_types = GymPaymentType::get();
         $money_box->filter(function ($item) use ($payment_types){
             foreach ($payment_types as $payment_type){
                 if($item->payment_type == $payment_type->payment_id){ $this->payments[$payment_type->payment_id][] = ($item->operation == 1 ? -1 : 1) * $item->amount; }

@@ -205,7 +205,7 @@
         @if($baseQr)
             <tr>
                 <td colspan="2" class="center-align">
-                    <img src="{{ $baseQr }}" alt="ZATCA QR" style="height:100px;width:100px;object-fit:contain;" />
+                    <img src="{{ $baseQr }}" alt="ZATCA QR" style="height:160px;width:160px;object-fit:contain;image-rendering:pixelated;" />
                 </td>
             </tr>
         @endif
@@ -266,7 +266,7 @@
     @endphp
     @if(@$mainSettings->vat_details['saudi'] && $footerQrSrc)
         <div class="col-lg-12 " style="text-align: center">
-            <img width="80" src="{{$footerQrSrc}}" style="height:80px;object-fit:contain;"/>
+            <img width="160" src="{{$footerQrSrc}}" style="height:180px;object-fit:contain;image-rendering:pixelated;"/>
         </div>
     @endif
     @if(@$order->pay_type)

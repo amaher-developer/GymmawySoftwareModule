@@ -77,6 +77,16 @@ Route::prefix('moneybox')
                 ->get('edit-payment-type-order-moneybox', 'Front\GymMoneyBoxFrontController@editPaymentTypeOrder');
         });
 
+        // Money box chain audit - super admin only
+        Route::name('sw.auditMoneyBox')
+            ->get('audit', 'Front\GymMoneyBoxFrontController@auditMoneyBox');
+        Route::name('sw.auditMoneyBoxScan')
+            ->post('audit/scan', 'Front\GymMoneyBoxFrontController@auditMoneyBoxScan');
+        Route::name('sw.auditMoneyBoxFix')
+            ->post('audit/fix', 'Front\GymMoneyBoxFrontController@auditMoneyBoxFix');
+        Route::name('sw.auditMoneyBoxRebuildChain')
+            ->post('audit/rebuild-chain', 'Front\GymMoneyBoxFrontController@auditMoneyBoxRebuildChain');
+
         // Delete moneybox entry - super admin only
         Route::name('sw.deleteMoneyBox')
             ->post('delete', 'Front\GymMoneyBoxFrontController@deleteMoneyBox');

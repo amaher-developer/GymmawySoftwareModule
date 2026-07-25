@@ -9,6 +9,7 @@ use Modules\Software\Exports\NonMembersExport;
 use Modules\Software\Http\Requests\GymMoneyBoxRequest;
 use Modules\Software\Http\Requests\GymOrderRequest;
 use Modules\Software\Models\GymMoneyBox;
+use Modules\Software\Models\GymMoneyBoxBalance;
 use Modules\Software\Models\GymMoneyBoxType;
 use Modules\Software\Models\GymOrder;
 use Modules\Software\Models\GymPaymentType;
@@ -21,6 +22,7 @@ use Mpdf\Mpdf;
 use Carbon\Carbon;
 use Illuminate\Container\Container as Application;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Excel;
 
@@ -251,6 +253,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                     });
                 }
             })
+            ->orderBy('created_at', 'desc')
             ->orderBy('id', 'desc')
             ->get();
         $this->fileName = 'reports-' . Carbon::now()->toDateTimeString();
@@ -339,6 +342,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                             });
                         }
                     })
+                    ->orderBy('created_at', 'desc')
                     ->orderBy('id', 'desc')
                     ->get();
 
@@ -348,9 +352,9 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $keys = ['amount', 'total_amount_before', 'total_amount_after', 'operation', 'notes', 'created_at', 'by'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
         for($i = 0; count($records) > $i;$i++ ){
-            $records[$i]['operation'] = strip_tags($records[$i]['operation_name']);
             $records[$i]['total_amount_before'] = ($records[$i]['amount_before']);
             $records[$i]['total_amount_after'] = $this->amountAfter($records[$i]['amount'], $records[$i]['amount_before'], $records[$i]['operation']);
+            $records[$i]['operation'] = strip_tags($records[$i]['operation_name']);
             $records[$i]['date'] = Carbon::parse($records[$i]['created_at'])->format('Y-m-d') . ' ' . Carbon::parse($records[$i]['created_at'])->format('h:i a');
             $records[$i]['by'] = @$records[$i]['user']['name'];
         }
@@ -629,18 +633,13 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
     public function scriptForRebuildMoneybox($id = null, $amount = null){
         $id = $id ?? request('id');
-        $amount = $amount ?? request('amount');
         if($id){
-            $gymMoneyBox = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', '>=', $id)->orderBy('created_at', 'asc')->get();
-            foreach($gymMoneyBox as $i => $moneyBox){
-                if($i == 0){
-                    $moneyBox->amount = $amount;
-                }else{
-                    $moneyBox->amount_before = self::amountAfter(round($gymMoneyBox[$i-1]->amount, 2), round($gymMoneyBox[$i-1]->amount_before, 2), round($gymMoneyBox[$i-1]->operation, 2));
-                    var_dump('i: '.$i, 'id: '.$moneyBox->id, ' '.'amount_before: '.$moneyBox->amount_before);
-                }
-                $moneyBox->save();
+            $anchor = GymMoneyBox::branch()->where('id', $id)->first();
+            if(!$anchor){
+                return;
             }
+            $previousAmountAfter = self::amountAfter(round($anchor->amount, 2), round($anchor->amount_before, 2), $anchor->operation);
+            $this->rebuildMoneyboxFromId($id, $previousAmountAfter);
         }
     }
 
@@ -911,6 +910,102 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     }
 
     /**
+     * Audit page - super admin only. Lets staff scan the running-balance
+     * chain for corrupted amounts and fix them from the UI instead of a CLI.
+     */
+    public function auditMoneyBox()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return redirect()->route('sw.dashboard');
+        }
+
+        $title = trans('sw.moneybox_audit');
+        return view('software::Front.moneybox_audit_front', compact('title'));
+    }
+
+    public function auditMoneyBoxScan()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - Not authorized']);
+        }
+
+        $branchId = $user->branch_setting_id ?? 1;
+        $from     = request('from') ?: null;
+        $to       = request('to') ?: null;
+
+        // No explicit range and not asking for full history -> default to last week
+        if (!$from && !$to && !request('all')) {
+            $from = now()->subWeek()->toDateString();
+            $to   = now()->toDateString();
+        }
+
+        $service  = new \Modules\Software\Services\MoneyBoxAuditService();
+        $result   = $service->scan($branchId, 100, $from, $to);
+        $result['from'] = $from;
+        $result['to']   = $to;
+
+        return response()->json(['success' => true] + $result);
+    }
+
+    public function auditMoneyBoxFix()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - Not authorized']);
+        }
+
+        $id     = (int) request('id');
+        $amount = request('amount');
+
+        if (!$id || $amount === null || !is_numeric($amount)) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - ' . trans('admin.missing_data')]);
+        }
+
+        $branchId = $user->branch_setting_id ?? 1;
+        $service  = new \Modules\Software\Services\MoneyBoxAuditService();
+        $result   = $service->fix($branchId, $id, (float) $amount);
+
+        if (@$result['success']) {
+            $notes = trans('sw.moneybox_audit_fix_log', ['id' => $id, 'amount' => number_format((float) $amount, 2)]);
+            $this->userLog($notes, TypeConstants::FixMoneyBoxAudit);
+        }
+
+        return response()->json($result);
+    }
+
+    /**
+     * Repair a chain_breaks entry from the audit page: rebuilds amount_before
+     * for every row after the given anchor (the chain break's prev_id, i.e.
+     * the last known-good row) without touching any row's amount.
+     */
+    public function auditMoneyBoxRebuildChain()
+    {
+        $user = Auth::guard('sw')->user();
+        if (!$user || !$user->is_super_user) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - Not authorized']);
+        }
+
+        $anchorId = (int) request('prev_id');
+
+        if (!$anchorId) {
+            return response()->json(['success' => false, 'message' => trans('admin.operation_failed') . ' - ' . trans('admin.missing_data')]);
+        }
+
+        $branchId = $user->branch_setting_id ?? 1;
+        $service  = new \Modules\Software\Services\MoneyBoxAuditService();
+        $result   = $service->rebuildChain($branchId, $anchorId);
+
+        if (@$result['success']) {
+            $notes = trans('sw.moneybox_audit_rebuild_chain_log', ['id' => $anchorId]);
+            $this->userLog($notes, TypeConstants::FixMoneyBoxAudit);
+        }
+
+        return response()->json($result);
+    }
+
+    /**
      * Rebuild moneybox calculations starting from a specific ID
      * This recalculates amount_before for all records after deletion
      */
@@ -936,6 +1031,23 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                 $moneyBox->operation
             );
         }
+
+        // $currentAmountBefore now holds the amount_after of whichever row is
+        // truly last (the last one processed above, or $previousAmountAfter
+        // itself if nothing followed $startId). New inserts read their
+        // amount_before from this locked balance row (see GymMoneyBox::save()),
+        // so it must be resynced here any time the chain's tail is edited
+        // retroactively (delete/restore/audit fix/rebuild-chain/payment-type edit).
+        $branchId = GymMoneyBox::getCurrentBranchId();
+        DB::transaction(function () use ($branchId, $currentAmountBefore) {
+            $balance = GymMoneyBoxBalance::where('branch_setting_id', $branchId)->lockForUpdate()->first();
+            if ($balance) {
+                $balance->amount = round($currentAmountBefore, 2);
+                $balance->save();
+            } else {
+                GymMoneyBoxBalance::create(['branch_setting_id' => $branchId, 'amount' => round($currentAmountBefore, 2)]);
+            }
+        });
     }
 
     public function indexDaily()

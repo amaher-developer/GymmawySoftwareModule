@@ -59,5 +59,10 @@ Route::prefix('store/order')
             ->get('get-store-member-ajax', 'Front\GymStoreOrderFrontController@getStoreMemberAjax');
         Route::name('sw.getMemberLoyaltyInfo')
             ->get('get-member-loyalty-info', 'Front\GymStoreOrderFrontController@getMemberLoyaltyInfo');
+        Route::name('sw.posSearchMembers')
+            ->get('pos-search-members', 'Front\GymStoreOrderFrontController@posSearchMembers');
+        Route::name('sw.posQuickCreateMember')
+            ->post('pos-quick-create-member', 'Front\GymStoreOrderFrontController@posQuickCreateMember');
+
 
     });

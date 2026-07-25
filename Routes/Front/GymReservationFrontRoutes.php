@@ -40,14 +40,21 @@ Route::prefix('reservation')
         Route::name('sw.deleteReservation')
             ->get('{reservation}/delete', 'Front\GymReservationFrontController@destroy');
 
-        // Reservation status actions - manage permission
-        Route::group(['defaults' => ['permission' => 'editReservation']], function () {
+        // Reservation status actions - each action has its own permission,
+        // matching the checks already done inside each controller method.
+        Route::group(['defaults' => ['permission' => 'confirmReservation']], function () {
             Route::name('sw.reservation.confirm')
                 ->post('{id}/confirm', 'Front\GymReservationFrontController@confirm');
+        });
+        Route::group(['defaults' => ['permission' => 'cancelReservation']], function () {
             Route::name('sw.reservation.cancel')
                 ->post('{id}/cancel', 'Front\GymReservationFrontController@cancel');
+        });
+        Route::group(['defaults' => ['permission' => 'attendReservation']], function () {
             Route::name('sw.reservation.attend')
                 ->post('{id}/attend', 'Front\GymReservationFrontController@attend');
+        });
+        Route::group(['defaults' => ['permission' => 'markMissedReservation']], function () {
             Route::name('sw.reservation.missed')
                 ->post('{id}/missed', 'Front\GymReservationFrontController@missed');
         });

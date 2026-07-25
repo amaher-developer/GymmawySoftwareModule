@@ -388,11 +388,8 @@
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.membership')}}
                             </th>
-                            <th class="min-w-100px text-nowrap">
-                                <i class="ki-outline ki-chart-line fs-6 me-2"></i>{{ trans('sw.workouts')}}
-                            </th>
-                            <th class="min-w-100px text-nowrap">
-                                <i class="ki-outline ki-chart-simple fs-6 me-2"></i>{{ trans('sw.number_of_visits')}}
+                            <th class="text-nowrap" style="min-width:110px;">
+                                <i class="ki-outline ki-chart-line fs-6 me-1 text-primary"></i>{{ trans('sw.trainings') }} / <i class="ki-outline ki-entrance-right fs-6 me-2 text-info"></i>{{ trans('sw.visits') }}
                             </th>
                             <th class="min-w-200px text-nowrap">
                                 <i class="ki-outline ki-list fs-6 me-2"></i>{{ trans('sw.activities')}}
@@ -535,10 +532,23 @@
                                 </div>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->workouts : '-' }}</span>
-                            </td>
-                            <td class="pe-0">
-                                <span class="fw-bold">{{ @$member->member_subscription_info ? @$member->member_subscription_info->visits : '-' }}</span>
+                                @if(@$member->member_subscription_info)
+                                    @php
+                                        $wrk = @$member->member_subscription_info->workouts ?? '—';
+                                        $vis = @$member->member_subscription_info->visits    ?? '—';
+                                    @endphp
+                                    <div class="d-flex align-items-center gap-2 text-nowrap">
+                                        <span class="text-primary fw-bold" title="{{ trans('sw.workouts') }}">
+                                            <i class="ki-outline ki-chart-line fs-7"></i> {{ $wrk }}
+                                        </span>
+                                        <span class="text-muted" style="opacity:.4;">|</span>
+                                        <span class="text-info fw-bold" title="{{ trans('sw.number_of_visits') }}">
+                                            <i class="ki-outline ki-entrance-right fs-7"></i> {{ $vis }}
+                                        </span>
+                                    </div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
                             </td>
                             <td class="pe-0">
                                 <div class="d-flex flex-wrap gap-1">
@@ -546,7 +556,7 @@
                                         $activities = @$member->member_subscription_info->activities ?? [];
                                         if (is_array($activities) && count($activities) > 0) {
                                             echo implode('', array_map(function ($name) use ($member, $lang) {
-                                                if (@$name['activity']['id']) {
+                                                if (is_array($name) && @$name['activity']['id']) {
                                                     static $i = 0;
                                                     return '<button class="btn btn-'.(@$name['training_times'] > @$name['visits'] ? 'primary' : 'gray').' btn-sm rounded-2" id="activity_'.@$member->id.'_'.@$name['activity']['id'].'"  style="font-size: 10px; padding: 2px 6px;">'.$name['activity']['name_'.$lang].'</button>';
                                                     $i++;
@@ -690,23 +700,23 @@
                                     </div>
                                     @endif
 
-                                    @if($active_activity_reservation)
-                                        @php
-                                            $memberReservations = $upcomingReservations[$member->id] ?? collect();
-                                        @endphp
-                                        @if($memberReservations->count() > 0)
-                                        <div class="menu-item px-3">
-                                            <a href="javascript:void(0)" class="menu-link px-3 position-relative"
-                                               title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
-                                               data-bs-toggle="modal"
-                                               data-bs-target="#upcomingReservationsModal{{ $member->id }}">
-                                                <i class="ki-outline ki-calendar-tick text-primary"></i>
-                                                <span>{{ trans('sw.upcoming_reservations') }}</span>
+                                    @php
+                                        $memberReservations = $upcomingReservations[$member->id] ?? collect();
+                                    @endphp
+                                    <div class="menu-item px-3">
+                                        <a href="javascript:void(0)" class="menu-link px-3 position-relative"
+                                           title="{{ trans('sw.upcoming_reservations') }} ({{ $memberReservations->count() }})"
+                                           data-bs-toggle="modal"
+                                           data-bs-target="#upcomingReservationsModal{{ $member->id }}">
+                                            <i class="ki-outline ki-calendar-tick text-primary"></i>
+                                            <span>{{ trans('sw.upcoming_reservations') }}</span>
+                                            @if($memberReservations->count() > 0)
                                                 <span class="badge badge-circle bg-danger ms-2">{{ $memberReservations->count() }}</span>
-                                            </a>
-                                        </div>
-                                        @endif
+                                            @endif
+                                        </a>
+                                    </div>
 
+                                    @if($active_activity_reservation)
                                         @php
                                             $memberActivities = @$member->member_subscription_info->activities ?? [];
                                             $hasValidActivities = false;
@@ -1173,7 +1183,7 @@
 
     <!-- start model pay -->
     <div class="modal" id="modalProfileMember">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content modal-content-demo">
                 <div class="modal-header">
                     <h6 class="modal-title" id="modalProfile_member_name"></h6>
@@ -1191,14 +1201,12 @@
     <!-- End model pay -->
 
     <!-- End model profile -->
-    
-    @if($active_activity_reservation)
+
     <!--begin::Upcoming Reservations Modal for Each Member-->
     @foreach($members as $member)
         @php
             $memberReservations = $upcomingReservations[$member->id] ?? collect();
         @endphp
-        @if($memberReservations->count() > 0)
             <div class="modal fade" id="upcomingReservationsModal{{ $member->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content">
@@ -1240,7 +1248,7 @@
                                 </div>
                                 
                                 <div class="d-flex flex-column gap-3">
-                                    @foreach($memberReservations as $reservation)
+                                    @forelse($memberReservations as $reservation)
                                         <div class="card card-flush border border-gray-300 border-dashed">
                                             <div class="card-body">
                                                 <div class="d-flex align-items-center justify-content-between">
@@ -1304,7 +1312,16 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    @endforeach
+                                    @empty
+                                        <div class="text-center py-10">
+                                            <div class="symbol symbol-75px mb-4">
+                                                <div class="symbol-label bg-light-info">
+                                                    <i class="ki-outline ki-calendar-tick fs-2x text-info"></i>
+                                                </div>
+                                            </div>
+                                            <div class="text-gray-600 fw-semibold">{{ trans('sw.no_record_found') }}</div>
+                                        </div>
+                                    @endforelse
                                 </div>
                             </div>
                             <!--end::Reservations List-->
@@ -1315,10 +1332,10 @@
                     </div>
                 </div>
             </div>
-        @endif
     @endforeach
     <!--end::Upcoming Reservations Modal-->
-    
+
+    @if($active_activity_reservation)
     <!--begin::Quick Book Modal for Each Member-->
     @foreach($members as $member)
         @php

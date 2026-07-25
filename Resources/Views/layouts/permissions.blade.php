@@ -609,6 +609,18 @@ if(!isset($permission_group->permissions)){
                                             </div>
                                             <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]"
+                                                                            value="resetMemberDevice"
+                                                                            @if(@in_array('resetMemberDevice', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.reset_device')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="unblockMember"
+                                                                            @if(@in_array('unblockMember', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.unblock_member')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
                                                                             value="listBlockMember"
                                                                             @if(@in_array('listBlockMember', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.list')}}</span> <small>({{ trans('sw.block_list') }})</small></label>
@@ -741,7 +753,25 @@ if(!isset($permission_group->permissions)){
                                                                             @if(@in_array('reportMoneyboxTax', $permission_group->permissions)) checked @endif
                                                                             type="checkbox"> <span>{{ trans('sw.moneybox_tax')}}</span></label>
                                             </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="listSwInvoices"
+                                                                            @if(@in_array('listSwInvoices', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.invoices_report')}}</span></label>
+                                            </div>
+                                            <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]"
+                                                                            value="cancelSwInvoice"
+                                                                            @if(@in_array('cancelSwInvoice', $permission_group->permissions)) checked @endif
+                                                                            type="checkbox"> <span>{{ trans('sw.cancel_invoice')}}</span></label>
+                                            </div>
                                             @if(config('sw_billing.zatca_enabled'))
+                                                <div class="col-lg-2 mg-t-20 mg-lg-t-0">
+                                                    <label class="ckbox"><input name="permissions[]"
+                                                                                value="submitZatcaInvoice"
+                                                                                @if(@in_array('submitZatcaInvoice', $permission_group->permissions)) checked @endif
+                                                                                type="checkbox"> <span>{{ trans('sw.send_invoice_to_zatca')}}</span></label>
+                                                </div>
                                                 <div class="col-lg-2 mg-t-20 mg-lg-t-0">
                                                     <label class="ckbox"><input name="permissions[]"
                                                                                 value="reportZatcaInvoices"
@@ -1867,6 +1897,21 @@ if(!isset($permission_group->permissions)){
                                                 <label class="ckbox"><input name="permissions[]" value="exportPTSubscriptionMemberPDF"
                                                     @if(@in_array('exportPTSubscriptionMemberPDF', $permission_group->permissions)) checked @endif
                                                     type="checkbox"> <span>{{ trans('sw.export_pdf_pt_subscription_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="reportFreezeMemberList"
+                                                    @if(@in_array('reportFreezeMemberList', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.freeze_members_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportFreezeMemberExcel"
+                                                    @if(@in_array('exportFreezeMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_freeze_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportFreezeMemberPDF"
+                                                    @if(@in_array('exportFreezeMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_freeze_member_report') }}</span></label>
                                             </div>
                                         </div>
 

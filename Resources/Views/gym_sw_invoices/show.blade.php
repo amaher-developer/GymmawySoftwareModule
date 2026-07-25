@@ -67,7 +67,7 @@
                         <i class="ki-outline ki-file-down fs-6"></i>
                         {{ trans('sw.download_pdf') }}
                     </a>
-                    @if($invoice->status !== 'cancelled' && $invoice->type === 'sales')
+                    @if($invoice->status !== 'cancelled' && $invoice->type === 'sales' && !($invoice->zatcaBillingInvoice && $invoice->zatcaBillingInvoice->zatca_status === 'generated') && (in_array('cancelSwInvoice', (array) $swUserPermission) || $swUser->is_super_user))
                     <form method="POST" action="{{ route('sw.gymSwInvoices.cancel', $invoice->id) }}"
                           class="d-inline"
                           onsubmit="return confirm('{{ trans('sw.confirm_cancel') }}')">

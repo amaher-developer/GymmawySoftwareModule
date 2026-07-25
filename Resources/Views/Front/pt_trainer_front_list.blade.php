@@ -337,12 +337,32 @@
                                             </table>
                                         </div>
                                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" data-action="settle-selected">
-                            <i class="ki-outline ki-check-circle {{ app()->getLocale() == 'ar' ? 'ms-1' : 'me-1' }}"></i>
-                            {{ trans('sw.settle_commissions_button') }}
-                        </button>
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('sw.close') }}</button>
+                    <div class="modal-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex gap-2">
+                            <a href="#"
+                               class="btn btn-light-danger btn-sm commission-export-pdf"
+                               data-trainer-id="{{ $trainer->id }}"
+                               data-base-url="{{ route('sw.exportPTTrainerCommissionsPDF', $trainer->id) }}"
+                               title="{{ trans('sw.export_pdf') }}">
+                                <i class="ki-outline ki-file-down fs-4 me-1"></i>
+                                PDF
+                            </a>
+                            <a href="#"
+                               class="btn btn-light-success btn-sm commission-export-excel"
+                               data-trainer-id="{{ $trainer->id }}"
+                               data-base-url="{{ route('sw.exportPTTrainerCommissionsExcel', $trainer->id) }}"
+                               title="{{ trans('sw.export_excel') }}">
+                                <i class="ki-outline ki-file-down fs-4 me-1"></i>
+                                Excel
+                            </a>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary" data-action="settle-selected">
+                                <i class="ki-outline ki-check-circle {{ app()->getLocale() == 'ar' ? 'ms-1' : 'me-1' }}"></i>
+                                {{ trans('sw.settle_commissions_button') }}
+                            </button>
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ trans('sw.close') }}</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -613,6 +633,19 @@
                 $(document).on('click', '.trainer-ledger-modal [data-action="settle-selected"]', function () {
                     const modal = $(this).closest('.trainer-ledger-modal');
                     settleTrainerCommissions(modal);
+                });
+
+                // Export buttons — append current filters to the download URL
+                $(document).on('click', '.commission-export-pdf, .commission-export-excel', function (e) {
+                    e.preventDefault();
+                    const baseUrl = $(this).data('baseUrl');
+                    const filters = collectFilters();
+                    const params  = new URLSearchParams();
+                    if (filters.from)     params.set('from',     filters.from);
+                    if (filters.to)       params.set('to',       filters.to);
+                    if (filters.class_id) params.set('class_id', filters.class_id);
+                    const url = params.toString() ? baseUrl + '?' + params.toString() : baseUrl;
+                    window.open(url, '_blank');
                 });
 
                 // Initialize Select2

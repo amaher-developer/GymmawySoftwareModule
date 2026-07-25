@@ -3,6 +3,7 @@
 namespace Modules\Software\Observers;
 
 use Illuminate\Support\Facades\Log;
+use Modules\Generic\Models\Setting;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMoneyBox;
@@ -49,17 +50,18 @@ class GymMoneyBoxObserver
     private function handleSubscriptionPayment(GymMoneyBox $moneyBox): void
     {
         try {
+            $sub = GymMemberSubscription::find($moneyBox->member_subscription_id);
+            if (! $sub) return;
+
             $existingLinked = GymMoneyBox::where('member_subscription_id', $moneyBox->member_subscription_id)
                 ->whereNotNull('invoice_id')
                 ->where('id', '!=', $moneyBox->id)
                 ->first();
 
             $service = new GymSwInvoiceService();
+            $totalPaid = round((float) $sub->amount_paid, 2);
 
             if (! $existingLinked) {
-                $sub = GymMemberSubscription::find($moneyBox->member_subscription_id);
-                if (! $sub) return;
-
                 $subtotal  = round((float) $sub->amount_before_discount - (float) ($sub->discount_value ?? 0), 2);
                 $vatAmount = round((float) ($sub->vat ?? 0), 2);
                 $total     = round($subtotal + $vatAmount, 2);
@@ -70,7 +72,7 @@ class GymMoneyBoxObserver
                     'vat_amount'        => $vatAmount,
                     'vat_rate'          => $sub->vat_percentage ?? 14.00,
                     'total'             => $total,
-                    'amount_paid'       => (float) $moneyBox->amount,
+                    'amount_paid'       => $totalPaid,
                     'branch_setting_id' => $moneyBox->branch_setting_id ?? null,
                     'issued_at'         => $moneyBox->created_at ?? now(),
                 ]);
@@ -80,7 +82,7 @@ class GymMoneyBoxObserver
             } else {
                 $invoice = GymSwInvoice::find($existingLinked->invoice_id);
                 if ($invoice) {
-                    $service->recordPayment($invoice, (float) $moneyBox->amount, $moneyBox);
+                    $service->syncAmountPaid($invoice, $totalPaid, $moneyBox);
                 }
             }
         } catch (\Throwable $e) {
@@ -252,6 +254,14 @@ class GymMoneyBoxObserver
     {
         try {
             $vatAmount = round((float) ($moneyBox->vat ?? 0), 2);
+
+            // The moneybox "Including VAT" checkbox was left unchecked for this entry.
+            // If the system has VAT configured, an untaxed manual entry is not a tax
+            // invoice and must not be reported in the invoices report.
+            if ($vatAmount <= 0 && $this->systemVatConfigured($moneyBox->branch_setting_id)) {
+                return;
+            }
+
             $amount    = round((float) $moneyBox->amount, 2);
             $subtotal  = round($amount - $vatAmount, 2);
             $service   = new GymSwInvoiceService();
@@ -287,5 +297,12 @@ class GymMoneyBoxObserver
                 'error'        => $e->getMessage(),
             ]);
         }
+    }
+
+    private function systemVatConfigured(?int $branchSettingId): bool
+    {
+        $setting = ($branchSettingId ? Setting::find($branchSettingId) : null) ?? Setting::query()->first();
+
+        return (float) data_get($setting, 'vat_details.vat_percentage', 0) > 0;
     }
 }

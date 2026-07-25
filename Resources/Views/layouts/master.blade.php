@@ -202,6 +202,52 @@
             border: none;
             background: none;
         }
+
+        @if(config('app.white_label'))
+        #kt_aside_logo a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #kt_aside_logo a img.logo {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+
+        /* Hide logo when aside is collapsed/minimized */
+        body.aside-minimize #kt_aside_logo a {
+            display: none;
+        }
+
+        /* Mobile header logo */
+        #kt_header_mobile_logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #kt_header_mobile_logo img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+        @endif
     </style>
 
     @yield('styles')
@@ -391,8 +437,11 @@
             <div class="aside-logo flex-column-auto" id="kt_aside_logo">
                 <!--begin::Logo-->
                 <a href="{{route('home')}}">
-                    <img alt="Logo" src="{{ asset('resources/assets/new_front/media/logos/manassa-logo.svg') }}"
-                         class="h-25px logo" style="height: 50px!important;"/>
+                    @if(config('app.white_label') && $mainSettings->logo)
+                        <img alt="Logo" src="{{$mainSettings->logo}}" class="h-25px logo"/>
+                    @else
+                        <img alt="Logo" src="{{$mainSettings->logo_white}}" class="h-25px logo"/>
+                    @endif
                 </a>
                 <!--end::Logo-->
                 <!--begin::Aside toggler-->
@@ -442,9 +491,12 @@
                     <!--end::Aside mobile toggle-->
                     <!--begin::Mobile logo-->
                     <div class="d-flex align-items-center flex-grow-1 flex-lg-grow-0">
-                        <a href="{{route('home')}}" class="d-lg-none">
-                            <img alt="Manassa" src="{{ asset('resources/assets/new_front/media/logos/manassa-logo-dark.svg') }}"
-                                 class="h-30px"/>
+                        <a href="{{route('home')}}" class="d-lg-none" id="kt_header_mobile_logo">
+                            @if(config('app.white_label'))
+                                <img alt="Logo" src="{{$mainSettings->logo ?? $mainSettings->logo_white}}" class="h-25px"/>
+                            @else
+                                <img alt="Logo" src="{{$mainSettings->logo_white ?? $mainSettings->logo}}" class="h-25px"/>
+                            @endif
                         </a>
                     </div>
                     <!--end::Mobile logo-->
@@ -598,10 +650,13 @@
                                 <div class="topbar-item px-3 px-lg-4 position-relative" data-kt-menu-trigger="click"
                                      data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end"
                                      data-kt-menu-flip="bottom">
-                                    <i class="ki-outline  ki-notification fs-1"></i>
+                                    <i class="ki-outline ki-notification fs-1" id="notification_bell_icon"></i>
                                     @if(($unreadNotificationsCount ?? 0) > 0)
-                                        <span
+                                        <span id="notification_dot"
                                             class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 mt-4 start-50 animation-blink"></span>
+                                    @else
+                                        <span id="notification_dot"
+                                            class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 mt-4 start-50 animation-blink d-none"></span>
                                     @endif
                                 </div>
                                 <!--begin::Menu-->
@@ -619,7 +674,7 @@
                                     <!--begin::Tab panel-->
                                     <div>
                                         <!--begin::Items-->
-                                        <div class="scroll-y mh-325px my-5 px-8">
+                                        <div class="scroll-y mh-325px my-5 px-8" id="notifications_list_container">
                                             @if(($unreadNotificationsCount ?? 0) == 0)
                                                 <!--begin::Item-->
                                                 <div class="d-flex flex-stack py-4">
@@ -934,13 +989,7 @@
                                 <!--end::User account menu-->
                                 <!--end::Menu wrapper-->
                             </div>
-                            <!--begin::Heaeder menu toggle-->
-                            <div class="d-flex align-items-stretch d-lg-none px-3 me-n3" title="Show header menu">
-                                <div class="topbar-item" id="kt_header_menu_mobile_toggle">
-                                    <i class="ki-outline ki-burger-menu-2 fs-1"></i>
-                                </div>
-                            </div>
-                            <!--end::Heaeder menu toggle-->
+                            
                         </div>
                         <!--end::Toolbar wrapper-->
                     </div>
@@ -955,27 +1004,18 @@
             <!--begin::Footer-->
             <div class="footer py-4 d-flex flex-lg-column" id="kt_footer">
                 <!--begin::Container-->
-                {{--                <div class="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between">--}}
-                {{--                    <!--begin::Copyright-->--}}
-                {{--                    <div class="text-gray-900 order-2 order-md-1">--}}
-                {{--                        <span class="text-muted fw-semibold me-1">2025&copy;</span>--}}
-                {{--                        <a href="" target="_blank" class="text-gray-800 text-hover-primary">Keenthemes</a>--}}
-                {{--                    </div>--}}
-                {{--                    <!--end::Copyright-->--}}
-                {{--                    <!--begin::Menu-->--}}
-                {{--                    <ul class="menu menu-gray-600 menu-hover-primary fw-semibold order-1">--}}
-                {{--                        <li class="menu-item">--}}
-                {{--                            <a href="https://keenthemes.com" target="_blank" class="menu-link px-2">About</a>--}}
-                {{--                        </li>--}}
-                {{--                        <li class="menu-item">--}}
-                {{--                            <a href="https://devs.keenthemes.com" target="_blank" class="menu-link px-2">Support</a>--}}
-                {{--                        </li>--}}
-                {{--                        <li class="menu-item">--}}
-                {{--                            <a href="https://1.envato.market/EA4JP" target="_blank" class="menu-link px-2">Purchase</a>--}}
-                {{--                        </li>--}}
-                {{--                    </ul>--}}
-                {{--                    <!--end::Menu-->--}}
-                {{--                </div>--}}
+                @if(config('app.white_label'))
+                <div class="container-fluid d-flex align-items-center justify-content-center">
+                    <a href="https://demo.gymmawy.com" target="_blank"
+                       class="d-flex align-items-center gap-2 text-muted text-hover-primary fw-semibold text-decoration-none"
+                       style="font-size:0.85rem;">
+                        <span>{{ app()->getLocale() === 'ar' ? 'مدعوم من' : 'Powered by' }}</span>
+                        <img src="{{asset('resources/assets/new_front/')}}/media/logos/demo13-small.png"
+                             alt="Gymmawy" style="height:20px; width:auto;" class="mx-1"/>
+                        <span>Gymmawy</span>
+                    </a>
+                </div>
+                @endif
                 <!--end::Container-->
             </div>
             <!--end::Footer-->
@@ -1097,7 +1137,7 @@
 <!--End of Tawk.to Script-->
 
 <!-- Internal Select2.min js -->
-<script src="{{asset('resources/assets/new_front/global/scripts/js/select2.min.js')}}" defer></script>
+<script src="{{asset('resources/assets/new_front/global/scripts/js/select2.min.js')}}"></script>
 <script src="{{asset('resources/assets/new_front/global/scripts/js/bootstrap-datepicker.js')}}" defer></script>
 
 {{--<script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}" type="text/javascript"></script>--}}
@@ -1152,6 +1192,7 @@
     var trans_membership_expired = '{{trans('sw.membership_expired')}}';
     var trans_membership_expired_with_date = '{{trans('sw.membership_expired_with_date', ['date' => trans('sw.expire_date')])}}';
     var trans_scan_status_success = '{{trans('sw.scan_status_success')}}';
+    var trans_scan_status_not_allowed = '{{trans('sw.scan_status_not_allowed')}}';
     var trans_scan_status_error = '{{trans('sw.scan_status_error')}}';
     var trans_scan_status_warning = '{{trans('sw.scan_status_warning')}}';
     var default_avatar_image = '{{asset('uploads/settings/default.jpg')}}';
@@ -1175,6 +1216,7 @@
     var pw_trans_payment_confirmed = '{{ trans('sw.payment_confirmed') }}';
     var pw_trans_payment_confirmed_desc = '{{ trans('sw.payment_confirmed_desc') }}';
     var pw_trans_payment_link_resent = '{{ trans('sw.payment_link_resent') }}';
+    var pw_trans_payment_link_copied = '{{ trans('sw.payment_link_copied') }}';
     var pw_trans_email = '{{ trans('sw.email') }}';
     var pw_trans_done = '{{ trans('admin.done') }}';
     var pw_csrf_token = '{{ csrf_token() }}';
@@ -1306,7 +1348,7 @@
     function setCustomExpireDate(joining_date, period) {
         let valid_days = parseInt(period);
         let end_date = new Date(joining_date); // pass start date here
-        end_date.setDate(end_date.getDate() + valid_days);
+        end_date.setDate(end_date.getDate() + (valid_days > 0 ? valid_days - 1 : 0));
         $('#customExpireDate').val(end_date.getFullYear() + '-' + ((end_date.getMonth() + 1) < 10 ? '0' + (end_date.getMonth() + 1) : (end_date.getMonth() + 1)) + '-' + end_date.getDate());
     }
 
@@ -1336,6 +1378,20 @@
                         <div class="d-flex flex-column text-start">
                             <span class="fw-bold fs-6" id="pw_sent_text"></span>
                         </div>
+                    </div>
+                    <div class="mb-5" id="pw_link_box" style="display:none;">
+                        <label class="form-label fw-semibold fs-7 text-muted mb-2">{{ trans('sw.payment_link_label') }}</label>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm bg-light" id="pw_link_input" readonly>
+                            <button type="button" class="btn btn-sm btn-light-primary" id="pw_copy_btn" title="{{ trans('sw.payment_link_copy') }}">
+                                <i class="ki-outline ki-copy fs-4"></i>
+                                {{ trans('sw.payment_link_copy') }}
+                            </button>
+                        </div>
+                        <a href="#" id="pw_whatsapp_btn" target="_blank" class="btn btn-sm btn-light-success w-100">
+                            <i class="ki-outline ki-whatsapp fs-4 me-1"></i>
+                            {{ trans('sw.payment_link_whatsapp') }}
+                        </a>
                     </div>
                     <div class="d-flex justify-content-center gap-3 flex-wrap">
                         <button type="button" class="btn btn-light-primary" id="pw_resend_btn">
@@ -1373,6 +1429,25 @@ var pw_redirect_url = null;
 var pw_active_gateway = null;
 var pw_on_success_callback = null;
 var pw_poll_url = null; // overridable per call
+var pw_payment_url = null;
+var pw_member_phone = null;
+
+function pwSetPaymentLink(url, phone) {
+    pw_payment_url = url || null;
+    if (phone !== undefined) pw_member_phone = phone || null;
+    if (url) {
+        $('#pw_link_input').val(url);
+        var cleanPhone = (pw_member_phone || '').replace(/\D/g, '');
+        if (cleanPhone) {
+            $('#pw_whatsapp_btn').attr('href', 'https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(url)).show();
+        } else {
+            $('#pw_whatsapp_btn').hide();
+        }
+        $('#pw_link_box').show();
+    } else {
+        $('#pw_link_box').hide();
+    }
+}
 
 function pwShowSentNotice(sentVia) {
     var channels = [];
@@ -1414,16 +1489,18 @@ function pwStopPolling() {
     }
 }
 
-function pwOpenModal(memberSubscriptionId, sentVia, redirectUrl, gateway, onSuccessCallback, checkUrl) {
+function pwOpenModal(memberSubscriptionId, sentVia, redirectUrl, gateway, onSuccessCallback, checkUrl, paymentUrl, memberPhone) {
     pw_member_subscription_id = memberSubscriptionId;
     pw_redirect_url = redirectUrl;
     pw_active_gateway = gateway;
     pw_on_success_callback = onSuccessCallback || null;
     pw_poll_url = checkUrl || null;
+    pw_member_phone = memberPhone || null;
     $('#pw_loading_state').show();
     $('#pw_success_state').hide();
     $('#pw_sent_notice').hide();
     pwShowSentNotice(sentVia);
+    pwSetPaymentLink(paymentUrl || null, memberPhone || null);
     $('#paymentWaitingModal').modal('show');
     pwStartPolling();
 }
@@ -1439,11 +1516,27 @@ $(document).on('click', '#pw_resend_btn', function () {
             $btn.prop('disabled', false);
             if (data.success) {
                 pwShowSentNotice(data.sent_via);
+                if (data.payment_url) pwSetPaymentLink(data.payment_url, data.member_phone || pw_member_phone);
                 swal({ title: pw_trans_done, text: pw_trans_payment_link_resent, type: 'success', timer: 2500 });
             }
         },
         error: function () { $btn.prop('disabled', false); }
     });
+});
+
+$(document).on('click', '#pw_copy_btn', function () {
+    var url = $('#pw_link_input').val();
+    if (!url) return;
+    var $btn = $(this);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+            $btn.find('i').removeClass('ki-copy').addClass('ki-check');
+            setTimeout(function () { $btn.find('i').removeClass('ki-check').addClass('ki-copy'); }, 1500);
+        });
+    } else {
+        $('#pw_link_input').select();
+        document.execCommand('copy');
+    }
 });
 
 $(document).on('click', '#pw_continue_btn', function () {

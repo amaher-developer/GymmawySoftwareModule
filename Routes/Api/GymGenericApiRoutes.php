@@ -11,8 +11,10 @@
 
     Route::post('contact', 'Api\GymGenericApiController@contact')->middleware('api');
 
+    Route::post('branches', 'Api\GymGenericApiController@branches')->middleware('api');
     Route::post('member_login', 'Api\GymGenericApiController@login')->middleware('api');
     Route::post('member_info', 'Api\GymGenericApiController@memberInfo')->middleware('auth:api');
+    Route::post('member_qr_token', 'Api\GymGenericApiController@memberQrToken')->middleware('auth:api');
     Route::post('member_block', 'Api\GymGenericApiController@memberBlock')->middleware('auth:api');
     Route::post('attendances', 'Api\GymGenericApiController@attendances')->middleware('auth:api');
     Route::post('previous-subscriptions', 'Api\GymGenericApiController@previousSubscriptions')->middleware('auth:api');
@@ -22,6 +24,11 @@
     Route::post('pt-training-classes', 'Api\GymPTApiController@trainingClasses')->middleware('api');
 
     Route::post('member-subscription-freeze', 'Api\GymGenericApiController@memberSubscriptionFreeze')->middleware('auth:api');
+    Route::post('member-activities', 'Api\GymGenericApiController@memberActivities')->middleware('auth:api');
+    Route::post('member-activity-slots', 'Api\GymGenericApiController@memberActivitySlots')->middleware('auth:api');
+    Route::post('member-activity-book', 'Api\GymGenericApiController@memberActivityBook')->middleware('auth:api');
+    Route::post('member-reservations', 'Api\GymGenericApiController@memberReservations')->middleware('auth:api');
+    Route::post('member-activity-cancel', 'Api\GymGenericApiController@memberActivityCancel')->middleware('auth:api');
 
 
     Route::any('my-favorites', 'Api\GymGenericApiController@myFavorites')->middleware('auth:api');

@@ -319,8 +319,120 @@
                                                     <!--end::Title-->
                                                 </div>
                                             </td>
-                                            <td class="text-end">{{number_format($order->amount_paid,2)}} {{@trans('sw.app_currency')}}</td>
+                                            <td class="text-end">{{number_format($order->amount_before_discount ?? $order->subscription->price ?? 0, 2)}} {{@trans('sw.app_currency')}}</td>
                                         </tr>
+                                        @php
+                                            $selectedOpts = $order->selected_options ?? collect();
+                                            $optionsTotal = $selectedOpts->sum('price_snapshot');
+                                            $lang = app()->getLocale();
+
+                                            // Activities / products from subscription definition
+                                            // Guard: subscription may be stdClass (JSON) or Eloquent model
+                                            $sub = $order->subscription ?? null;
+                                            if ($sub && !($sub instanceof \Illuminate\Database\Eloquent\Model)) {
+                                                $subId = is_object($sub) ? ($sub->id ?? null) : (is_array($sub) ? ($sub['id'] ?? null) : null);
+                                                $sub = $subId ? \Modules\Software\Models\GymSubscription::find($subId) : null;
+                                            }
+                                            // PT subscriptions (and other non-regular subscription types) have no activities/products tables
+                                            $sub = ($sub instanceof \Modules\Software\Models\GymSubscription) ? $sub : null;
+                                            $subActivities = $sub ? $sub->activities()->with('activity')->get() : collect();
+                                            $subProducts   = $sub ? $sub->subscription_products()->with('product')->get() : collect();
+                                        @endphp
+
+                                        @if($subActivities->count() || $subProducts->count())
+                                        <tr>
+                                            <td colspan="3" class="pt-3 pb-1">
+                                                <span class="text-muted fs-7 fw-semibold">
+                                                    <i class="ki-outline ki-check-circle fs-7 me-1"></i>{{ trans('sw.included_in_subscription') }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        @foreach($subActivities as $actSub)
+                                            @php
+                                                $actName = $lang === 'ar'
+                                                    ? ($actSub->activity->name_ar ?? $actSub->activity->name_en ?? '')
+                                                    : ($actSub->activity->name_en ?? $actSub->activity->name_ar ?? '');
+                                                $times = (int)($actSub->training_times ?? 0);
+                                            @endphp
+                                            @if($actName)
+                                            <tr>
+                                                <td></td>
+                                                <td class="ps-8 fs-7 text-gray-700">
+                                                    <i class="ki-outline ki-check fs-7 text-primary me-1"></i>
+                                                    {{ $actName }}
+                                                    @if($times > 0)
+                                                        <span class="text-muted ms-1">({{ $times }} {{ trans('sw.training_times') }})</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-end fs-7 text-muted">{{ trans('sw.included') }}</td>
+                                            </tr>
+                                            @endif
+                                        @endforeach
+                                        @foreach($subProducts as $subProd)
+                                            @php
+                                                $prodName = $lang === 'ar'
+                                                    ? ($subProd->product->getRawOriginal('display_name_ar') ?: ($subProd->product->name_ar ?? ''))
+                                                    : ($subProd->product->getRawOriginal('display_name_en') ?: ($subProd->product->name_en ?? $subProd->product->name_ar ?? ''));
+                                            @endphp
+                                            @if($prodName)
+                                            <tr>
+                                                <td></td>
+                                                <td class="ps-8 fs-7 text-gray-700">
+                                                    <i class="ki-outline ki-check fs-7 text-primary me-1"></i>
+                                                    {{ $prodName }}
+                                                </td>
+                                                <td class="text-end fs-7 text-muted">{{ trans('sw.included') }}</td>
+                                            </tr>
+                                            @endif
+                                        @endforeach
+                                        @endif
+
+                                        @if($selectedOpts->count())
+                                        <tr>
+                                            <td colspan="3" class="pt-3 pb-1">
+                                                <span class="text-muted fs-7 fw-semibold"><i class="ki-outline ki-abstract-26 fs-7 me-1"></i>{{ trans('sw.option_groups') }}</span>
+                                            </td>
+                                        </tr>
+                                        @foreach($selectedOpts as $selOpt)
+                                        @php
+                                            $opt = $selOpt->option;
+                                            $optName = '';
+                                            if ($opt) {
+                                                if ($opt->product_id && $opt->product) {
+                                                    $optName = $lang === 'ar'
+                                                        ? ($opt->product->getRawOriginal('display_name_ar') ?: $opt->product->name_ar ?? '')
+                                                        : ($opt->product->getRawOriginal('display_name_en') ?: $opt->product->name_en ?? $opt->product->name_ar ?? '');
+                                                } elseif ($opt->activity_id && $opt->activity) {
+                                                    $optName = $lang === 'ar' ? ($opt->activity->name_ar ?? '') : ($opt->activity->name_en ?? $opt->activity->name_ar ?? '');
+                                                } else {
+                                                    $optName = $lang === 'ar'
+                                                        ? ($opt->getRawOriginal('name_ar') ?: $opt->getRawOriginal('name_en'))
+                                                        : ($opt->getRawOriginal('name_en') ?: $opt->getRawOriginal('name_ar'));
+                                                }
+                                            }
+                                            $optPrice = (float)($selOpt->price_snapshot ?? 0);
+                                        @endphp
+                                        <tr>
+                                            <td></td>
+                                            <td class="ps-8 fs-7 text-gray-700">
+                                                <i class="ki-outline ki-check fs-7 text-success me-1"></i>{{ $optName ?: '#'.$selOpt->option_id }}
+                                            </td>
+                                            <td class="text-end fs-7 text-gray-700">
+                                                @if($optPrice == 0)
+                                                    <span class="text-success">{{ app()->getLocale() === 'ar' ? 'مجاناً' : 'Free' }}</span>
+                                                @else
+                                                    {{ ($optPrice > 0 ? '+' : '') . number_format($optPrice, 2) }} {{ trans('sw.app_currency') }}
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                        @if($optionsTotal != 0)
+                                        <tr>
+                                            <td colspan="2" class="text-end text-muted fs-7">{{ trans('sw.option_groups') }} {{ trans('sw.total') }}</td>
+                                            <td class="text-end fs-7">{{ ($optionsTotal > 0 ? '+' : '') . number_format($optionsTotal, 2) }} {{ trans('sw.app_currency') }}</td>
+                                        </tr>
+                                        @endif
+                                        @endif
                                         <tr>
                                             <td colspan="2" class="text-end">{{ trans('sw.total_for_price') }} @if(@$order->vat)<span class="total_for_price">({{ trans('sw.excluding_vat') }})</span>@endif</td>
                                             <td class="text-end">{{number_format(($order->amount_paid + @$order->amount_remaining - @$order->vat),2)}} {{@trans('sw.app_currency')}}</td>

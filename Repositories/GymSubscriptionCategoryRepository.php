@@ -7,9 +7,9 @@ use Modules\Software\Models\GymSubscriptionCategory;
 
 class GymSubscriptionCategoryRepository extends GenericRepository
 {
-    public function __construct()
+    public function model()
     {
-        $this->model = new GymSubscriptionCategory();
+        return GymSubscriptionCategory::class;
     }
 }
 

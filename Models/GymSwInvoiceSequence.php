@@ -20,10 +20,27 @@ class GymSwInvoiceSequence extends GenericModel
      */
     public static function nextFor(string $type): int
     {
+        $prefixes = ['sales' => 'INV', 'purchase' => 'PINV', 'credit_note' => 'CN'];
+
         $row = DB::table('gym_sw_invoice_sequences')
             ->where('type', $type)
             ->lockForUpdate()
             ->first();
+
+        if (! $row) {
+            DB::table('gym_sw_invoice_sequences')->insert([
+                'type'       => $type,
+                'prefix'     => $prefixes[$type] ?? strtoupper($type),
+                'last_number'=> 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $row = DB::table('gym_sw_invoice_sequences')
+                ->where('type', $type)
+                ->lockForUpdate()
+                ->first();
+        }
 
         $next = $row->last_number + 1;
 

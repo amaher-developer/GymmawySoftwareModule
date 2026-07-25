@@ -256,14 +256,21 @@
                                 </div>
                             </div>
                             <div class="row mb-5">
-                                <div class="col-md-4 fv-row">
+                                <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.paytabs_client_key') }}</label>
                                     <input type="text" class="form-control form-control-solid"
                                            name="payments[paytabs][client_key]"
                                            value="{{ $paymentsSettings['paytabs']['client_key'] ?? '' }}"
                                            placeholder="CXXX-XXXX-XXXX">
                                 </div>
-                                <div class="col-md-4 fv-row">
+                                <div class="col-md-3 fv-row">
+                                    <label class="form-label">{{ trans('sw.paytabs_merchant_id') }}</label>
+                                    <input type="text" class="form-control form-control-solid"
+                                           name="payments[paytabs][merchant_id]"
+                                           value="{{ $paymentsSettings['paytabs']['merchant_id'] ?? '' }}"
+                                           placeholder="88091">
+                                </div>
+                                <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.paytabs_region') }}</label>
                                     <select class="form-select form-select-solid" name="payments[paytabs][region]">
                                         @foreach(['SAU' => 'Saudi Arabia', 'ARE' => 'UAE', 'EGY' => 'Egypt', 'OMN' => 'Oman', 'JOR' => 'Jordan', 'KWT' => 'Kuwait', 'BHR' => 'Bahrain'] as $code => $name)
@@ -273,7 +280,7 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-4 fv-row">
+                                <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.paytabs_currency') }}</label>
                                     <input type="text" class="form-control form-control-solid"
                                            name="payments[paytabs][currency]"
@@ -337,9 +344,7 @@
                                 <i class="ki-outline ki-information-5 fs-2tx text-primary me-4"></i>
                                 <div class="fs-7 text-gray-700">
                                     <strong>{{ trans('sw.paytabs_callback_url') }}:</strong>
-                                    <code>{{ url('paytabs/callback') }}</code><br>
-                                    <strong>Profile ID:</strong> 150281 &nbsp;|&nbsp;
-                                    <strong>Merchant ID:</strong> 88091
+                                    <code>{{ url('paytabs/callback') }}</code>
                                 </div>
                             </div>
                         </div>
@@ -471,6 +476,42 @@
                             </h3>
                         </div>
                         <div class="card-body">
+                            @php
+                                $countryCodeVal = $appConfig['country_code'] ?? env('APP_COUNTRY_CODE');
+                                $currencyArVal = $appConfig['currency_ar'] ?? env('APP_CURRENCY_AR');
+                                $currencyEnVal = $appConfig['currency_en'] ?? env('APP_CURRENCY_EN');
+                                $timezoneVal = $appConfig['timezone'] ?? env('APP_TIMEZONE');
+                                $timezoneDbVal = $appConfig['timezone_db'] ?? env('APP_TIMEZONE_DB');
+
+                                $countryCodeOptions = [
+                                    '966' => 'Saudi Arabia (+966)',
+                                    '20' => 'Egypt (+20)',
+                                    '971' => 'UAE (+971)',
+                                    '965' => 'Kuwait (+965)',
+                                    '974' => 'Qatar (+974)',
+                                    '973' => 'Bahrain (+973)',
+                                    '968' => 'Oman (+968)',
+                                    '962' => 'Jordan (+962)',
+                                    '961' => 'Lebanon (+961)',
+                                    '964' => 'Iraq (+964)',
+                                    '212' => 'Morocco (+212)',
+                                    '213' => 'Algeria (+213)',
+                                    '216' => 'Tunisia (+216)',
+                                    '218' => 'Libya (+218)',
+                                    '249' => 'Sudan (+249)',
+                                ];
+
+                                $currencyArOptions = ['ريال', 'ر.س', 'ج.م', 'جنيه', 'درهم', 'دينار', 'ليرة'];
+                                $currencyEnOptions = ['SAR', 'rial', 'EGP', 'AED', 'KWD', 'QAR', 'BHD', 'OMR', 'JOD', 'USD', 'EUR'];
+
+                                $timezoneOptions = [
+                                    'Asia/Riyadh', 'Africa/Cairo', 'Asia/Dubai', 'Asia/Kuwait', 'Asia/Qatar',
+                                    'Asia/Bahrain', 'Asia/Muscat', 'Asia/Amman', 'Asia/Beirut', 'Asia/Baghdad',
+                                    'Africa/Casablanca', 'UTC',
+                                ];
+
+                                $timezoneDbOptions = ['+00:00', '+01:00', '+02:00', '+03:00', '+04:00', '+05:00'];
+                            @endphp
                             <div class="row mb-5">
                                 <div class="col-md-6 fv-row">
                                     <label class="form-label">{{ trans('sw.app_url') }}</label>
@@ -481,40 +522,60 @@
                                 </div>
                                 <div class="col-md-6 fv-row">
                                     <label class="form-label">{{ trans('sw.app_country_code') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[country_code]"
-                                           value="{{ $appConfig['country_code'] ?? '' }}"
-                                           placeholder="2">
+                                    <select class="form-select form-select-solid" name="app_config[country_code]">
+                                        @foreach($countryCodeOptions as $value => $label)
+                                            <option value="{{ $value }}" {{ (string)$countryCodeVal === (string)$value ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                        @if($countryCodeVal !== null && $countryCodeVal !== '' && !array_key_exists((string)$countryCodeVal, $countryCodeOptions))
+                                            <option value="{{ $countryCodeVal }}" selected>{{ $countryCodeVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                             </div>
                             <div class="row mb-5">
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_currency_ar') }}</label>
-                                    <input type="text" class="form-control form-control-solid" dir="rtl"
-                                           name="app_config[currency_ar]"
-                                           value="{{ $appConfig['currency_ar'] ?? '' }}"
-                                           placeholder="ريال">
+                                    <select class="form-select form-select-solid" dir="rtl" name="app_config[currency_ar]">
+                                        @foreach($currencyArOptions as $option)
+                                            <option value="{{ $option }}" {{ $currencyArVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($currencyArVal !== null && $currencyArVal !== '' && !in_array($currencyArVal, $currencyArOptions))
+                                            <option value="{{ $currencyArVal }}" selected>{{ $currencyArVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_currency_en') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[currency_en]"
-                                           value="{{ $appConfig['currency_en'] ?? '' }}"
-                                           placeholder="rial">
+                                    <select class="form-select form-select-solid" name="app_config[currency_en]">
+                                        @foreach($currencyEnOptions as $option)
+                                            <option value="{{ $option }}" {{ $currencyEnVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($currencyEnVal !== null && $currencyEnVal !== '' && !in_array($currencyEnVal, $currencyEnOptions))
+                                            <option value="{{ $currencyEnVal }}" selected>{{ $currencyEnVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_timezone') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[timezone]"
-                                           value="{{ $appConfig['timezone'] ?? '' }}"
-                                           placeholder="Asia/Riyadh">
+                                    <select class="form-select form-select-solid" name="app_config[timezone]">
+                                        @foreach($timezoneOptions as $option)
+                                            <option value="{{ $option }}" {{ $timezoneVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($timezoneVal !== null && $timezoneVal !== '' && !in_array($timezoneVal, $timezoneOptions))
+                                            <option value="{{ $timezoneVal }}" selected>{{ $timezoneVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-3 fv-row">
                                     <label class="form-label">{{ trans('sw.app_timezone_db') }}</label>
-                                    <input type="text" class="form-control form-control-solid"
-                                           name="app_config[timezone_db]"
-                                           value="{{ $appConfig['timezone_db'] ?? '' }}"
-                                           placeholder="+03:00">
+                                    <select class="form-select form-select-solid" name="app_config[timezone_db]">
+                                        @foreach($timezoneDbOptions as $option)
+                                            <option value="{{ $option }}" {{ $timezoneDbVal === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                        @if($timezoneDbVal !== null && $timezoneDbVal !== '' && !in_array($timezoneDbVal, $timezoneDbOptions))
+                                            <option value="{{ $timezoneDbVal }}" selected>{{ $timezoneDbVal }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                             </div>
                             <div class="row mb-5">
@@ -628,117 +689,84 @@
                 </div>
                 {{-- end tab-appconfig --}}
 
-                {{-- ===================== AI REPORTS TAB ===================== --}}
+                {{-- ===================== AI EMPLOYEE (Claude) TAB ===================== --}}
                 <div class="tab-pane fade" id="tab-ai" role="tabpanel">
                     <div class="mb-10">
                         <h4 class="text-dark fw-bold mb-2">
-                            <i class="ki-outline ki-abstract-26 fs-2 me-2 text-primary"></i>{{ trans('sw.ai_settings') }}
+                            <i class="ki-outline ki-abstract-26 fs-2 me-2 text-primary"></i>
+                            إعدادات الموظف الذكي — Claude AI
                         </h4>
-                        <p class="text-muted fs-6">{{ trans('sw.ai_settings_description') }}</p>
+                        <p class="text-muted fs-6">
+                            إعدادات الاتصال بـ Anthropic Claude — المحرك الذكي للموظف الافتراضي على واتساب.
+                        </p>
                     </div>
 
-                    {{-- OPENAI --}}
+                    {{-- Claude / Anthropic --}}
                     <div class="card card-bordered mb-8">
                         <div class="card-header min-h-50px">
                             <h3 class="card-title fw-bold text-dark">
-                                <i class="ki-outline ki-technology-4 fs-2 me-2 text-primary"></i>OpenAI / ChatGPT
+                                <i class="ki-outline ki-technology-4 fs-2 me-2 text-warning"></i>
+                                Anthropic Claude
                             </h3>
                         </div>
                         <div class="card-body">
-                            <div class="row mb-5">
-                                <div class="col-md-8 fv-row">
-                                    <label class="form-label required">{{ trans('sw.openai_key') }}</label>
-                                    <input type="password" class="form-control form-control-solid"
-                                           name="integrations_extra[ai][openai_key]"
-                                           value="{{ $integrationsSettings['ai']['openai_key'] ?? '' }}"
-                                           placeholder="sk-...">
-                                    <div class="form-text text-muted">{{ trans('sw.openai_key_hint') }}</div>
+
+                            <div class="notice d-flex bg-light-warning rounded border-warning border border-dashed p-4 mb-6">
+                                <i class="ki-outline ki-information-5 fs-2 text-warning me-3"></i>
+                                <div class="fs-7 text-gray-700">
+                                    هذا المفتاح يُستخدم من قِبَل <strong>الموظف الذكي</strong> للرد على رسائل واتساب.
+                                    احصل على مفتاح من <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.
+                                    نوصي بنموذج <code>claude-haiku-4-5-20251001</code> للتوفير في التكلفة.
                                 </div>
-                                <div class="col-md-4 fv-row">
-                                    <label class="form-label">{{ trans('sw.openai_model') }}</label>
-                                    <select class="form-select form-select-solid" name="integrations_extra[ai][openai_model]">
-                                        @foreach(['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'] as $model)
-                                            <option value="{{ $model }}"
-                                                {{ ($integrationsSettings['ai']['openai_model'] ?? 'gpt-4o') === $model ? 'selected' : '' }}>
-                                                {{ $model }}
+                            </div>
+
+                            <div class="row g-5">
+                                <div class="col-md-8">
+                                    <label class="form-label required fw-bold">Anthropic API Key</label>
+                                    <input type="password" class="form-control form-control-solid"
+                                           name="integrations_extra[ai][anthropic_key]"
+                                           value="{{ $integrationsSettings['ai']['anthropic_key'] ?? '' }}"
+                                           placeholder="sk-ant-...">
+                                    <div class="form-text text-muted">مفتاح سري — لا تشاركه مع أحد.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">النموذج</label>
+                                    <select class="form-select form-select-solid" name="integrations_extra[ai][claude_model]">
+                                        @php
+                                            $claudeModels = [
+                                                'claude-haiku-4-5-20251001' => 'Haiku 4.5 — اقتصادي (موصى به)',
+                                                'claude-sonnet-5'           => 'Sonnet 5 — متوازن',
+                                                'claude-opus-4-8'           => 'Opus 4.8 — الأقوى',
+                                            ];
+                                        @endphp
+                                        @foreach($claudeModels as $val => $label)
+                                            <option value="{{ $val }}"
+                                                {{ ($integrationsSettings['ai']['claude_model'] ?? 'claude-haiku-4-5-20251001') === $val ? 'selected' : '' }}>
+                                                {{ $label }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div class="form-text text-muted">{{ trans('sw.openai_model_hint') }}</div>
                                 </div>
                             </div>
 
-                            {{-- Notify Emails --}}
                             <div class="separator separator-dashed my-6"></div>
-                            <h5 class="fw-bold text-dark mb-1">
-                                <i class="ki-outline ki-sms fs-4 me-2 text-primary"></i>
-                                {{ trans('sw.notify_emails') }}
-                            </h5>
-                            <p class="text-muted fs-7 mb-4">{{ trans('sw.notify_emails_hint') }}</p>
-                            <div id="ai-emails-list">
-                                @php $savedEmails = $integrationsSettings['ai']['notify_emails'] ?? []; @endphp
-                                @foreach($savedEmails as $email)
-                                    <div class="d-flex align-items-center gap-2 mb-2 ai-email-row">
-                                        <input type="email" name="integrations_extra[ai][notify_emails][]"
-                                               class="form-control form-control-solid"
-                                               value="{{ $email }}"
-                                               placeholder="email@example.com">
-                                        <button type="button" class="btn btn-icon btn-light-danger btn-sm flex-shrink-0"
-                                                onclick="this.closest('.ai-email-row').remove()">
-                                            <i class="ki-outline ki-cross fs-6"></i>
-                                        </button>
-                                    </div>
-                                @endforeach
-                            </div>
-                            <button type="button" class="btn btn-light-primary btn-sm mt-2" onclick="addAiEmail()">
-                                <i class="ki-outline ki-plus fs-6"></i>
-                                {{ trans('sw.add_email') }}
-                            </button>
 
-                            {{-- Notify Phones --}}
-                            <div class="separator separator-dashed my-6"></div>
-                            <h5 class="fw-bold text-dark mb-1">
-                                <i class="ki-outline ki-phone fs-4 me-2 text-success"></i>
-                                {{ trans('sw.notify_phones') }}
-                            </h5>
-                            <p class="text-muted fs-7 mb-4">{{ trans('sw.notify_phones_hint') }}</p>
-                            <div id="ai-phones-list">
-                                @php $savedPhones = $integrationsSettings['ai']['notify_phones'] ?? []; @endphp
-                                @foreach($savedPhones as $phone)
-                                    <div class="d-flex align-items-center gap-2 mb-2 ai-phone-row">
-                                        <input type="tel" name="integrations_extra[ai][notify_phones][]"
-                                               class="form-control form-control-solid"
-                                               value="{{ $phone }}"
-                                               placeholder="+966XXXXXXXXX">
-                                        <button type="button" class="btn btn-icon btn-light-danger btn-sm flex-shrink-0"
-                                                onclick="this.closest('.ai-phone-row').remove()">
-                                            <i class="ki-outline ki-cross fs-6"></i>
-                                        </button>
-                                    </div>
-                                @endforeach
+                            {{-- Quick link to AI Employee --}}
+                            <div class="d-flex align-items-center gap-3">
+                                <a href="{{ route('sw.ai_employee.index') }}" class="btn btn-light-primary btn-sm">
+                                    <i class="ki-outline ki-robot fs-4 me-1"></i>
+                                    إدارة الموظف الذكي
+                                </a>
+                                <a href="{{ route('sw.ai_employee.knowledge') }}" class="btn btn-light-warning btn-sm">
+                                    <i class="ki-outline ki-book fs-4 me-1"></i>
+                                    قاعدة المعرفة
+                                </a>
+                                <a href="{{ route('sw.ai_employee.conversations') }}" class="btn btn-light-info btn-sm">
+                                    <i class="ki-outline ki-message-text-2 fs-4 me-1"></i>
+                                    المحادثات
+                                </a>
                             </div>
-                            <button type="button" class="btn btn-light-success btn-sm mt-2" onclick="addAiPhone()">
-                                <i class="ki-outline ki-plus fs-6"></i>
-                                {{ trans('sw.add_phone') }}
-                            </button>
 
-                            {{-- API endpoint info --}}
-                            <div class="notice d-flex bg-light-primary rounded border-primary border border-dashed p-4 mt-6">
-                                <i class="ki-outline ki-information-5 fs-2tx text-primary me-4"></i>
-                                <div>
-                                    <h5 class="mb-1 text-primary fw-bold">{{ trans('sw.ai_api_endpoints') }}</h5>
-                                    <p class="mb-1 fs-7 text-gray-700">
-                                        <strong>GETTER</strong> &mdash; Collect gym KPI data &rarr; ChatGPT &rarr; JSON report:<br>
-                                        <code>POST {{ url('api/ai-reports/executive/getter') }}</code>
-                                        &nbsp;&nbsp;Body: <code>{ "from": "Y-m-d", "to": "Y-m-d" }</code>
-                                    </p>
-                                    <p class="mb-0 fs-7 text-gray-700">
-                                        <strong>SETTER</strong> &mdash; Receive report &rarr; send email / SMS to client:<br>
-                                        <code>POST {{ url('api/ai-reports/executive/setter') }}</code>
-                                        &nbsp;&nbsp;Body: <code>{ "report_id": 1, "email": "...", "phone": "..." }</code>
-                                    </p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

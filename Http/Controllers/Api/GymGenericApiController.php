@@ -23,6 +23,7 @@ use Modules\Software\Http\Resources\SettingResource;
 use Modules\Software\Http\Resources\StoreResource;
 use Modules\Software\Http\Resources\SubscriptionResource;
 use Modules\Software\Models\GymActivity;
+use Modules\Software\Models\GymReservation;
 use Modules\Software\Models\GymBanner;
 use Modules\Software\Models\GymCategory;
 use Modules\Software\Models\GymMember;
@@ -109,25 +110,25 @@ class GymGenericApiController extends GenericController
 
         $app_welcome_member = trans('sw.app_welcome_member', ['name' => @Str::limit($this->SettingRepository->select('name_ar', 'name_en')->first()->name, 20)]);
         $app_welcome_msg = trans('sw.app_welcome_msg', ['name' => Auth::guard('api')->user() ? @strtok(@Auth::guard('api')->user()->name, " ").' ' : ' ']);
-        $subscriptions = GymSubscription::where('is_mobile', 1)->where('category_id', null)->orderBy('id', 'desc')->limit(5)->get();
-        $activities = GymActivity::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
-        $stores = GymStoreProduct::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
-        $trainings = GymPTClass::where('is_mobile', 1)->with(['pt_subscription.pt_trainers'])->orderBy('id', 'desc')->limit(5)->get();
-        $banners = GymBanner::where('is_mobile', 1)->where('type', 1)->orderBy('id', 'desc')->limit(10)->get();
-        $offers  = GymBanner::where('is_mobile', 1)->where('type', 4)->orderBy('id', 'desc')->limit(10)->get();
-        $news    = GymBanner::where('is_mobile', 1)->where('type', 3)->orderBy('id', 'desc')->limit(10)->get();
-        $events  = GymBanner::where('is_mobile', 1)->where('type', 2)->orderBy('id', 'desc')->limit(10)->get();
+        $subscriptions = GymSubscription::branch()->where('is_mobile', 1)->where('category_id', null)->orderBy('id', 'desc')->limit(5)->get();
+        $activities = GymActivity::branch()->where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
+        $stores = GymStoreProduct::branch()->where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
+        $trainings = GymPTClass::branch()->where('is_mobile', 1)->with(['pt_subscription.pt_trainers'])->orderBy('id', 'desc')->limit(5)->get();
+        $banners = GymBanner::branch()->where('is_mobile', 1)->where('type', 1)->orderBy('id', 'desc')->limit(10)->get();
+        $offers  = GymBanner::branch()->where('is_mobile', 1)->where('type', 4)->orderBy('id', 'desc')->limit(10)->get();
+        $news    = GymBanner::branch()->where('is_mobile', 1)->where('type', 3)->orderBy('id', 'desc')->limit(10)->get();
+        $events  = GymBanner::branch()->where('is_mobile', 1)->where('type', 2)->orderBy('id', 'desc')->limit(10)->get();
 
-        $category_with_subscription = GymCategory::with(['subscriptions' => function ($q) {
+        $category_with_subscription = GymCategory::branch()->with(['subscriptions' => function ($q) {
             $q->limit(10);
         }])->where('is_subscription', true)->get();
-        
-        
+
+
 
         $this->return['result']['is_new_notifications'] =  rand(0,1);
         $this->return['result']['welcome_member'] =  $app_welcome_member;
         $this->return['result']['welcome_msg'] =  $app_welcome_msg;
-        $this->return['result']['phones'] =  [@Setting::first()->phone];
+        $this->return['result']['phones'] =  [@$this->SettingRepository->select('phone')->first()->phone];
         $this->return['result']['banners'] =  $banners->isNotEmpty() ? BannerResource::collection($banners) : [];
         $this->return['result']['is_offers'] =  $offers->isNotEmpty() ? 1 : 0;
         $this->return['result']['offers'] =  $offers->isNotEmpty() ? BannerResource::collection($offers) : [];
@@ -274,8 +275,8 @@ class GymGenericApiController extends GenericController
     }
 
     public function banner($id){
-        $banner = GymBanner::where("id", $id)->first();
-        $banners = GymBanner::where("id", '!=',$id)->limit(4)->get();
+        $banner = GymBanner::branch()->where("id", $id)->first();
+        $banners = GymBanner::branch()->where("id", '!=',$id)->limit(4)->get();
 
         $this->return['result']['banner'] =  $banner ? new BannerContentResource($banner) : '';
         $this->return['result']['banners'] =  $banners ? BannerResource::collection($banners) : [];
@@ -321,11 +322,27 @@ class GymGenericApiController extends GenericController
         return $this->successResponse();
     }
 
+    public function branches()
+    {
+        $branches = Setting::select('id', 'name_ar', 'name_en')->get();
+
+        $this->return['result']['branches'] = $branches->map(function ($branch) {
+            return [
+                'id' => $branch->id,
+                'name' => $branch->name,
+            ];
+        })->values();
+
+        return $this->successResponse();
+    }
+
     public function login(Request $request)
     {
         $phone = request('phone');
         $code = request('code');
         $device_token = request('device_token');
+        $device_id = request('device_id');
+        $branch_setting_id = request('branch_setting_id');
 
         if (!$this->validateApiRequest(['phone', 'code', 'device_type'])) return $this->response;
 
@@ -336,16 +353,26 @@ class GymGenericApiController extends GenericController
         }])//->withCount('member_attendees')
             ->where('phone' , $phone)
             ->where(DB::raw('CAST(code AS SIGNED)'), (int)$code)
+            ->when($branch_setting_id, function ($q) use ($branch_setting_id) {
+                $q->where('branch_setting_id', $branch_setting_id);
+            })
             ->first();
 
         if($member && (($member->code == $code) || (@$member->national_id == $code))){
             if($member->is_blocked){
                 return $this->falseResponse(trans('sw.block_account_msg'));
             }else {
+                $enable_device_binding = $this->SettingRepository->select('enable_device_binding')->first()->enable_device_binding;
+                if($enable_device_binding && $device_id && $member->device_id && ($member->device_id != $device_id)){
+                    return $this->falseResponse(trans('sw.device_already_linked'));
+                }
+
                 $token = Str::random(60);
-                $member->forceFill([
-                    'api_token' => hash('sha256', $token),
-                ])->save();
+                $forceFill = ['api_token' => hash('sha256', $token)];
+                if($enable_device_binding && $device_id && !$member->device_id){
+                    $forceFill['device_id'] = $device_id;
+                }
+                $member->forceFill($forceFill)->save();
 
                 $this->return['result']['token'] = $token;
                 $this->return['result']['member'] = new MemberResource($member);
@@ -354,6 +381,43 @@ class GymGenericApiController extends GenericController
             }
         }
         return $this->falseResponse(trans('auth.invalid_login'));
+    }
+
+    public function memberQrToken()
+    {
+        $member = GymMember::find(@Auth::guard('api')->user()->id);
+        if(!$member){
+            return $this->falseResponse(trans('auth.invalid_login'));
+        }
+
+        // Block QR generation if no active subscription
+        $hasActive = GymMemberSubscription::where('member_id', $member->id)
+            ->where('status', TypeConstants::Active)
+            ->exists();
+        if (!$hasActive) {
+            return $this->falseResponse(trans('sw.qr_subscription_required'));
+        }
+
+        // If the member already has a non-expired token, return it instead of generating a new one
+        if($member->qr_token && $member->qr_token_expires_at && Carbon::now()->lt($member->qr_token_expires_at)){
+            $this->return['result']['qr_token'] = $member->qr_token;
+            $this->return['result']['expires_in'] = Carbon::now()->diffInSeconds($member->qr_token_expires_at, false);
+
+            return $this->successResponse();
+        }
+
+        $expiry_seconds = (int) ($this->SettingRepository->select('qr_expiry_seconds')->first()->qr_expiry_seconds ?: 60);
+
+        $token = Str::random(40);
+        $member->forceFill([
+            'qr_token' => $token,
+            'qr_token_expires_at' => Carbon::now()->addSeconds($expiry_seconds),
+        ])->save();
+
+        $this->return['result']['qr_token'] = $token;
+        $this->return['result']['expires_in'] = $expiry_seconds;
+
+        return $this->successResponse();
     }
     public function memberBlock(){
         $member = GymMember::where(['id' => @Auth::guard('api')->user()->id])->first();
@@ -472,7 +536,7 @@ class GymGenericApiController extends GenericController
     public function get_settings()
     {
         // Select only columns that exist + JSON columns (social_media contains all social links)
-        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select('phone', 'support_email', 'address_ar', 'address_en', 'latitude', 'longitude', 'social_media', 'ios_version', 'android_version', 'terms_ar', 'terms_en')->first());
+        $this->return['result']['settings'] = new SettingResource($this->SettingRepository->select('phone', 'support_email', 'address_ar', 'address_en', 'latitude', 'longitude', 'social_media', 'ios_version', 'ios_app', 'android_version', 'android_app', 'terms_ar', 'terms_en', 'enable_dynamic_qr', 'qr_expiry_seconds')->first());
         return $this->return;
     }
 
@@ -662,6 +726,300 @@ class GymGenericApiController extends GenericController
         $this->return['result']['pages_count'] = ceil(($records->total() / $this->limit));
     }
 
+
+    public function memberActivities()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $activeSubscriptions = GymMemberSubscription::where('member_id', $member->id)
+            ->whereIn('status', [TypeConstants::Active, TypeConstants::Freeze, TypeConstants::Coming])
+            ->get();
+
+        // Aggregate training_times and used sessions per activity, scoped to each subscription's date range,
+        // sourced from the member's own persisted activity selection (not the full membership template).
+        $activityMap = [];
+        foreach ($activeSubscriptions as $ms) {
+            $memberActivities = is_array($ms->activities) ? $ms->activities : [];
+            if (empty($memberActivities)) continue;
+            $subStart = $ms->start_date ? Carbon::parse($ms->start_date)->format('Y-m-d') : null;
+            $subEnd   = $ms->expire_date ? Carbon::parse($ms->expire_date)->format('Y-m-d') : null;
+            foreach ($memberActivities as $item) {
+                if (!is_array($item)) continue;
+                $id = (int)($item['activity_id'] ?? 0);
+                if (!$id) continue;
+                $sessionAllowance = (int)($item['training_times'] ?? 0);
+                if (!isset($activityMap[$id])) {
+                    $activityMap[$id] = ['total_sessions' => 0, 'used_sessions' => 0];
+                }
+                $activityMap[$id]['total_sessions'] += $sessionAllowance;
+                // Count used sessions only within this subscription's date range
+                if ($sessionAllowance > 0 && $subStart) {
+                    $usedQuery = GymReservation::where('member_id', $member->id)
+                        ->where('client_type', 'member')
+                        ->where('activity_id', $id)
+                        ->whereIn('status', ['confirmed', 'attended'])
+                        ->where('reservation_date', '>=', $subStart);
+                    if ($subEnd) $usedQuery->where('reservation_date', '<=', $subEnd);
+                    $activityMap[$id]['used_sessions'] += (int)$usedQuery->count();
+                }
+            }
+        }
+
+        $activityModels = GymActivity::with('trainer')->whereIn('id', array_keys($activityMap))->get()->keyBy('id');
+
+        $activities = [];
+        foreach ($activityMap as $id => $item) {
+            $activity = $activityModels->get($id);
+            if (!$activity) continue;
+            $total     = $item['total_sessions'];
+            $used      = $item['used_sessions'];
+            $remaining = $total > 0 ? max(0, $total - $used) : null;
+            $details = $activity->reservation_details;
+            $hasSchedule = false;
+            if ($details && isset($details['work_days']) && is_array($details['work_days'])) {
+                foreach ($details['work_days'] as $day) {
+                    if (!empty($day['status'])) { $hasSchedule = true; break; }
+                }
+            }
+            $sessionsExceeded = $total > 0 && $used >= $total;
+            $activities[] = [
+                'id'                   => $activity->id,
+                'name'                 => $activity->name,
+                'image'                => $activity->image,
+                'reservation_duration' => (int)($activity->reservation_duration ?? 60),
+                'reservation_limit'    => (int)($activity->reservation_limit ?? 0),
+                'trainer_name'         => $activity->trainer ? $activity->trainer->name : '',
+                'trainer_image'        => $activity->trainer && $activity->trainer->image_name ? asset('uploads/pt_trainers/' . $activity->trainer->image_name) : '',
+                'total_sessions'       => $total,
+                'used_sessions'        => $used,
+                'remaining_sessions'   => $remaining,
+                'has_schedule'         => $hasSchedule,
+                'can_reserve'          => $hasSchedule && !$sessionsExceeded,
+            ];
+        }
+
+        $this->return['result']['activities'] = $activities;
+        return $this->successResponse();
+    }
+
+    public function memberActivitySlots()
+    {
+        $activityId = request('activity_id');
+        $date = request('reservation_date');
+        $duration = request('duration');
+
+        $activity = GymActivity::find($activityId);
+        if (!$activity) {
+            return $this->falseResponse(trans('sw.not_found'));
+        }
+
+        $duration = (int)($duration ?? $activity->reservation_duration ?? 60);
+        $interval = 30;
+        $reservationLimit = (int)($activity->reservation_limit ?? 0);
+        $hasLimit = $reservationLimit > 0;
+
+        $dateCarbon = Carbon::parse($date);
+        $dayOfWeek = $dateCarbon->dayOfWeek;
+        $dateStr = $dateCarbon->format('Y-m-d');
+
+        $reservationDetails = $activity->reservation_details;
+        $startOfDay = '08:00';
+        $endOfDay = '20:00';
+
+        if ($reservationDetails && isset($reservationDetails['work_days'][$dayOfWeek])) {
+            $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
+            if (empty($dayConfig['status'])) {
+                $this->return['result']['slots'] = [];
+                $this->return['result']['day_available'] = false;
+                return $this->successResponse();
+            }
+            $startOfDay = $dayConfig['start'] ?? '08:00';
+            $endOfDay = $dayConfig['end'] ?? '20:00';
+        }
+
+        $cursor = Carbon::parse("$dateStr $startOfDay");
+        $endDay = Carbon::parse("$dateStr $endOfDay");
+        $slots = [];
+        while ($cursor->copy()->addMinutes($duration) <= $endDay) {
+            $slots[] = ['start' => $cursor->format('H:i'), 'end' => $cursor->copy()->addMinutes($duration)->format('H:i')];
+            $cursor->addMinutes($interval);
+        }
+
+        $existing = \Modules\Software\Models\GymReservation::where('activity_id', $activityId)
+            ->whereDate('reservation_date', $dateStr)
+            ->whereNotIn('status', ['cancelled', 'missed'])
+            ->get(['start_time', 'end_time']);
+
+        $result = [];
+        foreach ($slots as $slot) {
+            $overlaps = 0;
+            foreach ($existing as $ex) {
+                try {
+                    $aS = Carbon::createFromFormat('H:i', substr($ex->start_time, 0, 5));
+                    $aE = Carbon::createFromFormat('H:i', substr($ex->end_time, 0, 5));
+                    $sT = Carbon::createFromFormat('H:i', $slot['start']);
+                    $eT = Carbon::createFromFormat('H:i', $slot['end']);
+                    if ($sT->lt($aE) && $eT->gt($aS)) $overlaps++;
+                } catch (\Exception $e) {}
+            }
+            $available = $hasLimit ? $overlaps < $reservationLimit : true;
+            $result[] = [
+                'start_time'       => $slot['start'],
+                'end_time'         => $slot['end'],
+                'available'        => $available,
+                'current_bookings' => $overlaps,
+            ];
+        }
+
+        $this->return['result']['slots'] = $result;
+        $this->return['result']['day_available'] = true;
+        $this->return['result']['duration'] = $duration;
+        return $this->successResponse();
+    }
+
+    public function memberActivityBook()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $activityId  = request('activity_id');
+        $date        = request('reservation_date');
+        $startTime   = request('start_time');
+        $endTime     = request('end_time');
+        $notes       = request('notes', '');
+
+        if (!$activityId || !$date || !$startTime || !$endTime) {
+            return $this->falseResponse(trans('sw.required_fields'));
+        }
+
+        // 1. Verify the member has an active subscription that has this activity in its own selected set
+        $activeSubscription = GymMemberSubscription::where('member_id', $member->id)
+            ->where('expire_date', '>=', Carbon::today())
+            ->get()
+            ->first(function ($ms) use ($activityId) {
+                return collect($ms->activities ?? [])
+                    ->contains(fn($item) => is_array($item) && (int)($item['activity_id'] ?? 0) === (int)$activityId);
+            });
+
+        if (!$activeSubscription) {
+            return $this->falseResponse(trans('sw.subscription_expired_or_not_found'));
+        }
+
+        // 2. Check session limit: sum training_times across all active subscriptions for this activity
+        $allActiveSubs = GymMemberSubscription::where('member_id', $member->id)
+            ->where('expire_date', '>=', Carbon::today())
+            ->get();
+
+        $totalSessions = 0;
+        foreach ($allActiveSubs as $ms) {
+            foreach (($ms->activities ?? []) as $item) {
+                if (!is_array($item)) continue;
+                if ((int)($item['activity_id'] ?? 0) === (int)$activityId) {
+                    $totalSessions += (int)($item['training_times'] ?? 0);
+                }
+            }
+        }
+
+        if ($totalSessions > 0) {
+            $usedSessions = GymReservation::where('member_id', $member->id)
+                ->where('client_type', 'member')
+                ->where('activity_id', $activityId)
+                ->whereIn('status', ['confirmed', 'attended'])
+                ->count();
+
+            if ($usedSessions >= $totalSessions) {
+                return $this->falseResponse(trans('sw.activity_sessions_exceeded'));
+            }
+        }
+
+        \Modules\Software\Models\GymReservation::unguarded(function () use ($member, $activityId, $date, $startTime, $endTime, $notes) {
+            \Modules\Software\Models\GymReservation::create([
+                'client_type'       => 'member',
+                'member_id'         => $member->id,
+                'activity_id'       => $activityId,
+                'reservation_date'  => Carbon::parse($date)->format('Y-m-d'),
+                'start_time'        => $startTime,
+                'end_time'          => $endTime,
+                'status'            => 'confirmed',
+                'notes'             => $notes,
+                'branch_setting_id' => $member->branch_setting_id,
+            ]);
+        });
+
+        $this->message = trans('sw.reserved_success_msg');
+        return $this->successResponse();
+    }
+
+    public function memberReservations()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $reservations = GymReservation::with('activity')
+            ->where('member_id', $member->id)
+            ->where('client_type', 'member')
+            ->orderBy('reservation_date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->limit(50)
+            ->get();
+
+        $today = Carbon::today();
+        $result = [];
+        foreach ($reservations as $r) {
+            $activityName = $r->activity ? $r->activity->name : '-';
+            $dateStr = $r->reservation_date ? $r->reservation_date->format('Y-m-d') : '';
+            $canCancel = $r->status === 'confirmed'
+                && $dateStr
+                && Carbon::parse($dateStr)->gte($today);
+            $result[] = [
+                'id'            => $r->id,
+                'activity_name' => $activityName,
+                'date'          => $dateStr,
+                'start_time'    => substr($r->start_time ?? '', 0, 5),
+                'end_time'      => substr($r->end_time ?? '', 0, 5),
+                'status'        => $r->status ?? 'confirmed',
+                'can_cancel'    => $canCancel,
+                'notes'         => $r->notes ?? '',
+            ];
+        }
+
+        $this->return['result']['reservations'] = $result;
+        return $this->successResponse();
+    }
+
+    public function memberActivityCancel()
+    {
+        $member = Auth::guard('api')->user();
+        if (!$member) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $id = request('reservation_id');
+        $reservation = GymReservation::where('id', $id)
+            ->where('member_id', $member->id)
+            ->where('client_type', 'member')
+            ->first();
+
+        if (!$reservation) {
+            return $this->falseResponse(trans('sw.not_found'));
+        }
+
+        $dateStr = $reservation->reservation_date ? $reservation->reservation_date->format('Y-m-d') : null;
+        if ($reservation->status !== 'confirmed' || !$dateStr || Carbon::parse($dateStr)->lt(Carbon::today())) {
+            return $this->falseResponse(trans('sw.not_authorized'));
+        }
+
+        $reservation->update(['status' => 'cancelled', 'cancelled_at' => Carbon::now()]);
+        $this->message = trans('sw.reservation_cancelled');
+        return $this->successResponse();
+    }
 
     public function memberSubscriptionFreeze(){
         $member_id =  @Auth::guard('api')->user()->id;

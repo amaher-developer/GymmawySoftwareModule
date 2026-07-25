@@ -103,7 +103,33 @@
                         <!--end::Input-->
                     </div>
                     <!--end::Input group-->
-                    
+
+                    {{-- Display Name: single dropdown with ability to add a new name --}}
+                    @php
+                        $currentDisplayName = old('display_name',
+                            $product->getRawOriginal('display_name_ar') ?: $product->getRawOriginal('display_name_en')
+                        );
+                        // If current value is not in the suggestions list, add it so it shows as selected
+                        $dnSuggestions = $displayNameSuggestions;
+                        if ($currentDisplayName && !in_array($currentDisplayName, $dnSuggestions)) {
+                            array_unshift($dnSuggestions, $currentDisplayName);
+                        }
+                    @endphp
+                    <div class="mb-10 fv-row" id="display_name_section">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <label class="form-label mb-0">{{ trans('sw.display_name') }}</label>
+                            <span class="badge badge-light-secondary fs-8">{{ trans('sw.optional') }}</span>
+                        </div>
+                        <select name="display_name" id="display_name" class="form-select">
+                            <option value="">— {{ trans('sw.no_display_name') }} —</option>
+                            @foreach($dnSuggestions as $s)
+                                <option value="{{ $s }}" @selected($currentDisplayName === $s)>{{ $s }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text text-muted mt-2">{{ trans('sw.display_name_hint') }}</div>
+                    </div>
+                    {{-- End display name field --}}
+
                     <!--begin::Input group-->
                     <div class="mb-10 fv-row">
                         <!--begin::Label-->
@@ -219,7 +245,63 @@
             </div>
             <!--end::Product Details-->
 
+            <!--begin::Nutrition Card-->
+            <div class="card card-flush py-4">
+                <div class="card-header">
+                    <div class="card-title">
+                        <h2>{{ trans('sw.nutrition_info') }}</h2>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <!--begin::is_meal checkbox-->
+                    <div class="mb-6 fv-row">
+                        <label class="form-check form-check-custom form-check-solid">
+                            <input type="checkbox" id="is_meal" name="is_meal" value="1"
+                                   class="form-check-input"
+                                   @if(old('is_meal', $product->is_meal ?? 0)) checked @endif />
+                            <span class="form-check-label fw-semibold text-gray-700">{{ trans('sw.is_meal') }}</span>
+                        </label>
+                    </div>
+                    <!--end::is_meal checkbox-->
 
+                    <!--begin::Nutrition fields (shown when is_meal checked)-->
+                    <div id="nutrition_fields" @if(!old('is_meal', $product->is_meal ?? 0)) style="display:none" @endif>
+                        <p class="text-muted fs-7 mb-6">{{ trans('sw.nutrition_info_hint') }} ({{ trans('sw.g_per_100') }})</p>
+                        <div class="row g-5">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">{{ trans('sw.calories') }}</label>
+                                <input type="number" name="calories" step="0.01" min="0"
+                                       class="form-control"
+                                       value="{{ old('calories', $product->calories ?? '') }}"
+                                       placeholder="0.00" />
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">{{ trans('sw.protein') }}</label>
+                                <input type="number" name="protein" step="0.01" min="0"
+                                       class="form-control"
+                                       value="{{ old('protein', $product->protein ?? '') }}"
+                                       placeholder="0.00" />
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">{{ trans('sw.carbs') }}</label>
+                                <input type="number" name="carbs" step="0.01" min="0"
+                                       class="form-control"
+                                       value="{{ old('carbs', $product->carbs ?? '') }}"
+                                       placeholder="0.00" />
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">{{ trans('sw.fats') }}</label>
+                                <input type="number" name="fat" step="0.01" min="0"
+                                       class="form-control"
+                                       value="{{ old('fat', $product->fat ?? '') }}"
+                                       placeholder="0.00" />
+                            </div>
+                        </div>
+                    </div>
+                    <!--end::Nutrition fields-->
+                </div>
+            </div>
+            <!--end::Nutrition Card-->
 
             @if(\Request::route()->getName() == 'sw.createStoreProduct')
                 <!--begin::Purchase Bill Details-->
@@ -469,6 +551,29 @@
                 minimumResultsForSearch: Infinity
             });
         });
+
+        // ── is_meal toggle ────────────────────────────────────────────────────
+        $('#is_meal').on('change', function () {
+            $('#nutrition_fields').toggle(this.checked);
+        });
+        // ── End is_meal toggle ────────────────────────────────────────────────
+
+        // ── Display Name — Select2 with tags (add new inline) ─────────────────
+        $('#display_name').select2({
+            tags: true,
+            allowClear: true,
+            width: '100%',
+            placeholder: '{{ trans("sw.no_display_name") }}',
+            createTag: function(params) {
+                var term = $.trim(params.term);
+                if (!term) return null;
+                return { id: term, text: term, newTag: true };
+            }
+        });
+        @if(!empty($currentDisplayName))
+        $('#display_name').val(@json($currentDisplayName)).trigger('change');
+        @endif
+        // ── End Display Name ───────────────────────────────────────────────────
 
         $("#gym_image").change(function () {
             let input = this;

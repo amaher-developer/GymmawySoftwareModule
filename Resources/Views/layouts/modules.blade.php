@@ -3,6 +3,14 @@
         display: none;
     }
 
+    /* ── Renew modal option-group UI ── */
+    .pos-pill{display:inline-flex;align-items:center;padding:3px 10px;border:1.5px solid #e4e6ef;border-radius:20px;font-size:12px;background:#f5f8fa;cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap;}
+    .pos-pill:hover{border-color:#009ef7;color:#009ef7;}
+    .pos-pill.active{background:#009ef7;color:#fff;border-color:#009ef7;}
+    .pos-prod-thumb{width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+    .pos-product-grid::-webkit-scrollbar,.pos-option-list::-webkit-scrollbar{width:4px;}
+    .pos-product-grid::-webkit-scrollbar-thumb,.pos-option-list::-webkit-scrollbar-thumb{background:#d1d3e0;border-radius:4px;}
+
     /* ── Payment Gateway Cards ── */
     .pgw-section {
         background: linear-gradient(135deg, #f8fbff 0%, #f0f5ff 100%);
@@ -193,7 +201,7 @@
 
 <!-- start model Renew -->
 <div class="modal" id="modelRenew">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content modal-content-demo">
             <div class="modal-header">
                 <h6 class="modal-title">{{trans('sw.renew_membership')}}</h6>
@@ -215,6 +223,25 @@
                     </select>
                     <div id="myDivExpireRenewModal" class="mt-2"></div>
                     <span id="error_expire_date" class="text-danger"></span>
+                </div>
+
+                <!-- Option Groups -->
+                <div id="renew_pos_option_groups_card" class="mb-4" style="display:none">
+                    <label class="form-label fw-bold">{{ trans('sw.option_groups') }}</label>
+                    <div id="renew_pos_option_groups_body" class="border rounded p-3">
+                        <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                    </div>
+                </div>
+                <div id="renew_pos_option_ids_container"></div>
+                <!-- Options Breakdown -->
+                <div id="renew_pos_breakdown" class="mb-4" style="display:none"></div>
+
+                <!-- Member Activities -->
+                <div id="renew_member_activities_card" class="mb-4" style="display:none">
+                    <label class="form-label fw-bold">{{ trans('sw.select_activities_for_member') }}</label>
+                    <div id="renew_member_activities_body" class="border rounded p-3">
+                        <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                    </div>
                 </div>
 
                 <!-- Price Information -->
@@ -466,6 +493,300 @@
     // Expose for other contexts (new member form, edit form)
     window.initPgwCards = initPgwCards;
 })();
+</script>
+
+<script>
+// ── Renew Modal Option Groups ────────────────────────────────────────────────
+window.renewLastPaidTotal = 0;
+(function() {
+    var renewPosOptionsUrl = '{{ route("sw.subscription.options", ":id") }}';
+    var renewPosCalcUrl    = '{{ route("sw.subscription.calculatePrice", ":id") }}';
+    var RENEW_VAT_PCT      = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
+    var renewLang          = '{{ app()->getLocale() }}';
+
+    window.renewPosLoadOptionGroups = function(subId, preSelectedIds) {
+        var $card = $('#renew_pos_option_groups_card');
+        var $body = $('#renew_pos_option_groups_body');
+        if (!subId) { $card.hide(); return; }
+        $card.show();
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $.ajax({
+            url: renewPosOptionsUrl.replace(':id', subId),
+            method: 'GET', data: { channel: 1 },
+            headers: { 'Accept': 'application/json' },
+            success: function(res) {
+                var groups = res.option_groups || [];
+                if (!groups.length) { $card.hide(); return; }
+                renewPosRenderGroups(groups, preSelectedIds || [], subId);
+            },
+            error: function() { $card.hide(); }
+        });
+    };
+
+    var renewMemberActivitiesUrl = '{{ route("sw.subscription.memberActivities", ":id") }}';
+
+    window.renewLoadMemberActivities = function(subId) {
+        var $card = $('#renew_member_activities_card');
+        var $body = $('#renew_member_activities_body');
+        if (!subId) { $card.hide(); $body.empty(); return; }
+        $card.show();
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $.ajax({
+            url: renewMemberActivitiesUrl.replace(':id', subId),
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            success: function(res) {
+                var activities = res.activities || [];
+                if (!activities.length) { $card.hide(); $body.empty(); return; }
+                renewRenderMemberActivities(activities, res.activity_limit);
+            },
+            error: function() { $card.hide(); $body.empty(); }
+        });
+    };
+
+    function renewRenderMemberActivities(activities, activityLimit) {
+        var $body = $('#renew_member_activities_body');
+        var hasLimit = !!activityLimit;
+        $body.empty();
+        var $row = $('<div class="row g-3">');
+        activities.forEach(function(activity, idx) {
+            var checked = !hasLimit || idx < activityLimit;
+            var $col = $('<div class="col-md-6">');
+            var $wrap = $('<div class="form-check form-check-custom form-check-solid p-2">');
+            var $input = $('<input type="checkbox" class="form-check-input renew-member-activity-check">')
+                .attr('name', 'renew_member_activity_' + activity.activity_id)
+                .attr('id', 'renew_member_activity_' + activity.activity_id)
+                .val(activity.activity_id)
+                .prop('checked', checked)
+                .on('change', function() { renewEnforceMemberActivityLimit(activityLimit); });
+            var $label = $('<label class="form-check-label ms-1">')
+                .attr('for', 'renew_member_activity_' + activity.activity_id)
+                .html('<span class="fw-bold">' + activity.name + '</span>'
+                    + (activity.trainer_name ? '<span class="text-muted fs-8 d-block"><i class="bi bi-person-badge me-1"></i>' + activity.trainer_name + '</span>' : '')
+                    + '<span class="text-muted fs-8 d-block"><i class="bi bi-repeat me-1"></i>{{ trans("sw.training_times") }}: ' + (activity.training_times || 0) + '</span>');
+            $wrap.append($input).append($label);
+            $col.append($wrap);
+            $row.append($col);
+        });
+        $body.append($row);
+        renewEnforceMemberActivityLimit(activityLimit);
+    }
+
+    window.renewEnforceMemberActivityLimit = function(activityLimit) {
+        if (!activityLimit) return;
+        var checkedCount = $('.renew-member-activity-check:checked').length;
+        $('.renew-member-activity-check:not(:checked)').prop('disabled', checkedCount >= activityLimit);
+    };
+
+    window.renewCollectSelectedActivities = function() {
+        var ids = [];
+        $('.renew-member-activity-check:checked').each(function() {
+            ids.push(parseInt($(this).val()));
+        });
+        return ids;
+    };
+
+    function renewPosRenderGroups(groups, preSelectedIds, subId) {
+        var $body = $('#renew_pos_option_groups_body');
+        $body.empty();
+        var $row = $('<div class="row g-3">');
+        groups.forEach(function(group) {
+            var isSingle   = group.selection_type === 'single';
+            var isRequired = group.is_required;
+            var optCount   = (group.options || []).length;
+            var isProduct  = group.source_type === 'product';
+            var isPill     = !isProduct && optCount <= 6;
+            var $col = $('<div class="col-md-6">');
+
+            var $hdr = $('<div class="d-flex flex-wrap align-items-center gap-1 mb-1">');
+            $hdr.append($('<span class="fw-semibold fs-7">').text(group['name_' + renewLang] || group.name_ar || ''));
+            if (isRequired) $hdr.append($('<span class="badge badge-light-danger fs-9 px-1">').text('{{ trans("sw.mandatory") }}'));
+            $hdr.append($('<span class="badge badge-light-secondary fs-9 px-1">').text(
+                isSingle ? '{{ trans("sw.single") }}' : '{{ trans("sw.multiple") }}'
+            ));
+            $col.append($hdr);
+
+            if (isPill) {
+                var $pills = $('<div class="d-flex flex-wrap gap-1">');
+                (group.options || []).forEach(function(opt) {
+                    var price = parseFloat(opt.price_modifier || 0);
+                    var name;
+                    if (opt.product) {
+                        name = opt.product['display_name_' + renewLang] || opt.product['name_' + renewLang] || opt.product.name_ar || '';
+                    } else if (opt.activity) {
+                        name = opt.activity['name_' + renewLang] || opt.activity.name_ar || '';
+                    } else {
+                        name = opt['name_' + renewLang] || opt.name_ar || '';
+                    }
+                    var $pill = $('<label class="pos-pill">');
+                    var $inp  = $('<input class="d-none renew-pos-opt-check">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'renew_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) {
+                                $pills.find('.pos-pill').removeClass('active');
+                                $('#renew_pos_option_groups_body .renew-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            }
+                            $(this).closest('.pos-pill').toggleClass('active', $(this).is(':checked'));
+                            renewPosUpdatePrice(subId);
+                        });
+                    var lbl = name + (price !== 0 ? ' (' + (price > 0 ? '+' : '') + Math.round(price) + ')' : '');
+                    $pill.append($inp).append($('<span>').text(lbl));
+                    if ((preSelectedIds || []).indexOf(opt.id) !== -1) { $inp.prop('checked', true); $pill.addClass('active'); }
+                    $pills.append($pill);
+                });
+                $col.append($pills);
+
+            } else if (isProduct) {
+                if (optCount > 6) {
+                    $col.append(
+                        $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث...">').on('input', function() {
+                            var q = $(this).val().toLowerCase();
+                            $(this).next('.pos-product-grid').find('.pos-prod-item').each(function() {
+                                $(this).toggle($(this).data('name').toLowerCase().indexOf(q) !== -1);
+                            });
+                        })
+                    );
+                }
+                var $grid = $('<div class="row g-1 pos-product-grid" style="max-height:200px;overflow-y:auto;padding:2px;">');
+                (group.options || []).forEach(function(opt) {
+                    var price  = parseFloat(opt.price_modifier || 0);
+                    var name   = '', imgSrc = null;
+                    if (opt.product) {
+                        name   = opt.product['display_name_' + renewLang] || opt.product['name_' + renewLang] || opt.product.name_ar || '';
+                        imgSrc = opt.product.image || null;
+                    } else if (opt.activity) {
+                        name   = opt.activity['name_' + renewLang] || opt.activity.name_ar || '';
+                        imgSrc = opt.activity.image || null;
+                    } else {
+                        name = opt['name_' + renewLang] || opt.name_ar || '';
+                    }
+                    var $cell  = $('<div class="col-6 pos-prod-item">').data('name', name);
+                    var $label = $('<label class="d-flex align-items-center gap-1 p-1 rounded border-hover-primary cursor-pointer" style="min-height:44px;">');
+                    var $inp   = $('<input class="form-check-input renew-pos-opt-check flex-shrink-0 mt-0">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'renew_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) $('#renew_pos_option_groups_body .renew-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            renewPosUpdatePrice(subId);
+                        });
+                    if ((preSelectedIds || []).indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                    $label.append($inp);
+                    if (imgSrc) $label.append($('<img>').attr('src', imgSrc).addClass('pos-prod-thumb'));
+                    var $info = $('<div class="overflow-hidden lh-sm">');
+                    $info.append($('<div class="fs-9 text-truncate" style="max-width:80px;" title="' + name + '">').text(name));
+                    if (price !== 0) $info.append($('<span class="badge badge-light-primary px-1" style="font-size:10px;">').text((price > 0 ? '+' : '') + Math.round(price)));
+                    $label.append($info);
+                    $cell.append($label);
+                    $grid.append($cell);
+                });
+                $col.append($grid);
+
+            } else {
+                $col.append(
+                    $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث / Search...">').on('input', function() {
+                        var q = $(this).val().toLowerCase();
+                        $(this).siblings('.pos-option-list').find('.pos-option-item').each(function() {
+                            $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
+                        });
+                    })
+                );
+                var $list = $('<div class="d-flex flex-column gap-1 pos-option-list" style="max-height:180px;overflow-y:auto;">');
+                (group.options || []).forEach(function(opt) {
+                    var price = parseFloat(opt.price_modifier || 0);
+                    var name  = opt['name_' + renewLang] || opt.name_ar || '';
+                    if (opt.product) name = opt.product['display_name_' + renewLang] || opt.product['name_' + renewLang] || opt.product.name_ar || '';
+                    else if (opt.activity) name = opt.activity['name_' + renewLang] || opt.activity.name_ar || '';
+                    var $label = $('<label class="d-flex align-items-center gap-2 cursor-pointer p-1 rounded border-hover-primary">');
+                    var $inp   = $('<input class="form-check-input renew-pos-opt-check mt-0">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'renew_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) $('#renew_pos_option_groups_body .renew-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            renewPosUpdatePrice(subId);
+                        });
+                    if ((preSelectedIds || []).indexOf(opt.id) !== -1) $inp.prop('checked', true);
+                    $label.append($inp).append($('<span class="flex-grow-1 fs-8">').text(name));
+                    if (price !== 0) $label.append($('<span class="badge badge-light-primary fs-9">').text((price > 0 ? '+' : '') + Math.round(price)));
+                    $list.append($('<div class="pos-option-item">').append($label));
+                });
+                $col.append($list);
+            }
+
+            $row.append($col);
+        });
+        $body.append($row);
+        if ((preSelectedIds || []).length) renewPosUpdatePrice(subId);
+    }
+
+    function renewPosUpdatePrice(subId) {
+        var optionIds = [];
+        $('#renew_pos_option_groups_body .renew-pos-opt-check:checked').each(function() {
+            optionIds.push(parseInt($(this).val()));
+        });
+        var $cont = $('#renew_pos_option_ids_container');
+        $cont.empty();
+        optionIds.forEach(function(id) { $cont.append($('<input type="hidden" name="option_ids[]">').val(id)); });
+        $.ajax({
+            url: renewPosCalcUrl.replace(':id', subId),
+            method: 'POST', data: { option_ids: optionIds },
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+            dataType: 'json',
+            success: function(res) {
+                window.renewPosOptionsTotal = parseFloat(res.options_total || 0);
+                var baseP = parseFloat(res.base_price || 0);
+                renewPosRenderBreakdown(res, baseP, window.renewPosOptionsTotal);
+                // Refresh amount paid with new total (accounting for any existing discount)
+                var discount = parseFloat($('#renew_discount_value').val() || 0);
+                var subtotal = baseP + window.renewPosOptionsTotal;
+                var vat = RENEW_VAT_PCT > 0 ? (subtotal - discount) * RENEW_VAT_PCT / 100 : 0;
+                var total = parseFloat((subtotal + (RENEW_VAT_PCT > 0 ? subtotal * RENEW_VAT_PCT / 100 : 0)).toFixed(2));
+                var paidTotal = parseFloat((subtotal - discount + vat).toFixed(2));
+                window.renewLastPaidTotal = paidTotal;
+                $('#renew_amount_paid').val(paidTotal.toFixed(2)).attr('max', paidTotal.toFixed(2));
+                $('#renew_amount_remaining').val((0).toFixed(2));
+                $('#myTotalModel').text((typeof trans_price !== 'undefined' ? trans_price : 'Price') + ' = ' + (baseP + window.renewPosOptionsTotal).toFixed(2));
+                $('#myTotalWithVatModal').text((typeof trans_price !== 'undefined' ? trans_price : 'Price') + ' = ' + total.toFixed(2));
+            },
+            error: function() { window.renewPosOptionsTotal = 0; }
+        });
+    }
+
+    function renewPosRenderBreakdown(res, baseP, optsP) {
+        var $wrap = $('#renew_pos_breakdown');
+        var opts = res.selected_options || [];
+        if (!opts.length) { $wrap.hide(); return; }
+        var html = '<div class="p-3 rounded" style="background:#f0fdf4;border:1px dashed #16a34a">'
+            + '<div class="fw-bold text-success mb-2 fs-7"><i class="bi bi-receipt me-1"></i>' + (typeof trans_price !== 'undefined' ? '{{ trans("sw.price_breakdown") }}' : 'Price Breakdown') + '</div>'
+            + '<div class="d-flex justify-content-between text-muted fs-7 mb-1"><span>{{ trans("sw.base_price") }}</span><span>' + baseP.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        opts.forEach(function(o) {
+            var mod = parseFloat(o.price_modifier || 0);
+            var name = o['name_' + renewLang] || o.name_ar || o.name_en || '';
+            if (!name) return;
+            var modLabel = mod === 0 ? '{{ trans("sw.app_currency") == "ر.س" ? "مجاناً" : "Free" }}' : (mod > 0 ? '+' : '') + mod.toFixed(2) + ' {{ trans("sw.app_currency") }}';
+            html += '<div class="d-flex justify-content-between text-success fs-7 mb-1"><span><i class="bi bi-check2 me-1"></i>' + $('<span>').text(name).html() + '</span><span>' + modLabel + '</span></div>';
+        });
+        var subtotal = baseP + optsP;
+        html += '<div class="d-flex justify-content-between fw-bold border-top border-success mt-2 pt-2"><span>{{ trans("sw.total") }}</span><span>' + subtotal.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        if (RENEW_VAT_PCT > 0) {
+            var vatAmt = parseFloat((subtotal * RENEW_VAT_PCT / 100).toFixed(2));
+            html += '<div class="d-flex justify-content-between text-muted fs-7 mt-1"><span>{{ trans("sw.vat") }} (' + RENEW_VAT_PCT + '%)</span><span>+' + vatAmt.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+            html += '<div class="d-flex justify-content-between fw-bold text-primary mt-1"><span>{{ trans("sw.total_after_vat") }}</span><span>' + (subtotal + vatAmt).toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        }
+        html += '</div>';
+        $wrap.html(html).show();
+    }
+})();
+// ── End Renew Modal Option Groups ────────────────────────────────────────────
 </script>
 
 <!-- Modal QR Scanner with effects -->

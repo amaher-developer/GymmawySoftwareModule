@@ -35,6 +35,13 @@
           type="text/css"/>
 
         <style>
+            /* ── Option-group compact UI ── */
+            .pos-pill{display:inline-flex;align-items:center;padding:3px 10px;border:1.5px solid #e4e6ef;border-radius:20px;font-size:12px;background:#f5f8fa;cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap;}
+            .pos-pill:hover{border-color:#009ef7;color:#009ef7;}
+            .pos-pill.active{background:#009ef7;color:#fff;border-color:#009ef7;}
+            .pos-prod-thumb{width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+            .pos-product-grid::-webkit-scrollbar,.pos-option-list::-webkit-scrollbar{width:4px;}
+            .pos-product-grid::-webkit-scrollbar-thumb,.pos-option-list::-webkit-scrollbar-thumb{background:#d1d3e0;border-radius:4px;}
             #myTotalAfterDiscount {
                 display: none;
             }
@@ -144,6 +151,44 @@
                         </div>
                     </div>
                     <!--end::Identification Code-->
+
+                    <!--begin::Device Binding-->
+                    @if(@$mainSettings->enable_device_binding)
+                    <div class="row mb-5">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.device_binding')}}</label>
+                        <div class="col-md-9">
+                            @if(@$member->device_id)
+                                <span class="badge bg-light-success text-success me-3">{{ trans('sw.device_linked')}}</span>
+                                @if(in_array('resetMemberDevice', (array)$swUser->permissions) || $swUser->is_super_user)
+                                    <a href="{{route('sw.resetMemberDevice', $member->id)}}" class="btn btn-sm btn-light-danger"
+                                       onclick="return confirm('{{ trans('sw.reset_device_confirm')}}')">
+                                        {{ trans('sw.reset_device')}}
+                                    </a>
+                                @endif
+                            @else
+                                <span class="badge bg-light-secondary text-muted">{{ trans('sw.device_not_linked')}}</span>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Device Binding-->
+
+                    <!--begin::Account Status-->
+                    @if(@$member->is_blocked)
+                    <div class="row mb-5">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.account_status')}}</label>
+                        <div class="col-md-9">
+                            <span class="badge bg-light-danger text-danger me-3">{{ trans('sw.account_blocked')}}</span>
+                            @if(in_array('unblockMember', (array)$swUser->permissions) || $swUser->is_super_user)
+                                <a href="{{route('sw.unblockMember', $member->id)}}" class="btn btn-sm btn-light-success"
+                                   onclick="return confirm('{{ trans('sw.unblock_member_confirm')}}')">
+                                    {{ trans('sw.unblock_member')}}
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Account Status-->
 
                     <!--begin::Fingerprint-->
                     @if(@env('APP_ZK_GATE') == true)
@@ -537,6 +582,32 @@
                     </div>
                     <!--end::Select Membership-->
 
+                    <!--begin::Option Groups-->
+                    <div id="edit_pos_option_groups_card" class="row mb-4" style="display:none">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">{{ trans('sw.option_groups') }}</label>
+                            <div id="edit_pos_option_groups_body" class="border rounded p-3">
+                                <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="edit_pos_option_ids_container"></div>
+                    <div id="edit_pos_breakdown" class="row mb-4" style="display:none">
+                        <div class="col-md-12" id="edit_pos_breakdown_inner"></div>
+                    </div>
+                    <!--end::Option Groups-->
+
+                    <!--begin::Member Activities-->
+                    <div id="edit_member_activities_card" class="row mb-4" style="display:none">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">{{ trans('sw.select_activities_for_member') }}</label>
+                            <div id="edit_member_activities_body" class="border rounded p-3">
+                                <div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--end::Member Activities-->
+
                     <!--begin::Date Range-->
                     <div class="row mb-3">
                         <div class="col-md-12">
@@ -655,17 +726,17 @@
                     <div class="row mb-5" @if((in_array('editMemberDiscount', (array)$swUser->permissions)) || $swUser->is_super_user) style="display: flex" @else style="display: none" @endif>
                         <label class="col-md-3 col-form-label">{{ trans('sw.discount_value')}}</label>
                         <div class="col-md-3">
-                            <input class="form-control" autocomplete="off" 
+                            <input class="form-control" autocomplete="off"
                                    placeholder="{{ trans('sw.discount_value')}}"
                                    name="discount_value"
                                    id="discount_value"
-                                   value=""
+                                   value="0"
                                    min="0"
                                    max=""
                                    type="number" step="0.01">
                         </div>
                         
-                        @if((count($discounts) > 0) && ((in_array('editMemberDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
+                        @if((count($discounts ?? []) > 0) && ((in_array('editMemberDiscountGroup', (array)$swUser->permissions)) || $swUser->is_super_user))
                         <label class="col-md-3 col-form-label">{{ trans('sw.discount')}}</label>
                         <div class="col-md-3">
                             <select id="group_discount_id" name="group_discount_id" class="form-control select2">
@@ -675,6 +746,8 @@
                                 @endforeach
                             </select>
                         </div>
+                        @else
+                        <input type="hidden" id="group_discount_id" name="group_discount_id" value="0">
                         @endif
                     </div>
                     <!--end::Discount Section-->
@@ -917,7 +990,7 @@
                         //     period = 0;
 
                         var start_attr = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
-                        d.setDate(d.getDate() + parseInt(period));
+                        d.setDate(d.getDate() + (parseInt(period) > 0 ? parseInt(period) - 1 : 0));
                         var expire_attr = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
                         var membership_selected = '';
                             if(data.membership[i]['id'] == data.member_membership['subscription_id']){
@@ -926,9 +999,19 @@
                             output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.membership[i]['invitations'] ?? 0) + '" discount_type="' + (data.membership[i]['default_discount_type'] || 0) + '" discount_value="' + (data.membership[i]['default_discount_value'] || 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
                         }
                     }
+                    editPopupInitializing = true;
                     $('#EditMembershipSelect').html(output).trigger('change.select2');
+                    editPopupInitializing = false;
 
                     setMembershipDate(data.member_membership);
+                    var currentSubId = data.member_membership ? data.member_membership['subscription_id'] : null;
+                    var savedIds = (data.selected_option_ids || []);
+                    editPosOptionsTotal = 0;
+                    editPosLoadOptionGroups(currentSubId, savedIds);
+
+                    var savedActivityIds = ((data.member_membership && data.member_membership['activities']) || [])
+                        .map(function(item) { return parseInt(item.activity_id); });
+                    editLoadMemberActivities(currentSubId, savedActivityIds);
                 },
                 error: (reject) => {
                     var response = $.parseJSON(reject.responseText);
@@ -1056,6 +1139,12 @@
     var selectedMembershipPrice = 0;
     var selectedMembershipStartDate = '';
     var selectedMembershipExpireDate = '';
+    var editPosOptionsTotal = 0;
+    var editPosOptionsUrl   = '{{ route("sw.subscription.options", ":id") }}';
+    var editMemberActivitiesUrl = '{{ route("sw.subscription.memberActivities", ":id") }}';
+    var editPosCalcUrl      = '{{ route("sw.subscription.calculatePrice", ":id") }}';
+    var EDIT_VAT_PCT        = {{ (float)(@$mainSettings->vat_details['vat_percentage'] ?? 0) }};
+    var _editPosCalcXhr     = null;
     var selectedMembershipWorkouts = 0;
     var selectedMembershipFreezeLimit = 0;
     var selectedMembershipNumberTimesFreeze = 0;
@@ -1111,10 +1200,20 @@
     }
 
     function submitMembershipData(){
-        var id = $('#edit_membership_id').val()
+        var id = $('#edit_membership_id').val();
+        var editOptIds = [];
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            editOptIds.push(parseInt($(this).val()));
+        });
+        var editActivityIds = [];
+        $('.edit-member-activity-check:checked').each(function() {
+            editActivityIds.push(parseInt($(this).val()));
+        });
         var data = {
          'member_subscription_id': id,
          'subscription_id': $('#EditMembershipSelect').val(),
+         'option_ids': editOptIds,
+         'member_activity_ids': editActivityIds,
          'joining_date': $('#start_date_membership').val(),
          'expire_date': $('#expire_date_membership').val(),
          'workouts': $('#EditMembershipWorkouts').val(),
@@ -1178,6 +1277,344 @@
     }
 
 
+    // ── Edit Modal Option Groups ──────────────────────────────────────────────
+    var editPopupInitializing = false;
+    $('#EditMembershipSelect').on('change', function() {
+        if (editPopupInitializing) return;
+        editPosOptionsTotal = 0;
+        $('#edit_pos_option_ids_container').empty();
+        $('#edit_pos_breakdown').hide();
+        editPosLoadOptionGroups($(this).val(), []);
+        editLoadMemberActivities($(this).val(), []);
+    });
+
+    function editLoadMemberActivities(subId, preSelectedActivityIds) {
+        var $card = $('#edit_member_activities_card');
+        var $body = $('#edit_member_activities_body');
+        preSelectedActivityIds = preSelectedActivityIds || [];
+
+        if (!subId) { $card.hide(); $body.empty(); return; }
+
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $card.show();
+
+        $.ajax({
+            url: editMemberActivitiesUrl.replace(':id', subId),
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            success: function(res) {
+                var activities = res.activities || [];
+                if (!activities.length) { $card.hide(); $body.empty(); return; }
+                $card.show();
+                editRenderMemberActivities(activities, res.activity_limit, preSelectedActivityIds);
+            },
+            error: function() { $card.hide(); $body.empty(); }
+        });
+    }
+
+    function editRenderMemberActivities(activities, activityLimit, preSelectedActivityIds) {
+        var $body = $('#edit_member_activities_body');
+        var hasLimit = !!activityLimit;
+        var hasPreSelection = preSelectedActivityIds.length > 0;
+        $body.empty();
+        var $row = $('<div class="row g-3">');
+        activities.forEach(function(activity, idx) {
+            var checked = hasPreSelection
+                ? preSelectedActivityIds.indexOf(activity.activity_id) !== -1
+                : (!hasLimit || idx < activityLimit);
+            var $col = $('<div class="col-md-6">');
+            var $wrap = $('<div class="form-check form-check-custom form-check-solid p-2">');
+            var $input = $('<input type="checkbox" class="form-check-input edit-member-activity-check">')
+                .attr('name', 'edit_member_activity_' + activity.activity_id)
+                .attr('id', 'edit_member_activity_' + activity.activity_id)
+                .val(activity.activity_id)
+                .prop('checked', checked)
+                .on('change', function() { editEnforceMemberActivityLimit(activityLimit); });
+            var $label = $('<label class="form-check-label ms-1">')
+                .attr('for', 'edit_member_activity_' + activity.activity_id)
+                .html('<span class="fw-bold">' + activity.name + '</span>'
+                    + (activity.trainer_name ? '<span class="text-muted fs-8 d-block"><i class="bi bi-person-badge me-1"></i>' + activity.trainer_name + '</span>' : '')
+                    + '<span class="text-muted fs-8 d-block"><i class="bi bi-repeat me-1"></i>{{ trans("sw.training_times") }}: ' + (activity.training_times || 0) + '</span>');
+            $wrap.append($input).append($label);
+            $col.append($wrap);
+            $row.append($col);
+        });
+        $body.append($row);
+        editEnforceMemberActivityLimit(activityLimit);
+    }
+
+    function editEnforceMemberActivityLimit(activityLimit) {
+        if (!activityLimit) return;
+        var checkedCount = $('.edit-member-activity-check:checked').length;
+        $('.edit-member-activity-check:not(:checked)').prop('disabled', checkedCount >= activityLimit);
+    }
+
+    function editPosLoadOptionGroups(subId, preSelectedIds) {
+        var $card = $('#edit_pos_option_groups_card');
+        var $body = $('#edit_pos_option_groups_body');
+        if (!subId) { $card.hide(); return; }
+        $card.show();
+        $body.html('<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>');
+        $.ajax({
+            url: editPosOptionsUrl.replace(':id', subId),
+            method: 'GET',
+            data: { channel: 1 },
+            headers: { 'Accept': 'application/json' },
+            success: function(res) {
+                var groups = res.option_groups || [];
+                if (!groups.length) { $card.hide(); return; }
+                editPosRenderGroups(groups, preSelectedIds, subId);
+            },
+            error: function() { $card.hide(); }
+        });
+    }
+
+    // String-normalize before comparing — option IDs can come back as either
+    // numbers or numeric strings depending on the DB driver, and a strict
+    // indexOf() would silently fail to match "324" against 324.
+    function swIdMatch(list, id) {
+        return (list || []).map(String).indexOf(String(id)) !== -1;
+    }
+
+    function editPosRenderGroups(groups, preSelectedIds, subId) {
+        var $body = $('#edit_pos_option_groups_body');
+        $body.empty();
+        var lang = '{{ $lang }}';
+        var $row = $('<div class="row g-3">');
+
+        groups.forEach(function(group) {
+            var isSingle  = group.selection_type === 'single';
+            var isRequired= group.is_required;
+            var optCount  = (group.options || []).length;
+            var isProduct = group.source_type === 'product';
+            var isPill    = !isProduct && optCount <= 6;
+
+            var $col = $('<div class="col-md-6">');
+
+            // ── Header ──────────────────────────────────────────────────────
+            var $hdr = $('<div class="d-flex flex-wrap align-items-center gap-1 mb-1">');
+            $hdr.append($('<span class="fw-semibold fs-7">').text(group['name_' + lang] || group.name_ar || ''));
+            if (isRequired) $hdr.append($('<span class="badge badge-light-danger fs-9 px-1">').text('{{ trans("sw.mandatory") }}'));
+            $hdr.append($('<span class="badge badge-light-secondary fs-9 px-1">').text(
+                isSingle ? '{{ trans("sw.single") }}' : '{{ trans("sw.multiple") }}'
+            ));
+            $col.append($hdr);
+
+            if (isPill) {
+                // ── Pill / chip row ──────────────────────────────────────────
+                var $pills = $('<div class="d-flex flex-wrap gap-1">');
+                (group.options || []).forEach(function(opt) {
+                    var price = parseFloat(opt.price_modifier || 0);
+                    var name;
+                    if (opt.product) {
+                        name = opt.product['display_name_' + lang] || opt.product['name_' + lang] || opt.product.name_ar || '';
+                    } else if (opt.activity) {
+                        name = opt.activity['name_' + lang] || opt.activity.name_ar || '';
+                    } else {
+                        name = opt['name_' + lang] || opt.name_ar || '';
+                    }
+                    var $pill = $('<label class="pos-pill">');
+                    var $inp  = $('<input class="d-none edit-pos-opt-check">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'edit_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) {
+                                $pills.find('.pos-pill').removeClass('active');
+                                $('#edit_pos_option_groups_body .edit-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            }
+                            $(this).closest('.pos-pill').toggleClass('active', $(this).is(':checked'));
+                            editPosUpdatePrice(subId);
+                        });
+                    var lbl = name + (price !== 0 ? ' (' + (price > 0 ? '+' : '') + Math.round(price) + ')' : '');
+                    $pill.append($inp).append($('<span>').text(lbl));
+                    if (swIdMatch(preSelectedIds, opt.id)) { $inp.prop('checked', true); $pill.addClass('active'); }
+                    $pills.append($pill);
+                });
+                $col.append($pills);
+
+            } else if (isProduct) {
+                // ── Image thumbnail grid ──────────────────────────────────────
+                if (optCount > 6) {
+                    $col.append(
+                        $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث...">').on('input', function() {
+                            var q = $(this).val().toLowerCase();
+                            $(this).next('.pos-product-grid').find('.pos-prod-item').each(function() {
+                                $(this).toggle($(this).data('name').toLowerCase().indexOf(q) !== -1);
+                            });
+                        })
+                    );
+                }
+                var $grid = $('<div class="row g-1 pos-product-grid" style="max-height:200px;overflow-y:auto;padding:2px;">');
+                (group.options || []).forEach(function(opt) {
+                    var price  = parseFloat(opt.price_modifier || 0);
+                    var name   = '', imgSrc = null;
+                    if (opt.product) {
+                        name   = opt.product['display_name_' + lang] || opt.product['name_' + lang] || opt.product.name_ar || '';
+                        imgSrc = opt.product.image || null;
+                    } else if (opt.activity) {
+                        name   = opt.activity['name_' + lang] || opt.activity.name_ar || '';
+                        imgSrc = opt.activity.image || null;
+                    } else {
+                        name = opt['name_' + lang] || opt.name_ar || '';
+                    }
+                    var $cell  = $('<div class="col-6 pos-prod-item">').data('name', name);
+                    var $label = $('<label class="d-flex align-items-center gap-1 p-1 rounded border-hover-primary cursor-pointer" style="min-height:44px;">');
+                    var $inp   = $('<input class="form-check-input edit-pos-opt-check flex-shrink-0 mt-0">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'edit_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) $('#edit_pos_option_groups_body .edit-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            editPosUpdatePrice(subId);
+                        });
+                    if (swIdMatch(preSelectedIds, opt.id)) $inp.prop('checked', true);
+                    $label.append($inp);
+                    if (imgSrc) $label.append($('<img>').attr('src', imgSrc).addClass('pos-prod-thumb'));
+                    var $info = $('<div class="overflow-hidden lh-sm">');
+                    $info.append($('<div class="fs-9 text-truncate" style="max-width:80px;" title="' + name + '">').text(name));
+                    if (price !== 0) $info.append($('<span class="badge badge-light-primary px-1" style="font-size:10px;">').text((price > 0 ? '+' : '') + Math.round(price)));
+                    $label.append($info);
+                    $cell.append($label);
+                    $grid.append($cell);
+                });
+                $col.append($grid);
+
+            } else {
+                // ── Large scrollable list + search ──────────────────────────
+                $col.append(
+                    $('<input type="text" class="form-control form-control-sm mb-1" placeholder="بحث / Search...">').on('input', function() {
+                        var q = $(this).val().toLowerCase();
+                        $(this).siblings('.pos-option-list').find('.pos-option-item').each(function() {
+                            $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
+                        });
+                    })
+                );
+                var $list = $('<div class="d-flex flex-column gap-1 pos-option-list" style="max-height:180px;overflow-y:auto;">');
+                (group.options || []).forEach(function(opt) {
+                    var price = parseFloat(opt.price_modifier || 0);
+                    var name  = opt['name_' + lang] || opt.name_ar || '';
+                    if (opt.product) name = opt.product['display_name_' + lang] || opt.product['name_' + lang] || opt.product.name_ar || '';
+                    else if (opt.activity) name = opt.activity['name_' + lang] || opt.activity.name_ar || '';
+                    var $label = $('<label class="d-flex align-items-center gap-2 cursor-pointer p-1 rounded border-hover-primary">');
+                    var $inp   = $('<input class="form-check-input edit-pos-opt-check mt-0">')
+                        .attr('type', isSingle ? 'radio' : 'checkbox')
+                        .attr('name', 'edit_grp_' + group.id)
+                        .attr('data-group-id', group.id)
+                        .attr('data-price', price)
+                        .val(opt.id)
+                        .on('change', function() {
+                            if (isSingle) $('#edit_pos_option_groups_body .edit-pos-opt-check[data-group-id="' + group.id + '"]').not(this).prop('checked', false);
+                            editPosUpdatePrice(subId);
+                        });
+                    if (swIdMatch(preSelectedIds, opt.id)) $inp.prop('checked', true);
+                    $label.append($inp).append($('<span class="flex-grow-1 fs-8">').text(name));
+                    if (price !== 0) $label.append($('<span class="badge badge-light-primary fs-9">').text((price > 0 ? '+' : '') + Math.round(price)));
+                    $list.append($('<div class="pos-option-item">').append($label));
+                });
+                $col.append($list);
+            }
+
+            $row.append($col);
+        });
+
+        $body.append($row);
+        if (preSelectedIds.length) editPosUpdatePrice(subId);
+    }
+
+    function editPosUpdatePrice(subId) {
+        var optionIds = [];
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            optionIds.push(parseInt($(this).val()));
+        });
+        var $cont = $('#edit_pos_option_ids_container');
+        $cont.empty();
+        optionIds.forEach(function(id) { $cont.append($('<input type="hidden" name="option_ids[]">').val(id)); });
+        if (_editPosCalcXhr) { _editPosCalcXhr.abort(); _editPosCalcXhr = null; }
+        _editPosCalcXhr = $.ajax({
+            url: editPosCalcUrl.replace(':id', subId),
+            method: 'POST',
+            data: { option_ids: optionIds },
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept': 'application/json' },
+            dataType: 'json',
+            success: function(res) {
+                _editPosCalcXhr = null;
+                editPosOptionsTotal = parseFloat(res.options_total) || 0;
+                var baseP = (res.base_price != null) ? parseFloat(res.base_price) : 0;
+                editPosRenderBreakdown(res, baseP, editPosOptionsTotal);
+                editPosApplyOverrides(res.overrides || {});
+                // If no options selected, reset price display to base
+                if (!(res.selected_options || []).length) {
+                    var discount = parseFloat($('#discount_value').val() || 0);
+                    var vatAmt = EDIT_VAT_PCT > 0 ? parseFloat(((baseP - discount) * EDIT_VAT_PCT / 100).toFixed(2)) : 0;
+                    var total = parseFloat((baseP - discount + vatAmt).toFixed(2));
+                    var prevPaid = parseFloat($('#prev_amount_paid_input').val() || 0);
+                    $('#myTotal').text('{{ trans("sw.price") }} = ' + baseP.toFixed(2));
+                    $('#myTotalWithVat').text('{{ trans("sw.price") }} = ' + total.toFixed(2));
+                    $('#create_amount_paid').attr('max', total.toFixed(2)).val(total.toFixed(2));
+                    $('#create_amount_remaining').val((0).toFixed(2));
+                    $('#diff_amount_paid').html(parseFloat(total - prevPaid).toFixed(2));
+                    $('#discount_value').attr('max', total.toFixed(2));
+                }
+            },
+            error: function(xhr) { if (xhr.statusText !== 'abort') { _editPosCalcXhr = null; editPosOptionsTotal = 0; } }
+        });
+    }
+
+    // When a selected option carries a field_overrides value (e.g. a "14 days" text option
+    // set to override `workouts`), auto-suggest it into the matching manual input. Staff can
+    // still retype a different value afterward — this only pre-fills, it never disables the field.
+    function editPosApplyOverrides(overrides) {
+        if (overrides.workouts !== undefined)            $('#EditMembershipWorkouts').val(overrides.workouts);
+        if (overrides.freeze_limit !== undefined)        $('#EditMembershipFreezeLimit').val(overrides.freeze_limit);
+        if (overrides.number_times_freeze !== undefined) $('#EditMembershipNumberTimesFreeze').val(overrides.number_times_freeze);
+    }
+
+    function editPosRenderBreakdown(res, baseP, optsP) {
+        var $wrap = $('#edit_pos_breakdown');
+        var $inner = $('#edit_pos_breakdown_inner');
+        var opts = res.selected_options || [];
+        if (!opts.length) { $wrap.hide(); return; }
+
+        // Recalculate totals and update price display + amount fields
+        var subtotal  = baseP + optsP;
+        var discount  = parseFloat($('#discount_value').val() || 0);
+        var vatAmt    = EDIT_VAT_PCT > 0 ? parseFloat(((subtotal - discount) * EDIT_VAT_PCT / 100).toFixed(2)) : 0;
+        var newTotal  = parseFloat((subtotal - discount + vatAmt).toFixed(2));
+        var prevPaid  = parseFloat($('#prev_amount_paid_input').val() || 0);
+        $('#myTotal').text('{{ trans("sw.price") }} = ' + subtotal.toFixed(2));
+        $('#myTotalWithVat').text('{{ trans("sw.price") }} = ' + newTotal.toFixed(2));
+        $('#create_amount_paid').attr('max', newTotal.toFixed(2)).val(newTotal.toFixed(2));
+        $('#create_amount_remaining').val((0).toFixed(2));
+        $('#diff_amount_paid').html(parseFloat(newTotal - prevPaid).toFixed(2));
+        $('#discount_value').attr('max', newTotal.toFixed(2));
+        var html = '<div class="p-3 rounded" style="background:#f0fdf4;border:1px dashed #16a34a">'
+            + '<div class="fw-bold text-success mb-2 fs-7"><i class="bi bi-receipt me-1"></i>{{ trans("sw.price_breakdown") }}</div>'
+            + '<div class="d-flex justify-content-between text-muted fs-7 mb-1"><span>{{ trans("sw.base_price") }}</span><span>' + baseP.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        opts.forEach(function(o) {
+            var mod = parseFloat(o.price_modifier || 0);
+            var name = o['name_{{ $lang }}'] || o.name_ar || o.name_en || '';
+            if (!name) return;
+            var modLabel = mod === 0 ? '{{ trans("sw.app_currency") == "ر.س" ? "مجاناً" : "Free" }}' : (mod > 0 ? '+' : '') + mod.toFixed(2) + ' {{ trans("sw.app_currency") }}';
+            html += '<div class="d-flex justify-content-between text-success fs-7 mb-1"><span><i class="bi bi-check2 me-1"></i>' + $('<span>').text(name).html() + '</span><span>' + modLabel + '</span></div>';
+        });
+        var subtotal = baseP + optsP;
+        html += '<div class="d-flex justify-content-between fw-bold border-top border-success mt-2 pt-2"><span>{{ trans("sw.total") }}</span><span>' + subtotal.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        if (EDIT_VAT_PCT > 0) {
+            var vatAmt = parseFloat((subtotal * EDIT_VAT_PCT / 100).toFixed(2));
+            html += '<div class="d-flex justify-content-between text-muted fs-7 mt-1"><span>{{ trans("sw.vat") }} (' + EDIT_VAT_PCT + '%)</span><span>+' + vatAmt.toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+            html += '<div class="d-flex justify-content-between fw-bold text-primary mt-1"><span>{{ trans("sw.total_after_vat") }}</span><span>' + (subtotal + vatAmt).toFixed(2) + ' {{ trans("sw.app_currency") }}</span></div>';
+        }
+        html += '</div>';
+        $inner.html(html);
+        $wrap.show();
+    }
+    // ── End Edit Modal Option Groups ──────────────────────────────────────────
+
     function editBarCodeInput(){
         $('#subscribedClientInputCode').prop('disabled', false); // If checked enable item
         $('#editBarcodeBtn').hide();
@@ -1225,6 +1662,11 @@
         $.each($("#EditMembershipSelect option:selected"), function () {
             selectedMembershipPrice = selectedMembershipPrice + (parseFloat($(this).attr('price')).toFixed(2));
         });
+        var editOptsFromDom = 0;
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            editOptsFromDom += parseFloat($(this).attr('data-price') || 0);
+        });
+        var effectivePrice = parseFloat(selectedMembershipPrice) + editOptsFromDom;
         let vat = 0;
         let selectedMembershipPriceWithVat = 0;
         let valueAmountPaid = $('#create_amount_paid').val();
@@ -1232,10 +1674,11 @@
         let valueDiscount = 0;
         valueDiscount = $('#discount_value').val();
         @if(@$mainSettings->vat_details['vat_percentage'])
-            vat = (parseFloat(selectedMembershipPrice)- parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+            vat = (effectivePrice - parseFloat(valueDiscount)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+            vat = parseFloat(vat.toFixed(2));
         @endif
 
-        selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice) - parseFloat(valueDiscount) + vat;
+        selectedMembershipPriceWithVat = effectivePrice - parseFloat(valueDiscount) + vat;
         selectedMembershipPriceWithVat = Number(selectedMembershipPriceWithVat).toFixed(2);
 
         $('#create_amount_remaining').val(Number(selectedMembershipPriceWithVat - valueAmountPaid ).toFixed(2));
@@ -1256,6 +1699,7 @@
         let vat = 0;
         @if(@$mainSettings->vat_details['vat_percentage'])
             vat = selectedMembershipPrice * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+            vat = parseFloat(vat.toFixed(2));
         @endif
             selectedMembershipPriceWithVat = parseFloat(selectedMembershipPrice + vat).toFixed(2);
 
@@ -1283,7 +1727,7 @@
     function setCustomExpireDate(joining_date, period){
         let valid_days = parseInt(period);
         let end_date = new Date(joining_date); // pass start date here
-        end_date.setDate(end_date.getDate() + valid_days);
+        end_date.setDate(end_date.getDate() + (valid_days > 0 ? valid_days - 1 : 0));
         $('#expire_date_membership').val(  end_date.getFullYear() + '-' + ((end_date.getMonth() + 1) < 10 ? '0' + (end_date.getMonth() + 1) : (end_date.getMonth() + 1)) + '-' + end_date.getDate() );
     }
 
@@ -1291,8 +1735,12 @@
         discount_value();
     });
     function discount_value(discount_amount = null) {
-        // $('#discount_value').change(function () {
-        let price = (parseFloat($('#EditMembershipSelect option:selected').attr('price')));
+        let basePrice = parseFloat($('#EditMembershipSelect option:selected').attr('price'));
+        var _editOptsFromDom = 0;
+        $('#edit_pos_option_groups_body .edit-pos-opt-check:checked').each(function() {
+            _editOptsFromDom += parseFloat($(this).attr('data-price') || 0);
+        });
+        let price = basePrice + _editOptsFromDom;
         let vat = 0;
         let priceWithVat = 0;
 
@@ -1304,6 +1752,7 @@
 
         @if(@$mainSettings->vat_details['vat_percentage'])
             vat = (parseFloat(price)-parseFloat(discount_value)) * ({{@$mainSettings->vat_details['vat_percentage'] / 100}});
+            vat = parseFloat(vat.toFixed(2));
         @endif
             priceWithVat = parseFloat(price - discount_value + vat);
         discount_value = parseFloat(discount_value);

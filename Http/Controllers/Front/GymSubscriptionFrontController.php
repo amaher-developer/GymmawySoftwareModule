@@ -11,8 +11,16 @@ use Modules\Software\Models\GymActivitySubscription;
 use Modules\Software\Models\GymCategory;
 use Modules\Software\Models\GymMember;
 use Modules\Software\Models\GymMemberSubscription;
+use Modules\Software\Models\GymStoreCategory;
 use Modules\Software\Models\GymStoreProduct;
+use Modules\Software\Models\GymSubscriptionProduct;
+use Modules\Software\Models\GymSubscriptionOptionGroup;
+use Modules\Software\Models\GymSubscriptionOption;
+use Modules\Software\Models\GymMemberSubscriptionOption;
+use Modules\Software\Models\GymPTTrainer;
+use Modules\Software\Models\GymSubscriptionCategory;
 use Modules\Software\Repositories\GymCategoryRepository;
+use Modules\Software\Services\SubscriptionPricingService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Illuminate\Container\Container as Application;
@@ -21,6 +29,8 @@ use Modules\Software\Repositories\GymSubscriptionRepository;
 use Modules\Software\Models\GymSubscription;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\File;
@@ -33,6 +43,15 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     private $imageManager;
     public $GymCategoryRepository;
     public $fileName;
+
+    private static ?bool $_hasOptionTables = null;
+    private function hasOptionTables(): bool
+    {
+        if (self::$_hasOptionTables === null) {
+            self::$_hasOptionTables = Schema::hasTable('sw_gym_subscription_option_groups');
+        }
+        return self::$_hasOptionTables;
+    }
 
     public function __construct()
     {
@@ -47,7 +66,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     public function index()
     {
         $title = trans('sw.memberships');
-        $this->request_array = ['id', 'search'];
+        $this->request_array = ['id', 'search', 'subscription_category_id'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
@@ -69,6 +88,9 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                 $query->orWhere('name_' . $this->lang, 'like', "%" . $search . "%");
             });
         });
+        $subscriptions->when($subscription_category_id, function ($query) use ($subscription_category_id) {
+            $query->where('subscription_category_id', $subscription_category_id);
+        });
         $search_query = request()->query();
 
         if ($this->limit) {
@@ -78,7 +100,10 @@ class GymSubscriptionFrontController extends GymGenericFrontController
             $subscriptions = $subscriptions->get();
             $total = $subscriptions->count();
         }
-        return view('software::Front.subscription_front_list', compact( 'subscriptions','title', 'total', 'search_query'));
+
+        $subscriptionCategories = GymSubscriptionCategory::branch()->orderBy('name_' . $this->lang)->get();
+
+        return view('software::Front.subscription_front_list', compact( 'subscriptions','title', 'total', 'search_query', 'subscriptionCategories'));
     }
 
     function exportExcel(){
@@ -109,6 +134,52 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 //            });
 //
 //        })->download('xlsx');
+    }
+
+    public function exportWhatsAppCatalog()
+    {
+        $records = $this->GymSubscriptionRepository->branch()->get();
+        $gymName = $this->mainSettings->name_ar ?: $this->mainSettings->name_en ?: 'Gym';
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $currency = strtoupper($this->mainSettings->currency ?? 'EGP');
+
+        $rows   = [];
+        $rows[] = ['id','title','description','availability','condition','price','link','image_link','brand'];
+
+        foreach ($records as $s) {
+            $title = $this->lang === 'ar' ? ($s->name_ar ?: $s->name_en) : ($s->name_en ?: $s->name_ar);
+            $desc  = $this->lang === 'ar' ? ($s->content_ar ?: $s->content_en) : ($s->content_en ?: $s->content_ar);
+            $desc  = $desc ?: $title;
+            $price = number_format((float)$s->price, 2, '.', '') . ' ' . $currency;
+            $image = $s->image ? $baseUrl . '/uploads/subscriptions/' . $s->getRawOriginal('image') : '';
+
+            $rows[] = [
+                'subscription_' . $s->id,
+                $title,
+                strip_tags($desc),
+                'in stock',
+                'new',
+                $price,
+                $baseUrl,
+                $image,
+                $gymName,
+            ];
+        }
+
+        $filename = 'whatsapp-catalog-subscriptions-' . now()->format('Y-m-d') . '.csv';
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     private function prepareForExport($data)
@@ -200,62 +271,83 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     public function create()
     {
-        $title = trans('sw.subscription_add');
-        $activities = GymActivity::branch()->get();
-        $categories = GymCategory::branch()->where('is_subscription', true)->get();
-        return view('software::Front.subscription_front_form', ['activities' => $activities,'categories' => $categories,'subscription' => new GymSubscription(), 'title' => $title]);
+        $title              = trans('sw.subscription_add');
+        $activities         = GymActivity::branch()->with('trainer')->get();
+        $trainers           = GymPTTrainer::branch()->orderBy('name')->get();
+        $categories         = GymSubscriptionCategory::branch()->orderBy('name_' . $this->lang)->get();
+        $storeCategories    = GymStoreCategory::branch()->orderBy('name_' . $this->lang)->get();
+        $allProducts        = GymStoreProduct::branch()->orderBy('name_' . $this->lang)->get();
+        $productsForJs      = $this->buildProductsForJs();
+        $activitiesForJs    = $this->buildActivitiesForJs();
+        $existingProductsJs = [];
+        $existingGroupsJs   = [];
+        return view('software::Front.subscription_front_form', compact(
+            'activities', 'trainers', 'categories', 'storeCategories', 'allProducts', 'productsForJs', 'activitiesForJs',
+            'existingProductsJs', 'existingGroupsJs'
+        ) + ['subscription' => new GymSubscription(), 'title' => $title]);
     }
 
     public function store(GymSubscriptionRequest $request)
     {
-        $activities = @$request->activities;
-        $time_day = @$request->time_day;
-        $week_day = @$request->time_week;
-        $check_workouts_per_day = @$request->check_workouts_per_day;
-        $subscription_inputs = $this->prepare_inputs($request->except(['_token', 'activities', 'check_workouts_per_day', 'time_day', 'check_time_week']));
-        if(!$check_workouts_per_day)
-            $subscription_inputs['workouts_per_day'] = null;
-        if(!$time_day) {
-            $subscription_inputs['start_time_day'] = null;
-            $subscription_inputs['end_time_day'] = null;
-        }
-        if(!$week_day){
-            $subscription_inputs['time_week'] = null;
-        }
+        $subscription        = null;
+        $subscription_inputs = [];
 
+        DB::transaction(function () use ($request, &$subscription, &$subscription_inputs) {
+            $activities             = @$request->activities;
+            $time_day               = @$request->time_day;
+            $week_day               = @$request->time_week;
+            $check_workouts_per_day = @$request->check_workouts_per_day;
+            $subscription_inputs    = $this->prepare_inputs($request->except([
+                '_token', 'activities', 'check_workouts_per_day', 'time_day', 'check_time_week',
+                'products_json', 'groups_json',
+            ]));
+            if (!$check_workouts_per_day) $subscription_inputs['workouts_per_day'] = null;
+            if (!$time_day) { $subscription_inputs['start_time_day'] = null; $subscription_inputs['end_time_day'] = null; }
+            if (!$week_day) $subscription_inputs['time_week'] = null;
+            $subscription_inputs['workouts']                  = @(int) $request->workouts;
+            $subscription_inputs['max_extension_days']        = (int) ($subscription_inputs['max_extension_days'] ?? 0);
+            $subscription_inputs['max_freeze_extension_sum']  = (int) ($subscription_inputs['max_freeze_extension_sum'] ?? 0);
+            $subscription_inputs['user_id']                   = Auth::guard('sw')->user()->id;
+            $subscription_inputs['is_system']                 = request()->has('is_system') ? 1 : 0;
+            $subscription = $this->GymSubscriptionRepository->create($subscription_inputs);
 
-        $subscription_inputs['workouts'] = @(int)$request->workouts;
-        $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
-        $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
-        $subscription =  $this->GymSubscriptionRepository->create($subscription_inputs);
-        if(is_array($activities) && count($activities) > 0 && @$subscription->id){
-            foreach ($activities as $key => $value){
-                // Support both legacy "id@@times" and new associative [id => times]
-                $activity_id = null; $activity_training_times = null;
-                if (is_string($value) && str_contains($value, '@@')) {
-                    [$activity_id, $activity_training_times] = explode('@@', $value) + [null, null];
-                } else {
-                    $activity_id = is_numeric($key) ? (int)$key : null;
-                    $activity_training_times = is_numeric($value) ? (int)$value : null;
-                }
-                if($activity_id && $activity_training_times && $activity_training_times > 0){
-                    GymActivitySubscription::branch()->where('activity_id', $activity_id)->where('subscription_id', @$subscription->id)->forceDelete();
-                    GymActivitySubscription::create([
-                        'activity_id' => $activity_id,
-                        'subscription_id' => @$subscription->id,
-                        'training_times' => $activity_training_times,
-                        'branch_setting_id' => @$this->user_sw->branch_setting_id
-                    ]);
+            if (is_array($activities) && count($activities) > 0 && @$subscription->id) {
+                foreach ($activities as $key => $value) {
+                    $activity_id = null; $activity_training_times = null;
+                    if (is_string($value) && str_contains($value, '@@')) {
+                        [$activity_id, $activity_training_times] = explode('@@', $value) + [null, null];
+                    } else {
+                        $activity_id             = is_numeric($key) ? (int) $key : null;
+                        $activity_training_times = is_numeric($value) ? (int) $value : null;
+                    }
+                    if ($activity_id && $activity_training_times && $activity_training_times > 0) {
+                        GymActivitySubscription::branch()->where('activity_id', $activity_id)->where('subscription_id', $subscription->id)->forceDelete();
+                        GymActivitySubscription::create([
+                            'activity_id'       => $activity_id,
+                            'subscription_id'   => $subscription->id,
+                            'training_times'    => $activity_training_times,
+                            'branch_setting_id' => @$this->user_sw->branch_setting_id,
+                        ]);
+                    }
                 }
             }
-        }
-              session()->flash('sweet_flash_message', [
-                  'title' => trans('admin.done'),
-                  'message' => trans('admin.successfully_added'),
-                  'type' => 'success'
-              ]);
 
-        $notes = str_replace(':name', $subscription_inputs['name_'.$this->lang], trans('sw.add_subscription'));
+            $productsJson = $request->input('products_json');
+            if ($productsJson) {
+                $this->syncSubscriptionProducts($subscription, json_decode($productsJson, true) ?? []);
+            }
+            $groupsJson = $request->input('groups_json');
+            if ($groupsJson) {
+                $this->syncSubscriptionGroups($subscription, json_decode($groupsJson, true) ?? []);
+            }
+        });
+
+        session()->flash('sweet_flash_message', [
+            'title'   => trans('admin.done'),
+            'message' => trans('admin.successfully_added'),
+            'type'    => 'success',
+        ]);
+        $notes = str_replace(':name', $subscription_inputs['name_' . $this->lang], trans('sw.add_subscription'));
         $this->userLog($notes, TypeConstants::CreateSubscription);
 
         return redirect(route('sw.listSubscription'));
@@ -263,66 +355,154 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $subscription = $this->GymSubscriptionRepository->branch()->with('activities')->withTrashed()->find($id);
-        $title = trans('sw.subscription_edit');
-        $activities = GymActivity::branch()->get();
-        $categories = GymCategory::branch()->where('is_subscription', true)->get();
-        return view('software::Front.subscription_front_form', ['activities' => $activities, 'categories' => $categories, 'subscription' => $subscription, 'title' => $title]);
+        $eagerRelations = ['activities', 'subscription_products.product'];
+        if ($this->hasOptionTables()) {
+            $eagerRelations = array_merge($eagerRelations, [
+                'option_groups.options.product',
+                'option_groups.options.activity',
+                'option_groups.category',
+            ]);
+        }
+        $subscription = $this->GymSubscriptionRepository->branch()
+            ->with($eagerRelations)
+            ->withTrashed()->find($id);
+
+        if (!$subscription) {
+            session()->flash('sweet_flash_message', [
+                'title'   => 'error',
+                'message' => trans('sw.subscription_not_found'),
+                'type'    => 'error',
+            ]);
+            return redirect(route('sw.listSubscription'));
+        }
+
+        $title           = trans('sw.subscription_edit');
+        $activities      = GymActivity::branch()->with('trainer')->get();
+        $trainers        = GymPTTrainer::branch()->orderBy('name')->get();
+        $categories      = GymSubscriptionCategory::branch()->orderBy('name_' . $this->lang)->get();
+        $storeCategories = GymStoreCategory::branch()->orderBy('name_' . $this->lang)->get();
+        $allProducts     = GymStoreProduct::branch()->orderBy('name_' . $this->lang)->get();
+        $productsForJs   = $this->buildProductsForJs();
+        $activitiesForJs = $this->buildActivitiesForJs();
+
+        $lang = $this->lang;
+        $existingProductsJs = $subscription->subscription_products->map(fn($sp) => [
+            'id'             => $sp->id,
+            'product_id'     => $sp->product_id,
+            'product_name'   => $sp->product ? ($sp->product->getRawOriginal('display_name_' . $lang) ?: ($sp->product->{'name_' . $lang} ?? $sp->product->name_ar)) : '',
+            'list_order'     => $sp->list_order,
+            'is_replaceable' => (bool) $sp->is_replaceable,
+        ])->values()->all();
+
+        $existingGroupsJs = $this->hasOptionTables() ? $subscription->option_groups->map(fn($g) => [
+            'id'             => $g->id,
+            'name_ar'        => $g->getRawOriginal('name_ar') ?? '',
+            'name_en'        => $g->getRawOriginal('name_en') ?? $g->getRawOriginal('name_ar') ?? '',
+            'source_type'    => $g->source_type ?? 'product',
+            'selection_type' => $g->selection_type ?? 'single',
+            'is_required'    => (bool) $g->is_required,
+            'is_system'      => (bool) $g->is_system,
+            'is_web'         => (bool) $g->is_web,
+            'is_mobile'      => (bool) $g->is_mobile,
+            'category_id'    => $g->category_id,
+            'list_order'     => $g->list_order,
+            'options'        => $g->options->map(function($o) use ($lang) {
+                $isText = !$o->product_id && !$o->activity_id;
+                $fieldOverrides = $o->field_overrides ?: [];
+                $overrideField  = array_key_first($fieldOverrides);
+                return [
+                    'id'           => $o->id,
+                    'is_text'      => $isText,
+                    'product_id'   => $o->product_id,
+                    'activity_id'  => $o->activity_id,
+                    'item_name_ar' => $isText ? ($o->getRawOriginal('name_ar') ?? '') : null,
+                    'item_name_en' => $isText ? ($o->getRawOriginal('name_en') ?? '') : null,
+                    'item_name'    => $isText
+                        ? ($o->getRawOriginal('name_ar') ?? '')
+                        : ($o->product_id
+                            ? ($o->product ? ($o->product->getRawOriginal('display_name_' . $lang) ?: ($o->product->{'name_' . $lang} ?? $o->product->name_ar)) : '')
+                            : ($o->activity ? ($o->activity->{'name_' . $lang} ?? $o->activity->name_ar) : '')),
+                    'item_image'    => $isText ? null : ($o->product_id
+                        ? ($o->product ? $this->resolveProductImage($o->product) : null)
+                        : ($o->activity ? $this->resolveActivityImage($o->activity) : null)),
+                    'price_modifier' => (float) ($o->price_modifier ?? 0),
+                    'override_field' => $overrideField,
+                    'override_value' => $overrideField !== null ? $fieldOverrides[$overrideField] : null,
+                    'list_order'     => $o->list_order ?? 0,
+                ];
+            })->values()->all(),
+        ])->values()->all() : [];
+
+        return view('software::Front.subscription_front_form', compact(
+            'activities', 'trainers', 'categories', 'storeCategories', 'allProducts', 'productsForJs', 'activitiesForJs',
+            'existingProductsJs', 'existingGroupsJs'
+        ) + ['subscription' => $subscription, 'title' => $title]);
     }
 
     public function update(GymSubscriptionRequest $request, $id)
     {
-        $activities = @$request->activities;
-        $time_day = @$request->time_day;
-        $week_day = @$request->time_week;
-        $check_workouts_per_day = @$request->check_workouts_per_day;
-        $subscription = $this->GymSubscriptionRepository->withTrashed()->find($id);
-        $subscription_inputs = $this->prepare_inputs($request->except(['_token', 'activities', 'check_workouts_per_day', 'time_day', 'check_time_week']));
-        $subscription_inputs['is_web'] = @(int)$subscription_inputs['is_web'];
-        $subscription_inputs['is_mobile'] = @(int)$subscription_inputs['is_mobile'];
-        if(!$check_workouts_per_day)
-            $subscription_inputs['workouts_per_day'] = null;
-        if(!$time_day) {
-            $subscription_inputs['start_time_day'] = null;
-            $subscription_inputs['end_time_day'] = null;
-        }
-        if(!$week_day){
-            $subscription_inputs['time_week'] = null;
-        }
-        $subscription_inputs['workouts'] = @(int)$request->workouts;
-        $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
-        $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
+        $subscription_inputs = [];
 
-        GymActivitySubscription::branch()->where('subscription_id', @$subscription->id)->forceDelete();
-        if(is_array($activities) && count($activities) > 0 && @$subscription->id){
-            foreach ($activities as $key => $value){
-                $activity_id = null; $activity_training_times = null;
-                if (is_string($value) && str_contains($value, '@@')) {
-                    [$activity_id, $activity_training_times] = explode('@@', $value) + [null, null];
-                } else {
-                    $activity_id = is_numeric($key) ? (int)$key : null;
-                    $activity_training_times = is_numeric($value) ? (int)$value : null;
-                }
-                if($activity_id && $activity_training_times && $activity_training_times > 0){
-                    GymActivitySubscription::create([
-                        'activity_id' => $activity_id,
-                        'subscription_id' => @$subscription->id,
-                        'training_times' => $activity_training_times,
-                        'branch_setting_id' => @$this->user_sw->branch_setting_id
-                    ]);
+        DB::transaction(function () use ($request, $id, &$subscription_inputs) {
+            $activities             = @$request->activities;
+            $time_day               = @$request->time_day;
+            $week_day               = @$request->time_week;
+            $check_workouts_per_day = @$request->check_workouts_per_day;
+            $subscription           = $this->GymSubscriptionRepository->withTrashed()->find($id);
+            $subscription_inputs    = $this->prepare_inputs($request->except([
+                '_token', 'activities', 'check_workouts_per_day', 'time_day', 'check_time_week',
+                'products_json', 'groups_json',
+            ]));
+            $subscription_inputs['is_web']                   = @(int) $subscription_inputs['is_web'];
+            $subscription_inputs['is_mobile']                = @(int) $subscription_inputs['is_mobile'];
+            if (!$check_workouts_per_day) $subscription_inputs['workouts_per_day'] = null;
+            if (!$time_day) { $subscription_inputs['start_time_day'] = null; $subscription_inputs['end_time_day'] = null; }
+            if (!$week_day) $subscription_inputs['time_week'] = null;
+            $subscription_inputs['workouts']                 = @(int) $request->workouts;
+            $subscription_inputs['max_extension_days']       = (int) ($subscription_inputs['max_extension_days'] ?? 0);
+            $subscription_inputs['max_freeze_extension_sum'] = (int) ($subscription_inputs['max_freeze_extension_sum'] ?? 0);
+            $subscription_inputs['user_id']                  = Auth::guard('sw')->user()->id;
+            $subscription_inputs['is_system']                = request()->has('is_system') ? 1 : 0;
+
+            GymActivitySubscription::branch()->where('subscription_id', $subscription->id)->forceDelete();
+            if (is_array($activities) && count($activities) > 0 && $subscription->id) {
+                foreach ($activities as $key => $value) {
+                    $activity_id = null; $activity_training_times = null;
+                    if (is_string($value) && str_contains($value, '@@')) {
+                        [$activity_id, $activity_training_times] = explode('@@', $value) + [null, null];
+                    } else {
+                        $activity_id             = is_numeric($key) ? (int) $key : null;
+                        $activity_training_times = is_numeric($value) ? (int) $value : null;
+                    }
+                    if ($activity_id && $activity_training_times && $activity_training_times > 0) {
+                        GymActivitySubscription::create([
+                            'activity_id'       => $activity_id,
+                            'subscription_id'   => $subscription->id,
+                            'training_times'    => $activity_training_times,
+                            'branch_setting_id' => @$this->user_sw->branch_setting_id,
+                        ]);
+                    }
                 }
             }
-        }
 
-        $subscription->update($subscription_inputs);
+            $subscription->update($subscription_inputs);
 
-              session()->flash('sweet_flash_message', [
-                  'title' => trans('admin.done'),
-                  'message' => trans('admin.successfully_edited'),
-                  'type' => 'success'
-              ]);
+            $productsJson = $request->input('products_json');
+            if ($productsJson !== null) {
+                $this->syncSubscriptionProducts($subscription, json_decode($productsJson, true) ?? []);
+            }
+            $groupsJson = $request->input('groups_json');
+            if ($groupsJson !== null) {
+                $this->syncSubscriptionGroups($subscription, json_decode($groupsJson, true) ?? []);
+            }
+        });
 
-        $notes = str_replace(':name', $subscription_inputs['name_'.$this->lang], trans('sw.edit_subscription'));
+        session()->flash('sweet_flash_message', [
+            'title'   => trans('admin.done'),
+            'message' => trans('admin.successfully_edited'),
+            'type'    => 'success',
+        ]);
+        $notes = str_replace(':name', $subscription_inputs['name_' . $this->lang], trans('sw.edit_subscription'));
         $this->userLog($notes, TypeConstants::EditSubscription);
 
         return redirect(route('sw.listSubscription'));
@@ -532,6 +712,184 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         }
 
         return $inputs;
+    }
+
+    private function syncSubscriptionProducts(GymSubscription $sub, array $products): void
+    {
+        if (!Schema::hasTable('sw_gym_subscription_products')) return;
+        $branchId = (int) (@$this->user_sw->branch_setting_id ?? 1);
+        $keepIds  = collect($products)->filter(fn($p) => !empty($p['id']))->pluck('id')->map(fn($id) => (int) $id)->all();
+
+        if (empty($keepIds)) {
+            GymSubscriptionProduct::branch()->where('subscription_id', $sub->id)->forceDelete();
+        } else {
+            GymSubscriptionProduct::branch()->where('subscription_id', $sub->id)->whereNotIn('id', $keepIds)->forceDelete();
+        }
+
+        foreach ($products as $i => $pd) {
+            $productId = (int) ($pd['product_id'] ?? 0);
+            if (!$productId) continue;
+            $data = [
+                'product_id'     => $productId,
+                'list_order'     => (int) ($pd['list_order'] ?? $i),
+                'is_replaceable' => !empty($pd['is_replaceable']) ? 1 : 0,
+            ];
+            if (!empty($pd['id'])) {
+                GymSubscriptionProduct::branch()->where('id', (int) $pd['id'])->where('subscription_id', $sub->id)->update($data);
+            } else {
+                GymSubscriptionProduct::create(array_merge($data, ['branch_setting_id' => $branchId, 'subscription_id' => $sub->id]));
+            }
+        }
+    }
+
+    private function syncSubscriptionGroups(GymSubscription $sub, array $groups): void
+    {
+        if (!$this->hasOptionTables()) return;
+        $branchId     = (int) (@$this->user_sw->branch_setting_id ?? 1);
+        $keepGroupIds = collect($groups)->filter(fn($g) => !empty($g['id']))->pluck('id')->map(fn($id) => (int) $id)->all();
+
+        $deleteQuery = GymSubscriptionOptionGroup::branch()->where('subscription_id', $sub->id);
+        if (!empty($keepGroupIds)) $deleteQuery->whereNotIn('id', $keepGroupIds);
+        foreach ($deleteQuery->get() as $group) {
+            $optIds = GymSubscriptionOption::where('option_group_id', $group->id)->pluck('id');
+            if ($optIds->isNotEmpty() && GymMemberSubscriptionOption::whereIn('option_id', $optIds)->exists()) continue;
+            GymSubscriptionOption::where('option_group_id', $group->id)->forceDelete();
+            $group->forceDelete();
+        }
+
+        foreach ($groups as $i => $gd) {
+            $nameAr = trim($gd['name_ar'] ?? '');
+            if (!$nameAr) continue;
+            $groupData = [
+                'name_ar'        => $nameAr,
+                'name_en'        => trim($gd['name_en'] ?? '') ?: $nameAr,
+                'source_type'    => in_array($gd['source_type'] ?? '', ['product', 'activity', 'text']) ? $gd['source_type'] : 'product',
+                'selection_type' => $gd['selection_type'] ?? 'single',
+                'is_required'    => !empty($gd['is_required']) ? 1 : 0,
+                'is_system'      => !empty($gd['is_system']) ? 1 : 0,
+                'is_web'         => !empty($gd['is_web']) ? 1 : 0,
+                'is_mobile'      => !empty($gd['is_mobile']) ? 1 : 0,
+                'category_id'    => $gd['category_id'] ?: null,
+                'list_order'     => (int) ($gd['list_order'] ?? $i),
+            ];
+            if (!empty($gd['id'])) {
+                $group = GymSubscriptionOptionGroup::branch()->where('subscription_id', $sub->id)->find((int) $gd['id']);
+                if (!$group) continue;
+                $group->update($groupData);
+            } else {
+                $group = GymSubscriptionOptionGroup::create(array_merge($groupData, ['branch_setting_id' => $branchId, 'subscription_id' => $sub->id]));
+            }
+            $this->syncGroupOptions($group, $gd['options'] ?? [], $branchId);
+        }
+    }
+
+    private function syncGroupOptions(GymSubscriptionOptionGroup $group, array $options, int $branchId): void
+    {
+        $srcType     = $group->source_type ?? 'product';
+        $isActivity  = $srcType === 'activity';
+        $isText      = $srcType === 'text';
+        $keepOptIds  = collect($options)->filter(fn($o) => !empty($o['id']))->pluck('id')->map(fn($id) => (int) $id)->all();
+        $deleteQuery = GymSubscriptionOption::where('option_group_id', $group->id);
+        if (!empty($keepOptIds)) $deleteQuery->whereNotIn('id', $keepOptIds);
+        foreach ($deleteQuery->get() as $opt) {
+            if (!GymMemberSubscriptionOption::where('option_id', $opt->id)->exists()) $opt->forceDelete();
+        }
+        foreach ($options as $j => $od) {
+            $overrideField = $od['override_field'] ?? null;
+            $fieldOverrides = ($overrideField && in_array($overrideField, SubscriptionPricingService::OVERRIDABLE_FIELDS, true) && is_numeric($od['override_value'] ?? null))
+                ? [$overrideField => (float) $od['override_value']]
+                : null;
+
+            if ($isText) {
+                $nameAr = trim($od['item_name_ar'] ?? $od['item_name'] ?? '');
+                if (!$nameAr) continue;
+                $optData = [
+                    'product_id'      => null,
+                    'activity_id'     => null,
+                    'name_ar'         => $nameAr,
+                    'name_en'         => trim($od['item_name_en'] ?? '') ?: $nameAr,
+                    'price_modifier'  => (float) ($od['price_modifier'] ?? 0),
+                    'field_overrides' => $fieldOverrides,
+                    'list_order'      => (int) ($od['list_order'] ?? $j),
+                ];
+            } else {
+                $itemId = (int) ($isActivity ? ($od['activity_id'] ?? 0) : ($od['product_id'] ?? 0));
+                if (!$itemId) continue;
+                $optData = [
+                    'product_id'      => $isActivity ? null : $itemId,
+                    'activity_id'     => $isActivity ? $itemId : null,
+                    'price_modifier'  => (float) ($od['price_modifier'] ?? 0),
+                    'field_overrides' => $fieldOverrides,
+                    'list_order'      => (int) ($od['list_order'] ?? $j),
+                ];
+            }
+            if (!empty($od['id'])) {
+                GymSubscriptionOption::where('id', (int) $od['id'])->where('option_group_id', $group->id)->update($optData);
+            } else {
+                GymSubscriptionOption::create(array_merge($optData, ['branch_setting_id' => $branchId, 'option_group_id' => $group->id]));
+            }
+        }
+    }
+
+    private function resolveProductImage(GymStoreProduct $p): ?string
+    {
+        $raw = $p->getRawOriginal('image');
+        if (!$raw) return null;
+        return filter_var($raw, FILTER_VALIDATE_URL) ? $raw : asset(GymStoreProduct::$uploads_path . basename($raw));
+    }
+
+    private function resolveActivityImage(GymActivity $a): ?string
+    {
+        $raw = $a->getRawOriginal('image');
+        if (!$raw) return null;
+        return filter_var($raw, FILTER_VALIDATE_URL) ? $raw : asset(GymActivity::$uploads_path . basename($raw));
+    }
+
+    /** Build the flat activity list passed to JS for activity-type option groups. */
+    private function buildActivitiesForJs(): array
+    {
+        $lang = $this->lang;
+        return GymActivity::branch()
+            ->orderBy('name_' . $lang)
+            ->get(['id', 'name_ar', 'name_en', 'image'])
+            ->map(function ($a) use ($lang) {
+                $rawImage = $a->getRawOriginal('image');
+                $image    = $rawImage
+                    ? (filter_var($rawImage, FILTER_VALIDATE_URL) ? $rawImage : asset(GymActivity::$uploads_path . basename($rawImage)))
+                    : null;
+                return [
+                    'id'    => $a->id,
+                    'name'  => $a->{'name_' . $lang} ?? $a->name_ar,
+                    'image' => $image,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /** Build the flat product list passed to JS for option-choice filtering. */
+    private function buildProductsForJs(): array
+    {
+        $lang = $this->lang;
+        return GymStoreProduct::branch()
+            ->orderBy('name_' . $lang)
+            ->get(['id', 'name_ar', 'name_en', 'category_id', 'image'])
+            ->map(function ($p) use ($lang) {
+                $displayName = $p->{'name_' . $lang};
+                $rawImage    = $p->getRawOriginal('image');
+                $image       = $rawImage
+                    ? (filter_var($rawImage, FILTER_VALIDATE_URL) ? $rawImage : asset(GymStoreProduct::$uploads_path . basename($rawImage)))
+                    : null;
+                return [
+                    'id'           => $p->id,
+                    'name'         => $p->{'name_' . $lang},
+                    'display_name' => $displayName,
+                    'category_id'  => $p->category_id,
+                    'image'        => $image,
+                ];
+            })
+            ->values()
+            ->all();
     }
 }
 

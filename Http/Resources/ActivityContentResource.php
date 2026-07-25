@@ -27,7 +27,27 @@ class ActivityContentResource extends JsonResource
                 "payment_link" => @env('APP_WEB_PAYMENT_ACTIVITY') == 1
                     ? route('sw.activity-mobile', ['id' => $this->id, 'lang' => $this->lang])
                     : "",
+                "trainer_name" => $this->trainer ? $this->trainer->name : '',
+                "trainer_image" => $this->trainer && $this->trainer->image_name ? asset('uploads/pt_trainers/' . $this->trainer->image_name) : '',
+                "schedule" => $this->_getSchedule(),
             ];
+    }
+    private function _getSchedule(): array
+    {
+        $details = $this->reservation_details;
+        if (!$details || !isset($details['work_days'])) return [];
+        $days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        $result = [];
+        foreach ($details['work_days'] as $index => $day) {
+            if (!empty($day['status'])) {
+                $result[] = [
+                    'day'   => $days[$index] ?? '',
+                    'start' => $day['start'] ?? '',
+                    'end'   => $day['end'] ?? '',
+                ];
+            }
+        }
+        return $result;
     }
 }
 

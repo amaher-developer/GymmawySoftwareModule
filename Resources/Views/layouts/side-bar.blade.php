@@ -922,7 +922,7 @@
         isset($permissionsMap['listMoneyBox']) ||
         isset($permissionsMap['salesReport']) ||
         isset($permissionsMap['customerBalancesReport']) ||
-        isset($permissionsMap['reportMoneyboxTax']) ||
+        isset($permissionsMap['listSwInvoices']) ||
         isset($permissionsMap['reportZatcaInvoices']) ||
         isset($permissionsMap['reportRenewMemberList']) ||
         isset($permissionsMap['reportExpireMemberList']) ||
@@ -938,16 +938,12 @@
         isset($permissionsMap['listMoneyBoxDaily']) ||
         isset($permissionsMap['listLoyaltyTransaction']) ||
         isset($permissionsMap['viewAiReports']) ||
-        (@$mainSettings->active_ai && (
-            isset($permissionsMap['aiReportsDashboard']) ||
-            isset($permissionsMap['aiReportsJobs']) ||
-            isset($permissionsMap['aiReportsInsights'])
-        )) ||
+        isset($permissionsMap['aiEmployee']) ||
         $isSuperUser
     ))
-<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+<div data-kt-menu-trigger="click" class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai-employee*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*') || Request::is(($lang ?? 'ar') . '/gym-sw-invoices*')) show @endif">
     <!--begin:Menu link-->
-    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai/reports*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*')) show @endif">
+    <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/user/log*') || Request::is(($lang ?? 'ar') . '/moneybox') || Request::is(($lang ?? 'ar') . '/moneybox/daily') || Request::is(($lang ?? 'ar') . '/sales-report*') || Request::is(($lang ?? 'ar') . '/customer-balances*') || Request::is(($lang ?? 'ar') . '/ai-employee*') || Request::is(($lang ?? 'ar') . '/ai-reports*') || Request::is(($lang ?? 'ar') . '/loyalty/transactions*') || Request::is(($lang ?? 'ar') . '/gym-sw-invoices*')) show @endif">
         <span class="menu-icon">
             <i class="ki-outline ki-graph-up  fs-2"></i>
         </span>
@@ -1006,16 +1002,16 @@
             <!--end:Menu item-->
         @endif
 
-    @if ($swUser && (isset($permissionsMap['reportMoneyboxTax']) || $isSuperUser))
+    @if ($swUser && (isset($permissionsMap['listSwInvoices']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
             <!--begin:Menu link-->
-            <a class="menu-link   @if (Request::is(($lang ?? 'ar') . '/user/log/moneybox-tax')) active @endif"
-                href="{{ route('sw.reportMoneyboxTax') . '?from=' . date('m/d/Y') . '&' . 'to=' . date('m/d/Y') }}">
+            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/gym-sw-invoices*')) active @endif"
+                href="{{ route('sw.gymSwInvoices.index') }}">
                 <span class="menu-bullet">
                     <span class="bullet bullet-dot"></span>
                 </span>
-                <span class="menu-title">{{ trans('sw.moneybox_tax') }}</span>
+                <span class="menu-title">{{ trans('sw.invoices_report') }}</span>
             </a>
             <!--end:Menu link-->
         </div>
@@ -1197,17 +1193,7 @@
         </div>
         <!--end:Menu item-->
     @endif
-    @if ($swUser && config('sw_billing.zatca_enabled') && (isset($permissionsMap['reportZatcaInvoices']) || $isSuperUser))
-        <div class="menu-item">
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/user/log/zatca-invoices')) active @endif"
-                href="{{ route('sw.reportZatcaInvoices') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.zatca_invoices_report') }}</span>
-            </a>
-        </div>
-    @endif
+    {{-- zatca invoices report hidden --}}
     @if ($swUser && (isset($permissionsMap['reportOnlinePaymentTransactionList']) || $isSuperUser))
         <!--begin:Menu item-->
         <div class="menu-item">
@@ -1280,107 +1266,39 @@
     @endif
     <!--end:Menu item-->
 
-    @if (@$mainSettings->active_ai && $swUser && ($isSuperUser ||
-            isset($permissionsMap['aiReportsDashboard']) ||
-            isset($permissionsMap['aiReportsJobs']) ||
-            isset($permissionsMap['aiReportsInsights'])
-        ))
-        <!--begin:Menu item-->
+    @if ($swUser && ($isSuperUser || isset($permissionsMap['aiEmployee'])) && Route::has('sw.ai_employee.index'))
+        <!--begin:Menu item - AI Employee-->
         <div class="menu-item">
-            <!--begin:Menu link-->
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/dashboard')) active @endif" href="{{ route('ai.reports.dashboard') }}">
+            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai-employee*')) active @endif" href="{{ route('sw.ai_employee.index') }}">
                 <span class="menu-bullet">
                     <span class="bullet bullet-dot"></span>
                 </span>
-                <span class="menu-title">{{ trans('sw.ai_dashboard') }}</span>
+                <span class="menu-title">{{ trans('aiemployee::messages.ai_employee') }}</span>
             </a>
-            <!--end:Menu link-->
         </div>
         <!--end:Menu item-->
 
-        <!--begin:Menu item-->
-        @if ($isSuperUser || isset($permissionsMap['aiReportsJobs']))
-        <div class="menu-item">
-            <!--begin:Menu link-->
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/jobs')) active @endif" href="{{ route('ai.reports.jobs') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.ai_jobs') }}</span>
-            </a>
-            <!--end:Menu link-->
-        </div>
-        @endif
-        <!--end:Menu item-->
-
-        <!--begin:Menu item-->
-        @if ($isSuperUser || isset($permissionsMap['aiReportsInsights']))
-        <div class="menu-item">
-            <!--begin:Menu link-->
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/insights')) active @endif" href="{{ route('ai.reports.insights') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.ai_insights') }}</span>
-            </a>
-            <!--end:Menu link-->
-        </div>
-        @endif
-        <!--end:Menu item-->
-
-        <!--begin:Menu item-->
+        <!--begin:Menu item - Conversations-->
         <!-- <div class="menu-item">
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/risk')) active @endif" href="{{ route('ai.reports.risk') }}">
+            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai-employee/conversations*')) active @endif" href="{{ route('sw.ai_employee.conversations') }}">
                 <span class="menu-bullet">
                     <span class="bullet bullet-dot"></span>
                 </span>
-                <span class="menu-title">{{ trans('sw.ai_risk_assessment') }}</span>
-            </a>
-        </div>
-        <! end:Menu item-->
-        <!--begin:Menu item-->
-        <!-- <div class="menu-item">
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/performance')) active @endif" href="{{ route('ai.reports.performance') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.ai_performance_dashboard') }}</span>
+                <span class="menu-title">{{ trans('aiemployee::messages.conversations') }}</span>
             </a>
         </div> -->
         <!--end:Menu item-->
 
-        <!--begin:Menu item-->
+        <!--begin:Menu item - Knowledge Base-->
         <!-- <div class="menu-item">
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/watchlist')) active @endif" href="{{ route('ai.reports.watchlist') }}">
+            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai-employee/knowledge*')) active @endif" href="{{ route('sw.ai_employee.knowledge') }}">
                 <span class="menu-bullet">
                     <span class="bullet bullet-dot"></span>
                 </span>
-                <span class="menu-title">{{ trans('sw.ai_watchlist') }}</span>
+                <span class="menu-title">{{ trans('aiemployee::messages.knowledge_base') }}</span>
             </a>
         </div> -->
         <!--end:Menu item-->
-
-        <!--begin:Menu item-->
-        <!-- <div class="menu-item">
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/risk-drivers')) active @endif" href="{{ route('ai.reports.risk_drivers') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.ai_risk_drivers') }}</span>
-            </a>
-        </div> -->
-        <!--end:Menu item-->
-
-        <!--begin:Menu item-->
-        <!-- <div class="menu-item">
-            <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/ai/reports/freshness')) active @endif" href="{{ route('ai.reports.freshness') }}">
-                <span class="menu-bullet">
-                    <span class="bullet bullet-dot"></span>
-                </span>
-                <span class="menu-title">{{ trans('sw.ai_freshness') }}</span>
-            </a>
-        </div> -->
-        <!-- end:Menu item -->
     @endif
 
 
@@ -1612,6 +1530,7 @@
         class="menu-item menu-accordion  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
+                Request::is(($lang ?? 'ar') . '/category*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
                 Request::is(($lang ?? 'ar') . '/reservation*') ||
                 Request::is(($lang ?? 'ar') . '/user*') ||
@@ -1622,6 +1541,7 @@
         <span class="menu-link  @if (Request::is(($lang ?? 'ar') . '/setting') || Request::is(($lang ?? 'ar') . '/setting*') || Request::is(($lang ?? 'ar') . '/block-member*')
          ||
                 Request::is(($lang ?? 'ar') . '/subscription*') ||
+                Request::is(($lang ?? 'ar') . '/category*') ||
                 Request::is(($lang ?? 'ar') . '/activity*') ||
                 Request::is(($lang ?? 'ar') . '/reservation*') ||
                 Request::is(($lang ?? 'ar') . '/user*') || 
@@ -1685,7 +1605,7 @@
             {{-- Subscriptions (moved under Settings) --}}
             @if (@$mainSettings->active_subscription && ($swUser && (isset($permissionsMap['listSubscription']) || $isSuperUser)))  
                 <div class="menu-item">
-                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription*')) active @endif"
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription*') && !Request::is(($lang ?? 'ar') . '/subscription-category*')) active @endif"
                         href="{{ route('sw.listSubscription') }}">
                         <span class="menu-bullet">
                             <span class="bullet bullet-dot"></span>
@@ -1694,6 +1614,20 @@
                     </a>
                 </div>
             @endif
+
+            {{-- Subscription Categories --}}
+            @if (@$mainSettings->active_subscription && ($swUser && (isset($permissionsMap['listSubscriptionCategory']) || $isSuperUser)))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/subscription-category*')) active @endif"
+                        href="{{ route('sw.listSubscriptionCategory') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.subscription_categories') }}</span>
+                    </a>
+                </div>
+            @endif
+
  {{-- Activities (moved under Settings) --}}
             @if ((@$mainSettings->active_activity || @$mainSettings->active_activity_reservation) && ($swUser && (isset($permissionsMap['listActivity']) || $isSuperUser)    ))
                 <div class="menu-item">
@@ -1781,6 +1715,18 @@
                 </div>
             @endif -->
 
+{{-- Categories --}}
+            <!-- @if ($swUser && (isset($permissionsMap['listCategory']) || $isSuperUser))
+                <div class="menu-item">
+                    <a class="menu-link @if (Request::is(($lang ?? 'ar') . '/category*')) active @endif"
+                        href="{{ route('sw.listCategory') }}">
+                        <span class="menu-bullet">
+                            <span class="bullet bullet-dot"></span>
+                        </span>
+                        <span class="menu-title">{{ trans('sw.categories') }}</span>
+                    </a>
+                </div>
+            @endif -->
 
             @if ($swUser && (isset($permissionsMap['listSaleChannel']) || $isSuperUser))
                 <!--begin:Menu item-->

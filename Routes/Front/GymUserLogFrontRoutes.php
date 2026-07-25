@@ -98,10 +98,10 @@ Route::prefix('user/log')
             ->get('/store-excel', 'Front\GymUserLogFrontController@exportStoreExcel');
 
         // ZATCA invoices report - view permission
-        Route::name('sw.reportZatcaInvoices')
-            ->get('zatca-invoices', 'Front\GymUserLogFrontController@reportZatcaInvoices');
-        Route::name('sw.bulkGenerateZatca')
-            ->post('zatca-invoices/bulk-generate', 'Front\GymUserLogFrontController@bulkGenerateZatca');
+        // Route::name('sw.reportZatcaInvoices')
+        //     ->get('zatca-invoices', 'Front\GymUserLogFrontController@reportZatcaInvoices');
+        // Route::name('sw.bulkGenerateZatca')
+        //     ->post('zatca-invoices/bulk-generate', 'Front\GymUserLogFrontController@bulkGenerateZatca');
 
         // Moneybox tax report - view permission
         Route::name('sw.reportMoneyboxTax')

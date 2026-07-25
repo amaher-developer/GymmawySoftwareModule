@@ -135,6 +135,8 @@
 {{--            type="text/javascript"></script>--}}
     <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-select/js/bootstrap-select.min.js')}}"
             type="text/javascript"></script>
+    <script src="{{asset('resources/assets/new_front/global/scripts/app.js')}}"
+            type="text/javascript"></script>
     <script src="{{asset('resources/assets/new_front/pages/scripts/components-bootstrap-select.min.js')}}"
             type="text/javascript"></script>
 

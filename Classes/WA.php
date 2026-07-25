@@ -26,7 +26,7 @@ class WA {
         $this->wa_version = 'v15.0';
         $this->wa_user_token = @env('WA_USER_TOKEN') ?? '';
         $this->wa_user_phone_id = @env('WA_USER_PHONE_ID') ?? '';
-        $this->country_code = @env('APP_COUNTRY_CODE') ?? '2';
+        $this->country_code = $this->setting?->getAppConfig('country_code', '2');
         $this->wa_url = 'https://graph.facebook.com/'.$this->wa_version.'/'.$this->wa_user_phone_id;
     }
 

@@ -25,6 +25,7 @@ use Modules\Software\Models\GymPTSubscription;
 use Modules\Software\Models\GymPTTrainer;
 use Modules\Software\Models\GymStoreOrder;
 use Modules\Software\Models\GymStoreOrderProduct;
+use Modules\Software\Models\GymStoreProduct;
 use Modules\Software\Models\GymSubscription;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserLog;
@@ -1208,7 +1209,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     public function reportTodayNonMemberList(){
         $search_query = request()->query();
         $title = trans('sw.non_client_attendees_today');
-        $this->request_array = ['search', 'date', 'to', 'from'];
+        $this->request_array = ['search', 'date', 'to', 'from', 'trainer_id'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
@@ -1216,7 +1217,11 @@ class GymUserLogFrontController extends GymGenericFrontController
             $q->withTrashed();
         }, 'non_member' => function($q){
             $q->withTrashed();
-        }, 'user', 'activity']);
+        }, 'user', 'activity' => function($q){
+            $q->withTrashed()->with(['trainer' => function($q){
+                $q->withTrashed();
+            }]);
+        }]);
         $logs = $logs->when($search, function ($query) use ($search) {
             $query->whereHas('member', function ($q) use ($search) {
                 $q->where('id', '=', (int)$search);
@@ -1228,6 +1233,11 @@ class GymUserLogFrontController extends GymGenericFrontController
                 $q->where('id', '=', (int)$search);
                 $q->orWhere('name', 'like', "%" . $search . "%");
                 $q->orWhere('phone', 'like', "%" . $search . "%");
+            });
+        });
+        $logs->when($trainer_id, function ($query) use ($trainer_id) {
+            $query->whereHas('activity', function ($q) use ($trainer_id) {
+                $q->withTrashed()->where('trainer_id', $trainer_id);
             });
         });
         if(@$from && @$to) {
@@ -1246,7 +1256,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $logs = $logs->get();
             $total = $logs->count();
         }
-        return view('software::Front.report_today_non_member_front_list', compact('logs','search_query','title', 'total'));
+        $trainers = GymPTTrainer::branch()->get();
+        return view('software::Front.report_today_non_member_front_list', compact('logs','search_query','title', 'total', 'trainers'));
     }
     function exportTodayNonMemberExcel()
     {
@@ -1640,18 +1651,28 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
 
     public function reportStoreList(){
+        $this->limit = 5;
         $title = trans('sw.store_report');
         $search_query = request()->query();
         $from = request('from');
         $to = request('to');
         $search = request('search');
+        $product = request('product');
+
+        $fromDate = $from ? Carbon::parse($from)->format('Y-m-d') : null;
+        $toDate   = $to   ? Carbon::parse($to)->format('Y-m-d')   : null;
+
+        $storeProducts = GymStoreProduct::branch()->orderBy('name_' . $this->lang)->get();
 
         $productsQuery = GymStoreOrderProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->selectRaw('product_id, SUM(price) AS price, SUM(quantity) AS products')
             ->with(['product' => function ($q) {
                 $q->withTrashed();
             }])
+            ->when($product, function ($query) use ($product) {
+                $query->where('product_id', $product);
+            })
             ->groupBy('product_id')
-            ->orderByDesc('products');
+            ->orderByDesc('price');
 
         $ordersQuery = GymStoreOrder::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with([
                 'member' => function ($q) {
@@ -1666,16 +1687,30 @@ class GymUserLogFrontController extends GymGenericFrontController
             ])
             ->orderByDesc('created_at');
 
-        if ($from) {
-            $fromDate = Carbon::parse($from)->format('Y-m-d');
+        $statsQuery = GymStoreOrder::branch();
+        $paymentBreakdownQuery = GymStoreOrder::branch()
+            ->with('pay_type')
+            ->selectRaw('payment_type, COUNT(*) as orders_count, SUM(COALESCE(amount_paid,0)) as total_paid')
+            ->groupBy('payment_type');
+
+        if ($fromDate) {
             $productsQuery->whereDate('created_at', '>=', $fromDate);
             $ordersQuery->whereDate('created_at', '>=', $fromDate);
+            $statsQuery->whereDate('created_at', '>=', $fromDate);
+            $paymentBreakdownQuery->whereDate('created_at', '>=', $fromDate);
         }
 
-        if ($to) {
-            $toDate = Carbon::parse($to)->format('Y-m-d');
+        if ($toDate) {
             $productsQuery->whereDate('created_at', '<=', $toDate);
             $ordersQuery->whereDate('created_at', '<=', $toDate);
+            $statsQuery->whereDate('created_at', '<=', $toDate);
+            $paymentBreakdownQuery->whereDate('created_at', '<=', $toDate);
+        }
+
+        if ($product) {
+            $ordersQuery->whereHas('order_product', function ($query) use ($product) {
+                $query->where('product_id', $product);
+            });
         }
 
         if ($search) {
@@ -1694,12 +1729,27 @@ class GymUserLogFrontController extends GymGenericFrontController
                     $query->whereHas('member', function ($memberQuery) use ($searchValue) {
                         $memberQuery->where('name', 'like', '%' . $searchValue . '%')
                             ->orWhere('phone', 'like', '%' . $searchValue . '%');
+                    })->orWhereHas('order_product.product', function ($productQuery) use ($searchValue) {
+                        $productQuery->where('name_ar', 'like', '%' . $searchValue . '%')
+                            ->orWhere('name_en', 'like', '%' . $searchValue . '%');
                     });
                 }
             });
         }
 
         $products = $productsQuery->get();
+
+        $stats = $statsQuery->selectRaw('
+            COUNT(*) as total_orders,
+            SUM(COALESCE(amount_paid,0)) as total_paid,
+            SUM(COALESCE(amount_remaining,0)) as total_remaining,
+            SUM(COALESCE(discount_value,0)) as total_discount,
+            SUM(COALESCE(vat,0)) as total_vat,
+            SUM(CASE WHEN COALESCE(amount_remaining,0) <= 0.001 THEN 1 ELSE 0 END) as paid_count,
+            SUM(CASE WHEN COALESCE(amount_remaining,0) > 0.001 THEN 1 ELSE 0 END) as unpaid_count
+        ')->first();
+
+        $paymentBreakdown = $paymentBreakdownQuery->get();
 
         if ($this->limit) {
             $orders = $ordersQuery->paginate($this->limit)->onEachSide(1);
@@ -1709,7 +1759,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-        return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'title', 'total'));
+        return view('software::Front.report_store_front_list', compact('search_query', 'orders', 'products', 'stats', 'paymentBreakdown', 'title', 'total', 'storeProducts'));
 
     }
 

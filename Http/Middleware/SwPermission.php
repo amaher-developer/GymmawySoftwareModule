@@ -133,18 +133,18 @@ class SwPermission
         
         $route = Request::route()->getName();
         $route = str_replace('sw.', '', $route);
-        $default_permissions = [
-            // SaaS Subscription Management (available to all authenticated users)
-            'subscription.plans', 'subscription.initiate-payment', 'subscription.payment.success', 'subscription.payment.cancel',
-            // Standard permissions
-            'dashboard', 'dashboardMini', 'dashboardPTMini', 'showStoreOrder', 'showOrderSubscriptionNonMember', 'showOrderSubscriptionPOSNonMember', 'showStoreOrderVendor', 'showOrder', 'memberAttendees', 'membersRefresh', 'showMemberProfile', 'creditMemberBalance'
+        $default_permissions = ['dashboard', 'dashboardMini', 'dashboardPTMini', 'optimizeClear', 'showStoreOrder', 'showOrderSubscriptionNonMember', 'showOrderSubscriptionPOSNonMember', 'showStoreOrderVendor', 'showOrder', 'memberAttendees', 'membersRefresh', 'showMemberProfile', 'creditMemberBalance'
             , 'pendingPTTrainerCommissions', 'memberPTAttendees', 'getPTMemberAjax', 'getStoreMemberAjax', 'getPTTrainerAjax'
             , 'memberActivityMembershipAttendees'
             , 'memberInvitationAttendees', 'editUserProfile', 'listUserJson'
             , 'listUserLog', 'downloadCard', 'memberSubscriptionRenew', 'downloadQRCode', 'downloadCode', 'downloadStoreProductBarcode', 'downloadMemberBarcode'
+            , 'subscriptionProducts.index', 'subscriptionProducts.store', 'subscriptionProducts.update', 'subscriptionProducts.destroy', 'subscriptionProducts.reorder'
+            , 'subscriptionOptionGroups.index', 'subscriptionOptionGroups.store', 'subscriptionOptionGroups.update', 'subscriptionOptionGroups.destroy'
+            , 'subscriptionOptions.store', 'subscriptionOptions.update', 'subscriptionOptions.destroy'
+            , 'subscription.calculatePrice', 'subscription.options', 'subscription.memberActivities'
             , 'showOrderSubscription', 'showOrderSubscriptionPOS'
             , 'showOrderPTSubscription', 'showOrderPTSubscriptionPOS'
-            , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS'
+            , 'storeStoreOrderPOS', 'showStoreOrderPOS', 'showOrderPOS', 'showStoreOrderVendorPOS', 'posSearchMembers'
             , 'listSwPayment', 'updatePotentialMember'
             , 'listHelperTools',  'calculateCalories', 'calculateCaloriesResult', 'calculateBMI', 'calculateBMIResult', 'calculateIBW', 'calculateIBWResult', 'calculateWater', 'calculateWaterResult', 'calculateVatPercentage', 'calculateVatPercentageResult'
             , 'storePTMember', 'listPTMemberCalendar', 'listPTMemberInClassCalendar'
@@ -167,6 +167,8 @@ class SwPermission
             , 'reservation.events', 'reservation.slots', 'reservation.checkOverlap', 'reservation.ajaxCreate', 'reservation.ajaxUpdate', 'reservation.ajaxGet'
             , 'reservation.confirm', 'reservation.cancel', 'reservation.attend', 'reservation.missed'
             , 'getMembersBySearch', 'updateEventNotificationMessage'
+            , 'phonesByAjax', 'phonesByAjaxWAUltra', 'phonesByAjaxWA'
+            , 'checkMemberPhoneExists', 'checkSubscriptionOverlap'
         ];
         
         // Merge permissions once

@@ -2,6 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
+use Illuminate\Support\Facades\Schema;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Exports\RecordsExport;
 use Modules\Software\Http\Requests\GymStoreProductRequest;
@@ -108,6 +109,54 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
     }
 
+    public function exportWhatsAppCatalog()
+    {
+        $records = $this->StoreProductRepository->branch()->get();
+        $gymName = $this->mainSettings->name_ar ?: $this->mainSettings->name_en ?: 'Gym';
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $currency = strtoupper($this->mainSettings->currency ?? 'EGP');
+
+        $rows   = [];
+        $rows[] = ['id','title','description','availability','condition','price','link','image_link','brand'];
+
+        foreach ($records as $p) {
+            $title = $this->lang === 'ar'
+                ? ($p->display_name_ar ?: $p->name_ar ?: $p->name_en)
+                : ($p->display_name_en ?: $p->name_en ?: $p->name_ar);
+            $desc  = $this->lang === 'ar' ? ($p->content_ar ?: $p->content_en) : ($p->content_en ?: $p->content_ar);
+            $desc  = $desc ?: $title;
+            $price = number_format((float)$p->price, 2, '.', '') . ' ' . $currency;
+            $image = $p->image ? $baseUrl . '/uploads/store_products/' . $p->getRawOriginal('image') : '';
+
+            $rows[] = [
+                'product_' . $p->id,
+                $title,
+                strip_tags($desc),
+                ($p->quantity > 0) ? 'in stock' : 'out of stock',
+                'new',
+                $price,
+                $baseUrl,
+                $image,
+                $gymName,
+            ];
+        }
+
+        $filename = 'whatsapp-catalog-products-' . now()->format('Y-m-d') . '.csv';
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
     private function prepareForExport($data)
     {
         $name = [trans('sw.name'), trans('sw.price')];
@@ -199,10 +248,11 @@ class GymStoreProductFrontController extends GymGenericFrontController
         $categories = GymStoreCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
         return view('software::Front.store_product_front_form', [
-            'product' => new GymStoreProduct(),
-            'title' => $title,
-            'categories' => $categories,
-            'payment_types' => $payment_types,
+            'product'                => new GymStoreProduct(),
+            'title'                  => $title,
+            'categories'             => $categories,
+            'payment_types'          => $payment_types,
+            'displayNameSuggestions' => $this->getDisplayNameSuggestions(),
         ]);
     }
 
@@ -210,7 +260,11 @@ class GymStoreProductFrontController extends GymGenericFrontController
     {
         $product_inputs = $this->prepare_inputs($request->except(['_token', 'vendor_name', 'vendor_phone', 'vendor_address', 'vendor_amount', 'vendor_payment_type']));
         $product_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
+        $product_inputs['is_meal']   = request()->has('is_meal') ? 1 : 0;
         $product_inputs['user_id'] = $this->user_sw->id;
+        $displayName = $this->normalizeDisplayName($request->input('display_name'));
+        $product_inputs['display_name_ar'] = $displayName;
+        $product_inputs['display_name_en'] = $displayName;
 
         $product_inputs['code'] = $product_inputs['code'] ?? null;
         if (empty($product_inputs['code'])) {
@@ -286,11 +340,45 @@ class GymStoreProductFrontController extends GymGenericFrontController
         $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id')->get();
 
         return view('software::Front.store_product_front_form', [
-            'product' => $product,
-            'title' => $title,
-            'categories' => $categories,
-            'payment_types' => $payment_types,
+            'product'                => $product,
+            'title'                  => $title,
+            'categories'             => $categories,
+            'payment_types'          => $payment_types,
+            'displayNameSuggestions' => $this->getDisplayNameSuggestions(),
         ]);
+    }
+
+    private function getDisplayNameSuggestions(): array
+    {
+        $hasDisplayCols = Schema::hasColumn('sw_gym_store_products', 'display_name_ar');
+
+        if (!$hasDisplayCols) {
+            $rows = GymStoreProduct::branch()->get(['name_ar', 'name_en']);
+            return $rows->pluck('name_ar')
+                ->merge($rows->pluck('name_en'))
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values()
+                ->toArray();
+        }
+
+        $rows = GymStoreProduct::branch()->get(['display_name_ar', 'display_name_en', 'name_ar', 'name_en']);
+
+        return $rows->map(fn($r) => $r->getRawOriginal('display_name_ar') ?: $r->getRawOriginal('name_ar'))
+            ->merge($rows->map(fn($r) => $r->getRawOriginal('display_name_en') ?: $r->getRawOriginal('name_en')))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+    }
+
+    private function normalizeDisplayName(?string $value): ?string
+    {
+        if ($value === null) return null;
+        $normalized = preg_replace('/\s+/', ' ', trim($value));
+        return $normalized === '' ? null : $normalized;
     }
 
     public function update(GymStoreProductRequest $request, $id)
@@ -303,8 +391,12 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
         $product_inputs = $this->prepare_inputs($request->except(['_token']));
         $product_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
+        $product_inputs['is_meal']   = request()->has('is_meal') ? 1 : 0;
         $product_inputs['is_web'] = @(int)$product_inputs['is_web'];
         $product_inputs['is_mobile'] = @(int)$product_inputs['is_mobile'];
+        $displayName = $this->normalizeDisplayName($request->input('display_name'));
+        $product_inputs['display_name_ar'] = $displayName;
+        $product_inputs['display_name_en'] = $displayName;
         $product->update($product_inputs);
 
                  $notes = trans('sw.edit_store_product', ['name' => $product->name]);

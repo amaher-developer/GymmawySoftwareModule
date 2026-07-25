@@ -164,6 +164,25 @@ class GymMemberSubscription extends GenericModel
         return $this->hasMany(GymMemberSubscriptionFreeze::class, 'member_subscription_id');
     }
 
+    private static ?bool $_hasOptionTables = null;
+
+    protected static function booted(): void
+    {
+        if (self::$_hasOptionTables === null) {
+            self::$_hasOptionTables = Schema::hasTable('sw_gym_member_subscription_options');
+        }
+        if (!self::$_hasOptionTables) {
+            static::retrieved(function ($model) {
+                $model->setRelation('selected_options', collect());
+            });
+        }
+    }
+
+    public function selected_options()
+    {
+        return $this->hasMany(GymMemberSubscriptionOption::class, 'member_subscription_id');
+    }
+
     public function toArray()
     {
         return parent::toArray();

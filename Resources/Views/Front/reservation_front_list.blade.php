@@ -201,7 +201,12 @@
                     <div class="row g-6">
                         <div class="col-md-3">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.date') }}</label>
-                            <input type="date" name="date" value="{{ request('date') }}" class="form-control form-control-solid">
+                            <div class="input-group">
+                                <input type="date" name="date" id="filter_date_input" value="{{ request('date') }}" class="form-control form-control-solid">
+                                <button type="button" id="filter_today_btn" class="btn btn-light-primary" title="{{ trans('sw.today') }}">
+                                    {{ trans('sw.today') }}
+                                </button>
+                            </div>
                     </div>
                         <div class="col-md-3">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.status') }}</label>
@@ -216,10 +221,19 @@
                 </div>
                         <div class="col-md-3">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.activity') }}</label>
-                            <select name="activity" class="form-select form-select-solid">
+                            <select name="activity_id" class="form-select form-select-solid">
                                 <option value="">{{ trans('admin.choose') }}...</option>
                                 @foreach($activities ?? [] as $a)
-                                    <option value="{{ $a->id }}" @selected(request('activity')==$a->id)>{{ $a->{'name_'.($lang ?? 'ar')} ?? $a->name }}</option>
+                                    <option value="{{ $a->id }}" @selected(request('activity_id')==$a->id)>{{ $a->{'name_'.($lang ?? 'ar')} ?? $a->name }}</option>
+                                @endforeach
+                            </select>
+                </div>
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.trainer') }}</label>
+                            <select name="trainer_id" class="form-select form-select-solid">
+                                <option value="">{{ trans('admin.choose') }}...</option>
+                                @foreach($trainers ?? [] as $t)
+                                    <option value="{{ $t->id }}" @selected(request('trainer_id')==$t->id)>{{ $t->name }}</option>
                                 @endforeach
                             </select>
                 </div>
@@ -597,6 +611,20 @@ document.addEventListener('DOMContentLoaded', function(){
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    // Quick "Today" filter — sets the date field to today and submits the filter form
+    const todayBtn = document.getElementById('filter_today_btn');
+    const dateInput = document.getElementById('filter_date_input');
+    if (todayBtn && dateInput) {
+        todayBtn.addEventListener('click', function() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            dateInput.value = `${yyyy}-${mm}-${dd}`;
+            dateInput.closest('form').submit();
+        });
+    }
 
     // Toggle calendar
     const toggleBtn = document.getElementById('toggleCalendar');

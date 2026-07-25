@@ -62,31 +62,31 @@ class MembersAttendanceExport implements FromCollection, WithHeadings, WithMappi
     {
         foreach($this->keys as $key) {
             if($key == 'barcode')
-                $arr[] = $data['member']['code'];
+                $arr[] = $data['member']['code'] ?? null;
             else if($key == 'name')
-                $arr[] = $data['member']['name'];
+                $arr[] = $data['member']['name'] ?? null;
             else if($key == 'phone')
-                $arr[] = $data['member']['phone'];
+                $arr[] = $data['member']['phone'] ?? null;
             else if($key == 'membership')
-                $arr[] = $data['member']['member_subscription_info']['subscription']['name'];
+                $arr[] = $data['member']['member_subscription_info']['subscription']['name'] ?? null;
             else if($key == 'subscription')
-                $arr[] = $data['subscription']['name'];
+                $arr[] = $data['subscription']['name'] ?? null;
             else if($key == 'dob')
-                $arr[] = $data['member']['dob'];
+                $arr[] = $data['member']['dob'] ?? null;
             else if($key == 'national_id')
-                $arr[] = $data['member']['national_id'];
+                $arr[] = $data['member']['national_id'] ?? null;
             else if($key == 'workouts')
-                $arr[] = $data['member']['member_subscription_info']['workouts'];
+                $arr[] = $data['member']['member_subscription_info']['workouts'] ?? null;
             else if($key == 'number_of_visits')
-                $arr[] = $data['member']['member_subscription_info']['visits'];
+                $arr[] = $data['member']['member_subscription_info']['visits'] ?? null;
             else if($key == 'amount_remaining')
-                $arr[] = $data['member']['member_subscription_info']['amount_remaining'];
+                $arr[] = $data['member']['member_subscription_info']['amount_remaining'] ?? null;
             else if($key == 'joining_date')
-                $arr[] = Carbon::parse($data['member']['member_subscription_info']['joining_date'])->toDateString();
+                $arr[] = isset($data['member']['member_subscription_info']['joining_date']) ? Carbon::parse($data['member']['member_subscription_info']['joining_date'])->toDateString() : null;
             else if($key == 'expire_date')
-                $arr[] = Carbon::parse($data['member']['member_subscription_info']['expire_date'])->toDateString();
+                $arr[] = isset($data['member']['member_subscription_info']['expire_date']) ? Carbon::parse($data['member']['member_subscription_info']['expire_date'])->toDateString() : null;
             else if($key == 'status')
-                $arr[] = $data['member']['member_subscription_info']['status_name'];
+                $arr[] = $data['member']['member_subscription_info']['status_name'] ?? null;
             else if($key == 'created_at')
                 $arr[] =  Carbon::parse($data['created_at'])->toDateTimeString();
             else if($key == 'pt_membership')

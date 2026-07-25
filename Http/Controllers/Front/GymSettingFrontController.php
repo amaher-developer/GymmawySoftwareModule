@@ -38,7 +38,7 @@ class GymSettingFrontController extends GymGenericFrontController
     public function edit()
     {
 
-        $mainSettings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        $mainSettings = Setting::branch()->first();
 
         $title = trans('sw.settings');
         $smsPoints = $this->formatSmsPoints(0);
@@ -72,12 +72,12 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function update(GymSettingRequest $request)
     {
-        $setting = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        $setting = Setting::branch()->first();
         
         $setting_inputs = $this->prepare_inputs($request->only(['name_ar', 'name_en', 'facebook', 'twitter', 'instagram',  'tiktok',  'snapchat', 'youtube', 'address_ar', 'address_en',
             'latitude', 'longitude', 'phone', 'support_email', 'meta_keywords_ar', 'meta_keywords_en', 'meta_description_ar', 'meta_description_en',
             'about_ar', 'about_en', 'terms_ar', 'terms_en', 'sms_username', 'sms_email', 'sms_sms_sender_id'
-            , 'images', 'vat_details', 'reservation_details']));
+            , 'images', 'vat_details', 'reservation_details', 'enable_dynamic_qr', 'qr_expiry_seconds', 'enable_device_binding']));
 
         $billingInput = $request->input('billing');
         if ($billingInput !== null) {
@@ -149,7 +149,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function editIntegrations()
     {
-        $mainSettings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        $mainSettings = Setting::branch()->first();
 
         return view('software::Front.integrations', [
             'title' => trans('sw.integrations_page') ?? 'Integrations',
@@ -162,7 +162,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function updateIntegrations(\Illuminate\Http\Request $request)
     {
-        $setting = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        $setting = Setting::branch()->first();
         $inputs = [];
 
         // Payment gateway credentials
@@ -310,7 +310,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     function updateImage()
     {
-        $settings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        $settings = Setting::branch()->first();
 //        if(@request('type') == 2){
 //            $setting_images = (array)$settings->cover_images;
 //            $input_file = 'cover_file';
@@ -377,7 +377,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     function updateImageDelete(){
 
-        $settings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        $settings = Setting::branch()->first();
         if(request('type') == 2){ $setting_images = (array)$settings->cover_images;}else{$setting_images = (array)$settings->images;}
         $index = array_search(request('image'),$setting_images);
         if($index !== FALSE){

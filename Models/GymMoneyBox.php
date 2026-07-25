@@ -6,7 +6,7 @@ use App\Modules\Access\Models\User;
 use Modules\Generic\Models\GenericModel;
 use DateTime;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class GymMoneyBox extends GenericModel
 {
@@ -16,55 +16,63 @@ class GymMoneyBox extends GenericModel
 
     protected $table = 'sw_gym_money_boxes';
     protected $guarded = ['id'];
-    protected $appends  = ['operation_name', 'payment_type_name', 'display_id'];
+    protected $appends  = ['operation_name', 'payment_type_name'];
     public static $uploads_path='uploads/gymorders/';
     public static $thumbnails_uploads_path='uploads/gymorders/thumbnails/';
 
-    /**
-     * Apply global scope to ALL queries for tenant isolation
-     * This prevents IDOR (Insecure Direct Object Reference) attacks
-     */
-    public static function booted()
+    public function scopeBranch($query)
     {
-        static::addGlobalScope('branch', function ($query) {
-            $branchId = parent::getCurrentBranchId();
-            $query->where('branch_setting_id', $branchId);
-        });
-
-        // Automatically set sequence_number for new records
-        static::creating(function ($moneyBox) {
-            if (empty($moneyBox->sequence_number)) {
-                $branchId = $moneyBox->branch_setting_id ?? parent::getCurrentBranchId();
-
-                // Get the next sequence number for this branch
-                $lastSequence = static::withoutGlobalScope('branch')
-                    ->where('branch_setting_id', $branchId)
-                    ->max('sequence_number') ?? 0;
-
-                $moneyBox->sequence_number = $lastSequence + 1;
-            }
-        });
+        return $query->where('branch_setting_id', parent::getCurrentBranchId());
     }
 
     /**
-     * Manual branch and tenant scope
-     * Filters by branch_setting_id and optionally tenant_id
+     * Every call site computes `amount_before` by reading GymMoneyBox::latest()
+     * and deriving from it, then inserting - two un-locked steps, so concurrent
+     * requests can read the same "latest" row and both insert with the same
+     * amount_before, breaking the running-balance chain. Rather than touching
+     * every call site, this intercepts every *new* row here and overwrites
+     * amount_before with a race-free value: it locks a single, stable
+     * per-branch balance row (sw_gym_money_box_balances, see GymMoneyBoxBalance)
+     * with lockForUpdate() inside a transaction, so concurrent inserts for the
+     * same branch are serialized instead of racing. Existing rows (updates,
+     * restores) are untouched - only fresh inserts go through this path.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param int $branchId - Default: 1
-     * @param int $tenantId - Default: 1
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Retroactive edits (delete/restore/rebuild/audit-fix) that change the
+     * chain's tail must resync the balance row too - see
+     * GymMoneyBoxFrontController::rebuildMoneyboxFromId().
      */
-    public function scopeBranch($query, $branchId = 1, $tenantId = 1)
+    public function save(array $options = [])
     {
-        $query->where('branch_setting_id', $branchId);
-
-        // Only filter by tenant_id if the column exists in the table
-        if (Schema::hasColumn($this->getTable(), 'tenant_id')) {
-            $query->where('tenant_id', $tenantId);
+        if ($this->exists) {
+            return parent::save($options);
         }
 
-        return $query;
+        return DB::transaction(function () use ($options) {
+            $branchId = $this->branch_setting_id ?? static::getCurrentBranchId();
+
+            $balance = GymMoneyBoxBalance::where('branch_setting_id', $branchId)->lockForUpdate()->first();
+
+            if (!$balance) {
+                try {
+                    GymMoneyBoxBalance::create(['branch_setting_id' => $branchId, 'amount' => 0]);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Another concurrent request already created it - fall through and lock it below.
+                }
+                $balance = GymMoneyBoxBalance::where('branch_setting_id', $branchId)->lockForUpdate()->first();
+            }
+
+            $this->branch_setting_id = $branchId;
+            $this->amount_before = round((float) $balance->amount, 2);
+
+            $result = parent::save($options);
+
+            $balance->amount = (int) $this->operation === 0
+                ? round($balance->amount + round((float) $this->amount, 2), 2)
+                : round($balance->amount - round((float) $this->amount, 2), 2);
+            $balance->save();
+
+            return $result;
+        });
     }
 
     public function user()

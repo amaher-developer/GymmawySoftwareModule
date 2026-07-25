@@ -192,7 +192,7 @@
                         <!--begin::Select-->
                         <select id="EditMembershipSelect" name="subscription_id" class="form-select form-select-solid mb-2 select2" disabled>
                             @foreach($subscriptions as $subscription)
-                                <option value="{{$subscription->id}}" expire_date="{{\Carbon\Carbon::now()->addDays($subscription->period)->toDateString()}}" IsChangeable="{{$subscription->is_expire_changeable}}" price="{{$subscription->price}}" @if(@$member->member_subscription_info->subscription_id == $subscription->id) selected="" @endif>{{$subscription->name}}</option>
+                                <option value="{{$subscription->id}}" expire_date="{{\Carbon\Carbon::now()->addDays($subscription->period > 0 ? $subscription->period - 1 : 0)->toDateString()}}" IsChangeable="{{$subscription->is_expire_changeable}}" price="{{$subscription->price}}" @if(@$member->member_subscription_info->subscription_id == $subscription->id) selected="" @endif>{{$subscription->name}}</option>
                             @endforeach
                         </select>
                         <!--end::Select-->

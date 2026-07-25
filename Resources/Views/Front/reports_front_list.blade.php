@@ -63,7 +63,7 @@
         <!--begin::Financial Reports Section-->
         @if((in_array('listMoneyBox', (array)$swUser->permissions) || $swUser->is_super_user) || 
             (in_array('reportMoneyboxTax', (array)$swUser->permissions) || $swUser->is_super_user) ||
-            (config('sw_billing.zatca_enabled') && (in_array('reportZatcaInvoices', (array)$swUser->permissions) || $swUser->is_super_user)) ||
+            {{-- (config('sw_billing.zatca_enabled') && (in_array('reportZatcaInvoices', (array)$swUser->permissions) || $swUser->is_super_user)) || --}}
             (in_array('reportOnlinePaymentTransactionList', (array)$swUser->permissions) || $swUser->is_super_user) ||
             (in_array('listMoneyBoxDaily', (array)$swUser->permissions) || $swUser->is_super_user))
         <div class="mb-10">
@@ -100,20 +100,7 @@
                     </a>
                 </div>
                 @endif
-                @if(config('sw_billing.zatca_enabled') && (in_array('reportZatcaInvoices', (array)$swUser->permissions) || $swUser->is_super_user))
-                <div class="col-xl-3 col-lg-4 col-md-6">
-                    <a href="{{ route('sw.reportZatcaInvoices') }}" class="text-decoration-none">
-                        <div class="card report-card">
-                            <div class="card-body d-flex flex-column align-items-center justify-content-center p-8">
-                                <div class="report-card-icon bg-light-primary">
-                                    <i class="ki-outline ki-file-down text-primary"></i>
-                                </div>
-                                <h5 class="report-card-title text-center">{{ trans('sw.zatca_invoices_report') }}</h5>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                @endif
+                {{-- zatca invoices report hidden --}}
                 @if(in_array('reportOnlinePaymentTransactionList', (array)$swUser->permissions) || $swUser->is_super_user)
                 <div class="col-xl-3 col-lg-4 col-md-6">
                     <a href="{{ route('sw.reportOnlinePaymentTransactionList') }}" class="text-decoration-none">

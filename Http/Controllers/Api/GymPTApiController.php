@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Auth;
 class GymPTApiController extends GymGenericApiController
 {
     public function trainings(){
-        $trainings = GymPTClass::with(['pt_subscription.pt_trainers']);
+        $trainings = GymPTClass::branch()->with(['pt_subscription.pt_trainers']);
 //        if(@request('device_type'))
             $trainings = $trainings->where('is_mobile', 1);
 //        else
@@ -27,7 +27,7 @@ class GymPTApiController extends GymGenericApiController
         return $this->successResponse();
     }
     public function training($id){
-        $training = GymPTClass::with([
+        $training = GymPTClass::branch()->with([
             'pt_subscription',
             'pt_subscription.classes.activeClassTrainers.trainer',
             'pt_subscription_trainer.pt_trainer',
@@ -107,8 +107,22 @@ class GymPTApiController extends GymGenericApiController
             $subscriptionName = $ptClass->pt_subscription->name ?? '';
             $startTime        = Carbon::parse($daySlot['start'] ?? '00:00')->format('g:i A');
 
+            $classSchedule = [];
+            $days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            foreach ($workDays as $di => $daySlotItem) {
+                if (!empty($daySlotItem['status'])) {
+                    $classSchedule[] = [
+                        'day'   => $days[$di] ?? '',
+                        'start' => \Carbon\Carbon::parse($daySlotItem['start'] ?? '00:00')->format('g:i A'),
+                        'end'   => isset($daySlotItem['end']) ? \Carbon\Carbon::parse($daySlotItem['end'])->format('g:i A') : '',
+                    ];
+                }
+            }
+
             // ── Build trainer rows for this class ────────────────────────────
             $trainers = $ptClass->activeClassTrainers ?? collect([]);
+
+            $qrCode = (string)($authUser->code ?? $authUser->id);
 
             if ($trainers->isEmpty()) {
                 // Old schema: single trainer stored directly on ptMember
@@ -121,6 +135,8 @@ class GymPTApiController extends GymGenericApiController
                     'trainer_image' => $trainerImage,
                     'period'        => $startTime,
                     'date'          => $date,
+                    'qr_code'       => $qrCode,
+                    'schedule'      => $classSchedule,
                 ];
             } else {
                 foreach ($trainers as $classTrainer) {
@@ -146,6 +162,8 @@ class GymPTApiController extends GymGenericApiController
                         'trainer_image' => $trainerImage,
                         'period'        => $trainerStart,
                         'date'          => $date,
+                        'qr_code'       => $qrCode,
+                        'schedule'      => $classSchedule,
                     ];
                 }
             }
