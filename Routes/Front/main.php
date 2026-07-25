@@ -8,14 +8,13 @@ Route::name('sw.fingerprintAttendees')
 Route::name('sw.appSmartLink')
     ->get('go', 'Front\GymHomeFrontController@appSmartLink');
 
-Route::prefix('/')
-    ->middleware(['auth:sw', 'sw_permission'])
+Route::middleware(['auth:sw', 'sw_permission'])
     ->group(function () {
 
         Route::name('sw.backupDB')->get('db-backup', 'Front\GymDBFrontController@backupDb');
 
         Route::name('sw.dashboard')
-            ->get('', 'Front\GymHomeFrontController@home');
+            ->get('home', 'Front\GymHomeFrontController@home');
         Route::name('sw.dashboardMini')
             ->get('home-mini', 'Front\GymHomeFrontController@home_mini');
         Route::name('sw.dashboardPTMini')

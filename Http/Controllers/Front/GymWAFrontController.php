@@ -22,15 +22,25 @@ class GymWAFrontController extends GymGenericFrontController
     public $consume_message_count = 0;
     public function __construct()
     {
-        $this->consume_user_count = GymWALog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->distinct()->where('status', 1)->whereDate('created_at', Carbon::now()->toDateString())->count(['phone']);
-        $this->consume_message_count = GymWALog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('status', 1)->whereDate('created_at', '>', Carbon::now()->subMonth()->toDateString())->count(['phone']);
-
         parent::__construct();
+        // consume counts are loaded lazily in loadConsumeCounts() because user_sw
+        // is not available until after the InitializeUser middleware runs
+    }
+
+    protected function loadConsumeCounts()
+    {
+        $user = $this->user_sw ?? Auth::guard('sw')->user();
+        if (!$user) {
+            return;
+        }
+        $this->consume_user_count = GymWALog::branch($user->branch_setting_id, @$user->tenant_id)->distinct()->where('status', 1)->whereDate('created_at', Carbon::now()->toDateString())->count(['phone']);
+        $this->consume_message_count = GymWALog::branch($user->branch_setting_id, @$user->tenant_id)->where('status', 1)->whereDate('created_at', '>', Carbon::now()->subMonth()->toDateString())->count(['phone']);
     }
 
 
     public function create()
     {
+        $this->loadConsumeCounts();
         $title = trans('sw.wa_add');
         $max_users = TypeConstants::WA_MAX_USER;
         $max_messages = TypeConstants::WA_MAX_MESSAGE;
@@ -45,6 +55,7 @@ class GymWAFrontController extends GymGenericFrontController
 
     public function store(GymSMSRequest $request)
     {
+        $this->loadConsumeCounts();
         $user_inputs = $request->except(['_token']);
         $message = str_replace(array("\r\n", "\r", "\n"), "", strip_tags($user_inputs['message'])) ;
         $phones = explode(',', $user_inputs['phones']);
