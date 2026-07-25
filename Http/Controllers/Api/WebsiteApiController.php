@@ -6,7 +6,7 @@ use Modules\Generic\Classes\Constants;
 use Modules\Generic\Http\Controllers\Api\GenericApiController;
 use Modules\Generic\Models\Setting;
 use Modules\Generic\Repositories\SettingRepository;
-use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
+use Modules\Generic\Http\Controllers\Api\FirebaseApiController;
 use App\Modules\Notification\Models\Push_tokens;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Controllers\Front\GymMoneyBoxFrontController;
@@ -218,7 +218,82 @@ class WebsiteApiController extends GenericApiController
 
         $this->userLog($notes, TypeConstants::RenewMember);
 
+        return $this->successResponse();
+    }
 
+    /**
+     * POST /api/send-subscription-notification
+     *
+     * Send SMS / WhatsApp / push notification after a new or renewed subscription.
+     *
+     * Required params:
+     *   lang                 - locale (ar / en)
+     *   member_subscription_id - ID of the GymMemberSubscription record
+     *   event                - "new_member" | "renew_member"
+     *
+     * Optional params:
+     *   phone  - override the member phone (falls back to member.phone)
+     */
+    public function sendSubscriptionNotification()
+    {
+        if (!$this->validateApiRequest(['member_subscription_id', 'event']))
+            return $this->response;
+
+        $memberSubscriptionId = request('member_subscription_id');
+        $event                = request('event');
+        $phoneOverride        = request('phone');
+
+        // Validate event code
+        $allowedEvents = ['new_member', 'renew_member'];
+        if (!in_array($event, $allowedEvents)) {
+            return $this->falseResponse('event must be one of: ' . implode(', ', $allowedEvents));
+        }
+
+        // Load the subscription with its relations
+        $memberSubscription = GymMemberSubscription::with(['member', 'subscription'])
+            ->find($memberSubscriptionId);
+
+        if (!$memberSubscription) {
+            $this->return['message'] = trans('sw.subscription_not_found');
+            return $this->falseResponse('member_subscription_id not found');
+        }
+
+        $member = $memberSubscription->member;
+        $phone  = $phoneOverride ?: ($member->phone ?? null);
+
+        $settings            = $this->SettingRepository->first();
+        $notificationService = new \Modules\Software\Services\NotificationService();
+
+        // ── SMS + WhatsApp ────────────────────────────────────────────────────
+        $notificationResult = $notificationService->sendEventNotification($event, $memberSubscription, $phone);
+
+        // ── Push notification (Firebase) ──────────────────────────────────────
+        $pushSent = false;
+        if ($settings->active_mobile && $member) {
+            $message_notification = \Modules\Software\Models\GymEventNotification::where('event_code', $event)
+                ->where('status', 1)->first();
+            if ($message_notification) {
+                $msg = $notificationService->dynamicMsg($message_notification->message, $memberSubscription, $settings);
+                $notify_data = [
+                    'image' => @env('APP_URL') ? env('APP_URL') . env('APP_URL_ASSETS') . 'placeholder_black.png' : @$settings->logo,
+                    'sound' => 'default',
+                    'badge' => '1',
+                    'e'     => 1,
+                    'title' => $msg,
+                    'body'  => $msg,
+                ];
+                if (class_exists(FirebaseApiController::class)) {
+                    (new FirebaseApiController())->push([$member->id], $notify_data);
+                    $pushSent = true;
+                } else {
+                    \Illuminate\Support\Facades\Log::warning('FirebaseApiController missing; skipping push notification.');
+                }
+            }
+        }
+
+        $this->return['sms_sent']  = $notificationResult['sms_sent'];
+        $this->return['wa_sent']   = $notificationResult['wa_sent'];
+        $this->return['push_sent'] = $pushSent;
 
         return $this->successResponse();
     }
@@ -233,14 +308,14 @@ class WebsiteApiController extends GenericApiController
         if(!$this->validateApiRequest(['code', 'phone']))
             return $this->response;
 
-        $member =  GymMember::with([ 'member_attendees'])->withCount('member_attendees')->where(['code' => $code, 'phone' => $phone])->first();
+        $member =  GymMember::with(['member_attendees', 'member_subscription_info_has_active'])->withCount('member_attendees')->where(['code' => $code, 'phone' => $phone])->first();
         if($member){
             $data = [
                 'id' => $member->id,
                 'name' => $member->name,
                 'phone' => $member->phone,
                 'image' => $member->image,
-                'invitations' => $member->invitations,
+                'invitations' => $member->member_subscription_info_has_active?->invitations ?? 0,
                 'code_url' => $member->code_url,
                 'code' => $member->code,
                 'attendees_count' => @$member->member_attendees_count,

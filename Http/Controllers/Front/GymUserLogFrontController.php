@@ -76,7 +76,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $logs = $this->UserLogRepository->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user']);
+        $logs = $this->UserLogRepository->branch()->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
 
@@ -106,7 +106,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     public function reportRenewMemberList(){
         $title = trans('sw.logs_renew');
         $search_query = request()->query();
-        $logs = $this->UserLogRepository->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user'])->where('type', 1)->orderBy('id', 'DESC');
+        $logs = $this->UserLogRepository->branch()->with(['user'])->where('type', 1)->orderBy('id', 'DESC');
         $logs = $logs->paginate($this->limit)->onEachSide(1);
         $total = $logs->total();
 
@@ -115,7 +115,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportRenewMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportRenewMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -128,13 +128,13 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportRenewMemberExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'notes', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'notes', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportRenewMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportRenewMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -270,7 +270,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportExpireMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportExpireMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -284,13 +284,13 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportExpireMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'barcode', 'name', 'phone', 'subscription', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportExpireMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportExpireMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -426,6 +426,18 @@ class GymUserLogFrontController extends GymGenericFrontController
 //            $q->whereRaw(' json_extract(activities->"$[*].name_ar", "'.$search.'")');
             });
         });
+        // ── Statistics (computed on filtered query before paginating) ─────────
+        $statsBase = clone $logs;
+        $stats = [
+            'total_paid'      => (clone $statsBase)->sum('amount_paid'),
+            'total_remaining' => (clone $statsBase)->sum('amount_remaining'),
+            'total_discount'  => (clone $statsBase)->sum('discount_value'),
+            'count_active'    => (clone $statsBase)->where('status', TypeConstants::Active)->count(),
+            'count_frozen'    => (clone $statsBase)->where('status', TypeConstants::Freeze)->count(),
+            'count_expired'   => (clone $statsBase)->where('status', TypeConstants::Expired)->count(),
+            'count_coming'    => (clone $statsBase)->where('status', TypeConstants::Coming)->count(),
+        ];
+
         if($this->limit){
             $logs = $logs->paginate($this->limit)->onEachSide(1);
             $total = $logs->total();
@@ -435,11 +447,11 @@ class GymUserLogFrontController extends GymGenericFrontController
         }
         $search_query = request()->query();
 
-        return view('software::Front.report_subscription_member_front_list', compact('subscriptions', 'group_discounts','search_query','logs','title', 'total'));
+        return view('software::Front.report_subscription_member_front_list', compact('subscriptions', 'group_discounts','search_query','logs','title', 'total', 'stats'));
     }
     function exportSubscriptionMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -453,13 +465,13 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportSubscriptionMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [  'barcode', 'name', 'phone', 'subscription', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportSubscriptionMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -605,7 +617,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportPTSubscriptionMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportPTSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -620,13 +632,13 @@ class GymUserLogFrontController extends GymGenericFrontController
 
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [  'barcode', 'name', 'phone', 'pt_subscription'
-            ], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            ], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportPTSubscriptionMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportPTSubscriptionMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -779,7 +791,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         }//else
             //$logs = $logs->whereDate('created_at', Carbon::now()->toDateString());
 
-        $logs->orderBy('created_at', 'DESC');
+        $logs->orderBy('id', 'DESC');
         if($this->limit){
             $logs = $logs->paginate($this->limit)->onEachSide(1);
             $total = $logs->total();
@@ -792,7 +804,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportTodayMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -806,17 +818,17 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportTodayMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
-            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportTodayMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportTodayMemberList()->with(\request()->all());
         $records = $records->logs;
 
-        $keys = ['barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
+        $keys = ['created_at', 'barcode', 'name', 'phone', 'membership', 'workouts', 'number_of_visits', 'amount_remaining'
             , 'joining_date', 'expire_date', 'status'];
         if ($this->lang == 'ar') $keys = array_reverse($keys);
 
@@ -897,6 +909,127 @@ class GymUserLogFrontController extends GymGenericFrontController
         return $pdf->download($this->fileName . '.pdf');
     }
 
+    /**
+     * Create a new attendance record for a member
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function createAttendance()
+    {
+        try {
+            $validator = \Validator::make(request()->all(), [
+                'member_id' => 'required|integer|exists:sw_gym_members,id',
+                'attendance_date' => 'required|date',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.validation_error'),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $memberId = request()->get('member_id');
+            $attendanceDate = request()->get('attendance_date');
+
+            // Get member's last active subscription
+            $member = \Modules\Software\Models\GymMember::branch()->find($memberId);
+
+            if (!$member) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.member_not_found')
+                ], 404);
+            }
+
+            // Get the member's last subscription
+            $subscription = \Modules\Software\Models\GymMemberSubscription::branch()
+                ->where('status', TypeConstants::Active)
+                ->where('member_id', $memberId)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.no_subscription_found')
+                ], 404);
+            }
+
+            // Create attendance record
+            $attendance = new \Modules\Software\Models\GymMemberAttendee();
+            $attendance->member_id = $memberId;
+            $attendance->subscription_id = $subscription->id;
+            $attendance->user_id = auth('sw')->id();
+            $attendance->branch_setting_id = @$this->mainSettings->id;
+            $attendance->created_at = Carbon::parse($attendanceDate);
+            $attendance->updated_at = Carbon::parse($attendanceDate);
+            $attendance->save();
+
+            GymMemberSubscription::where('id', $attendance->subscription_id)
+            ->increment('visits', 1);
+
+            // Log the action
+            $logNotes = trans('sw.attendance_created_for_member') . ': ' . $member->name;
+            $this->userLog($logNotes, TypeConstants::CreateAttendance);
+
+            return response()->json([
+                'success' => true,
+                'message' => trans('sw.attendance_created_successfully'),
+                'data' => $attendance
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error creating attendance: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => trans('sw.operation_failed') . ': ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete an attendance record
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteAttendance($id)
+    {
+        try {
+            $attendance = \Modules\Software\Models\GymMemberAttendee::branch()->find($id);
+            
+            if (!$attendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => trans('sw.attendance_not_found')
+                ], 404);
+            }
+
+            $memberName = $attendance->member ? $attendance->member->name : trans('sw.unknown');
+
+            GymMemberSubscription::where('id', $attendance->subscription_id)
+    ->decrement('visits', 1);
+            // Delete the attendance record
+            $attendance->delete();
+
+            // Log the action
+            $logNotes = trans('sw.attendance_deleted_for_member') . ': ' . $memberName;
+            $this->userLog($logNotes, TypeConstants::DeleteAttendance);
+
+            return response()->json([
+                'success' => true,
+                'message' => trans('sw.attendance_deleted_successfully')
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error deleting attendance: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => trans('sw.operation_failed') . ': ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     /* --------------------------------------------------------------------------- */
 
@@ -964,7 +1097,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
     function exportTodayPTMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportTodayPTMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -978,13 +1111,13 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportTodayPTMemberExcel);
 
         return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'created_at', 'barcode', 'name', 'phone', 'pt_membership', 'pt_classes', 'pt_sessions_used', 'pt_amount_remaining'
-            , 'pt_joining_date', 'pt_expire_date'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'pt_joining_date', 'pt_expire_date'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportTodayPTMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportTodayPTMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1117,7 +1250,7 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
     function exportTodayNonMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportTodayNonMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1130,13 +1263,13 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportTodayNonMemberExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'non_created_at',  'non_name', 'non_phone', 'non_membership'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => [ 'non_created_at',  'non_name', 'non_phone', 'non_membership'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
     }
 
     function exportTodayNonMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->reportTodayNonMemberList()->with(\request()->all());
         $records = $records->logs;
 
@@ -1245,7 +1378,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportUserAttendeesExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $search_query = request()->query();
         $this->request_array = ['search', 'date'];
         $request_array = $this->request_array;
@@ -1266,12 +1399,12 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportUserAttendeesExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'title', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'title', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportUserAttendeesPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $search_query = request()->query();
         $this->request_array = ['search', 'date'];
         $request_array = $this->request_array;
@@ -1358,6 +1491,8 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     public function reportZatcaInvoices()
     {
+        $this->limit = 50;
+        
         if (!config('sw_billing.zatca_enabled')) {
             abort(404);
         }
@@ -1365,108 +1500,144 @@ class GymUserLogFrontController extends GymGenericFrontController
         $title = trans('sw.zatca_invoices_report');
         $search_query = request()->query();
 
-        $this->request_array = ['number', 'status', 'type', 'from', 'to', 'buyer', 'source', 'search'];
-        $request_array = $this->request_array;
-        foreach ($request_array as $item) {
+        $this->request_array = ['search', 'from', 'to', 'has_zatca', 'type'];
+        foreach ($this->request_array as $item) {
             $$item = request()->has($item) ? request()->$item : null;
         }
 
-        $invoicesQuery = SwBillingInvoice::query()
-            ->with([
-                'moneyBox.member',
-                'storeOrder.member',
-                'nonMember',
-                'member',
-                'memberSubscription',
-                'ptMember',
-            ])
-            ->orderByDesc('created_at');
-
-        if ($from) {
-            $invoicesQuery->whereDate('created_at', '>=', Carbon::parse($from)->toDateString());
-        }
-
-        if ($to) {
-            $invoicesQuery->whereDate('created_at', '<=', Carbon::parse($to)->toDateString());
-        }
-
-        if ($status) {
-            $invoicesQuery->where('zatca_status', $status);
-        }
-
-        if ($type) {
-            $invoicesQuery->where('invoice_type', $type);
-        }
-
-        if ($number) {
-            $invoicesQuery->where('invoice_number', 'like', '%' . $number . '%');
-        }
-
-        if ($buyer) {
-            $invoicesQuery->where(function ($query) use ($buyer) {
-                $query->where('buyer_name', 'like', '%' . $buyer . '%')
-                    ->orWhere('buyer_tax_number', 'like', '%' . $buyer . '%');
+        // EXISTS subquery: detect if money box has any linked ZATCA invoice
+        $hasInvoiceSubquery = \Modules\Billing\Models\SwBillingInvoice::selectRaw('1')
+            ->whereColumn('sw_billing_invoices.money_box_id', 'sw_gym_money_boxes.id')
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.member_subscription_id')
+                  ->whereColumn('sw_billing_invoices.member_subscription_id', 'sw_gym_money_boxes.member_subscription_id');
+            })
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.non_member_subscription_id')
+                  ->whereColumn('sw_billing_invoices.non_member_id', 'sw_gym_money_boxes.non_member_subscription_id');
+            })
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.store_order_id')
+                  ->whereColumn('sw_billing_invoices.store_order_id', 'sw_gym_money_boxes.store_order_id');
+            })
+            ->orWhere(function ($q) {
+                $q->whereNotNull('sw_gym_money_boxes.member_pt_subscription_id')
+                  ->whereColumn('sw_billing_invoices.member_pt_subscription_id', 'sw_gym_money_boxes.member_pt_subscription_id');
             });
-        }
 
-        if ($source) {
-            $invoicesQuery->where(function ($query) use ($source) {
-                switch ($source) {
-                    case 'money_box':
-                        $query->whereNotNull('money_box_id');
-                        break;
-                    case 'store_order':
-                        $query->whereNotNull('store_order_id');
-                        break;
-                    case 'non_member':
-                        $query->whereNotNull('non_member_id');
-                        break;
-                    case 'member':
-                        $query->where(function ($subQuery) {
-                            $subQuery->whereNotNull('member_subscription_id')
-                                ->orWhereNotNull('member_id');
-                        });
-                        break;
-                    case 'pt_member':
-                        $query->whereNotNull('member_pt_subscription_id');
-                        break;
-                }
-            });
-        }
-
-        if ($search) {
-            $invoicesQuery->where(function ($query) use ($search) {
-                $query->where('invoice_number', 'like', '%' . $search . '%')
-                    ->orWhere('buyer_name', 'like', '%' . $search . '%')
-                    ->orWhere('buyer_tax_number', 'like', '%' . $search . '%')
-                    ->orWhere('zatca_uuid', 'like', '%' . $search . '%');
-            });
-        }
-
-        $invoices = $invoicesQuery->paginate($this->limit)->onEachSide(1);
-        $total = $invoices->total();
-
-        $statuses = SwBillingInvoice::select('zatca_status')->distinct()->pluck('zatca_status')->filter()->values();
-        $types = SwBillingInvoice::select('invoice_type')->distinct()->pluck('invoice_type')->filter()->values();
-        $sources = [
-            'money_box' => trans('sw.source_money_box'),
-            'store_order' => trans('sw.source_store_order'),
-            'non_member' => trans('sw.source_non_member'),
-            'member' => trans('sw.source_member'),
-            'pt_member' => trans('sw.source_pt_member'),
+        // Income-only types (same as tax report)
+        $incomeTypes = [
+            TypeConstants::CreateMember, TypeConstants::RenewMember,
+            TypeConstants::CreateSubscription,
+            TypeConstants::CreateNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity,
+            TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::CreatePTSubscription,
+            TypeConstants::CreateStoreOrder,
+            TypeConstants::CreateMoneyBoxAdd,
         ];
 
+        $ordersQuery = GymMoneyBox::branch()
+            ->with(['swInvoice', 'member', 'member_subscription.member', 'non_member_subscription', 'store_order', 'member_pt_subscription'])
+            ->whereIn('type', $incomeTypes)
+            ->where('operation', 0)
+            ->where('vat', '>', 0)
+            ->orderByDesc('id');
+
+        if ($from) {
+            $ordersQuery->whereDate('created_at', '>=', Carbon::parse($from)->toDateString());
+        }
+        if ($to) {
+            $ordersQuery->whereDate('created_at', '<=', Carbon::parse($to)->toDateString());
+        }
+        if ($search) {
+            $ordersQuery->where(function ($q) use ($search) {
+                $q->where('notes', 'like', '%' . $search . '%')
+                  ->orWhere('amount', '=', (float)$search)
+                  ->orWhere('id', '=', (int)$search);
+            });
+        }
+        if ($type) {
+            $ordersQuery->where('type', $type);
+        }
+        if ($has_zatca !== null && $has_zatca !== '') {
+            if ($has_zatca == '1') {
+                $ordersQuery->whereExists($hasInvoiceSubquery);
+            } else {
+                $ordersQuery->whereNotExists($hasInvoiceSubquery);
+            }
+        }
+
+        $records    = $ordersQuery->paginate($this->limit)->onEachSide(1);
+        $total      = $records->total();
+        $withZatca  = GymMoneyBox::branch()->whereIn('type', $incomeTypes)->where('operation', 0)->where('vat', '>', 0)->whereExists($hasInvoiceSubquery)->count();
+        $withoutZatca = GymMoneyBox::branch()->whereIn('type', $incomeTypes)->where('operation', 0)->where('vat', '>', 0)->whereNotExists($hasInvoiceSubquery)->count();
+
+        // Build per-row invoice map: check all FK paths in bulk
+        $moneyBoxIds        = $records->pluck('id');
+        $memberSubIds       = $records->pluck('member_subscription_id')->filter()->unique()->values();
+        $nonMemberSubIds    = $records->pluck('non_member_subscription_id')->filter()->unique()->values();
+        $storeOrderIds      = $records->pluck('store_order_id')->filter()->unique()->values();
+        $ptSubIds           = $records->pluck('member_pt_subscription_id')->filter()->unique()->values();
+
+        $allInvoices = \Modules\Billing\Models\SwBillingInvoice::where(function ($q) use (
+            $moneyBoxIds, $memberSubIds, $nonMemberSubIds, $storeOrderIds, $ptSubIds
+        ) {
+            $q->whereIn('money_box_id', $moneyBoxIds);
+            if ($memberSubIds->isNotEmpty())    $q->orWhereIn('member_subscription_id', $memberSubIds);
+            if ($nonMemberSubIds->isNotEmpty()) $q->orWhereIn('non_member_id', $nonMemberSubIds);
+            if ($storeOrderIds->isNotEmpty())   $q->orWhereIn('store_order_id', $storeOrderIds);
+            if ($ptSubIds->isNotEmpty())        $q->orWhereIn('member_pt_subscription_id', $ptSubIds);
+        })->get();
+
+        // Map money_box_id → invoice; prefer the eager-loaded direct relation, fall back to FK search
+        $invoicesByMoneyBox = collect();
+        foreach ($records as $row) {
+            $inv = $row->swInvoice  // direct hasOne via money_box_id (already eager-loaded)
+                ?? $allInvoices->firstWhere('money_box_id', $row->id)
+                ?? ($row->member_subscription_id     ? $allInvoices->firstWhere('member_subscription_id', $row->member_subscription_id) : null)
+                ?? ($row->non_member_subscription_id ? $allInvoices->firstWhere('non_member_id', $row->non_member_subscription_id) : null)
+                ?? ($row->store_order_id             ? $allInvoices->firstWhere('store_order_id', $row->store_order_id) : null)
+                ?? ($row->member_pt_subscription_id  ? $allInvoices->firstWhere('member_pt_subscription_id', $row->member_pt_subscription_id) : null);
+            if ($inv) {
+                $invoicesByMoneyBox->put($row->id, $inv);
+            }
+        }
+
         return view('software::Front.report_zatca_invoices_front_list', compact(
-            'title',
-            'search_query',
-            'invoices',
-            'statuses',
-            'types',
-            'sources',
-            'total'
+            'title', 'search_query', 'records', 'total', 'withZatca', 'withoutZatca', 'invoicesByMoneyBox'
         ));
     }
 
+
+    public function bulkGenerateZatca(\Illuminate\Http\Request $request)
+    {
+        if (!config('sw_billing.zatca_enabled')) {
+            return response()->json(['success' => false, 'message' => trans('sw.zatca_disabled')], 403);
+        }
+
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json(['success' => false, 'message' => trans('sw.no_invoices_selected')], 422);
+        }
+
+        $moneyBoxes = GymMoneyBox::whereIn('id', $ids)->get();
+        $success = 0;
+        $failed = 0;
+
+        foreach ($moneyBoxes as $moneyBox) {
+            if (\Modules\Billing\Services\SwBillingService::forceGenerateForMoneyBox($moneyBox)) {
+                $success++;
+            } else {
+                $failed++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'generated' => $success,
+            'failed' => $failed,
+            'message' => trans('sw.zatca_bulk_result', ['success' => $success, 'failed' => $failed]),
+        ]);
+    }
 
     public function reportStoreList(){
         $title = trans('sw.store_report');
@@ -1544,7 +1715,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportStoreExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $from = request('from');
         $to = request('to');
         $search = request('search');
@@ -1599,12 +1770,12 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportStoreExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['id', 'member.name', 'member.phone', 'amount_paid', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['id', 'member.name', 'member.phone', 'amount_paid', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportStorePDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $from = request('from');
         $to = request('to');
         $search = request('search');
@@ -1764,7 +1935,7 @@ class GymUserLogFrontController extends GymGenericFrontController
                 $orders->whereIn('type', $types);
             }else {
                 $orders->whereIn('type', [
-                    TypeConstants::CreateMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription
+                    TypeConstants::CreateMember, TypeConstants::EditMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription
                     , TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity
 //                , TypeConstants::CreateMemberPayAmountRemainingForm
                     , TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::DeletePTMember, TypeConstants::CreatePTSubscription, TypeConstants::DeletePTSubscription
@@ -1917,23 +2088,32 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         return view('software::Front.report_moneybox_tax_front_list', compact(
                 'revenues', 'expenses', 'earnings'
-//                ,'cache_revenues', 'cache_expenses', 'cache_earnings'
-//                ,'online_revenues', 'online_expenses', 'online_earnings'
-//                ,'bank_revenues', 'bank_expenses', 'bank_earnings'
-//                ,'total_add_to_money_box', 'total_withdraw_from_money_box'
                 ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores', 'total_moneybox'
                 , 'orders', 'title', 'total', 'search_query'
                 , 'payment_expenses', 'payment_revenues', 'payment_types'));
 
     }
 
-    function exportExcelMoneyboxTax(){
-        $from = request('from');
-        $to = request('to');;
-        $transaction = request('transaction');
-        $operation = intVal($transaction-1);
+    public function reportMoneyboxTaxReal()
+    {
+        // Reuse all logic from reportMoneyboxTax, only swap the view
+        $this->limit = 50; // more rows per page for the detailed report
+        $result = $this->reportMoneyboxTax();
 
-        $records = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user', 'member_subscription.member' => function($q){
+        if ($result instanceof \Illuminate\View\View) {
+            return view('software::Front.report_moneybox_tax_real_front_list', $result->getData());
+        }
+        return $result;
+    }
+
+    private function buildMoneyboxTaxQuery()
+    {
+        $from        = request()->has('from')        ? request('from')        : false;
+        $to          = request()->has('to')          ? request('to')          : false;
+        $search      = request()->has('search')      ? request('search')      : false;
+        $transaction = request()->has('transaction') ? request('transaction') : false;
+
+        $query = GymMoneyBox::branch()->with(['user', 'member_subscription.member' => function($q){
             $q->withTrashed();
         }, 'member_pt_subscription' => function($q){
             $q->withTrashed();
@@ -1941,20 +2121,56 @@ class GymUserLogFrontController extends GymGenericFrontController
             $q->withTrashed();
         }, 'store_order' => function($q){
             $q->withTrashed();
-        }])
-           ->whereIn('type', [
-               TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::DeleteMember,  TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription
-               ,TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity
-//                , TypeConstants::CreateMemberPayAmountRemainingForm
-               , TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::DeletePTMember,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription
-               , TypeConstants::CreateStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::DeleteStoreOrder
-               , TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder
-           ])
-            ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
-        if($transaction){
-            $records->where('operation', $operation);
+        }])->orderBy('id', 'DESC');
+
+        if (isset($_GET['type']) && request('type')) {
+            $types = [];
+            if (request('type') == 1) {
+                $types = [TypeConstants::CreateMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription];
+            } elseif (request('type') == 2) {
+                $types = [TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity];
+            } elseif (request('type') == 3) {
+                $types = [TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::DeletePTMember, TypeConstants::CreatePTSubscription, TypeConstants::DeletePTSubscription];
+            } elseif (request('type') == 4) {
+                $types = [TypeConstants::CreateStoreProduct, TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder, TypeConstants::DeleteStoreOrder, TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder];
+            } elseif (request('type') == 5) {
+                $types = [TypeConstants::CreateMoneyBoxAdd, TypeConstants::CreateMoneyBoxWithdraw, TypeConstants::CreateMoneyBoxWithdrawEarnings];
+            }
+            $query->whereIn('type', $types);
+        } else {
+            $query->whereIn('type', [
+                TypeConstants::CreateMember, TypeConstants::RenewMember, TypeConstants::DeleteMember, TypeConstants::CreateSubscription, TypeConstants::DeleteSubscription,
+                TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity,
+                TypeConstants::CreatePTMember, TypeConstants::RenewPTMember, TypeConstants::DeletePTMember, TypeConstants::CreatePTSubscription, TypeConstants::DeletePTSubscription,
+                TypeConstants::CreateStoreProduct, TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder, TypeConstants::DeleteStoreOrder,
+                TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder,
+                TypeConstants::CreateMoneyBoxAdd, TypeConstants::CreateMoneyBoxWithdraw, TypeConstants::CreateMoneyBoxWithdrawEarnings,
+            ]);
         }
-        $records = $records->get();
+
+        $query->when($from, function ($q) use ($from) {
+            $q->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
+        })->when(@$this->mainSettings->vat_details['vat_percentage'], function ($q) {
+            $q->where('vat', '>', 0);
+        })->when($to, function ($q) use ($to) {
+            $q->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when($search, function ($q) use ($search) {
+            if ((string)$search[0] == '#') {
+                $q->where('id', (int)trim($search, '#'));
+            } else {
+                $q->where('id', '=', (int)$search)
+                  ->orWhere('amount', '=', (int)$search)
+                  ->orWhere('notes', 'like', '%' . $search . '%');
+            }
+        })->when($transaction, function ($q) use ($transaction) {
+            $q->where('operation', '=', intVal($transaction - 1));
+        });
+
+        return $query;
+    }
+
+    function exportExcelMoneyboxTax(){
+        $records = $this->buildMoneyboxTaxQuery()->get();
 
         $this->fileName = 'reports-' . Carbon::now()->toDateTimeString();
 //        $title = trans('sw.moneybox');
@@ -1962,7 +2178,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_moneybox');
         $this->userLog($notes, TypeConstants::ExportMoneyboxExcel);
 
-        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'invoice_total', 'vat_total', 'invoice_total_required', 'notes', 'date', 'by'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'invoice_total', 'vat_total', 'invoice_total_required', 'notes', 'date', 'by'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
     }
     private function prepareForExport($data)
     {
@@ -2075,29 +2291,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportPDFMoneyboxTax(){
 
-        $from = request('from');
-        $to = request('to');
-        $transaction = request('transaction');
-        $operation = intVal($transaction-1);
-
-        $records = $this->GymMoneyBoxRepository->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user', 'member_subscription.member' => function($q){
-            $q->withTrashed();
-        }, 'member_pt_subscription' => function($q){
-            $q->withTrashed();
-        }])
-            ->whereIn('type', [
-                TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::DeleteMember,  TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription
-                ,TypeConstants::CreateNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity
-//                , TypeConstants::CreateMemberPayAmountRemainingForm
-                , TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::DeletePTMember,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription
-                , TypeConstants::CreateStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::DeleteStoreOrder
-                , TypeConstants::CreateStorePurchaseOrder, TypeConstants::DeleteStorePurchaseOrder
-            ])
-            ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
-        if($transaction){
-            $records->where('operation', $operation);
-        }
-        $records = $records->get();
+        $records = $this->buildMoneyboxTaxQuery()->get();
         $this->fileName = 'reports-' . Carbon::now()->toDateTimeString();
         $keys = ['id', 'invoice_total', 'vat_total', 'invoice_total_required',  'notes', 'created_at', 'by'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
@@ -2210,15 +2404,24 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $orders = GymOnlinePaymentInvoice::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription' => function($q){
+        $show_all = request()->has('show_all') ? request()->show_all : false;
+
+        $orders = GymOnlinePaymentInvoice::branch()->with(['member', 'subscription' => function($q){
             $q->withTrashed();
         }])->orderBy('id', 'DESC');
+
+        // By default show all transactions; filter to successful only when requested
+        if ($show_all) {
+            $orders->where('status', TypeConstants::SUCCESS);
+        }
 
         //apply filters
         $orders->when(($from), function ($query) use ($from) {
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
         })->when(($to), function ($query) use ($to) {
             $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($transaction), function ($query) use ($transaction) {
+            $query->where('payment_method', (int)$transaction);
         })->when(($search), function ($query) use ($search) {
             $query->where('id', '=', (int)$search);
             $query->orWhere('name', '=', (int)$search);
@@ -2226,6 +2429,27 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->orWhere('address', '=', (int)$search);
         });
         $search_query = request()->query();
+
+        // Compute stats from the same filtered query (before pagination)
+        $statsQuery = clone $orders;
+        $allRecords = $statsQuery->get(['status', 'payment_method', 'amount']);
+        $stats = [
+            'total_count'  => $allRecords->count(),
+            'total_amount' => $allRecords->sum('amount'),
+            'by_status' => [
+                TypeConstants::SUCCESS   => ['count' => $allRecords->where('status', TypeConstants::SUCCESS)->count(),   'amount' => $allRecords->where('status', TypeConstants::SUCCESS)->sum('amount')],
+                TypeConstants::PENDING   => ['count' => $allRecords->where('status', TypeConstants::PENDING)->count(),   'amount' => $allRecords->where('status', TypeConstants::PENDING)->sum('amount')],
+                TypeConstants::FAILURE   => ['count' => $allRecords->where('status', TypeConstants::FAILURE)->count(),   'amount' => $allRecords->where('status', TypeConstants::FAILURE)->sum('amount')],
+                TypeConstants::CANCELLED => ['count' => $allRecords->where('status', TypeConstants::CANCELLED)->count(), 'amount' => $allRecords->where('status', TypeConstants::CANCELLED)->sum('amount')],
+            ],
+            'by_gateway' => [
+                TypeConstants::TABBY_TRANSACTION   => ['label' => 'Tabby',   'count' => $allRecords->where('payment_method', TypeConstants::TABBY_TRANSACTION)->count(),   'amount' => $allRecords->where('payment_method', TypeConstants::TABBY_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYMOB_TRANSACTION  => ['label' => 'Paymob',  'count' => $allRecords->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->count(),  'amount' => $allRecords->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->sum('amount')],
+                TypeConstants::TAMARA_TRANSACTION  => ['label' => 'Tamara',  'count' => $allRecords->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->count(),  'amount' => $allRecords->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYTABS_TRANSACTION => ['label' => 'PayTabs', 'count' => $allRecords->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->count(), 'amount' => $allRecords->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYPAL_TRANSACTION_FEES => ['label' => 'PayPal', 'count' => $allRecords->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->count(), 'amount' => $allRecords->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->sum('amount')],
+            ],
+        ];
 
         if ($this->limit) {
             $orders = $orders->paginate($this->limit)->onEachSide(1);
@@ -2235,13 +2459,12 @@ class GymUserLogFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-      return view('software::Front.report_online_payment_transactions_front_list', compact( 'orders', 'title', 'total', 'search_query'));
-
+        return view('software::Front.report_online_payment_transactions_front_list', compact('orders', 'title', 'total', 'search_query', 'show_all', 'stats', 'transaction'));
     }
 
     function exportOnlinePaymentExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $this->request_array = ['search', 'from', 'to', 'transaction'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -2255,6 +2478,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
         })->when(($to), function ($query) use ($to) {
             $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($transaction), function ($query) use ($transaction) {
+            $query->where('payment_method', (int)$transaction);
         })->when(($search), function ($query) use ($search) {
             $query->where('id', '=', (int)$search);
             $query->orWhere('name', '=', (int)$search);
@@ -2263,18 +2488,37 @@ class GymUserLogFrontController extends GymGenericFrontController
         });
 
         $records = $orders->limit(300)->get();
+
+        // Compute stats for export
+        $stats = [
+            'total_count'  => $records->count(),
+            'total_amount' => $records->sum('amount'),
+            'by_status' => [
+                TypeConstants::SUCCESS   => ['count' => $records->where('status', TypeConstants::SUCCESS)->count(),   'amount' => $records->where('status', TypeConstants::SUCCESS)->sum('amount')],
+                TypeConstants::PENDING   => ['count' => $records->where('status', TypeConstants::PENDING)->count(),   'amount' => $records->where('status', TypeConstants::PENDING)->sum('amount')],
+                TypeConstants::FAILURE   => ['count' => $records->where('status', TypeConstants::FAILURE)->count(),   'amount' => $records->where('status', TypeConstants::FAILURE)->sum('amount')],
+                TypeConstants::CANCELLED => ['count' => $records->where('status', TypeConstants::CANCELLED)->count(), 'amount' => $records->where('status', TypeConstants::CANCELLED)->sum('amount')],
+            ],
+            'by_gateway' => [
+                TypeConstants::TABBY_TRANSACTION   => ['label' => 'Tabby',   'count' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->count(),   'amount' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYMOB_TRANSACTION  => ['label' => 'Paymob',  'count' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->sum('amount')],
+                TypeConstants::TAMARA_TRANSACTION  => ['label' => 'Tamara',  'count' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYTABS_TRANSACTION => ['label' => 'PayTabs', 'count' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYPAL_TRANSACTION_FEES => ['label' => 'PayPal', 'count' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->sum('amount')],
+            ],
+        ];
 
         $this->fileName = 'online-payment-transactions-' . Carbon::now()->toDateTimeString();
 
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportOnlinePaymentExcel);
 
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => ['name', 'phone', 'subscription.name', 'amount', 'status', 'payment_gateway_name', 'payment_channel_name', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings, 'stats' => $stats]), $this->fileName . '.xlsx');
     }
 
     function exportOnlinePaymentPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $this->request_array = ['search', 'from', 'to', 'transaction'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -2288,6 +2532,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
         })->when(($to), function ($query) use ($to) {
             $query->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'));
+        })->when(($transaction), function ($query) use ($transaction) {
+            $query->where('payment_method', (int)$transaction);
         })->when(($search), function ($query) use ($search) {
             $query->where('id', '=', (int)$search);
             $query->orWhere('name', '=', (int)$search);
@@ -2297,7 +2543,26 @@ class GymUserLogFrontController extends GymGenericFrontController
 
         $records = $orders->limit(300)->get();
 
-        $keys = ['name', 'phone', 'subscription.name', 'amount', 'status', 'created_at'];
+        // Compute stats for export
+        $stats = [
+            'total_count'  => $records->count(),
+            'total_amount' => $records->sum('amount'),
+            'by_status' => [
+                TypeConstants::SUCCESS   => ['count' => $records->where('status', TypeConstants::SUCCESS)->count(),   'amount' => $records->where('status', TypeConstants::SUCCESS)->sum('amount')],
+                TypeConstants::PENDING   => ['count' => $records->where('status', TypeConstants::PENDING)->count(),   'amount' => $records->where('status', TypeConstants::PENDING)->sum('amount')],
+                TypeConstants::FAILURE   => ['count' => $records->where('status', TypeConstants::FAILURE)->count(),   'amount' => $records->where('status', TypeConstants::FAILURE)->sum('amount')],
+                TypeConstants::CANCELLED => ['count' => $records->where('status', TypeConstants::CANCELLED)->count(), 'amount' => $records->where('status', TypeConstants::CANCELLED)->sum('amount')],
+            ],
+            'by_gateway' => [
+                TypeConstants::TABBY_TRANSACTION   => ['label' => 'Tabby',   'count' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->count(),   'amount' => $records->where('payment_method', TypeConstants::TABBY_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYMOB_TRANSACTION  => ['label' => 'Paymob',  'count' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::PAYMOB_TRANSACTION)->sum('amount')],
+                TypeConstants::TAMARA_TRANSACTION  => ['label' => 'Tamara',  'count' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->count(),  'amount' => $records->where('payment_method', TypeConstants::TAMARA_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYTABS_TRANSACTION => ['label' => 'PayTabs', 'count' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYTABS_TRANSACTION)->sum('amount')],
+                TypeConstants::PAYPAL_TRANSACTION_FEES => ['label' => 'PayPal', 'count' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->count(), 'amount' => $records->where('payment_method', TypeConstants::PAYPAL_TRANSACTION_FEES)->sum('amount')],
+            ],
+        ];
+
+        $keys = ['name', 'phone', 'subscription.name', 'amount', 'status', 'payment_gateway_name', 'payment_channel_name', 'created_at'];
         if ($this->lang == 'ar') $keys = array_reverse($keys);
 
         $this->fileName = 'online-payment-transactions-' . Carbon::now()->toDateTimeString();
@@ -2307,6 +2572,8 @@ class GymUserLogFrontController extends GymGenericFrontController
             $records[$key]['subscription.name'] = $record->subscription->name ?? trans('sw.not_specified');
             $records[$key]['amount'] = $record['amount'];
             $records[$key]['status'] = $record['status'] == 1 ? trans('sw.successful') : trans('sw.declined');
+            $records[$key]['payment_gateway_name'] = $record->payment_gateway_name;
+            $records[$key]['payment_channel_name'] = $record->payment_channel_name;
             $records[$key]['created_at'] = $record['created_at'];
         }
 
@@ -2334,7 +2601,8 @@ class GymUserLogFrontController extends GymGenericFrontController
                     'records' => $records,
                     'title' => $title,
                     'keys' => $keys,
-                    'lang' => $this->lang
+                    'lang' => $this->lang,
+                    'stats' => $stats,
                 ])->render();
 
                 $mpdf->WriteHTML($html);
@@ -2352,7 +2620,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             }
         }
 
-        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys])
+        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys, 'stats' => $stats])
         ->setPaper($customPaper, 'landscape')
         ->setOptions([
             'isHtml5ParserEnabled' => true,
@@ -2366,6 +2634,86 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportOnlinePaymentPDF);
 
         return $pdf->download($this->fileName . '.pdf');
+    }
+
+    public function updateOnlinePaymentStatus($id)
+    {
+        $invoice = GymOnlinePaymentInvoice::branch()->findOrFail($id);
+        $newStatus = (int) request()->input('status');
+
+        $allowedStatuses = [TypeConstants::PENDING, TypeConstants::SUCCESS, TypeConstants::FAILURE, TypeConstants::CANCELLED];
+        if (!in_array($newStatus, $allowedStatuses)) {
+            return response()->json(['success' => false, 'message' => trans('admin.invalid_data')], 422);
+        }
+
+        $oldStatus = $invoice->status;
+        $invoice->update(['status' => $newStatus]);
+
+        // If marking as SUCCESS and subscription not yet activated: create subscription + moneybox
+        if ($newStatus === TypeConstants::SUCCESS && $oldStatus !== TypeConstants::SUCCESS && !$invoice->member_subscription_id) {
+            try {
+                $memberId        = $invoice->member_id;
+                $subscriptionId  = $invoice->subscription_id;
+                $branchId        = $invoice->branch_setting_id;
+                $amount          = (float) $invoice->amount;
+                $paymentMethod   = $invoice->payment_method;
+
+                // Find subscription plan to get period (in days)
+                $subscriptionPlan = \Modules\Software\Models\GymSubscription::find($subscriptionId);
+                $duration = $subscriptionPlan ? (int)($subscriptionPlan->period ?? 30) : 30;
+
+                // Find or extend existing active subscription
+                $memberSub = \Modules\Software\Models\GymMemberSubscription::where('member_id', $memberId)
+                    ->where('subscription_id', $subscriptionId)
+                    ->where('status', '!=', TypeConstants::Expired)
+                    ->first();
+
+                if ($memberSub) {
+                    $currentExpire = \Carbon\Carbon::parse($memberSub->expire_date);
+                    $newExpire = $currentExpire->isPast()
+                        ? \Carbon\Carbon::now()->addDays($duration)
+                        : $currentExpire->addDays($duration);
+                    $memberSub->update([
+                        'expire_date'      => $newExpire,
+                        'amount_paid'      => $memberSub->amount_paid + $amount,
+                        'amount_remaining' => max(0, $memberSub->amount_remaining - $amount),
+                        'payment_type'     => $paymentMethod,
+                    ]);
+                    $memberSubId = $memberSub->id;
+                } else {
+                    $memberSubId = \Modules\Software\Models\GymMemberSubscription::insertGetId([
+                        'member_id'         => $memberId,
+                        'subscription_id'   => $subscriptionId,
+                        'branch_setting_id' => $branchId,
+                        'joining_date'      => \Carbon\Carbon::now(),
+                        'expire_date'       => \Carbon\Carbon::now()->addDays($duration),
+                        'amount_paid'       => $amount,
+                        'amount_remaining'  => 0,
+                        'payment_type'      => $paymentMethod,
+                        'status'            => TypeConstants::Active,
+                        'created_at'        => \Carbon\Carbon::now(),
+                        'updated_at'        => \Carbon\Carbon::now(),
+                    ]);
+                }
+
+                // Link the invoice to the subscription
+                $invoice->update(['member_subscription_id' => $memberSubId]);
+
+                // Create moneybox entry
+                \Modules\Software\Models\GymMoneyBox::create([
+                    'branch_setting_id' => $branchId,
+                    'member_id'         => $memberId,
+                    'money_box_type_id' => 1,
+                    'payment_type'      => $paymentMethod,
+                    'value'             => $amount,
+                    'notes'             => trans('sw.online_transaction_report') . ' #' . $invoice->id,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('updateOnlinePaymentStatus activation failed: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => trans('sw.update_status')]);
     }
 
     public function reportUserNotificationsList()
@@ -2487,7 +2835,7 @@ class GymUserLogFrontController extends GymGenericFrontController
 
     function exportFreezeMemberExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $this->request_array = ['search', 'subscription', 'status', 'from', 'to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -2610,12 +2958,12 @@ class GymUserLogFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportMemberExcel);
 
         $keys = ['barcode', 'name', 'phone', 'membership', 'start_freeze_date', 'end_freeze_date', 'freeze_status', 'days_remaining', 'duration_days', 'reason', 'admin_note', 'joining_date', 'expire_date'];
-        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => $keys, 'lang' => $this->lang]), $this->fileName . '.xlsx');
+        return Excel::download(new MembersAttendanceExport(['records' => $records, 'keys' => $keys, 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
     }
 
     function exportFreezeMemberPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $this->request_array = ['search', 'subscription', 'status', 'from', 'to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;

@@ -16,6 +16,7 @@ use Modules\Software\Models\GymMemberAttendee;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymUserAttendee;
 use Modules\Software\Models\GymZKFingerprint;
+use Modules\Software\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -28,16 +29,58 @@ class GymMemberApiController extends GenericApiController
     public function sendMemberToGymmawy(){
         \Artisan::call('command:swmembers');
     }
-    // for send expire and before expire membership
+    // for send expire, before expire, unfreeze, and birthday notifications
+    // also auto-generates the monthly AI executive report on the 1st of each month
     public function sendSwMyAppNotifications(){
         try {
-            if(@\Artisan::call('command:swmyappnotifications')){
-                return true;
+            $notificationService = new NotificationService();
+
+            $results = [
+                'expiring' => $notificationService->sendExpiringNotifications(3), // 3 days before
+                'expired'  => $notificationService->sendExpiredNotifications(),
+                'unfreeze' => $notificationService->sendUnfreezeNotifications(),
+                'birthday' => $notificationService->sendBirthdayNotifications(),
+            ];
+
+            // Auto-generate AI executive report on the first day of each month
+            $aiReportId = null;
+            if (Carbon::now()->day === 1) {
+                try {
+                    $aiResult  = (new \Modules\Software\Classes\GymAiReport())->getter(
+                        Carbon::now()->subMonth()->startOfMonth()->format('Y-m-d'),
+                        Carbon::now()->subMonth()->endOfMonth()->format('Y-m-d')
+                    );
+                    $aiReportId = $aiResult['id'] ?? null;
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Monthly AI report generation failed: ' . $e->getMessage());
+                }
             }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notifications processed successfully',
+                'data' => [
+                    'expiring_total'   => $results['expiring']['total'],
+                    'expiring_success' => $results['expiring']['success'],
+                    'expiring_failed'  => $results['expiring']['failed'],
+                    'expired_total'    => $results['expired']['total'],
+                    'expired_success'  => $results['expired']['success'],
+                    'expired_failed'   => $results['expired']['failed'],
+                    'unfreeze_total'   => $results['unfreeze']['total'],
+                    'unfreeze_success' => $results['unfreeze']['success'],
+                    'unfreeze_failed'  => $results['unfreeze']['failed'],
+                    'birthday_total'   => $results['birthday']['total'],
+                    'birthday_success' => $results['birthday']['success'],
+                    'birthday_failed'  => $results['birthday']['failed'],
+                    'ai_report_id'     => $aiReportId,
+                ]
+            ]);
         } catch (\Exception $e){
-            return false;
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
-        return false;
     }
     // for send renew member or any type
     public function sendOneMemberToGymmawy($memberId = null, $type = 0){
@@ -113,7 +156,7 @@ class GymMemberApiController extends GenericApiController
             ->whereIn('fp_check', [TypeConstants::ZK_ACTIVE_MEMBER, TypeConstants::ZK_SET_MEMBER])
             //->where('fp_check', TypeConstants::ZK_SET_MEMBER)
             ->orderBy('updated_at', 'desc')
-            ->limit(50)
+            ->limit(500)
             ->get();
 
         $set_members_ids = $set_members->pluck('id');
@@ -134,11 +177,11 @@ class GymMemberApiController extends GenericApiController
             ->where('fp_check_count', '<', 10)
             ->whereIn('fp_check', [TypeConstants::ZK_ACTIVE_MEMBER, TypeConstants::ZK_SET_MEMBER])
             ->orderBy('updated_at', 'desc')
-            ->limit(50)->pluck('fp_id')->toArray();
+            ->limit(500)->pluck('fp_id')->toArray();
         $get_users = GymUser::where('branch_setting_id',$branch_id)->whereNotNull('fp_id')->where('fp_check_count', '<', 10)
             ->whereIn('fp_check', [TypeConstants::ZK_ACTIVE_MEMBER, TypeConstants::ZK_SET_MEMBER])
             ->orderBy('updated_at', 'desc')
-            ->limit(50)->pluck('fp_id')->toArray();
+            ->limit(500)->pluck('fp_id')->toArray();
 
         if(count($get_users) > 0)
             $get_members = array_merge($get_members, $get_users);
@@ -274,6 +317,7 @@ class GymMemberApiController extends GenericApiController
         //GymUser::where('fp_check', [0, 2, 3])->where('fp_id', '!=', null)->withTrashed()->increment('fp_check_count');
         Setting::where('id', $branch_id)->update(['fp_last_updated_at' => Carbon::now()]);
 
+        Cache::flush();
         return Response::json(['member_status' => $member_status, 'attendance_status' => $attendance_status, 'token' => $token], 200);
     }
     private function encode_arr($data) {

@@ -2,6 +2,130 @@
     #myTotalAfterDiscountModel {
         display: none;
     }
+
+    /* ── Payment Gateway Cards ── */
+    .pgw-section {
+        background: linear-gradient(135deg, #f8fbff 0%, #f0f5ff 100%);
+        border: 1px solid #dde6f7;
+        border-radius: 14px;
+        padding: 16px 14px 14px;
+    }
+    .pgw-section-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #3a3f5c;
+        margin-bottom: 12px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+    .pgw-section-title i {
+        font-size: 1.1rem;
+        color: #009ef7;
+    }
+    .pgw-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .pgw-card {
+        flex: 1 1 140px;
+        max-width: 190px;
+        border: 2px solid #e4e8f0;
+        border-radius: 12px;
+        padding: 13px 11px 10px;
+        cursor: pointer;
+        background: #fff;
+        position: relative;
+        transition: border-color 0.18s, box-shadow 0.18s, background 0.18s, transform 0.15s;
+        user-select: none;
+    }
+    .pgw-card:hover {
+        border-color: #009ef7;
+        box-shadow: 0 4px 14px rgba(0,158,247,0.14);
+        transform: translateY(-2px);
+    }
+    .pgw-card.pgw-active {
+        border-color: #009ef7;
+        background: #f0faff;
+        box-shadow: 0 6px 20px rgba(0,158,247,0.22);
+    }
+    /* checkbox is hidden via inline style="display:none" — no extra rule needed */
+    .pgw-check {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid #c8d0de;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.18s;
+        flex-shrink: 0;
+    }
+    .pgw-active .pgw-check {
+        border-color: #009ef7;
+        background: #009ef7;
+    }
+    .pgw-check::after {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #fff;
+        display: none;
+    }
+    .pgw-active .pgw-check::after {
+        display: block;
+    }
+    .pgw-logo-wrap {
+        display: flex;
+        align-items: center;
+        min-height: 36px;
+        margin-bottom: 8px;
+        padding-right: 24px;
+    }
+    .pgw-logo {
+        max-height: 30px;
+        max-width: 110px;
+        object-fit: contain;
+    }
+    .pgw-methods {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+    }
+    .pgw-method-icon {
+        height: 16px;
+        width: auto;
+        object-fit: contain;
+        opacity: 0.75;
+        border-radius: 3px;
+        transition: opacity 0.15s;
+    }
+    .pgw-card:hover .pgw-method-icon,
+    .pgw-active .pgw-method-icon { opacity: 1; }
+    .pgw-desc {
+        font-size: 0.72rem;
+        color: #7e8299;
+        margin-top: 5px;
+        line-height: 1.4;
+    }
+    /* RTL support */
+    [dir=rtl] .pgw-check { right: auto; left: 8px; }
+    [dir=rtl] .pgw-logo-wrap { padding-right: 0; padding-left: 24px; }
+
+
+
+
+    /*-------------------------------------*/
+    
     span#client_balance span {
         padding: 3px;
         border-radius: 3px !important;
@@ -102,6 +226,11 @@
                     </div>
                 </div>
 
+                <!-- Discount Subscription Message -->
+                <div class="col-md-12 mb-4">
+                    <div id="renew_discount_subscription_message"></div>
+                </div>
+
                 <!-- Discount Section -->
                 <div class="row mb-4" @if($swUser && ((in_array('editMemberDiscount', (array)($swUser->permissions ?? []))) || $swUser->is_super_user)) style="display: block;" @else style="display: none;" @endif>
                     <div class="col-md-6">
@@ -164,10 +293,91 @@
                 <!-- Notes -->
                 <div class="mb-4">
                     <label class="form-label">{{trans('sw.notes')}}</label>
-                    <textarea rows="3" maxlength="255" name="notes" id="renew_notes" 
-                              class="form-control form-control-solid" 
+                    <textarea rows="3" maxlength="255" name="notes" id="renew_notes"
+                              class="form-control form-control-solid"
                               placeholder="{{trans('sw.enter_notes_optional')}}"></textarea>
                 </div>
+
+                @php
+                    $hasAnyRenewGateway = !empty($mainSettings->payments['tabby']['merchant_code'] ?? null)
+                        || !empty($mainSettings->payments['tamara']['token'] ?? null)
+                        || !empty($mainSettings->payments['paymob']['api_key'] ?? null)
+                        || (!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null));
+                @endphp
+                @if($hasAnyRenewGateway)
+                <!-- Payment Gateway Cards -->
+                <div class="mb-4 pgw-section" id="renew_payment_gateway_section">
+                    <div class="pgw-section-title">
+                        <i class="ki-outline ki-send"></i>
+                        {{ trans('sw.send_payment_link') }}
+                    </div>
+                    <div class="pgw-grid">
+
+                        @if(!empty($mainSettings->payments['tabby']['merchant_code'] ?? null))
+                        <div class="pgw-card" id="renew_tabby_payment_option">
+                            <input type="checkbox" name="send_tabby_link" id="renew_send_tabby_link" value="1" class="pgw-checkbox" style="display:none"/>
+                            <div class="pgw-check"></div>
+                            <div class="pgw-logo-wrap">
+                                <img src="{{ asset('resources/assets/new_front/images/tabby-logo.webp') }}" alt="Tabby" class="pgw-logo">
+                            </div>
+                            <div class="pgw-methods">
+                                <span class="badge badge-light-success fs-8 fw-semibold px-2 py-1">{{ trans('sw.buy_now_pay_later') }}</span>
+                            </div>
+                            <div class="pgw-desc">{{ trans('sw.tabby_payment_description') }}</div>
+                        </div>
+                        @endif
+
+                        @if(!empty($mainSettings->payments['tamara']['token'] ?? null))
+                        <div class="pgw-card" id="renew_tamara_payment_option">
+                            <input type="checkbox" name="send_tamara_link" id="renew_send_tamara_link" value="1" class="pgw-checkbox" style="display:none"/>
+                            <div class="pgw-check"></div>
+                            <div class="pgw-logo-wrap">
+                                <img src="{{ asset('resources/assets/new_front/images/tamara-logo.svg') }}" alt="Tamara" class="pgw-logo">
+                            </div>
+                            <div class="pgw-methods">
+                                <span class="badge badge-light-warning fs-8 fw-semibold px-2 py-1">{{ trans('sw.buy_now_pay_later') }}</span>
+                            </div>
+                            <div class="pgw-desc">{{ trans('sw.tamara_payment_description') }}</div>
+                        </div>
+                        @endif
+
+                        @if(!empty($mainSettings->payments['paymob']['api_key'] ?? null))
+                        <div class="pgw-card" id="renew_paymob_payment_option">
+                            <input type="checkbox" name="send_paymob_link" id="renew_send_paymob_link" value="1" class="pgw-checkbox" style="display:none"/>
+                            <div class="pgw-check"></div>
+                            <div class="pgw-logo-wrap">
+                                <img src="{{ asset('resources/assets/new_front/images/paymob.png') }}" alt="Paymob" class="pgw-logo">
+                            </div>
+                            <div class="pgw-methods">
+                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                            </div>
+                            <div class="pgw-desc">{{ trans('sw.paymob_payment_description') }}</div>
+                        </div>
+                        @endif
+
+                        @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
+                        <div class="pgw-card" id="renew_paytabs_payment_option">
+                            <input type="checkbox" name="send_paytabs_link" id="renew_send_paytabs_link" value="1" class="pgw-checkbox" style="display:none"/>
+                            <div class="pgw-check"></div>
+                            <div class="pgw-logo-wrap">
+                                <img src="{{ asset('resources/assets/new_front/images/paytabs-logo.svg') }}" alt="PayTabs" class="pgw-logo">
+                            </div>
+                            <div class="pgw-methods">
+                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                            </div>
+                            <div class="pgw-desc">{{ trans('sw.paytabs_payment_description') }}</div>
+                        </div>
+                        @endif
+
+                    </div>
+                </div>
+                @endif
             </div>
 
             @if(@$mainSettings->active_loyalty)
@@ -199,6 +409,64 @@
     </div>
 </div>
 <!-- End model Renew -->
+
+<script>
+/* ── Payment Gateway Cards — mutual exclusivity (vanilla JS, no jQuery required) ── */
+(function () {
+    function initPgwCards(contextOrSelector) {
+        var context = typeof contextOrSelector === 'string'
+            ? document.querySelector(contextOrSelector)
+            : (contextOrSelector || document);
+        if (!context) return;
+
+        var cards = context.querySelectorAll('.pgw-card');
+        if (!cards.length) return;
+
+        cards.forEach(function (card) {
+            // Remove previous listener to avoid duplicates
+            if (card._pgwHandler) {
+                card.removeEventListener('click', card._pgwHandler);
+            }
+            card._pgwHandler = function () {
+                var cb        = card.querySelector('.pgw-checkbox');
+                var grid      = card.closest('.pgw-grid');
+                var wasActive = card.classList.contains('pgw-active');
+
+                // Deactivate all cards in this grid
+                grid.querySelectorAll('.pgw-card').forEach(function (c) {
+                    c.querySelector('.pgw-checkbox').checked = false;
+                    c.classList.remove('pgw-active');
+                });
+
+                // Toggle: select if it wasn't selected; clicking again deselects
+                if (!wasActive) {
+                    cb.checked = true;
+                    card.classList.add('pgw-active');
+                }
+            };
+            card.addEventListener('click', card._pgwHandler);
+        });
+    }
+
+    // Init for renew modal cards on DOM ready
+    document.addEventListener('DOMContentLoaded', function () {
+        initPgwCards('#renew_payment_gateway_section');
+    });
+
+    // Re-init when the renew modal is shown (Bootstrap fires this on the DOM element)
+    document.addEventListener('DOMContentLoaded', function () {
+        var modelRenew = document.getElementById('modelRenew');
+        if (modelRenew) {
+            modelRenew.addEventListener('show.bs.modal', function () {
+                initPgwCards('#renew_payment_gateway_section');
+            });
+        }
+    });
+
+    // Expose for other contexts (new member form, edit form)
+    window.initPgwCards = initPgwCards;
+})();
+</script>
 
 <!-- Modal QR Scanner with effects -->
 <div class="modal effect-newspaper" id="modalScanner">

@@ -59,6 +59,12 @@ Route::prefix('user/log')
         Route::name('sw.exportTodayMemberExcel')
             ->get('/today-member-excel', 'Front\GymUserLogFrontController@exportTodayMemberExcel');
 
+        // Attendance management - create and delete permissions
+        Route::name('sw.createAttendance')
+            ->post('/create-attendance', 'Front\GymUserLogFrontController@createAttendance');
+        Route::name('sw.deleteAttendance')
+            ->delete('/attendance/delete/{id}', 'Front\GymUserLogFrontController@deleteAttendance');
+
         // Today PT member report - view permission
         Route::name('sw.reportTodayPTMemberList')
             ->get('pt-today', 'Front\GymUserLogFrontController@reportTodayPTMemberList');
@@ -94,10 +100,16 @@ Route::prefix('user/log')
         // ZATCA invoices report - view permission
         Route::name('sw.reportZatcaInvoices')
             ->get('zatca-invoices', 'Front\GymUserLogFrontController@reportZatcaInvoices');
+        Route::name('sw.bulkGenerateZatca')
+            ->post('zatca-invoices/bulk-generate', 'Front\GymUserLogFrontController@bulkGenerateZatca');
 
         // Moneybox tax report - view permission
         Route::name('sw.reportMoneyboxTax')
             ->get('moneybox-tax', 'Front\GymUserLogFrontController@reportMoneyboxTax');
+
+        // Real tax report (detailed VAT breakdown)
+        Route::name('sw.reportMoneyboxTaxReal')
+            ->get('moneybox-tax-real', 'Front\GymUserLogFrontController@reportMoneyboxTaxReal');
         Route::name('sw.exportMoneyBoxTaxPDF')
             ->get('/moneybox-tax/pdf', 'Front\GymUserLogFrontController@exportPDFMoneyboxTax');
         Route::name('sw.exportMoneyBoxTaxExcel')
@@ -110,6 +122,8 @@ Route::prefix('user/log')
             ->get('/online-payment-pdf', 'Front\GymUserLogFrontController@exportOnlinePaymentPDF');
         Route::name('sw.exportOnlinePaymentExcel')
             ->get('/online-payment-excel', 'Front\GymUserLogFrontController@exportOnlinePaymentExcel');
+        Route::name('sw.updateOnlinePaymentStatus')
+            ->post('/online-payment-transaction/{id}/update-status', 'Front\GymUserLogFrontController@updateOnlinePaymentStatus');
 
         // User notifications report - view permission
         Route::name('sw.reportUserNotificationsList')

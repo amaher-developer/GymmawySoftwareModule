@@ -12,6 +12,8 @@ use Modules\Software\Models\GymNonMember;
 use Modules\Software\Models\GymSMSLog;
 
 use Illuminate\Http\Request;
+use Modules\Generic\Classes\Constants;
+use Modules\Software\Classes\TypeConstants;
 use Telegram\Bot\FileUpload\InputFile;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
@@ -28,7 +30,7 @@ class GymTelegramFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.telegram_add');
-        $mainSettings = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
+        $mainSettings = Setting::branch()->first();
         $smsPoints = $this->formatSmsPoints(0);
 
         try {
@@ -62,7 +64,7 @@ class GymTelegramFrontController extends GymGenericFrontController
     {
         $title = trans('sw.sms_logs');
 
-        $logs = GymSMSLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user']);
+        $logs = GymSMSLog::branch()->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
         $logs->orderBy('id', 'DESC');
@@ -76,13 +78,13 @@ class GymTelegramFrontController extends GymGenericFrontController
         $phones = [];
         $type = request('type');
         if($type == 2){
-            $phones = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
+            $phones = GymNonMember::branch()->pluck('phone')->toArray();
         }else if($type == 3){
-            $phones = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
+            $phones = GymMember::branch()->pluck('phone')->toArray();
         }else if($type == 4){
-            $phones = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member_subscription_info')->whereHas('member_subscription_info', function ($q) {
-                $q->whereRaw('sw_gym_member_subscription.id IN (select MAX(a2.id) from sw_gym_member_subscription as a2 join sw_gym_members as u2 on u2.id = a2.member_id group by u2.id) and sw_gym_member_subscription.status = 0');
-                //$q->where('status', (int)$status);
+            $phones = GymMember::branch()->with('member_subscription_info')->whereHas('member_subscription_info', function ($q) {
+                //$q->whereRaw('sw_gym_member_subscription.id IN (select MAX(a2.id) from sw_gym_member_subscription as a2 join sw_gym_members as u2 on u2.id = a2.member_id group by u2.id) and sw_gym_member_subscription.status = 0');
+                $q->where('status', TypeConstants::Active);
             })->get()->pluck('phone')->toArray();
         }
         return implode(', ', $phones);

@@ -25,7 +25,6 @@ class GymReservationFrontController extends GymGenericFrontController
         $this->ReservationRepository =
             new GymReservationRepository(new Application);
 
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function index()
@@ -37,9 +36,9 @@ class GymReservationFrontController extends GymGenericFrontController
             $$item = request()->has($item) ? request()->$item : false;
 
         if (request('trashed')) {
-            $reservations = $this->ReservationRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $reservations = $this->ReservationRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         } else {
-            $reservations = $this->ReservationRepository->orderBy('id', 'DESC');
+            $reservations = $this->ReservationRepository->branch()->orderBy('id', 'DESC');
         }
 
         $reservations->when($search, function ($query) use ($search) {

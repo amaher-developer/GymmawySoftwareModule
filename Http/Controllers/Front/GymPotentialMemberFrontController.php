@@ -36,7 +36,6 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         parent::__construct();
 
         $this->PotentialMemberRepository=new GymPotentialMemberRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
         $this->imageManager = new ImageManager(new Driver());
     }
 
@@ -194,7 +193,7 @@ class GymPotentialMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_potential_members');
         $this->userLog($notes, TypeConstants::ExportPotentialMemberExcel);
 
-        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
     }
 

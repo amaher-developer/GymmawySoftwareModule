@@ -20,7 +20,6 @@ class GymUserTransactionFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->TransactionRepository = new GymUserTransactionRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function index()
@@ -32,11 +31,11 @@ class GymUserTransactionFrontController extends GymGenericFrontController
         
         if(request('trashed'))
         {
-            $transactions = $this->TransactionRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $transactions = $this->TransactionRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $transactions = $this->TransactionRepository->orderBy('id', 'DESC');
+            $transactions = $this->TransactionRepository->branch()->orderBy('id', 'DESC');
         }
 
         // Apply filters

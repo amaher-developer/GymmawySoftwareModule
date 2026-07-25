@@ -110,4 +110,36 @@ Route::prefix('member')
         Route::name('sw.membersRefresh')
             ->get('/members-refresh', 'Front\GymMemberFrontController@membersRefresh');
 
+        // Search members for Select2 - view permission
+        Route::name('sw.getMembersBySearch')
+            ->get('/search', 'Front\GymMemberFrontController@getMembersBySearch');
+
+        // Check if a phone number already exists
+        Route::name('sw.checkMemberPhoneExists')
+            ->get('/check-phone-exists', 'Front\GymMemberFrontController@checkPhoneExists');
+
+        // Check if new subscription dates overlap with existing ones
+        Route::name('sw.checkSubscriptionOverlap')
+            ->get('/check-subscription-overlap', 'Front\GymMemberFrontController@checkSubscriptionOverlap');
+
+        // Send payment link for new member before creating member (no member/subscription saved yet)
+        Route::name('sw.memberNewCheckAndSendLink')
+            ->post('/member-new-check-and-send-link', 'Front\GymMemberFrontController@memberNewCheckAndSendLink');
+
+        // Pre-check date conflicts and send payment link for renewal (no subscription saved yet)
+        Route::name('sw.memberRenewalCheckAndSendLink')
+            ->post('/{id}/member-renewal-check-and-send-link', 'Front\GymMemberFrontController@memberRenewalCheckAndSendLink');
+
+        // Poll invoice payment status (used by renewal-via-link waiting modal)
+        Route::name('sw.checkInvoicePaymentStatus')
+            ->get('/invoice/{invoiceId}/check-payment-status', 'Front\GymMemberFrontController@checkInvoicePaymentStatus');
+
+        // Check payment status for a member subscription (polling endpoint)
+        Route::name('sw.checkMemberPaymentStatus')
+            ->get('/subscription/{memberSubscriptionId}/check-payment-status', 'Front\GymMemberFrontController@checkPaymentStatus');
+
+        // Resend payment link for a member subscription (POST only; GET redirects back)
+        Route::name('sw.resendMemberPaymentLink')
+            ->match(['GET', 'POST'], '/subscription/{memberSubscriptionId}/resend-payment-link', 'Front\GymMemberFrontController@resendPaymentLink');
+
     });

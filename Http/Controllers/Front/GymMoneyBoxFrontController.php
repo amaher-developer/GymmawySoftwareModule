@@ -38,7 +38,6 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         parent::__construct();
         $this->limit = 5;
         $this->GymMoneyBoxRepository = new GymMoneyBoxRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -193,8 +192,14 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $total_pt_subscriptions = ($sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 0)->sum('amount')
             - $sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 1)->sum('amount'));
 
-        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder  ])->where('operation', 0)->sum('amount')
-            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder  ])->where('operation', 1)->sum('amount'));
+        // Store sales: includes old CreateStoreOrder (for legacy) and new CashSale type
+        // NOTE: WalletTopUp and DebtPayment are NOT sales - they are wallet/debt operations
+        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale  ])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale  ])->where('operation', 1)->sum('amount'));
+
+        // Wallet operations (NOT revenue - these are customer advances/liability and debt settlements)
+        $total_wallet_topups = $sorders->where('type', TypeConstants::WalletTopUp)->where('operation', 0)->sum('amount');
+        $total_debt_payments = $sorders->where('type', TypeConstants::DebtPayment)->where('operation', 0)->sum('amount');
 
         return view('software::Front.moneybox_front_list', compact(
             'revenues', 'expenses', 'earnings'
@@ -203,6 +208,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 //                    ,'bank_revenues', 'bank_expenses', 'bank_earnings'
                     ,'total_add_to_money_box', 'total_withdraw_from_money_box'
                     ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores'//, 'total_non_members'
+                    ,'total_wallet_topups', 'total_debt_payments'  // Wallet operations (NOT revenue)
                     , 'orders', 'title', 'total', 'search_query', 'users', 'subscriptions'
                     , 'payment_expenses', 'payment_revenues', 'payment_types'));
     }
@@ -210,12 +216,19 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     function exportExcel(){
         $from = request('from');
         $to = request('to');
+        if (request('filter_date')) {
+            $resolvedDate = request('filter_date') === 'yesterday'
+                ? Carbon::yesterday()->toDateString()
+                : Carbon::now()->toDateString();
+            $from = $resolvedDate;
+            $to   = $resolvedDate;
+        }
         $payment_type = request('payment_type');
         $moneybox_type = request('moneybox_type');
         $user = request('user');
         $search = request('search');
         $subscription = request('subscription');
-        $records = $this->GymMoneyBoxRepository->with(['user', 'member_subscription'])
+        $records = $this->GymMoneyBoxRepository->branch()->with(['user', 'member_subscription.pay_type', 'pay_type'])
             ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))
             ->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'))
             ->when(((isset($subscription)) &&(!is_null($subscription))), function ($query) use ($subscription) {
@@ -247,7 +260,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_moneybox');
         $this->userLog($notes, TypeConstants::ExportMoneyboxExcel);
 
-        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'amount', 'total_amount_before', 'total_amount_after', 'operation', 'payment_type_name', 'notes', 'date', 'by'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return \Maatwebsite\Excel\Facades\Excel::download(new MoneyBoxExport(['records' => $records, 'keys' => ['id', 'amount', 'total_amount_before', 'total_amount_after', 'operation', 'payment_type_name', 'notes', 'date', 'by'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 
 //        \Maatwebsite\Excel\Facades\Excel::create($this->fileName, function($excel) use ($records, $title) {
@@ -288,15 +301,48 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 
         $from = request('from');
         $to = request('to');
+        if (request('filter_date')) {
+            $resolvedDate = request('filter_date') === 'yesterday'
+                ? Carbon::yesterday()->toDateString()
+                : Carbon::now()->toDateString();
+            $from = $resolvedDate;
+            $to   = $resolvedDate;
+        }
         $subscription = request('subscription');
-        $records = $this->GymMoneyBoxRepository->with(['user'])
+        $payment_type = request('payment_type');
+        $moneybox_type = request('moneybox_type');
+        $user = request('user');
+        $search = request('search');
+
+        $sorders = $this->GymMoneyBoxRepository->branch()->with(['user'])
                     ->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'))
                     ->whereDate('created_at', '<=', Carbon::parse($to)->format('Y-m-d'))
                     ->when(((isset($subscription)) &&(!is_null($subscription))), function ($query) use ($subscription) {
                         $query->whereHas('member_subscription', function ($q) use ($subscription){$q->where('subscription_id','=', (int)@$subscription);} );
                     })
+                    ->when(((isset($payment_type)) &&(!is_null($payment_type))), function ($query) use ($payment_type) {
+                        $query->where('payment_type', '=', (int)@$payment_type);
+                    })
+                    ->when(((isset($moneybox_type)) &&(!is_null($moneybox_type))), function ($query) use ($moneybox_type) {
+                        $query->where('type', '=', (int)@$moneybox_type);
+                    })
+                    ->when(((isset($user)) &&(!is_null($user))), function ($query) use ($user) {
+                        $query->where('user_id', '=', (int)@$user);
+                    })
+                    ->when(($search), function ($query) use ($search) {
+                        if((string)$search[0] == "#"){
+                            $query->where('id', @(int)trim($search, '#'));
+                        } else {
+                            $query->whereHas('member', function ($q) use ($search) {
+                                $q->where('code', $search);
+                                $q->orWhere('name', 'like', "%" . $search . "%");
+                            });
+                        }
+                    })
                     ->orderBy('id', 'desc')
-                    ->get()->toArray();
+                    ->get();
+
+        $records = $sorders->toArray();
         $this->fileName = 'reports-' . Carbon::now()->toDateTimeString();
 
         $keys = ['amount', 'total_amount_before', 'total_amount_after', 'operation', 'notes', 'created_at', 'by'];
@@ -308,8 +354,61 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             $records[$i]['date'] = Carbon::parse($records[$i]['created_at'])->format('Y-m-d') . ' ' . Carbon::parse($records[$i]['created_at'])->format('h:i a');
             $records[$i]['by'] = @$records[$i]['user']['name'];
         }
+
+        // Calculate summary data
+        $revenues = $sorders->where('operation', 0)->sum('amount');
+        $expenses = $sorders->where('operation', 1)->sum('amount');
+        $earnings = $revenues - $expenses;
+
+        $payment_types = GymPaymentType::branch()->orderBy('id')->get();
+        $payment_revenues = [];
+        $payment_expenses = [];
+        foreach ($payment_types as $pt) {
+            $payment_revenues[$pt->payment_id] = $sorders->where('payment_type', $pt->payment_id)->where('operation', TypeConstants::Add)->sum('amount');
+            $payment_expenses[$pt->payment_id] = $sorders->where('payment_type', $pt->payment_id)->where('operation', TypeConstants::Sub)->sum('amount');
+        }
+
+        $total_subscriptions = $sorders->whereIn('type', [TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::EditMember,TypeConstants::DeleteMember, TypeConstants::CreateMemberPayAmountRemainingForm, TypeConstants::EditSubscription,TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::EditMember,TypeConstants::DeleteMember, TypeConstants::CreateMemberPayAmountRemainingForm, TypeConstants::EditSubscription,TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription])->where('operation', 1)->sum('amount');
+
+        $total_pt_subscriptions = $sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription])->where('operation', 1)->sum('amount');
+
+        $total_activities = $sorders->whereIn('type', [TypeConstants::CreateNonMember, TypeConstants::EditNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateNonMember, TypeConstants::EditNonMember, TypeConstants::DeleteNonMember, TypeConstants::EditActivity, TypeConstants::CreateActivity, TypeConstants::DeleteActivity])->where('operation', 1)->sum('amount');
+
+        $total_stores = $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale])->where('operation', 1)->sum('amount');
+
+        $total_add_to_money_box = $sorders->where('type', TypeConstants::CreateMoneyBoxAdd)->where('operation', 0)->sum('amount');
+        $total_withdraw_from_money_box = $sorders->where('type', TypeConstants::CreateMoneyBoxWithdraw)->where('operation', 1)->sum('amount');
+
+        $total_wallet_topups = $sorders->where('type', TypeConstants::WalletTopUp)->where('operation', 0)->sum('amount');
+        $total_debt_payments = $sorders->where('type', TypeConstants::DebtPayment)->where('operation', 0)->sum('amount');
+
         $title = trans('sw.moneybox');
         $customPaper = array(0,0,720,1440);
+
+        $viewData = [
+            'records' => $records,
+            'title' => $title,
+            'keys' => $keys,
+            'lang' => $this->lang,
+            'revenues' => $revenues,
+            'expenses' => $expenses,
+            'earnings' => $earnings,
+            'payment_types' => $payment_types,
+            'payment_revenues' => $payment_revenues,
+            'payment_expenses' => $payment_expenses,
+            'total_subscriptions' => $total_subscriptions,
+            'total_pt_subscriptions' => $total_pt_subscriptions,
+            'total_activities' => $total_activities,
+            'total_stores' => $total_stores,
+            'total_add_to_money_box' => $total_add_to_money_box,
+            'total_withdraw_from_money_box' => $total_withdraw_from_money_box,
+            'total_wallet_topups' => $total_wallet_topups,
+            'total_debt_payments' => $total_debt_payments,
+        ];
 
        // Try mPDF for better Arabic support
        if ($this->lang == 'ar') {
@@ -327,37 +426,27 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
                 'default_font' => 'dejavusans',
                 'default_font_size' => 10
             ]);
-            
-            $html = view('software::Front.export_pdf', [
-                'records' => $records, 
-                'title' => $title, 
-                'keys' => $keys,
-                'lang' => $this->lang
-            ])->render();
-            
+
+            $html = view('software::Front.export_moneybox_pdf', $viewData)->render();
+
             $mpdf->WriteHTML($html);
-            
+
             $notes = trans('sw.export_pdf_moneybox');
             $this->userLog($notes, TypeConstants::ExportMoneyboxPDF);
-            
+
             return response($mpdf->Output($this->fileName.'.pdf', 'D'), 200, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'attachment; filename="' . $this->fileName . '.pdf"'
             ]);
-            
+
         } catch (\Exception $e) {
             // Fallback to DomPDF if mPDF fails
             \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
         }
     }
-    
+
     // Configure PDF for Arabic text using DomPDF
-    $pdf = PDF::loadView('software::Front.export_pdf', [
-        'records' => $records, 
-        'title' => $title, 
-        'keys' => $keys,
-        'lang' => $this->lang
-    ])
+    $pdf = PDF::loadView('software::Front.export_moneybox_pdf', $viewData)
     ->setPaper($customPaper, 'landscape')
     ->setOptions([
         'isHtml5ParserEnabled' => true,
@@ -366,7 +455,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         'isPhpEnabled' => true,
         'isJavascriptEnabled' => false
     ]);
-        
+
         $notes = trans('sw.export_pdf_moneybox');
         $this->userLog($notes, TypeConstants::ExportMoneyboxPDF);
 
@@ -556,46 +645,89 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     }
 
     public function editPaymentTypeOrder(){
-        $id = request('id');
+        $id           = request('id');
         $payment_type = request('payment_type');
-        
+        $created_at   = request('created_at');
+
         // Validate required parameters
         if (empty($id) || (empty($payment_type) && ($payment_type != 0))) {
             return trans('admin.operation_failed');
         }
-        
-        // Convert to integers
-        $id = (int)$id;
+
+        $id           = (int)$id;
         $payment_type = (int)$payment_type;
-        // Validate that payment_type is a valid positive integer
+
         if ($payment_type < 0) {
             return trans('admin.operation_failed');
         }
-        
-        // Get authenticated user and branch_setting_id
+
         $user = Auth::guard('sw')->user();
         if (!$user) {
             return trans('admin.operation_failed');
         }
-        $branch_setting_id = @$this->user_sw->branch_setting_id ?? 1;
-        
-        // Find the order - use branch_setting_id directly to ensure it works
-        $order = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('branch_setting_id', $branch_setting_id)
+        $branch_setting_id = $user->branch_setting_id ?? 1;
+
+        $order = GymMoneyBox::where('branch_setting_id', $branch_setting_id)
             ->where('id', $id)
             ->first();
-        
-        if($order){
+
+        if ($order) {
             $order->payment_type = $payment_type;
+
+            $doRebuild      = false;
+            $rebuildStartId = 0;
+            $rebuildPrevAmt = 0;
+
+            if (!empty($created_at)) {
+                try {
+                    $newDate = \Carbon\Carbon::parse($created_at);
+
+                    if ($newDate->isFuture() || $newDate->lessThan(now()->subMonth())) {
+                        return trans('admin.operation_failed');
+                    }
+
+                    $order->created_at = $newDate;
+
+                    // Find the last record that was created before the day before the new date.
+                    // Everything from that point forward needs its amount_before recalculated.
+                    $dayBefore = $newDate->copy()->subDay()->startOfDay();
+
+                    $prevRecord = GymMoneyBox::where('branch_setting_id', $branch_setting_id)
+                        ->where('id', '!=', $order->id)
+                        ->where('created_at', '<', $dayBefore)
+                        ->orderBy('created_at', 'desc')
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if ($prevRecord) {
+                        $rebuildStartId = $prevRecord->id;
+                        $rebuildPrevAmt = self::amountAfter(
+                            round($prevRecord->amount, 2),
+                            round($prevRecord->amount_before, 2),
+                            $prevRecord->operation
+                        );
+                    }
+
+                    $doRebuild = true;
+                } catch (\Throwable $e) {
+                    // ignore invalid date — keep original created_at
+                }
+            }
+
             $order->save();
 
+            if ($doRebuild) {
+                $this->rebuildMoneyboxFromId($rebuildStartId, $rebuildPrevAmt);
+            }
+
             session()->flash('sweet_flash_message', [
-                'title' => trans('admin.done'),
+                'title'   => trans('admin.done'),
                 'message' => trans('admin.successfully_processed'),
-                'type' => 'success'
+                'type'    => 'success',
             ]);
             return '1';
         }
-        
+
         return trans('admin.operation_failed');
     }
 
@@ -810,8 +942,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
     {
 
         $title = trans('sw.moneybox_daily');
-        $this->request_array = ['search', 'payment_type', 'moneybox_type', 'user', 'is_store_balance'];
-        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_test', 0)->get();
+        $this->request_array = ['search', 'payment_type', 'moneybox_type', 'user', 'is_store_balance', 'subscription', 'filter_date'];
+        $users = GymUser::branch()->where('is_test', 0)->get();
 
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -819,9 +951,12 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $orders = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user' => function($q){$q->withTrashed();}, 'member_subscription' => function($q){$q->withTrashed();}])->orderBy('created_at', 'DESC');
 
         //apply filters
-        $orders = $orders->whereDate('created_at', Carbon::now()->toDateString());
+        $filterDate = request('filter_date') === 'yesterday' ? Carbon::yesterday()->toDateString() : Carbon::now()->toDateString();
+        $orders = $orders->whereDate('created_at', $filterDate);
         $orders = $orders->when(((isset($_GET['payment_type'])) &&(!is_null($payment_type))), function ($query) use ($payment_type) {
             $query->where('payment_type', '=', (int)@$payment_type);
+        })->when(((isset($_GET['subscription'])) &&(!is_null($subscription))), function ($query) use ($subscription) {
+            $query->whereHas('member_subscription', function ($q) use ($subscription){$q->where('subscription_id','=', (int)@$subscription);} );
         })->when(((isset($_GET['moneybox_type'])) &&(!is_null($moneybox_type))), function ($query) use ($moneybox_type) {
             $query->where('type', '=', (int)@$moneybox_type);
         })->when(((isset($_GET['is_store_balance'])) &&(!is_null($is_store_balance))), function ($query) use ($is_store_balance) {
@@ -864,7 +999,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
             $total = $orders->count();
         }
 
-        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $subscriptions = GymSubscription::branch()->get();
         $revenues = ($sorders->where('operation', 0)->sum('amount'));
         $expenses = ($sorders->where('operation', 1)->sum('amount'));
 
@@ -928,8 +1063,8 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $total_add_to_money_box = ($sorders->where('type', TypeConstants::CreateMoneyBoxAdd)->where('operation', 0)->sum('amount'));
         $total_withdraw_from_money_box = ($sorders->where('type', TypeConstants::CreateMoneyBoxWithdraw)->where('operation', 1)->sum('amount'));
 
-        $total_activities = ($sorders->whereIn('type', [TypeConstants::CreateActivity,TypeConstants::EditActivity,TypeConstants::DeleteActivity ])->where('operation', 0)->sum('amount')
-            - $sorders->whereIn('type', [TypeConstants::CreateActivity,TypeConstants::EditActivity,TypeConstants::DeleteActivity ])->where('operation', 1)->sum('amount'));
+        $total_activities = ($sorders->whereIn('type', [TypeConstants::CreateNonMember, TypeConstants::EditNonMember, TypeConstants::DeleteNonMember, TypeConstants::CreateActivity, TypeConstants::EditActivity, TypeConstants::DeleteActivity])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateNonMember, TypeConstants::EditNonMember, TypeConstants::DeleteNonMember, TypeConstants::CreateActivity, TypeConstants::EditActivity, TypeConstants::DeleteActivity])->where('operation', 1)->sum('amount'));
 
         $total_subscriptions = ($sorders->whereIn('type', [TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::EditMember,TypeConstants::DeleteMember, TypeConstants::CreateMemberPayAmountRemainingForm, TypeConstants::EditSubscription,TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription ])->where('operation', 0)->sum('amount')
             - $sorders->whereIn('type', [TypeConstants::CreateMember,TypeConstants::RenewMember,TypeConstants::EditMember,TypeConstants::DeleteMember, TypeConstants::CreateMemberPayAmountRemainingForm, TypeConstants::EditSubscription,TypeConstants::CreateSubscription,TypeConstants::DeleteSubscription ])->where('operation', 1)->sum('amount'));
@@ -940,8 +1075,14 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
         $total_pt_subscriptions = ($sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 0)->sum('amount')
             - $sorders->whereIn('type', [TypeConstants::CreatePTMember,TypeConstants::RenewPTMember,TypeConstants::EditPTMember,TypeConstants::DeletePTMember, TypeConstants::CreatePTMemberPayAmountRemainingForm, TypeConstants::EditPTSubscription,TypeConstants::CreatePTSubscription,TypeConstants::DeletePTSubscription ])->where('operation', 1)->sum('amount'));
 
-        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder ])->where('operation', 0)->sum('amount')
-            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder  ])->where('operation', 1)->sum('amount'));
+        // Store sales: includes old CreateStoreOrder (for legacy) and new CashSale type
+        // NOTE: WalletTopUp and DebtPayment are NOT sales - they are wallet/debt operations
+        $total_stores = ($sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale ])->where('operation', 0)->sum('amount')
+            - $sorders->whereIn('type', [TypeConstants::CreateStoreProduct,TypeConstants::EditStoreProduct,TypeConstants::DeleteStoreProduct, TypeConstants::CreateStoreOrder,TypeConstants::EditStoreOrder,TypeConstants::DeleteStoreOrder, TypeConstants::CashSale  ])->where('operation', 1)->sum('amount'));
+
+        // Wallet operations (NOT revenue - these are customer advances/liability and debt settlements)
+        $total_wallet_topups = $sorders->where('type', TypeConstants::WalletTopUp)->where('operation', 0)->sum('amount');
+        $total_debt_payments = $sorders->where('type', TypeConstants::DebtPayment)->where('operation', 0)->sum('amount');
 
         return view('software::Front.moneybox_daily_front_list', compact(
             'revenues', 'expenses', 'earnings'
@@ -950,6 +1091,7 @@ class GymMoneyBoxFrontController extends GymGenericFrontController
 //                    ,'bank_revenues', 'bank_expenses', 'bank_earnings'
             ,'total_add_to_money_box', 'total_withdraw_from_money_box'
             ,'total_activities', 'total_subscriptions', 'total_pt_subscriptions', 'total_stores', 'total_non_members'
+            ,'total_wallet_topups', 'total_debt_payments'  // Wallet operations (NOT revenue)
             , 'orders', 'title', 'total', 'search_query', 'users', 'subscriptions'
             , 'payment_expenses', 'payment_revenues', 'payment_types'));
     }

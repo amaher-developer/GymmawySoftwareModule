@@ -22,7 +22,6 @@ class GymMemberSystemFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->GymMemberSystemRepository = new GymMemberSystemRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -30,7 +29,7 @@ class GymMemberSystemFrontController extends GymGenericFrontController
     {
 
         $title = trans('global.members');
-            $members = $this->GymMemberSystemRepository->where('gym_id', @$this->current_gym_id)->orderBy('id', 'DESC');
+            $members = $this->GymMemberSystemRepository->branch()->where('gym_id', @$this->current_gym_id)->orderBy('id', 'DESC');
             $total = $members->count();
 
         return view('software::Front.user.member_front_list', compact('title', 'total'));

@@ -30,7 +30,7 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->ReservationMemberRepository=new GymReservationMemberRepository(new Application);
-        $this->ReservationMemberRepository=$this->ReservationMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->reservation();
+        $this->ReservationMemberRepository=$this->ReservationMemberRepository->reservation();
     }
 
 
@@ -179,7 +179,7 @@ class GymReservationMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_reservation_members');
         $this->userLog($notes, TypeConstants::ExportReservationMemberExcel);
 
-        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new NonMembersExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
     }
 

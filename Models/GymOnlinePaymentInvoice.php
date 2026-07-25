@@ -3,8 +3,8 @@
 namespace Modules\Software\Models;
 
 use Modules\Generic\Models\GenericModel;
+use Modules\Software\Classes\TypeConstants;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Schema;
 
 class GymOnlinePaymentInvoice extends GenericModel
 {
@@ -13,54 +13,14 @@ class GymOnlinePaymentInvoice extends GenericModel
 
     protected $table = 'sw_gym_online_payment_invoices';
     protected $guarded = ['id'];
-    protected $appends = ['image'];
+    protected $appends = ['image', 'payment_gateway_name', 'payment_channel_name'];
+    protected $casts   = ['response_code' => 'array'];
     public static $uploads_path='uploads/subscriptions/';
     public static $thumbnails_uploads_path='uploads/subscriptions/thumbnails/';
 
-    /**
-     * Apply global scope to ALL queries for tenant isolation
-     * This prevents IDOR (Insecure Direct Object Reference) attacks
-     */
-    public static function booted()
+    public function scopeBranch($query)
     {
-        static::addGlobalScope('branch', function ($query) {
-            $branchId = parent::getCurrentBranchId();
-            $query->where('branch_setting_id', $branchId);
-        });
-        // Automatically set tenant_id and branch_setting_id when creating
-        static::creating(function ($model) {
-            $user = parent::getCurrentSwUser();
-            if ($user) {
-                if (!isset($model->branch_setting_id)) {
-                    $model->branch_setting_id = $user->branch_setting_id ?? 1;
-                }
-                if (!isset($model->tenant_id) && Schema::hasColumn($model->getTable(), 'tenant_id')) {
-                    $model->tenant_id = $user->tenant_id ?? 1;
-                }
-            }
-        });
-
-    }
-
-    /**
-     * Manual branch and tenant scope
-     * Filters by branch_setting_id and optionally tenant_id
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param int $branchId - Default: 1
-     * @param int $tenantId - Default: 1
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeBranch($query, $branchId = 1, $tenantId = 1)
-    {
-        $query->where('branch_setting_id', $branchId);
-
-        // Only filter by tenant_id if the column exists in the table
-        if (Schema::hasColumn($this->getTable(), 'tenant_id')) {
-            $query->where('tenant_id', $tenantId);
-        }
-
-        return $query;
+        return $query->where('branch_setting_id', parent::getCurrentBranchId());
     }
     public function getImageAttribute()
     {
@@ -75,8 +35,29 @@ class GymOnlinePaymentInvoice extends GenericModel
         return $this->belongsTo(GymSubscription::class, 'subscription_id');
     }
 
+    public function getPaymentGatewayNameAttribute()
+    {
+        $gateways = [
+            TypeConstants::TABBY_TRANSACTION => 'Tabby',
+            TypeConstants::PAYMOB_TRANSACTION => 'Paymob',
+            TypeConstants::TAMARA_TRANSACTION => 'Tamara',
+            TypeConstants::PAYTABS_TRANSACTION => 'PayTabs',
+            TypeConstants::PAYPAL_TRANSACTION_FEES => 'PayPal',
+        ];
 
+        return $gateways[$this->payment_method] ?? trans('sw.unknown');
+    }
 
+    public function getPaymentChannelNameAttribute()
+    {
+        $channels = [
+            TypeConstants::CHANNEL_SYSTEM => trans('sw.channel_system'),
+            TypeConstants::CHANNEL_WEBSITE => trans('sw.channel_website'),
+            TypeConstants::CHANNEL_MOBILE_APP => trans('sw.channel_mobile_app'),
+        ];
+
+        return $channels[$this->payment_channel] ?? trans('sw.unknown');
+    }
 
     public function toArray()
     {

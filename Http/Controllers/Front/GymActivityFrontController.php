@@ -43,11 +43,11 @@ class GymActivityFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $activities = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
+            $activities = $this->ActivityRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $activities = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $activities = $this->ActivityRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -72,7 +72,7 @@ class GymActivityFrontController extends GymGenericFrontController
 
 
     function exportExcel(){
-        $records = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $records = $this->ActivityRepository->get();
         $this->fileName = 'activities-' . Carbon::now()->toDateTimeString();
 
 //        $title = trans('sw.activities');
@@ -82,7 +82,7 @@ class GymActivityFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_activities');
         $this->userLog($notes, TypeConstants::ExportActivityExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -117,7 +117,7 @@ class GymActivityFrontController extends GymGenericFrontController
         return $result;
     }
     function exportPDF(){
-        $records = $this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $records = $this->ActivityRepository->get();
         $this->fileName = 'activities-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name', 'price'];
@@ -213,14 +213,14 @@ class GymActivityFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $activity =$this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $activity =$this->ActivityRepository->withTrashed()->find($id);
         $title = trans('sw.activity_edit');
         return view('software::Front.activity_front_form', ['activity' => $activity,'title'=>$title]);
     }
 
     public function update(GymActivityRequest $request, $id)
     {
-        $activity =$this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $activity =$this->ActivityRepository->withTrashed()->find($id);
         $activity_inputs = $this->prepare_inputs($request->except(['_token']));
         $activity_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $activity_inputs['is_web'] = @(int)$activity_inputs['is_web'];
@@ -240,7 +240,7 @@ class GymActivityFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $activity =$this->ActivityRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $activity =$this->ActivityRepository->withTrashed()->find($id);
         if($activity->trashed())
         {
             $activity->restore();
@@ -327,7 +327,6 @@ class GymActivityFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
 
         return $inputs;

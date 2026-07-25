@@ -46,9 +46,9 @@ class GymUserFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if (request('trashed')) {
-            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
+            $users = $this->GymUserRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         } else {
-            $users = $this->GymUserRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $users = $this->GymUserRepository->branch()->orderBy('id', 'DESC');
         }
 
         if(!@$this->user_sw->is_super_user){
@@ -107,7 +107,7 @@ class GymUserFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_users');
         $this->userLog($notes, TypeConstants::ExportUserExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'email', 'phone', 'start_time_work', 'end_time_work'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'email', 'phone', 'start_time_work', 'end_time_work'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -440,7 +440,10 @@ class GymUserFrontController extends GymGenericFrontController
         }
 
 
-        if(@$this->user_sw->branch_setting_id){
+        // Super users can explicitly assign a branch via form; others inherit creator's branch
+        if (@$this->user_sw->is_super_user && request()->has('branch_setting_id')) {
+            $inputs['branch_setting_id'] = (int) request('branch_setting_id');
+        } elseif (@$this->user_sw->branch_setting_id) {
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
             $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }

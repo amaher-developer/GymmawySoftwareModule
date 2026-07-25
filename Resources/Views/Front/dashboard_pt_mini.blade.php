@@ -325,13 +325,13 @@
                 <div class="modal-body">
                     <!-- Status Banner -->
                     <div id="status_banner_pt" class="text-center p-4 mb-4 text-white bg-success rounded">
-                        <h3 id="p_messages" class="mb-0"></h3>
+                        <h3 id="p_messages_pt" class="mb-0"></h3>
                     </div>
 
                     <div class="text-center mb-5">
-                        <img id="client_img" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;" src="{{asset('uploads/settings/default.jpg')}}">
-                        <h3 id="client_name" class="mt-3 mb-0"></h3>
-                        <p class="text-muted" id="client_code"></p>
+                        <img id="client_img_pt" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;" src="{{asset('uploads/settings/default.jpg')}}">
+                        <h3 id="client_name_pt" class="mt-3 mb-0"></h3>
+                        <p class="text-muted" id="client_code_pt"></p>
                     </div>
 
                     <!-- Key Stats -->
@@ -339,35 +339,35 @@
                         <div class="col-4">
                             <div class="bg-light-primary p-3 rounded">
                                 <div class="fs-7 text-muted">{{ trans('sw.membership') }}</div>
-                                <div class="fs-6 fw-bold" id="client_membership"></div>
+                                <div class="fs-6 fw-bold" id="client_membership_pt"></div>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="bg-light-danger p-3 rounded">
                                 <div class="fs-7 text-muted">{{ trans('sw.amount_remaining') }}</div>
-                                <div class="fs-6 fw-bold" id="client_amount_remaining"></div>
+                                <div class="fs-6 fw-bold" id="client_amount_remaining_pt"></div>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="bg-light-info p-3 rounded">
                                 <div class="fs-7 text-muted">{{ trans('sw.expire_date') }}</div>
-                                <div class="fs-6 fw-bold" id="client_expire_date"></div>
+                                <div class="fs-6 fw-bold" id="client_expire_date_pt"></div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="myData">
+                    <div id="myData_pt">
                         <div class="row g-4">
                             <div class="col-md-6">
                                 <div class="d-flex flex-column">
                                     <span class="fw-bold">{{trans('sw.phone')}}:</span>
-                                    <span id="client_phone" class="text-muted"></span>
+                                    <span id="client_phone_pt" class="text-muted"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex flex-column">
                                     <span class="fw-bold">{{trans('sw.remaining_classes')}}:</span>
-                                    <span id="client_workouts" class="text-muted"></span>
+                                    <span id="client_workouts_pt" class="text-muted"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -388,12 +388,20 @@
                             </div>
                             @endif
                         </div>
+
+                        <!-- PT Training Subscriptions -->
+                        <div class="col-12 mt-4" id="client_pt_membership_h5_pt" style="display:none;">
+                            <div class="d-flex flex-column">
+                                <span class="fw-bold mb-2">{{trans('sw.pt_subscription')}}:</span>
+                                <div id="client_pt_membership_pt" class="d-flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="modal-footer d-flex justify-content-center gap-2">
                     @if(in_array('memberSubscriptionRenewStore', (array)$swUser->permissions) || $swUser->is_super_user)
-                    <div id="div_renew"></div>
+                    <div id="div_renew_pt"></div>
                     @endif
                 </div>
             </div>
@@ -660,15 +668,15 @@
                 load_new_posts();
 
                 if(data.member) {
-                    $('#myData').show();
+                    $('#myData_pt').show();
 
-                    $('#client_name').text(data.member.member.name);
+                    $('#client_name_pt').text(data.member.member.name);
                     $('#barcode_last_enter_member').text(data.member.member.name);
                     $('#client_address').text(data.member.member.address);
-                    $('#client_phone').text(data.member.member.phone);
-                    $('#client_code').text(data.member.member.code);
-                    $('#client_img').attr('src',  data.member.member.image);
-                    $('#client_amount_remaining').text(data.member.amount_remaining);
+                    $('#client_phone_pt').text(data.member.member.phone);
+                    $('#client_code_pt').text(data.member.member.code);
+                    $('#client_img_pt').attr('src',  data.member.member.image);
+                    $('#client_amount_remaining_pt').text(data.member.amount_remaining);
                     $('#client_total_amount_remaining').text(data.member.total_amount_remaining);
                     
                     // Display loyalty points if available
@@ -679,41 +687,69 @@
                     }
                     
                     // var partsDate = data.member.member_subscriptions.expire_date.split('T');
-                    $('#client_expire_date').text(data.member.expire_date);
-                    $('#client_workouts').text(data.member.remain_workouts);
+                    $('#client_expire_date_pt').text(data.member.expire_date);
+                    $('#client_workouts_pt').text(data.member.remain_workouts);
                     $('#client_classes').text(data.member.sessions_total ?? data.member.classes);
                     let subscription_name = '';
                     if(data.member.pt_subscription){ subscription_name =  data.member.pt_subscription?.name; }else{  subscription_name = trans_old_membership; }
-                    $('#client_membership').text(subscription_name);
+                    $('#client_membership_pt').text(subscription_name);
 
                     if(data.status === true){
-                        $('#p_messages').html(data.msg || '<i class="ki-outline ki-check-circle fs-2x"></i>');
+                        $('#p_messages_pt').html(data.msg || '<i class="ki-outline ki-check-circle fs-2x"></i>');
                         $('#status_banner_pt').removeClass('bg-danger').addClass('bg-success');
                         if(data.renew_status === true)
-                            $('#div_renew').html('<a class="btn btn-primary text-white" id="' + data.member.id + '" membership_id="' + data.member.member_subscription_info.id + '">'+ trans_renew_membership +'</a>');
+                            $('#div_renew_pt').html('<a class="btn btn-primary text-white" id="' + data.member.id + '" membership_id="' + data.member.member_subscription_info.id + '">'+ trans_renew_membership +'</a>');
                         else
-                            $('#div_renew').html('');
+                            $('#div_renew_pt').html('');
                     }else{
-                        $('#p_messages').html('<i class="ki-outline ki-cross-circle fs-2x me-2"></i>' + data.msg);
+                        $('#p_messages_pt').html('<i class="ki-outline ki-cross-circle fs-2x me-2"></i>' + data.msg);
                         $('#status_banner_pt').removeClass('bg-success').addClass('bg-danger');
                         if(data.renew_status === true)
-                            $('#div_renew').html('<a class="btn btn-primary text-white" id="' + data.member.id + '" membership_id="' + data.member.member_subscription_info.id + '">'+ trans_renew_membership +'</a>');
+                            $('#div_renew_pt').html('<a class="btn btn-primary text-white" id="' + data.member.id + '" membership_id="' + data.member.member_subscription_info.id + '">'+ trans_renew_membership +'</a>');
                         else
-                            $('#div_renew').html('');
+                            $('#div_renew_pt').html('');
                     }
 
                     if(data.member.pt_members && (data.member.pt_members.length > 0)){
                         let pt_members = '';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
                         for (let i = 0; data.member.pt_members.length > i; i++){
                             const ptMember = data.member.pt_members[i];
                             const sessionsUsed = ptMember.sessions_used ?? ptMember.visits ?? 0;
                             const sessionsTotal = ptMember.sessions_total ?? ptMember.total_sessions ?? ptMember.classes ?? 0;
-                            pt_members = pt_members + '<a id="pt_membership_'+ ptMember.id +'" class="tag pt_membership_a tx-15" style="margin: 5px;" onclick="pt_membership('+ ptMember.id +')">' + ptMember.pt_subscription.name +' ('+ sessionsUsed + ' / ' + sessionsTotal +') ' +'</a>';
+                            const sessionsRemaining = ptMember.sessions_remaining ?? ptMember.remaining_sessions ?? (sessionsTotal - sessionsUsed);
+
+                            // Determine status based on dates and remaining sessions
+                            let startDate = ptMember.start_date || ptMember.joining_date;
+                            let endDate = ptMember.end_date || ptMember.expire_date;
+                            let isActive = false;
+
+                            if (startDate && endDate) {
+                                const start = new Date(startDate);
+                                const end = new Date(endDate);
+                                start.setHours(0, 0, 0, 0);
+                                end.setHours(0, 0, 0, 0);
+                                isActive = (today >= start && today <= end && sessionsRemaining > 0);
+                            } else if (sessionsRemaining > 0) {
+                                isActive = true;
+                            }
+
+                            const statusDot = isActive
+                                ? '<span class="badge badge-circle badge-success me-2" style="width:10px;height:10px;display:inline-block;border-radius:50%;"></span>'
+                                : '<span class="badge badge-circle badge-danger me-2" style="width:10px;height:10px;display:inline-block;border-radius:50%;"></span>';
+                            const statusClass = isActive ? 'border-success' : 'border-danger';
+
+                            pt_members += '<a id="pt_membership_'+ ptMember.id +'" class="tag pt_membership_a tx-15 d-flex align-items-center border '+ statusClass +'" style="margin: 5px; padding: 8px 12px; border-radius: 8px; cursor: pointer;" onclick="pt_membership('+ ptMember.id +')">'
+                                + statusDot
+                                + '<span>' + (ptMember.pt_subscription ? ptMember.pt_subscription.name : '') + ' (' + sessionsUsed + ' / ' + sessionsTotal + ')</span>'
+                                + '</a>';
                         }
-                        $('#client_pt_membership_h5').show();
-                        $('#client_pt_membership').html(pt_members);
+                        $('#client_pt_membership_h5_pt').show();
+                        $('#client_pt_membership_pt').html(pt_members);
                     }else{
-                        $('#client_pt_membership_h5').hide();
+                        $('#client_pt_membership_h5_pt').hide();
+                        $('#client_pt_membership_pt').html('');
                     }
                     // console.log('data.member.gym_reservations', data.member.gym_reservations);
                     if(data.member.gym_reservations && (data.member.gym_reservations.length > 0)){
@@ -731,11 +767,13 @@
 
 
                 } else {
-                    $('#myData').hide();
-                    $('#div_renew').html('');
+                    $('#myData_pt').hide();
+                    $('#div_renew_pt').html('');
+                    $('#client_pt_membership_h5_pt').hide();
+                    $('#client_pt_membership_pt').html('');
                     $('#icon_model').html(' <i class="fa fa-times mg-b-20 tx-50 text-danger"></i>');
-                    $('#p_messages').text(data.msg);
-                    $('#client_img').attr('src',  default_avatar_image);
+                    $('#p_messages_pt').text(data.msg);
+                    $('#client_img_pt').attr('src',  default_avatar_image);
                     $('.client_img').css("color", "#f44336c9");
                 }
                 $('#scan_qrcode_manual').val('');

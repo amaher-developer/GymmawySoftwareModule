@@ -32,7 +32,6 @@ class GymPTClassFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->ClassRepository=new GymPTClassRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
 
         $this->classTrainerHasScheduleColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'schedule');
         $this->classTrainerHasDateFromColumn = Schema::hasColumn('sw_gym_pt_class_trainers', 'date_from');
@@ -48,13 +47,13 @@ class GymPTClassFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $classes = $this->ClassRepository->with(['pt_subscription' => function($q){
+            $classes = $this->ClassRepository->branch()->with(['pt_subscription' => function($q){
                 $q->withTrashed();
             }])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $classes = $this->ClassRepository->with(['pt_subscription' => function($q){
+            $classes = $this->ClassRepository->branch()->with(['pt_subscription' => function($q){
                 $q->withTrashed();
             }])->orderBy('id', 'DESC');
         }
@@ -91,7 +90,7 @@ class GymPTClassFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_pt_classes');
         $this->userLog($notes, TypeConstants::ExportPTClassExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);

@@ -31,7 +31,6 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
         parent::__construct();
         $this->imageManager = new ImageManager(new Driver());
         $this->CategoryRepository =new GymSubscriptionCategoryRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -43,11 +42,11 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $categories = $this->CategoryRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $categories = $this->CategoryRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $categories = $this->CategoryRepository->orderBy('id', 'DESC');
+            $categories = $this->CategoryRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -78,7 +77,7 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_subscription_categories');
         $this->userLog($notes, TypeConstants::ExportSubscriptionCategoryExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
     }
 
     function exportPDF(){
@@ -256,7 +255,6 @@ class GymSubscriptionCategoryFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
 
         return $inputs;

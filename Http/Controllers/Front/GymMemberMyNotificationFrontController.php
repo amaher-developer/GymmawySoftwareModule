@@ -86,7 +86,9 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
         $data['sound'] = 'default';
         $data['badge'] = '1';
         $data['e'] = 1;
-        switch ($user_inputs['type']) {
+        $data['type'] = $user_inputs['type'] ?? null;
+        $data['url'] = null;
+        switch ($user_inputs['type'] ?? null) {
             case TypeConstants::NOTIFICATION_EXTERNAL_URL:
                 $data['url'] = $user_inputs['url'];
                 break;
@@ -96,6 +98,14 @@ class GymMemberMyNotificationFrontController extends GymGenericFrontController
             if(@$user_inputs['member_codes'] && (count(@$user_inputs['member_codes']) > 0) && !@$user_inputs['member_code_all']) {
                 $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereIn('code', $user_inputs['member_codes'])->pluck('id');
                 $result = $this->pushToMember($data, $members);
+                if (!$result) { $result = new \stdClass(); }
+                $result->message_id = 1;
+                $result->image = $data['image'];
+                $result->title = $data['title'];
+                $result->body = $data['body'];
+                $result->url = $data['url'];
+                $result->type = $data['type'];
+                $result->member_codes = $user_inputs['member_codes'];
             }
 
             if(@$user_inputs['member_code_all']){

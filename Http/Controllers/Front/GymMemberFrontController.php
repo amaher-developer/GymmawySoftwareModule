@@ -6,8 +6,13 @@ use Modules\Generic\Classes\Constants;
 use Modules\Generic\Models\Setting;
 use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
 use Modules\Software\Imports\MembersSubscriptionsImport;
+use Modules\Software\Classes\GymSwInvoiceHelper;
 use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Classes\SMSFactory;
+use Modules\Software\Services\TabbyPaymentService;
+use Modules\Software\Services\TamaraPaymentService;
+use Modules\Software\Services\PaymobPaymentService;
+use Modules\Software\Services\PayTabsPaymentService;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\WA;
 use Modules\Software\Classes\WAUltramsg;
@@ -23,11 +28,13 @@ use Modules\Software\Models\GymMemberSubscription;
 use Modules\Software\Models\GymMemberSubscriptionFreeze;
 use Modules\Software\Models\GymMoneyBox;
 use Modules\Software\Models\GymMoneyBoxType;
+use Modules\Software\Models\GymOnlinePaymentInvoice;
 use Modules\Software\Models\GymNonMemberTime;
 use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymReservation;
 use Modules\Software\Models\GymPotentialMember;
 use Modules\Software\Models\GymSaleChannel;
+use Modules\Software\Models\GymStoreOrder;
 use Modules\Software\Models\GymSubscription;
 use Modules\Software\Models\GymUser;
 use Modules\Software\Models\GymWALog;
@@ -73,7 +80,6 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->limit = 5;
         $this->keys = ['code', 'image', 'name', 'phone', 'address', 'member_subscription'];
         $this->MemberRepository = new GymMemberRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function showProfile($id)
@@ -90,7 +96,7 @@ class GymMemberFrontController extends GymGenericFrontController
             ])
             ->where('id', $id)->first();
 
-        $member_credit_transactions = GymMemberCredit::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)->orderBy('id', 'desc')->limit(20)->get();
+        $member_credit_transactions = GymMemberCredit::branch()->where('member_id', $member->id)->orderBy('id', 'desc')->limit(20)->get();
 
         return view('software::Front.member_front_profile', [
             'member' => $member,
@@ -108,9 +114,9 @@ class GymMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
         if (request('trashed')) {
-            $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
+            $members = GymMember::branch()->onlyTrashed()->orderBy('id', 'DESC');
         } else {
-            $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $members = GymMember::branch()->orderBy('id', 'DESC');
         }
 
 //        $members = $members->leftJoin('sw_gym_member_subscription', function($query)
@@ -214,9 +220,10 @@ class GymMemberFrontController extends GymGenericFrontController
             $total = $members->count();
         }
 
-        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
-        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)-> get();
-        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $subscriptions = GymSubscription::branch()->isSystem()->get();
+        $users = GymUser::branch()-> get();
+        $payment_types = GymPaymentType::get();
+        $group_discounts = GymGroupDiscount::branch()->where('is_member', 1)->get();
         
         // Load upcoming reservations for members
         $memberIds = $members instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator 
@@ -224,7 +231,8 @@ class GymMemberFrontController extends GymGenericFrontController
             : $members->pluck('id')->toArray();
         $upcomingReservations = [];
         if (!empty($memberIds)) {
-            $upcomingReservations = GymReservation::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('client_type', 'member')
+            $upcomingReservations = GymReservation::branch()
+                ->where('client_type', 'member')
                 ->whereIn('member_id', $memberIds)
                 ->whereDate('reservation_date', '>=', \Carbon\Carbon::today()->format('Y-m-d'))
                 ->whereNotIn('status', ['cancelled', 'missed'])
@@ -237,7 +245,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 ->groupBy('member_id');
         }
         
-        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query', 'upcomingReservations','payment_types'));
+        return view('software::Front.member_front_list', compact('members', 'users', 'title', 'subscriptions', 'total', 'search_query', 'upcomingReservations','payment_types', 'group_discounts'));
     }
 
     public function updateSubscriptionsStatus($id = [], $all = false)
@@ -248,7 +256,7 @@ class GymMemberFrontController extends GymGenericFrontController
             if((count($id) <= $this->limit))
                 array_push($statues, TypeConstants::Expired);
 
-            $subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription', 'member'])->when($id, function ($q) use ($id) {
+            $subscriptions = GymMemberSubscription::branch()->with(['subscription', 'member'])->when($id, function ($q) use ($id) {
                 $q->whereIn('member_id', $id);
             })->whereIn('status', $statues)->get();
             $del_members = [];
@@ -347,6 +355,38 @@ class GymMemberFrontController extends GymGenericFrontController
         ]);
         return  Response::json(['status' => true], 200);
     }
+
+    /**
+     * Search members by code or name for Select2 dropdown
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMembersBySearch()
+    {
+        $search = request()->get('search', '');
+        $page = request()->get('page', 1);
+        $perPage = 10;
+
+        $query = $this->MemberRepository->branch();
+
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('code', 'like', '%' . $search . '%')
+                  ->orWhere('phone', 'like', '%' . $search . '%');
+            });
+        }
+
+        $members = $query->orderBy('name', 'asc')
+                         ->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'data' => $members->items(),
+            'current_page' => $members->currentPage(),
+            'last_page' => $members->lastPage(),
+            'total' => $members->total(),
+        ]);
+    }
+
     private function updateMoneyBox()
     {
         $oneMonthAgo = GymMoneyBox::whereDate('created_at', '<=',Carbon::now()->subMonth()->toDateString())->orderBy('created_at','desc')->first();
@@ -365,7 +405,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     function exportExcel()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->index()->with(\request()->all());
         $records = $records->members;
 
@@ -379,7 +419,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->userLog($notes, TypeConstants::ExportMemberExcel);
 
         return Excel::download(new MembersExport(['records' => $records, 'keys' => ['barcode', 'name', 'phone', 'address', 'membership', 'workouts', 'number_of_visits', 'amount_remaining', 'store_balance', 'national_id', 'dob'
-            , 'joining_date', 'expire_date', 'status', 'created_at'], 'lang' => $this->lang]), $this->fileName . '.xlsx');
+            , 'joining_date', 'expire_date', 'status', 'created_at'], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -430,7 +470,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     function exportPDF()
     {
-        $this->limit = null;
+        $this->limit = request('limits') ?? 600;
         $records = $this->index()->with(\request()->all());
         $records = $records->members;
 
@@ -526,7 +566,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $member =  new GymMember();
         $invoice = null;
         if(\request('reservation_id')){
-            $member = GymPotentialMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', \request('reservation_id'))->first();
+            $member = GymPotentialMember::where('id', \request('reservation_id'))->first();
             if(!@$member){
                 $member = new GymMember();
             }
@@ -534,13 +574,13 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($member instanceof GymMember && $member->id) {
             $invoice = optional($member->billingInvoices()->latest()->first());
         }
-        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
-        $channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_member', true)->get();
-        $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
+        $subscriptions = GymSubscription::branch()->isSystem()->get();
+        $channels = GymSaleChannel::branch()->get();
+        $users = GymUser::branch()->get();
+        $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
+        $maxId = str_pad((GymMember::branch()->withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         $billingSettings = SwBillingService::getSettings();
-        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $payment_types = GymPaymentType::branch()->get();
         //        $this->mainSettings->last_barcode_number = $this->mainSettings->last_barcode_number + 1;
 //        $maxId = str_pad(($this->mainSettings->last_barcode_number), 14, 0, STR_PAD_LEFT);
 
@@ -579,7 +619,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
         try {
             SwBillingService::createInvoiceFromMoneyBox($moneyBox);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Failed to process ZATCA invoice for member money box', [
                 'money_box_id' => $moneyBox->id,
                 'member_id' => $moneyBox->member_id,
@@ -588,14 +628,36 @@ class GymMemberFrontController extends GymGenericFrontController
         }
     }
 
+    protected function createZatcaInvoiceForMember(GymMember $member, int $memberSubscriptionId, float $amountPaid, float $vatAmount, ?GymMoneyBox $moneyBox = null): void
+    {
+        if (!config('sw_billing.zatca_enabled') || !config('sw_billing.auto_invoice')) {
+            return;
+        }
+
+        $settings = SwBillingService::getSettings();
+        if (empty($settings['sections']['members'])) {
+            return;
+        }
+
+        try {
+            SwBillingService::createInvoiceFromMember($member, $memberSubscriptionId, $amountPaid, $vatAmount, $moneyBox);
+        } catch (\Throwable $e) {
+            Log::error('Failed to process ZATCA member invoice', [
+                'member_id' => $member->id,
+                'member_subscription_id' => $memberSubscriptionId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
 
     public function store(GymMemberRequest $request)
     {
-        $checkBlockUser = GymBlockMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('phone', $request->phone)->count();
+        $checkBlockUser = GymBlockMember::branch()->where('phone', $request->phone)->count();
         if ($checkBlockUser)
             return redirect()->back()->withErrors(['phone' => trans('sw.block_member_validate')]);
 
-        $maxId = str_pad((GymMember::withTrashed()->where('branch_setting_id', $this->user_sw->branch_setting_id)->max('code') + 1), 14, 0, STR_PAD_LEFT);
+        $maxId = str_pad((GymMember::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         if(@(int)$request->code)
             $maxId = str_pad(intval(@$request->code), 14, 0, STR_PAD_LEFT);
 
@@ -607,7 +669,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member_inputs['fp_id'] = (int)$member_inputs['code'];
         }
 
-        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['activities' => function ($q) {
+        $subscription = GymSubscription::branch()->with(['activities' => function ($q) {
             $q->select('id', 'activity_id', 'subscription_id', 'training_times')->with(['activity' => function ($q) {
                 $q->select('id', 'name_ar', 'name_en');
             }]);
@@ -629,7 +691,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $moneyBox = null;
             $sub = [];
 
-            //try {
+            try {
                 DB::transaction(function () use (&$member, &$member_subscription, &$moneyBox, &$sub, $member_inputs, $subscription, $amount_paid, $discount_value, $request, $vat, $notes) {
             $member = $this->MemberRepository->create($member_inputs);
 
@@ -658,13 +720,13 @@ class GymMemberFrontController extends GymGenericFrontController
                         'activities' => @$subscription->activities->toJson(),
                         'time_week' => @json_encode($subscription->time_week),
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
-                        'tenant_id' => @$this->user_sw->tenant_id,
                         'notes' => @$notes,
+                        'invitations' => (int) ($subscription->invitations ?? 0),
                     ];
 
-            $member_subscription = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->insertGetId($sub);
+            $member_subscription = GymMemberSubscription::branch()->insertGetId($sub);
 
-            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+            $amount_box = GymMoneyBox::branch()->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
 
                     $moneyBoxNotes = trans('sw.member_moneybox_add_msg',
@@ -677,7 +739,7 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($discount_value)
                         $moneyBoxNotes = $moneyBoxNotes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
 
-            if (@$this->mainSettings->vat_details['vat_percentage']) {
+            if ($this->mainSettings->vat_details['vat_percentage']) {
                         $moneyBoxNotes = $moneyBoxNotes . ' - ' . trans('sw.vat_added');
             }
 
@@ -693,25 +755,28 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'payment_type' => intval($request->payment_type)
                 , 'member_subscription_id' => @$member_subscription
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-                , 'tenant_id' => @$this->user_sw->tenant_id
                     ]);
                 });
-            // } catch (\Throwable $e) {
-            //     Log::error('Failed to create member with subscription', [
-            //         'subscription_id' => $request->subscription_id,
-            //         'phone' => $request->phone,
-            //         'error' => $e->getMessage()
-            //     ]);
+            } catch (\Throwable $e) {
+                Log::error('Failed to create member with subscription', [
+                    'subscription_id' => $request->subscription_id,
+                    'phone' => $request->phone,
+                    'error' => $e->getMessage()
+                ]);
 
-            //     return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
-            // }
+                return redirect(route('sw.createMember'))->withErrors([
+                    'general' => trans('sw.error_in_data'),
+                ]);
+            }
 
             if (!$member || !$member_subscription) {
                 Log::warning('Member subscription transaction did not persist', [
                     'subscription_id' => $request->subscription_id,
                     'phone' => $request->phone,
                 ]);
-                return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+                return redirect(route('sw.createMember'))->withErrors([
+                    'general' => trans('sw.error_in_data'),
+                ]);
             }
 
             $notes = trans('sw.member_moneybox_add_msg',
@@ -724,13 +789,14 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($discount_value)
                 $notes = $notes . trans('sw.discount_msg', ['value' => (float)$discount_value]);
 
-            if (@$this->mainSettings->vat_details['vat_percentage']) {
+            if ($this->mainSettings->vat_details['vat_percentage']) {
                 $notes = $notes . ' - ' . trans('sw.vat_added');
             }
 
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
             $this->createZatcaInvoiceForMoneyBox($moneyBox);
+            $this->createZatcaInvoiceForMember($member, $member_subscription, $amount_paid, $vat, $moneyBox);
 
             $notes = str_replace(':name', $member_inputs['name'], trans('sw.add_member'));
             $this->userLog($notes, TypeConstants::CreateMember);
@@ -796,7 +862,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
-            $message_notification = GymEventNotification::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('event_code', 'new_member')->first();
+            $message_notification = GymEventNotification::where('event_code', 'new_member')->where('status', 1)->first();
             $msg = @$message_notification->message;
             $member_subscription = GymMemberSubscription::with('member')->where('id',@$member_subscription)->first();
             $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
@@ -872,6 +938,161 @@ class GymMemberFrontController extends GymGenericFrontController
                 // end send wa
 
             }
+
+            $store_payment_url = null;
+            $store_payment_sent_via = ['whatsapp' => false, 'sms' => false, 'email' => false];
+
+            // Send Tabby payment link if checkbox is checked and member has remaining amount
+            if ($request->input('send_tabby_link')) {
+                try {
+                    $tabbyService = new TabbyPaymentService();
+                    if ($tabbyService->isTabbyConfigured()) {
+                        $tabbyResult = $tabbyService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
+
+                        if ($tabbyResult['success']) {
+                            $store_payment_url = $tabbyResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $tabbyResult['sent_whatsapp'], 'sms' => $tabbyResult['sent_sms'], 'email' => $tabbyResult['sent_email'] ?? false];
+                            Log::info('Tabby payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $tabbyResult['payment_url'],
+                                'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
+                                'sent_sms' => $tabbyResult['sent_sms'],
+                                'sent_email' => $tabbyResult['sent_email'] ?? false,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process Tabby payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Send Tamara payment link if checkbox is checked and member has remaining amount
+            if ($request->input('send_tamara_link')) {
+                try {
+                    $tamaraService = new TamaraPaymentService();
+                    if ($tamaraService->isTamaraConfigured()) {
+                        $tamaraResult = $tamaraService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
+
+                        if ($tamaraResult['success']) {
+                            $store_payment_url = $tamaraResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $tamaraResult['sent_whatsapp'], 'sms' => $tamaraResult['sent_sms'], 'email' => $tamaraResult['sent_email'] ?? false];
+                            Log::info('Tamara payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $tamaraResult['payment_url'],
+                                'sent_whatsapp' => $tamaraResult['sent_whatsapp'],
+                                'sent_sms' => $tamaraResult['sent_sms'],
+                                'sent_email' => $tamaraResult['sent_email'] ?? false,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process Tamara payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Send Paymob payment link if checkbox is checked and member has remaining amount
+            if ($request->input('send_paymob_link')) {
+                try {
+                    $paymobService = new PaymobPaymentService();
+                    if ($paymobService->isPaymobConfigured()) {
+                        $paymobResult = $paymobService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
+
+                        if ($paymobResult['success']) {
+                            $store_payment_url = $paymobResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $paymobResult['sent_whatsapp'], 'sms' => $paymobResult['sent_sms'], 'email' => $paymobResult['sent_email'] ?? false];
+                            Log::info('Paymob payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $paymobResult['payment_url'],
+                                'sent_whatsapp' => $paymobResult['sent_whatsapp'],
+                                'sent_sms' => $paymobResult['sent_sms'],
+                                'sent_email' => $paymobResult['sent_email'] ?? false,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process Paymob payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Send PayTabs payment link if checkbox is checked
+            if ($request->input('send_paytabs_link')) {
+                try {
+                    $paytabsService = new PayTabsPaymentService();
+                    if ($paytabsService->isPayTabsConfigured()) {
+                        $paytabsResult = $paytabsService->processNewMemberPayment(
+                            $member,
+                            $member_subscription->id,
+                            $subscription,
+                            $sub['amount_paid'],
+                            $this->mainSettings,
+                            @$this->user_sw->branch_setting_id
+                        );
+
+                        if ($paytabsResult['success']) {
+                            $store_payment_url = $paytabsResult['payment_url'];
+                            $store_payment_sent_via = ['whatsapp' => $paytabsResult['sent_whatsapp'], 'sms' => $paytabsResult['sent_sms'], 'email' => $paytabsResult['sent_email'] ?? false];
+                            Log::info('PayTabs payment link sent for new member', [
+                                'member_id' => $member->id,
+                                'amount_paid' => $sub['amount_paid'],
+                                'payment_url' => $paytabsResult['payment_url'],
+                                'sent_whatsapp' => $paytabsResult['sent_whatsapp'],
+                                'sent_sms' => $paytabsResult['sent_sms'],
+                                'sent_email' => $paytabsResult['sent_email'] ?? false,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to process PayTabs payment for new member', [
+                        'member_id' => $member->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // If AJAX request and payment link was generated, return JSON for payment waiting flow
+            if ($request->ajax() && $store_payment_url) {
+                return response()->json([
+                    'status' => true,
+                    'member_subscription_id' => $member_subscription->id,
+                    'payment_url' => $store_payment_url,
+                    'sent_via' => $store_payment_sent_via,
+                    'redirect_url' => route('sw.showOrderSubscription', @$member_subscription),
+                ]);
+            }
+
             session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_added'),
@@ -883,7 +1104,7 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
 
-        return redirect(route('sw.createMember'))->withErrors(['subscription_id']);
+        return redirect(route('sw.createMember'))->withErrors(['general' => trans('sw.subscription_required')]);
 
     }
     public function dynamicMsg($msg = '', $membership = null, $setting = null)
@@ -892,9 +1113,12 @@ class GymMemberFrontController extends GymGenericFrontController
             '#member_name' => @$membership->member->name
             , '#member_code' => @(int)$membership->member->code
             , '#member_phone' => @$membership->member->phone
-            , '#membership_start_date' => Carbon::parse($membership->start_date)->addHours(12)->toDateString()
+            , '#membership_start_date' => Carbon::parse($membership->joining_date)->addHours(12)->toDateString()
             , '#membership_expire_date' => Carbon::parse($membership->expire_date)->toDateString()
             , '#membership_amount_paid' => @$membership->amount_paid
+            , '#freeze_start_date' => @Carbon::parse($membership->start_freeze_date)->addHours(12)->toDateString()
+            , '#freeze_end_date' => @Carbon::parse($membership->end_freeze_date)->toDateString()
+            , '#membership_resume_date' => Carbon::now()->addHours(12)->toDateString()
             , '#membership_name' => @$membership->subscription->name
             , '#setting_phone' => @$setting->phone
         ];
@@ -920,25 +1144,25 @@ class GymMemberFrontController extends GymGenericFrontController
             abort(404);
         }
 
-        $member_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription' => function ($q) {
+        $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
             $q->withTrashed();
         }])
             ->where('member_id', $member->id)
 //            ->whereDate('expire_date', '>=', Carbon::now()->toDateString())
-            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM)
+            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2)
             ->orderBy('id', 'desc')
             ->get();
         $expired_member_subscriptions_count = $member_subscriptions->where('status', TypeConstants::Expired)->count();
 
-        if ((count($member_subscriptions) >= TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM) && ($expired_member_subscriptions_count == TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM)) {
+        if ((count($member_subscriptions) >= TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2) && ($expired_member_subscriptions_count == TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2)) {
             $member_subscription_last[] = $member_subscriptions[0];
             $member_subscriptions = $member_subscription_last;
         }
 
-        $subscriptions = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $users = GymUser::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_member', true)->get();
+        $subscriptions = GymSubscription::branch()->get();
+        $channels = GymSaleChannel::branch()->get();
+        $users = GymUser::branch()->get();
+        $discounts = GymGroupDiscount::branch()->where('is_member', true)->get();
         $maxId = GymMember::withTrashed()->max('id');
 
         $subscriptionPrice = (float) data_get($member, 'member_subscription_info.subscription.price', 0);
@@ -946,14 +1170,14 @@ class GymMemberFrontController extends GymGenericFrontController
         $vat = round($subscriptionPrice * ($vatPercentage / 100), 2);
 
         $title = trans('sw.member_edit');   
-        $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $payment_types = GymPaymentType::branch()->get();
         return view('software::Front.member_front_edit', ['member' => $member, 'member_subscriptions' => $member_subscriptions, 'subscriptions' => $subscriptions, 'discounts' => $discounts, 'channels' => $channels, 'users' => $users, 'maxId' => $maxId, 'title' => $title, 'vat' => @(float)$vat, 'payment_types' => $payment_types]);
     }
 
     public function update(GymMemberRequest $request, $id)
     {
         $member = $this->MemberRepository->with('member_subscription_info.subscription')->withTrashed()->find($id);
-        $member_inputs = $this->prepare_inputs($request->only(['image', 'code', 'name', 'gender', 'phone', 'address', 'dob', 'national_id', 'fp_id', 'invitations', 'sale_channel_id', 'sale_user_id', 'additional_info']));
+        $member_inputs = $this->prepare_inputs($request->only(['image', 'code', 'name', 'gender', 'phone', 'address', 'dob', 'national_id', 'fp_id', 'sale_channel_id', 'sale_user_id', 'additional_info']));
 
         // Check if user intentionally removed the image
         // If no file uploaded, no camera photo, and member currently has an image, then user removed it
@@ -1208,17 +1432,18 @@ class GymMemberFrontController extends GymGenericFrontController
 
         $subscription_id = $request->subscription_id;
         $member_subscription_id = $request->member_subscription_id;
-        $member_subscription = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member')->find($member_subscription_id);
-        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($subscription_id);
+        $member_subscription = GymMemberSubscription::branch()->with('member')->find($member_subscription_id);
+        $subscription = GymSubscription::branch()->withTrashed()->find($subscription_id);
         $amount_paid = round(@$request->amount_paid, 2);
         $discount_value = round(@$request->discount_value, 2);
         $group_discount_id = @(int)$request->group_discount_id;
-//            $payment_type = @$request->payment_type;
+        $payment_type = @$request->payment_type;
         $workouts = @$request->workouts;
         $number_times_freeze = @$request->number_times_freeze;
         $freeze_limit = @$request->freeze_limit;
         $max_extension_days = (int)@$request->max_extension_days;
         $max_freeze_extension_sum = (int)@$request->max_freeze_extension_sum;
+        $invitations = (int)@$request->invitations;
         $notes = @(string)$request->notes;
         $joining_date = Carbon::parse(@$request->joining_date)->toDateString();
         $expire_date = @$request->expire_date ? Carbon::parse(@$request->expire_date)->toDateString() : Carbon::now()->addDays((int)$subscription->period)->toDateString();
@@ -1238,7 +1463,7 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
 
-        $other_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->whereBetween('joining_date', [$joining_date, $expire_date])
+        $other_subscriptions = GymMemberSubscription::branch()->whereBetween('joining_date', [$joining_date, $expire_date])
             ->orWhereBetween('expire_date', [$joining_date, $expire_date])
             ->get();
         $other_subscriptions = $other_subscriptions->where('member_id', $member_subscription->member_id)
@@ -1275,6 +1500,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $member_subscription->number_times_freeze = $number_times_freeze;
         $member_subscription->max_extension_days = $max_extension_days;
         $member_subscription->max_freeze_extension_sum = $max_freeze_extension_sum;
+        $member_subscription->invitations = $invitations;
         $member_subscription->amount_before_discount = $get_subscription_price;
         $member_subscription->time_week = $subscription->time_week;
         $member_subscription->notes = $notes;
@@ -1306,7 +1532,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         }
                     } else {
                         // Amount decreased - deduct points proportionally
-                        $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)
+                        $loyaltyTransactions = \Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
                             ->whereIn('source_type', ['member_subscription', 'member_subscription_renew', 'member_subscription_edit', 'member_subscription_remaining_payment'])
                             ->where('source_id', $member_subscription->id)
                             ->where('type', 'earn')
@@ -1359,7 +1585,7 @@ class GymMemberFrontController extends GymGenericFrontController
         }
 
         if ($price_diff != 0) {
-            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+            $amount_box = GymMoneyBox::branch()->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
             $notes = trans('sw.member_moneybox_edit_msg', [
@@ -1371,23 +1597,34 @@ class GymMemberFrontController extends GymGenericFrontController
             if ($discount_value)
                 $notes = $notes . trans('sw.discount_msg', ['value' => $discount_value]);
 
-            if (@$this->mainSettings->vat_details['vat_percentage']) {
+            if ($this->mainSettings->vat_details['vat_percentage']) {
                 $notes = $notes . ' - ' . trans('sw.vat_added');
             }
+
+            $diffVat = round($price_diff * ((float) (@$this->mainSettings->vat_details['vat_percentage'] ?? 0) / 100), 2);
+
+            $invoiceId = GymSwInvoiceHelper::forSubscriptionEdit(
+                (int) $member_subscription->member->id,
+                (int) $member_subscription->id,
+                $price_diff,
+                $diffVat,
+                $operation,
+                $this->user_sw->branch_setting_id ?? null
+            );
+
             $moneyBoxAdjustment = GymMoneyBox::create([
-                'user_id' => Auth::guard('sw')->user()->id
-                , 'amount' => @$price_diff
-//                , 'vat' => @$vat
-                , 'vat' => (@$price_diff * (@$this->mainSettings->vat_details['vat_percentage'] / 100))
-                , 'operation' => $operation
-                , 'amount_before' => $amount_after
-                , 'notes' => $notes
-                , 'type' => TypeConstants::EditMember
-                , 'member_id' => @$member_subscription->member->id
-                //, 'payment_type' => $payment_type
-                , 'member_subscription_id' => @$member_subscription->id
-                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-                , 'tenant_id' => @$this->user_sw->tenant_id
+                'user_id'              => Auth::guard('sw')->user()->id
+                , 'amount'             => $price_diff
+                , 'vat'                => $diffVat
+                , 'operation'          => $operation
+                , 'amount_before'      => $amount_after
+                , 'notes'              => $notes
+                , 'type'               => TypeConstants::EditMember
+                , 'member_id'          => $member_subscription->member->id
+                , 'payment_type'       => $payment_type
+                , 'member_subscription_id' => $member_subscription->id
+                , 'branch_setting_id'  => @$this->user_sw->branch_setting_id
+                , 'invoice_id'         => $invoiceId
             ]);
             $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
         }
@@ -1402,6 +1639,158 @@ class GymMemberFrontController extends GymGenericFrontController
         // update status of member
         $this->updateSubscriptionsStatus([$member_subscription->member_id]);
 
+        // Send Tabby payment link if checkbox is checked and member has paid amount difference > 0
+        if ($request->input('send_tabby_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $tabbyService = new TabbyPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member && $tabbyService->isTabbyConfigured()) {
+                    $tabbyResult = $tabbyService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tabbyResult['success']) {
+                        Log::info('Tabby payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $tabbyResult['payment_url'],
+                            'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
+                            'sent_sms' => $tabbyResult['sent_sms'],
+                            'sent_email' => $tabbyResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tabby payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send Tamara payment link if checkbox is checked and member has paid amount difference > 0
+        if ($request->input('send_tamara_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $tamaraService = new TamaraPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member && $tamaraService->isTamaraConfigured()) {
+                    $tamaraResult = $tamaraService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tamaraResult['success']) {
+                        Log::info('Tamara payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $tamaraResult['payment_url'],
+                            'sent_whatsapp' => $tamaraResult['sent_whatsapp'],
+                            'sent_sms' => $tamaraResult['sent_sms'],
+                            'sent_email' => $tamaraResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tamara payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send Paymob payment link if checkbox is checked and member has paid amount difference > 0
+        if ($request->input('send_paymob_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $paymobService = new PaymobPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member && $paymobService->isPaymobConfigured()) {
+                    $paymobResult = $paymobService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paymobResult['success']) {
+                        Log::info('Paymob payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $paymobResult['payment_url'],
+                            'sent_whatsapp' => $paymobResult['sent_whatsapp'],
+                            'sent_sms' => $paymobResult['sent_sms'],
+                            'sent_email' => $paymobResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Paymob payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send PayTabs payment link if checkbox is checked and amount difference > 0
+        if ($request->input('send_paytabs_link') && $price_diff > 0 && $operation == TypeConstants::Add) {
+            try {
+                $paytabsService = new PayTabsPaymentService();
+                $member = GymMember::find($member_subscription->member_id);
+
+                if ($member && $paytabsService->isPayTabsConfigured()) {
+                    $paytabsResult = $paytabsService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paytabsResult['success']) {
+                        Log::info('PayTabs payment link sent for membership edit', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'price_diff' => $price_diff,
+                            'payment_url' => $paytabsResult['payment_url'],
+                            'sent_whatsapp' => $paytabsResult['sent_whatsapp'],
+                            'sent_sms' => $paytabsResult['sent_sms'],
+                            'sent_email' => $paytabsResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process PayTabs payment for membership edit', [
+                    'member_id' => $member_subscription->member_id,
+                    'subscription_id' => $member_subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
             'message' => trans('admin.successfully_edited'),
@@ -1413,7 +1802,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscription_info'])->withTrashed()->find($id);
+        $member = GymMember::branch()->with(['member_subscription_info'])->withTrashed()->find($id);
         // zk delete member from machine
         if ($member->fp_id) {
             $member->fp_check = TypeConstants::ZK_EXPIRE_MEMBER;
@@ -1425,8 +1814,8 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->restore();
         } else {
             $member->delete();
-            if (\request('refund')) {
-                $amount_box = GymMoneyBox::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+            if (\request('refund') && @$member->member_subscription_info) {
+                $amount_box = GymMoneyBox::branch()->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $vat = @$member->member_subscription_info->vat;
@@ -1455,7 +1844,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         
                         if ($totalPointsEarned > 0 && $originalAmount > 0) {
                             // Check how many points have already been deducted for this subscription (from previous refunds)
-                            $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member->id)
+                            $alreadyDeductedPoints = abs(\Modules\Software\Models\LoyaltyTransaction::where('member_id', $member->id)
                                 ->where('type', 'manual')
                                 ->where('source_type', 'member_subscription_refund')
                                 ->where('source_id', $subscriptionId)
@@ -1556,7 +1945,6 @@ class GymMemberFrontController extends GymGenericFrontController
                     , 'member_id' => $member->id
                     , 'member_subscription_id' => $member->member_subscription_info->id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-                    , 'tenant_id' => @$this->user_sw->tenant_id
                 ]);
                 $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
@@ -1581,13 +1969,13 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function destroySubscription($id)
     {
-        $subscription = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription'])->withTrashed()->find($id);
+        $subscription = GymMemberSubscription::branch()->with(['member', 'subscription'])->withTrashed()->find($id);
         if ($subscription->trashed()) {
             $subscription->restore();
         } else {
             $subscription->delete();
             if (\request('refund')) {
-                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+                $amount_box = GymMoneyBox::branch()->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $vat = @$subscription->vat;
@@ -1671,7 +2059,6 @@ class GymMemberFrontController extends GymGenericFrontController
                     , 'member_id' => @$subscription->member->id
                     , 'member_subscription_id' => $subscription->id
                     , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-                    , 'tenant_id' => @$this->user_sw->tenant_id
                 ]);
                 $this->createZatcaInvoiceForMoneyBox($moneyBoxAdjustment);
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
@@ -1694,7 +2081,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $id = request('id');
         $amountPaid = (float)request('amount_paid');
         $payment_type = (int)request('payment_type');
-        $memberInfo = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription'=> function ($q) {
+        $memberInfo = GymMemberSubscription::branch()->with(['subscription'=> function ($q) {
             $q->withTrashed();
         }, 'member'])->where('id', $id)->orderBy('id', 'desc')->first();
         if ($memberInfo) {
@@ -1736,12 +2123,12 @@ class GymMemberFrontController extends GymGenericFrontController
                 }
             }
 
-            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+            $amount_box = GymMoneyBox::branch()->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
             $notes = trans('sw.member_moneybox_remain_msg', ['subscription' => @$memberInfo->subscription->name, 'member' => $memberInfo->member->name, 'amount_paid' => $amountPaid, 'amount_remaining' => number_format($memberInfo->amount_remaining, 2)]);
 
-            GymMoneyBox::create([
+            $remainingMoneyBox = GymMoneyBox::create([
                 'user_id' => Auth::guard('sw')->user()->id
                 , 'amount' => @abs((float)$amountPaid)
                 , 'operation' => $amountPaid > 0 ? TypeConstants::Add : TypeConstants::Sub
@@ -1752,8 +2139,8 @@ class GymMemberFrontController extends GymGenericFrontController
                 , 'member_id' => @$memberInfo->member->id
                 , 'member_subscription_id' => @$memberInfo->id
                 , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-                , 'tenant_id' => @$this->user_sw->tenant_id
             ]);
+
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
 
             return 1;
@@ -1770,7 +2157,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $admin_note = request('admin_note');
 
         $this->updateSubscriptionsStatus([$id]);
-        $memberInfo = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription'])->where('status', TypeConstants::Active)->where('member_id', $id)->orderBy('id', 'desc')->first();
+        $memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('status', TypeConstants::Active)->where('member_id', $id)->orderBy('id', 'desc')->first();
         if ($memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active)) {
 
             // Calculate requested freeze days
@@ -1855,10 +2242,93 @@ class GymMemberFrontController extends GymGenericFrontController
             $this->updateSubscriptionsStatus([@$id]);
 
             session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_processed'),
-            'type' => 'success'
-        ]);
+                'title' => trans('admin.done'),
+                'message' => trans('admin.successfully_processed'),
+                'type' => 'success'
+            ]);
+
+
+            // send notification when freeze member
+            $message_notification = GymEventNotification::where('event_code', 'freeze_member')->where('status', 1)->first();
+            $msg = @$message_notification->message;
+            $member_subscription = $memberInfo;
+            $member = $memberInfo->member;
+            $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
+
+            if(@$message_notification && @$member->phone && $this->mainSettings->active_sms && @env('SMS_GATEWAY')){
+                try {
+                    $sms = new SMSFactory(@env('SMS_GATEWAY'));
+                    $sms->send(trim(@$member->phone), $msg);
+                    Log::info('SMS sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send SMS', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && (@env('WA_GATEWAY') == 'ULTRA')) {
+                try {
+                    $wa = new WAUltramsg();
+                    $wa->sendText(trim(@$member->phone), $msg);
+                    Log::info('WhatsApp message sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send WhatsApp message', [
+                        'member_id' => $member->id,
+                        'phone' => @$member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && @env('WA_USER_TOKEN')) {
+//                $qrcodes_folder = base_path('uploads/barcodes/');
+//                $d = new DNS1D();
+//                $d->setStorPath($qrcodes_folder);
+//                $img = $d->getBarcodePNGPath($member->code, TypeConstants::BarcodeType);
+//                $msg = trans('sw.wa_msg_new_member', ['name' => $member->name,'id' => $member->code,'start_date' => Carbon::parse($sub['joining_date'])->toDateString(),
+//                    'end_date' => Carbon::parse($sub['expire_date'])->toDateString(),'paid' => @$request->amount_paid,'reminder' => $sub['amount_remaining']]);
+
+//                $wa = new WAUltramsg();
+//                $wa->sendImage(trim($member->phone), ($msg), asset($img));
+                $member_card_url = @$this->memberCard($member->code);
+                // send wa
+                $wa = new WA();
+                $wa->sendTextImageWithTemplate(trim($member->phone), 'gymmawy_new_subscription',
+                    [
+                        [
+                            "type" => "text",
+                            "text" => "*" . $member->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->phone . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->facebook . "*"
+                        ]
+                    ], $member_card_url);
+                // end send wa
+
+            }
+
+
+
             return redirect()->back();
         }
 
@@ -1898,7 +2368,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $membership->end_freeze_date = Carbon::now();
             $membership->save();
             // complete active freeze record
-            $activeFreeze = GymMemberSubscriptionFreeze::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_subscription_id', $membership->id)
+            $activeFreeze = GymMemberSubscriptionFreeze::where('member_subscription_id', $membership->id)
                 ->whereIn('status', ['active','approved'])
                 ->orderBy('id','desc')
                 ->first();
@@ -1907,17 +2377,98 @@ class GymMemberFrontController extends GymGenericFrontController
                 $activeFreeze->status = 'completed';
                 $activeFreeze->save();
             }
-            GymMemberAttendee::insert(['member_id' => $membership->member_id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$membership->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
+            GymMemberAttendee::insert(['member_id' => $membership->member_id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$membership->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
 
 
             // update status of member
             $this->updateSubscriptionsStatus([@$membership->member_id]);
 
+
+            // send notification for freeze member
+            $message_notification = GymEventNotification::where('event_code', 'unfreeze_member')->where('status', 1)->first();
+            $msg = @$message_notification->message;
+            $member_subscription = $membership;
+            $member = $membership->member;
+            $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
+
+            if(@$message_notification && @$member->phone && $this->mainSettings->active_sms && @env('SMS_GATEWAY')){
+                try {
+                    $sms = new SMSFactory(@env('SMS_GATEWAY'));
+                    $sms->send(trim($member->phone), $msg);
+                    Log::info('SMS sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send SMS', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && (@env('WA_GATEWAY') == 'ULTRA')) {
+                try {
+                    $wa = new WAUltramsg();
+                    $wa->sendText(trim($member->phone), $msg);
+                    Log::info('WhatsApp message sent successfully', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'message' => $msg
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send WhatsApp message', [
+                        'member_id' => $member->id,
+                        'phone' => $member->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution without breaking the application
+                }
+            }
+            if (@$message_notification && @$member->phone && $this->mainSettings->active_wa && @env('WA_USER_TOKEN')) {
+//                $qrcodes_folder = base_path('uploads/barcodes/');
+//                $d = new DNS1D();
+//                $d->setStorPath($qrcodes_folder);
+//                $img = $d->getBarcodePNGPath($member->code, TypeConstants::BarcodeType);
+//                $msg = trans('sw.wa_msg_new_member', ['name' => $member->name,'id' => $member->code,'start_date' => Carbon::parse($sub['joining_date'])->toDateString(),
+//                    'end_date' => Carbon::parse($sub['expire_date'])->toDateString(),'paid' => @$request->amount_paid,'reminder' => $sub['amount_remaining']]);
+
+//                $wa = new WAUltramsg();
+//                $wa->sendImage(trim($member->phone), ($msg), asset($img));
+                $member_card_url = @$this->memberCard($member->code);
+                // send wa
+                $wa = new WA();
+                $wa->sendTextImageWithTemplate(trim($member->phone), 'gymmawy_new_subscription',
+                    [
+                        [
+                            "type" => "text",
+                            "text" => "*" . $member->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->name . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->phone . "*"
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => "*" . @$this->mainSettings->facebook . "*"
+                        ]
+                    ], $member_card_url);
+                // end send wa
+
+            }
+
+
             session()->flash('sweet_flash_message', [
-            'title' => trans('admin.done'),
-            'message' => trans('admin.successfully_processed'),
-            'type' => 'success'
-        ]);
+                'title' => trans('admin.done'),
+                'message' => trans('admin.successfully_processed'),
+                'type' => 'success'
+            ]);
             return Response::json(['status' => true], 200);
         }
         return Response::json(['status' => false], 200);
@@ -1928,21 +2479,31 @@ class GymMemberFrontController extends GymGenericFrontController
         $enquiry = intval($request->enquiry);
         $msg = '';
 
-        $member_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['subscription' => function ($q) {
+        $member_subscriptions = GymMemberSubscription::branch()->with(['subscription' => function ($q) {
             $q->withTrashed();
         }])
             ->whereHas('member', function ($q) use ($code){
                 $q->where('code', $code);
             })
-            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM)
+            ->limit(TypeConstants::RENEW_MEMBERSHIPS_MAX_NUM_2)
             ->orderBy('id', 'desc')
             ->get();
-
+            
         $preferredSubscriptionId = null;
         if($member_subscriptions instanceof \Illuminate\Support\Collection){
+            // First, try to find an Active subscription
             $preferredSubscription = $member_subscriptions->first(function ($subscription) {
-                return $subscription->status != TypeConstants::Coming;
+                return $subscription->status == TypeConstants::Active;
             });
+
+            // If no Active subscription, find any non-Coming subscription (Freeze, Expired, etc.)
+            if(!$preferredSubscription){
+                $preferredSubscription = $member_subscriptions->first(function ($subscription) {
+                    return $subscription->status != TypeConstants::Coming;
+                });
+            }
+
+            // If still no subscription found, fall back to the first one
             if(!$preferredSubscription){
                 $preferredSubscription = $member_subscriptions->first();
             }
@@ -1967,10 +2528,9 @@ class GymMemberFrontController extends GymGenericFrontController
                 $q->orWhere('phone', 'like', '%' . $code . '%');
             });
         if (@!$this->mainSettings->allow_member_in_branches) {
-            $member = $member->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
+            $member = $member->branch();
         }
         $member = $member->first();
-
         $status = false;
         $renew_status = true;
         if ($member) {
@@ -1991,12 +2551,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         'status' => false,
                         'renew_status' => true
                     ], 200);
-                }
-
-                if(!$enquiry && @$this->mainSettings->member_attendees_expire && ($member->member_subscription_info->status == TypeConstants::Expired)){
-                    $member->member_subscription_info->increment('visits');
-                    GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
-                }
+                }                
 
                 if (($member->member_subscription_info->workouts_per_day > 0) && ($member->member_attendees_count >= $member->member_subscription_info->workouts_per_day)) {
                     $msg = trans('sw.workouts_per_day_msg', ['visits' => $member->member_attendees_count, 'classes' => $member->member_subscription_info->workouts_per_day]);
@@ -2054,7 +2609,7 @@ class GymMemberFrontController extends GymGenericFrontController
                         $member->member_subscription_info->increment('visits');
                         $member->member_subscription_info->status = TypeConstants::Active;
                         $member->member_subscription_info->save();
-                        GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
+                        GymMemberAttendee::insert(['member_id' => $member->id, 'user_id' => Auth::guard('sw')->user()->id, 'subscription_id' => @$member->member_subscription_info->id, 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
 
                         $note = str_replace(':name', $member->name, trans('sw.barcode_scan_note'));
                         $this->userLog($note, TypeConstants::ScanMember);
@@ -2064,7 +2619,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 } else {
                     $msg = trans('sw.membership_expired_with_date', ['date' => $expireDate]);
                 }
-                $attend = GymMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id' , $member->id)->orderBy('id', 'desc')->first();
+                $attend = GymMemberAttendee::where('member_id' , $member->id)->orderBy('id', 'desc')->first();
 
                 $member->store_balance = @number_format( $member->store_balance,2);
                 $member['total_amount_remaining'] = number_format(@$member->total_amount_remaining, 2);
@@ -2092,12 +2647,16 @@ class GymMemberFrontController extends GymGenericFrontController
     {
         $code = str_replace('root', '', $request->code);
         $msg = '';
-        $member = $this->MemberRepository->where('code', $code)->first();
+        $member = $this->MemberRepository->with('member_subscription_info_has_active')->where('code', $code)->first();
         $status = false;
-        if ($member && ($member->invitations > 0)) {
-            $member->decrement('invitations');
+        $activeSubscription = $member?->member_subscription_info_has_active;
+        if ($member && $activeSubscription && ($activeSubscription->invitations > 0)) {
+            $activeSubscription->decrement('invitations');
             $note = str_replace(':name', $member->name, trans('sw.member_invitation_used'));
             $this->userLog($note, TypeConstants::ScanMember);
+            // Reload member with updated subscription data
+            $member->load('member_subscription_info_has_active');
+            $status = true;
             return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status], 200);
 
         }
@@ -2108,28 +2667,37 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function memberSubscriptionRenew(Request $request)
     {
-        $membership = GymMemberSubscription::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member')->where('id', $request->id)->orderBy('id', 'desc')->withTrashed()->first();
-        $membership_id = $membership->subscription_id;
-        $subscription = GymSubscription::withTrashed()->where('id', $membership_id)->first();
-        $subscriptions = GymSubscription::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->isSystem()->get();
-        if(($subscription && $subscription->deleted_at != null) || ($subscription && $subscription->is_system))
-            $subscriptions->push($subscription);
-        $member = $membership->member;
-        $membership->joining_date = Carbon::parse($membership->joining_date)->toDateString();
-        $membership->expire_date = Carbon::parse($membership->expire_date)->toDateString();
-        $membership->from_expire_days = Carbon::parse($membership->expire_date)->diffInDays(Carbon::now()->subDay()->toDateString());
-        return Response::json(['membership' => $subscriptions, 'member' => $member, 'member_membership' => $membership], 200);
+        $membership = GymMemberSubscription::branch()->with('member')->where('id', $request->id)->orderBy('id', 'desc')->withTrashed()->first();
+        $subscriptions = GymSubscription::branch()->isSystem()->get();
+        $member = GymMember::branch()->where('id', $request->member_id)->first();
+
+        if($membership){
+            $membership_id = $membership->subscription_id;
+            $subscription = GymSubscription::withTrashed()->where('id', $membership_id)->first();
+            if(($subscription && $subscription->deleted_at != null) || ($subscription && $subscription->is_system != 1))
+                $subscriptions->push($subscription);
+            $member = $membership->member;
+            $membership->joining_date = Carbon::parse($membership->joining_date)->toDateString();
+            $membership->expire_date = Carbon::parse($membership->expire_date)->toDateString();
+            $membership->from_expire_days = Carbon::parse($membership->expire_date)->diffInDays(Carbon::now()->subDay()->toDateString());
+        }
+        return Response::json(['membership' => $subscriptions, 'member' => @$member, 'member_membership' => @$membership], 200);
     }
 
     public function memberSubscriptionRenewStore(Request $request)
     {
-        $membership = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $request->id)->first();
+        $membership = GymMemberSubscription::where('id', $request->id)->first();
         $subscription_id = $request->membership_id;
-        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['activities' => function ($q) {
+        $subscription = GymSubscription::branch()->with(['activities' => function ($q) {
             $q->select('id', 'activity_id', 'subscription_id', 'training_times')->with(['activity' => function ($q) {
                 $q->select('id', 'name_ar', 'name_en');
             }]);
         }])->find($subscription_id);
+
+        if (!$subscription) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error'), 'code' => 'subscription'], 200);
+        }
+
         $custom_expire_date = $request->custom_expire_date;
         $custom_start_date = $request->custom_start_date;
         $amount_paid = (float)@$request->amount_paid;
@@ -2152,7 +2720,7 @@ class GymMemberFrontController extends GymGenericFrontController
         $member = $this->MemberRepository->with(['member_subscription_info'])->withTrashed()->find($member_id);
         $expire_date = @$request->custom_expire_date ? Carbon::parse(@$request->custom_expire_date)->toDateString() : Carbon::now()->addDays((int)$subscription->period)->toDateString();
 
-        $other_subscriptions = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->
+        $other_subscriptions = GymMemberSubscription::branch()->
         where(function ($query) use ($custom_start_date, $expire_date) {
             $query->where('joining_date', '<=', Carbon::parse($custom_start_date))
                 ->where('expire_date', '>=', Carbon::parse($expire_date));
@@ -2163,7 +2731,12 @@ class GymMemberFrontController extends GymGenericFrontController
             ->get();
         $other_subscriptions = $other_subscriptions->where('member_id', $member->id);
         if ($other_subscriptions->count() > 0) {
-            return Response::json(['msg' => trans('sw.error_date_between'), 'code' => 'custom_expire_date'], 200);
+            // if the membership expired but the date not expired for ex:, if i put limit for visits and i complete all my visits without expire date
+            if(($membership->status == TypeConstants::Expired) && (Carbon::parse($membership->expire_date)->toDateString() >= Carbon::now()->toDateString())){
+                $membership->expire_date = Carbon::now()->subDay();
+                $membership->save();
+            }else
+                return Response::json(['msg' => trans('sw.error_date_between'), 'code' => 'custom_expire_date'], 200);
         }
 
         $renew_subscription = [
@@ -2191,13 +2764,13 @@ class GymMemberFrontController extends GymGenericFrontController
             'time_week' =>  @json_encode($subscription->time_week),
             'updated_at' => Carbon::now(),
             'branch_setting_id' => @$this->user_sw->branch_setting_id,
-            'tenant_id' => @$this->user_sw->tenant_id,
-            'notes' => @$notes
+            'notes' => @$notes,
+            'invitations' => (int) ($subscription->invitations ?? 0),
         ];
         $member_subscription = GymMemberSubscription::insertGetId($renew_subscription);
 
 
-        $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+        $amount_box = GymMoneyBox::branch()->latest()->first();
         $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
         $notes = str_replace(':subscription', $subscription->name, trans('sw.member_moneybox_renew_msg'));
@@ -2208,11 +2781,11 @@ class GymMemberFrontController extends GymGenericFrontController
         if ($request->discount_value)
             $notes = $notes . trans('sw.discount_msg', ['value' => $request->discount_value]);
 
-        if (@$this->mainSettings->vat_details['vat_percentage']) {
+        if ($this->mainSettings->vat_details['vat_percentage']) {
             $notes = $notes . ' - ' . trans('sw.vat_added');
         }
 
-        GymMoneyBox::create([
+        $renewMoneyBox = GymMoneyBox::create([
             'user_id' => Auth::guard('sw')->user()->id
             , 'amount' => @$request->amount_paid
             , 'vat' => @$vat
@@ -2224,8 +2797,10 @@ class GymMemberFrontController extends GymGenericFrontController
             , 'payment_type' => $payment_type
             , 'member_subscription_id' => @$member_subscription
             , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-            , 'tenant_id' => @$this->user_sw->tenant_id
         ]);
+
+        $this->createZatcaInvoiceForMoneyBox($renewMoneyBox);
+        $this->createZatcaInvoiceForMember($member, $member_subscription, $amount_paid, $vat, $renewMoneyBox);
 
         $this->userLog($notes, TypeConstants::RenewMember);
         
@@ -2267,7 +2842,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->save();
         }
 
-        $message_notification = GymEventNotification::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('event_code', 'renew_member')->first();
+        $message_notification = GymEventNotification::where('event_code', 'renew_member')->where('status', 1)->first();
         $msg = @$message_notification->message;
         $member_subscription = GymMemberSubscription::with('member')->where('id',@$member_subscription)->first();
         $msg = $this->dynamicMsg($msg, @$member_subscription, @$this->mainSettings);
@@ -2334,7 +2909,7 @@ class GymMemberFrontController extends GymGenericFrontController
             // end send wa
         }
         if(@$message_notification &&  $this->mainSettings->active_mobile){
-            $notify_data['image'] = @env('APP_WEBSITE') ? @env('APP_WEBSITE') . 'placeholder_black.png' : @$this->mainSettings->logo;
+            $notify_data['image'] = @env('APP_URL') ? @env('APP_URL') . @env('APP_URL_ASSETS') . 'placeholder_black.png' : @$this->mainSettings->logo;
             $notify_data['sound'] = 'default';
             $notify_data['badge'] = '1';
             $notify_data['e'] = 1;
@@ -2344,6 +2919,153 @@ class GymMemberFrontController extends GymGenericFrontController
                 (new FirebaseApiController())->push([$member->id], $notify_data);
             } else {
                 Log::warning('FirebaseApiController class missing; skipping push notification.');
+            }
+        }
+
+        $renew_payment_url = null;
+        $renew_payment_sent_via = ['whatsapp' => false, 'sms' => false, 'email' => false];
+
+        // Send Tabby payment link if checkbox is checked and member has remaining amount
+        if ($request->input('send_tabby_link')) {
+            try {
+                $tabbyService = new TabbyPaymentService();
+                if ($member_subscription && $tabbyService->isTabbyConfigured()) {
+                    $tabbyResult = $tabbyService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tabbyResult['success']) {
+                        $renew_payment_url = $tabbyResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $tabbyResult['sent_whatsapp'], 'sms' => $tabbyResult['sent_sms'], 'email' => $tabbyResult['sent_email'] ?? false];
+                        Log::info('Tabby payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $tabbyResult['payment_url'],
+                            'sent_whatsapp' => $tabbyResult['sent_whatsapp'],
+                            'sent_sms' => $tabbyResult['sent_sms'],
+                            'sent_email' => $tabbyResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tabby payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send Tamara payment link if checkbox is checked and member has remaining amount
+        if ($request->input('send_tamara_link')) {
+            try {
+                $tamaraService = new TamaraPaymentService();
+                if ($member_subscription && $tamaraService->isTamaraConfigured()) {
+                    $tamaraResult = $tamaraService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($tamaraResult['success']) {
+                        $renew_payment_url = $tamaraResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $tamaraResult['sent_whatsapp'], 'sms' => $tamaraResult['sent_sms'], 'email' => $tamaraResult['sent_email'] ?? false];
+                        Log::info('Tamara payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $tamaraResult['payment_url'],
+                            'sent_whatsapp' => $tamaraResult['sent_whatsapp'],
+                            'sent_sms' => $tamaraResult['sent_sms'],
+                            'sent_email' => $tamaraResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Tamara payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send Paymob payment link if checkbox is checked and member has remaining amount
+        if ($request->input('send_paymob_link')) {
+            try {
+                $paymobService = new PaymobPaymentService();
+                if ($member_subscription && $paymobService->isPaymobConfigured()) {
+                    $paymobResult = $paymobService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paymobResult['success']) {
+                        $renew_payment_url = $paymobResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $paymobResult['sent_whatsapp'], 'sms' => $paymobResult['sent_sms'], 'email' => $paymobResult['sent_email'] ?? false];
+                        Log::info('Paymob payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $paymobResult['payment_url'],
+                            'sent_whatsapp' => $paymobResult['sent_whatsapp'],
+                            'sent_sms' => $paymobResult['sent_sms'],
+                            'sent_email' => $paymobResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process Paymob payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Send PayTabs payment link if checkbox is checked
+        if ($request->input('send_paytabs_link')) {
+            try {
+                $paytabsService = new PayTabsPaymentService();
+                if ($member_subscription && $paytabsService->isPayTabsConfigured()) {
+                    $paytabsResult = $paytabsService->processRenewalPayment(
+                        $member,
+                        $member_subscription->id,
+                        $subscription,
+                        $amount_paid,
+                        $this->mainSettings,
+                        @$this->user_sw->branch_setting_id
+                    );
+
+                    if ($paytabsResult['success']) {
+                        $renew_payment_url = $paytabsResult['payment_url'];
+                        $renew_payment_sent_via = ['whatsapp' => $paytabsResult['sent_whatsapp'], 'sms' => $paytabsResult['sent_sms'], 'email' => $paytabsResult['sent_email'] ?? false];
+                        Log::info('PayTabs payment link sent for membership renewal', [
+                            'member_id' => $member->id,
+                            'subscription_id' => $member_subscription->id,
+                            'amount_paid' => $amount_paid,
+                            'payment_url' => $paytabsResult['payment_url'],
+                            'sent_whatsapp' => $paytabsResult['sent_whatsapp'],
+                            'sent_sms' => $paytabsResult['sent_sms'],
+                            'sent_email' => $paytabsResult['sent_email'] ?? false,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to process PayTabs payment for renewal', [
+                    'member_id' => $member->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -2362,7 +3084,287 @@ class GymMemberFrontController extends GymGenericFrontController
             'type' => 'success'
         ]);
 
-        return Response::json(['status' => true], 200);
+        return Response::json([
+            'status' => true,
+            'member_subscription_id' => $member_subscription ? $member_subscription->id : null,
+            'payment_url' => $renew_payment_url,
+            'sent_via' => $renew_payment_sent_via,
+        ], 200);
+    }
+
+    /**
+     * Check date conflicts and send payment link for renewal WITHOUT saving a subscription.
+     * Called from JS when a gateway checkbox is checked before the renew modal is submitted.
+     * The subscription is only created later (via memberSubscriptionRenewStore) after payment confirmation.
+     */
+    public function memberRenewalCheckAndSendLink(Request $request)
+    {
+        $membership       = GymMemberSubscription::where('id', $request->id)->first();
+        $subscription     = GymSubscription::branch()->find($request->membership_id);
+
+        if (!$subscription) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error')], 200);
+        }
+
+        $custom_expire_date = $request->custom_expire_date;
+        $custom_start_date  = $request->custom_start_date ?? Carbon::now()->toDateString();
+        $discount_value     = (float) @$request->discount_value;
+        $vat                = round(($subscription->price - $discount_value)
+                                * ((float) @$this->mainSettings->vat_details['vat_percentage'] / 100), 2);
+        $amount_total       = round($subscription->price - $discount_value + $vat, 2);
+        $expire_date        = $custom_expire_date
+            ? Carbon::parse($custom_expire_date)->toDateString()
+            : Carbon::now()->addDays((int) $subscription->period)->toDateString();
+
+        $member_id = @$membership ? @$membership->member_id : @$request->member_id;
+        $member    = $this->MemberRepository->withTrashed()->find($member_id);
+
+        if (!$member) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error')], 200);
+        }
+
+        // Date conflict check (same logic as memberSubscriptionRenewStore)
+        $other_subscriptions = GymMemberSubscription::branch()
+            ->where(function ($q) use ($custom_start_date, $expire_date) {
+                $q->where('joining_date', '<=', Carbon::parse($custom_start_date))
+                  ->where('expire_date', '>=', Carbon::parse($expire_date));
+            })
+            ->orWhereBetween('joining_date', [$custom_start_date, $expire_date])
+            ->orWhereBetween('expire_date',  [$custom_start_date, $expire_date])
+            ->get()
+            ->where('member_id', $member->id);
+
+        if ($other_subscriptions->count() > 0) {
+            $canOverride = $membership
+                && $membership->status == TypeConstants::Expired
+                && Carbon::parse($membership->expire_date)->toDateString() >= Carbon::now()->toDateString();
+            if (!$canOverride) {
+                return Response::json(['msg' => trans('sw.error_date_between'), 'code' => 'custom_expire_date'], 200);
+            }
+        }
+
+        // Send payment link via the chosen gateway — no subscription created
+        $gateway = $request->input('gateway'); // tabby|tamara|paymob|paytabs
+        $result  = ['success' => false];
+
+        try {
+            if ($gateway === 'tabby') {
+                $svc = new TabbyPaymentService();
+                if ($svc->isTabbyConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'tamara') {
+                $svc = new TamaraPaymentService();
+                if ($svc->isTamaraConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paymob') {
+                $svc = new PaymobPaymentService();
+                if ($svc->isPaymobConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paytabs') {
+                $svc = new PayTabsPaymentService();
+                if ($svc->isPayTabsConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('memberRenewalCheckAndSendLink error', ['gateway' => $gateway, 'error' => $e->getMessage()]);
+        }
+
+        if (!$result['success']) {
+            return Response::json(['status' => false, 'msg' => trans('sw.payment_link_failed')], 200);
+        }
+
+        return Response::json([
+            'status'      => true,
+            'invoice_id'  => $result['invoice_id'],
+            'payment_url' => $result['payment_url'],
+            'sent_via'    => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
+        ], 200);
+    }
+
+    /**
+     * Send payment link for a NEW member before the member is created.
+     * No member or subscription is saved — the form is submitted normally after payment confirmation.
+     */
+    public function memberNewCheckAndSendLink(Request $request)
+    {
+        $subscription = GymSubscription::branch()->find($request->subscription_id);
+        if (!$subscription) {
+            return Response::json(['status' => false, 'msg' => trans('sw.error')], 200);
+        }
+
+        $discount_value = (float) @$request->discount_value;
+        $vat            = round(($subscription->price - $discount_value)
+                            * ((float) @$this->mainSettings->vat_details['vat_percentage'] / 100), 2);
+        $amount_total   = round($subscription->price - $discount_value + $vat, 2);
+
+        // Build a temporary member-like object from form data (no DB record yet)
+        $member              = new \stdClass();
+        $member->id          = null;
+        $member->name        = $request->input('name', '');
+        $member->phone       = $request->input('phone', '');
+        $member->email       = $request->input('email', '');
+        $member->city        = $request->input('city', '');
+        $member->address     = $request->input('address', '');
+        $member->gender      = $request->input('gender', null);
+        $member->dob         = $request->input('dob', null);
+
+        $gateway = $request->input('gateway');
+        $result  = ['success' => false];
+
+        try {
+            if ($gateway === 'tabby') {
+                $svc = new TabbyPaymentService();
+                if ($svc->isTabbyConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'tamara') {
+                $svc = new TamaraPaymentService();
+                if ($svc->isTamaraConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paymob') {
+                $svc = new PaymobPaymentService();
+                if ($svc->isPaymobConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            } elseif ($gateway === 'paytabs') {
+                $svc = new PayTabsPaymentService();
+                if ($svc->isPayTabsConfigured()) {
+                    $result = $svc->generateLinkWithoutSubscription($member, $subscription, $amount_total, $this->mainSettings, @$this->user_sw->branch_setting_id);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('memberNewCheckAndSendLink error', ['gateway' => $gateway, 'error' => $e->getMessage()]);
+        }
+
+        if (!$result['success']) {
+            return Response::json(['status' => false, 'msg' => trans('sw.payment_link_failed')], 200);
+        }
+
+        return Response::json([
+            'status'      => true,
+            'invoice_id'  => $result['invoice_id'],
+            'payment_url' => $result['payment_url'],
+            'sent_via'    => $result['sent_via'] ?? ['whatsapp' => false, 'sms' => false, 'email' => false],
+        ], 200);
+    }
+
+    /**
+     * Poll an invoice by ID to check if payment is confirmed (SUCCESS).
+     * Used by the renewal-via-link waiting modal.
+     */
+    public function checkInvoicePaymentStatus($invoiceId)
+    {
+        $invoice = GymOnlinePaymentInvoice::where('id', $invoiceId)
+            ->where('status', TypeConstants::SUCCESS)
+            ->first();
+
+        return response()->json(['paid' => !is_null($invoice)]);
+    }
+
+    /**
+     * Check if a member subscription has been paid via online payment gateway.
+     * Used by the frontend polling mechanism after sending a payment link.
+     */
+    public function checkPaymentStatus($memberSubscriptionId)
+    {
+        $invoice = GymOnlinePaymentInvoice::where('member_subscription_id', $memberSubscriptionId)
+            ->where('status', TypeConstants::SUCCESS)
+            ->latest()
+            ->first();
+
+        return response()->json([
+            'paid' => !is_null($invoice),
+            'payment_method' => $invoice ? $invoice->payment_gateway_name : null,
+        ]);
+    }
+
+    /**
+     * Resend a payment link for an existing member subscription.
+     */
+    public function resendPaymentLink(Request $request, $memberSubscriptionId)
+    {
+        if ($request->isMethod('GET')) {
+            return redirect()->route('sw.listMember');
+        }
+
+        $memberSubscription = GymMemberSubscription::with(['member', 'subscription'])->find($memberSubscriptionId);
+        $member = null;
+        $subscription = null;
+        $invoice = null;
+
+        if ($memberSubscription) {
+            $member = $memberSubscription->member;
+            $subscription = $memberSubscription->subscription;
+        } else {
+            // Support resending by invoice_id for links created via member-new-check-and-send-link.
+            $invoice = GymOnlinePaymentInvoice::with(['member', 'subscription'])
+                ->where('id', is_numeric($memberSubscriptionId) ? (int) $memberSubscriptionId : -1)
+                ->orWhere('payment_id', $memberSubscriptionId)
+                ->orWhere('transaction_id', $memberSubscriptionId)
+                ->orderBy('id', 'desc')
+                ->first();
+            if (!$invoice || !$invoice->member || !$invoice->subscription) {
+                return response()->json(['success' => false, 'error' => 'Subscription not found'], 404);
+            }
+
+            $member = $invoice->member;
+            $subscription = $invoice->subscription;
+        }
+
+        $gateway = $request->input('gateway'); // tabby, tamara, paymob, paytabs
+        $amountPaid = $memberSubscription
+            ? (float) $memberSubscription->amount_paid
+            : (float) ($invoice->amount ?? 0);
+        $branchSettingId = $invoice->branch_setting_id ?? @$this->user_sw->branch_setting_id;
+
+        try {
+            $paymentUrl = null;
+            $sentVia = ['whatsapp' => false, 'sms' => false, 'email' => false];
+
+            if ($gateway === 'tabby') {
+                $service = new TabbyPaymentService();
+                if ($service->isTabbyConfigured()) {
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
+                }
+            } elseif ($gateway === 'tamara') {
+                $service = new TamaraPaymentService();
+                if ($service->isTamaraConfigured()) {
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
+                }
+            } elseif ($gateway === 'paymob') {
+                $service = new PaymobPaymentService();
+                if ($service->isPaymobConfigured()) {
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
+                }
+            } elseif ($gateway === 'paytabs') {
+                $service = new PayTabsPaymentService();
+                if ($service->isPayTabsConfigured()) {
+                    $result = $memberSubscription
+                        ? $service->processRenewalPayment($member, $memberSubscriptionId, $subscription, $amountPaid, $this->mainSettings, $branchSettingId)
+                        : $service->generateLinkWithoutSubscription($member, $subscription, $amountPaid, $this->mainSettings, $branchSettingId);
+                    if ($result['success']) { $paymentUrl = $result['payment_url']; $sentVia = $result['sent_via'] ?? ['whatsapp' => ($result['sent_whatsapp'] ?? false), 'sms' => ($result['sent_sms'] ?? false), 'email' => ($result['sent_email'] ?? false)]; }
+                }
+            }
+
+            return response()->json(['success' => true, 'payment_url' => $paymentUrl, 'sent_via' => $sentVia]);
+        } catch (\Exception $e) {
+            Log::error('Failed to resend payment link', ['member_subscription_id' => $memberSubscriptionId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
     private function prepare_inputs($inputs)
@@ -2382,7 +3384,6 @@ class GymMemberFrontController extends GymGenericFrontController
 
         if (@$this->user_sw->branch_setting_id) {
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
 
         if (is_string(request($input_file)) && (strpos(request($input_file), 'data:image/png;base64') !== false)) {
@@ -2561,7 +3562,7 @@ class GymMemberFrontController extends GymGenericFrontController
     public function downloadCard()
     {
         $code = \request('code');
-        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $code)->first();
+        $member = GymMember::branch()->where('code', $code)->first();
         $qrcodes_folder = base_path('uploads/barcodes/');
         $cards_folder = base_path('uploads/cards/');
         // ensure required folders exist
@@ -2571,8 +3572,8 @@ class GymMemberFrontController extends GymGenericFrontController
         if (!File::exists($cards_folder)) {
             File::makeDirectory($cards_folder, 0755, true, true);
         }
-        if ($code) {
-            $setting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
+        if ($code && $member) {
+            $setting = Setting::branch()->first();
             $d = new DNS1D();
             $d->setStorPath($qrcodes_folder);
             $d->getBarcodePNGPath($code, TypeConstants::BarcodeType, 2, 60, array(0, 0, 0), false);
@@ -2608,7 +3609,7 @@ class GymMemberFrontController extends GymGenericFrontController
                 $img->place($barcodePath, 'top-left', $barcodeX, $barcodeY);
             }
             // member code under barcode (left side)
-            $img->text(($code), 200, 300, function ($font) {
+            $img->text((string) $code, 200, 300, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
@@ -2618,10 +3619,10 @@ class GymMemberFrontController extends GymGenericFrontController
             });
 
             $Arabic = new Arabic();
-            $name = $Arabic->utf8Glyphs($member->name);
+            $name = $Arabic->utf8Glyphs($member->name ?? '');
 
             // add member name on image (right band, below logo)
-            $img->text($name, 200, 120, function ($font) {
+            $img->text((string) $name, 200, 120, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#000');
@@ -2630,13 +3631,13 @@ class GymMemberFrontController extends GymGenericFrontController
                 $font->angle(0);
             });
             // add gym phone on image
-            $img->text($setting->phone, ($canvasWidth - 350), 220, function ($font) {
+            $img->text((string) ($setting->phone ?? ''), ($canvasWidth - 350), 220, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
             // add gym email on image
-            $img->text($setting->support_email, ($canvasWidth - 350), 300, function ($font) {
+            $img->text((string) ($setting->support_email ?? ''), ($canvasWidth - 350), 300, function ($font) {
                 $font->file(base_path('resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
@@ -2648,7 +3649,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
     public function memberCard($code)
     {
-        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $code)->first();
+        $member = GymMember::branch()->where('code', $code)->first();
         $qrcodes_folder = base_path('uploads/barcodes/');
         $cards_folder = base_path('uploads/cards/');
         // ensure required folders exist
@@ -2658,8 +3659,8 @@ class GymMemberFrontController extends GymGenericFrontController
         if (!File::exists($cards_folder)) {
             File::makeDirectory($cards_folder, 0755, true, true);
         }
-        if ($code) {
-            $setting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
+        if ($code && $member) {
+            $setting = Setting::branch()->first();
             $d = new DNS1D();
             $d->setStorPath($qrcodes_folder);
             $d->getBarcodePNGPath($code, TypeConstants::BarcodeType);
@@ -2682,7 +3683,7 @@ class GymMemberFrontController extends GymGenericFrontController
             $img->place(base_path($setting->logo_thumb), 'top-left', 30, 40);
             // add barcode on image
             $img->place(base_path('uploads/barcodes/' . $code . '.png'), 'bottom-left', 100, 200);
-            $img->text(($code), 200, 320, function ($font) {
+            $img->text((string) $code, 200, 320, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(16);
                 $font->color('#000');
@@ -2692,10 +3693,10 @@ class GymMemberFrontController extends GymGenericFrontController
             });
 
             $Arabic = new Arabic();
-            $name = $Arabic->utf8Glyphs($member->name);
+            $name = $Arabic->utf8Glyphs($member->name ?? '');
 
             // add member name on image
-            $img->text($name, 650, 105, function ($font) {
+            $img->text((string) $name, 650, 105, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
@@ -2704,13 +3705,13 @@ class GymMemberFrontController extends GymGenericFrontController
                 $font->angle(0);
             });
             // add gym phone on image
-            $img->text($setting->phone, 500, 220, function ($font) {
+            $img->text((string) ($setting->phone ?? ''), 500, 220, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
             });
             // add gym email on image
-            $img->text($setting->support_email, 500, 300, function ($font) {
+            $img->text((string) ($setting->support_email ?? ''), 500, 300, function ($font) {
                 $font->file(base_path('./resources/assets/new_front/fonts/Janna LT Bold.ttf'));
                 $font->size(20);
                 $font->color('#fff');
@@ -2869,7 +3870,6 @@ class GymMemberFrontController extends GymGenericFrontController
         }
     }
 
-
     public function fingerprintRefresh()
     {
         try {
@@ -2898,9 +3898,9 @@ class GymMemberFrontController extends GymGenericFrontController
     {
         $id = $request->id;
         $subscription_id = $request->subscription_id;
-        $membership = GymMemberSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $subscription_id);
+        $membership = GymMemberSubscription::where('id', $subscription_id);
         if (@!$this->mainSettings->allow_member_in_branches) {
-            $membership = $membership->branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id);
+            $membership = $membership->branch();
         }
         $membership = $membership->first();
         if ($membership && (count($membership->activities) > 0)) {
@@ -2918,7 +3918,7 @@ class GymMemberFrontController extends GymGenericFrontController
 
                     $activity_result[$i]['visits'] = $visits;
 
-                    GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $membership->member_id, 'member_subscription_id' => @$membership->id, 'activity_id' => $activity['id'], 'date' => Carbon::now()->toDateTimeString(),  'attended_at' => Carbon::now()->toDateTimeString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id]);
+                    GymNonMemberTime::create(['user_id' => $this->user_sw->id, 'member_id' => $membership->member_id, 'member_subscription_id' => @$membership->id, 'activity_id' => $activity['id'], 'date' => Carbon::now()->toDateTimeString(),  'attended_at' => Carbon::now()->toDateTimeString(), 'branch_setting_id' => @$this->user_sw->branch_setting_id]);
 
                 }
             }
@@ -2929,7 +3929,6 @@ class GymMemberFrontController extends GymGenericFrontController
                     ->update([
                         'activities' => json_encode($activity_result),
                         'branch_setting_id' => @$this->user_sw->branch_setting_id,
-                        'tenant_id' => @$this->user_sw->tenant_id,
                         'updated_at' => now()
                     ]);
                 
@@ -2941,7 +3940,7 @@ class GymMemberFrontController extends GymGenericFrontController
     public function creditMemberBalance()
     {
         $member_id = \request('member_id');
-        $member_credits = GymMemberCredit::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member_id)->get();
+        $member_credits = GymMemberCredit::where('member_id', $member_id)->get();
         $this->member_balance = 0;
         $member_credits->filter(function ($item) {
             if($item->operation != 0)
@@ -2973,9 +3972,9 @@ class GymMemberFrontController extends GymGenericFrontController
         }
         if($member_id && $amount){
             $this->member_balance = 0;
-            $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('id', 'name')->where('id', $member_id)->first();
+            $member = GymMember::select('id', 'name')->where('id', $member_id)->first();
             $member_name = $member->name;
-            $member_credits = GymMemberCredit::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $member_id)->get();
+            $member_credits = GymMemberCredit::where('member_id', $member_id)->get();
             $member_credits->filter(function ($item) {
                 if($item->operation != 0)
                     return $this->member_balance -= $item->amount;
@@ -2988,24 +3987,78 @@ class GymMemberFrontController extends GymGenericFrontController
 
             $member_credit = GymMemberCredit::create(['member_id' => $member_id, 'user_id' => Auth::guard('sw')->user()->id, 'amount' => $amount,'operation' => $type]);
 
-//            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
-//            $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
-//
-//            $notes = str_replace(':amount', $amount, $note_message);
-//            $notes = str_replace(':member_name', $member_name, $notes);
-//
-//            $moneyBox = GymMoneyBox::create([
-//                'user_id' => Auth::guard('sw')->user()->id
-//                , 'amount' => @(float)$amount
-//                , 'operation' => $operation_type
-//                , 'amount_before' => $amount_after
-//                , 'notes' => $notes
-//                , 'type' => $credit_amount
-//                , 'member_id' => $member_id
-//                , 'payment_type' => $payment_type
-//                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-//            ]);
-//
+            $add_to_moneybox = intval(@$request->add_to_moneybox);
+
+            if ($add_to_moneybox) {
+            // ACCOUNTING RULE: Create Money Box entry for cash transactions
+            // - Type 0 (Add): Cash received (wallet top-up or debt payment)
+            // - Type 1 (Refund): Cash withdrawn (refund from balance)
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = GymMoneyBoxFrontController::amountAfter(@$amount_box->amount, @$amount_box->amount_before, (int)@$amount_box->operation);
+
+            $notes = str_replace(':amount', $amount, $note_message);
+            $notes = str_replace(':member_name', $member_name, $notes);
+
+            if ($type == 0) {
+                // Adding to balance: Determine if this is a wallet top-up or debt payment
+                // If member had negative balance before, this is paying off debt
+                // If member had zero or positive balance, this is topping up wallet
+                $moneybox_entry_type = ($this->member_balance < 0) ? TypeConstants::DebtPayment : TypeConstants::WalletTopUp;
+            } else {
+                // Refund from balance: This is a withdrawal
+                $moneybox_entry_type = $moneybox_type; // TypeConstants::CreateMoneyBoxWithdraw
+            }
+
+            $moneyBox = GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id
+                , 'amount' => @(float)$amount
+                , 'operation' => $operation_type
+                , 'amount_before' => $amount_after
+                , 'notes' => $notes
+                , 'type' => $moneybox_entry_type
+                , 'member_id' => $member_id
+                , 'payment_type' => $payment_type
+                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+            ]);
+            } // end if ($add_to_moneybox)
+
+            // DEBT PAYMENT LOGIC: Link payment to unpaid store orders (only for additions)
+            // If member had debt (negative balance), apply this payment to their unpaid invoices
+            if ($type == 0 && $this->member_balance < 0) {
+                $remainingPayment = (float)$amount;
+
+                // Find unpaid/partial store orders for this member (oldest first - FIFO)
+                $unpaidOrders = GymStoreOrder::where('member_id', $member_id)
+                    ->whereIn('payment_status', ['unpaid', 'partial'])
+                    ->where('amount_remaining', '>', 0)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+
+                foreach ($unpaidOrders as $order) {
+                    if ($remainingPayment <= 0) break;
+
+                    $amountToApply = min($remainingPayment, $order->amount_remaining);
+
+                    // Update order payment fields
+                    $newAmountPaid = $order->amount_paid + $amountToApply;
+                    $newAmountRemaining = $order->amount_remaining - $amountToApply;
+
+                    // Determine new payment status
+                    $newPaymentStatus = 'paid';
+                    if ($newAmountRemaining > 0) {
+                        $newPaymentStatus = $newAmountPaid > 0 ? 'partial' : 'unpaid';
+                    }
+
+                    $order->update([
+                        'amount_paid' => $newAmountPaid,
+                        'amount_remaining' => $newAmountRemaining,
+                        'payment_status' => $newPaymentStatus
+                    ]);
+
+                    $remainingPayment -= $amountToApply;
+                }
+            }
+
             $notes2 = str_replace(':name', $member_name, $notes2);
             $this->userLog($notes2, $credit_amount);
 
@@ -3013,14 +4066,48 @@ class GymMemberFrontController extends GymGenericFrontController
             $member->store_balance = $member_balance_value;
             $member->save();
 
-            if(($member_balance_value >= 0) && ($type != 1)){
-                GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_store_balance', 2)->where('member_id', $member->id)->update(['is_store_balance' => 1, 'payment_type' => $payment_type]);
+            if ($add_to_moneybox && ($member_balance_value >= 0) && ($type != 1)){
+                GymMoneyBox::where('is_store_balance', 2)->where('member_id', $member->id)->update(['is_store_balance' => 1, 'payment_type' => $payment_type]);
             }
         }
 
         $member_balance_value = $type == 0 ? ($this->member_balance + $amount) : ($this->member_balance - $amount);
         return number_format($member_balance_value, 2);
 
+    }
+
+    public function checkPhoneExists(Request $request)
+    {
+        $phone = $request->phone;
+        $member = GymMember::branch()->where('phone', $phone)->first();
+        if ($member) {
+            return response()->json([
+                'exists' => true,
+                'name'   => $member->name ?? '',
+            ]);
+        }
+        return response()->json(['exists' => false]);
+    }
+
+    public function checkSubscriptionOverlap(Request $request)
+    {
+        $member_id   = $request->member_id;
+        $start_date  = $request->start_date;
+        $expire_date = $request->expire_date;
+
+        $overlap = GymMemberSubscription::branch()
+            ->where('member_id', $member_id)
+            ->where(function ($query) use ($start_date, $expire_date) {
+                $query->where(function ($q) use ($start_date, $expire_date) {
+                    $q->where('joining_date', '<=', Carbon::parse($start_date))
+                      ->where('expire_date', '>=', Carbon::parse($expire_date));
+                })
+                ->orWhereBetween('joining_date', [$start_date, $expire_date])
+                ->orWhereBetween('expire_date', [$start_date, $expire_date]);
+            })
+            ->exists();
+
+        return response()->json(['overlap' => $overlap]);
     }
 }
 

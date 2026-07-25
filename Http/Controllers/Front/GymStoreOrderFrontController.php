@@ -2,6 +2,8 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
+use Illuminate\Support\Facades\Log;
+use Modules\Software\Classes\GymSwInvoiceHelper;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Classes\LoyaltyService;
 use Modules\Software\Exports\RecordsExport;
@@ -41,7 +43,6 @@ class GymStoreOrderFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreOrderRepository=new GymStoreOrderRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -54,14 +55,14 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         if(request('trashed'))
         {
             // Optimize: Add eager loading for member relation to prevent lazy loading
-            $orders = $this->StoreOrderRepository->with(['order_product.product', 'member' => function($q) {
+            $orders = $this->StoreOrderRepository->branch()->with(['order_product.product', 'member' => function($q) {
                 $q->select('id', 'name', 'phone');
             }])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
             // Optimize: Add eager loading for member relation to prevent lazy loading
-            $orders = $this->StoreOrderRepository->with([
+            $orders = $this->StoreOrderRepository->branch()->with([
                 'order_product.product' => function($q){
 //                $q->withTrashed();
                 },
@@ -100,20 +101,16 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 
 
     function exportStoreOrderExcel(){
-        $this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
 
-        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
-
-//        $title = trans('sw.store_orders');
-//        $records = $this->prepareForExport($records);
-
+        $fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
 
         $notes = trans('sw.export_excel_store_orders');
         $this->userLog($notes, TypeConstants::ExportStoreOrderExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'amount_paid'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'amount_paid'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -150,21 +147,77 @@ class GymStoreOrderFrontController extends GymGenericFrontController
 //        $records = $this->StoreOrderRepository->get();
 //        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
 
-        $this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
-        $this->fileName = 'stoer-orders-' . Carbon::now()->toDateTimeString();
+        $fileName = 'store-orders-' . Carbon::now()->toDateTimeString();
 
         $keys = ['id', 'amount_paid'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
-
+        
         $title = trans('sw.store_orders');
-        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys]);
+        $customPaper = array(0, 0, 720, 1440);
 
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L', // Landscape
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+                
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records, 
+                    'title' => $title, 
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+                
+                $mpdf->WriteHTML($html);
+                
+                $notes = trans('sw.export_pdf_members');
+                $this->userLog($notes, TypeConstants::ExportMemberPDF);
+                
+                return response($mpdf->Output($fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $fileName . '.pdf"'
+                ]);
+                
+            } catch (\Exception $e) {
+                // Fallback to DomPDF if mPDF fails
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+
+
+
+
+       // Configure PDF for Arabic text using DomPDF
+       $pdf = PDF::loadView('software::Front.export_pdf', [
+        'records' => $records, 
+        'title' => $title, 
+        'keys' => $keys,
+        'lang' => $this->lang
+    ])
+    ->setPaper($customPaper, 'landscape')
+    ->setOptions([
+        'isHtml5ParserEnabled' => true,
+        'isRemoteEnabled' => false,
+        'defaultFont' => 'DejaVu Sans',
+        'isPhpEnabled' => true,
+        'isJavascriptEnabled' => false
+    ]);
         $notes = trans('sw.export_pdf_store_orders');
         $this->userLog($notes, TypeConstants::ExportStoreOrderPDF);
-
-        return $pdf->download($this->fileName.'.pdf');
+        return $pdf->download($fileName.'.pdf');
     }
 
 
@@ -291,7 +344,7 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         });
             
         $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $payment_types = \Modules\Software\Models\GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->all();
+        $payment_types = \Modules\Software\Models\GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
         
         return view('software::Front.store_order_pos_front_form', compact('products', 'categories', 'members', 'payment_types', 'title'));
     }
@@ -338,25 +391,60 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             }
             $order_inputs['member_id'] = @$member->id;
             if(@$request->store_member_use_balance){
+                // Using store balance (wallet) for payment
+                $memberBalanceBefore = $member->store_balance ?? 0;
 
                 if(!@$this->mainSettings->store_postpaid){
-                    if(@$member->store_balance < $finalOrderTotal){
+                    // Prepaid mode - must have enough balance
+                    if($memberBalanceBefore < $finalOrderTotal){
                         return redirect(route('sw.createStoreOrderPOS'))->withErrors(['amount_paid' => trans('sw.amount_paid_validate_must_less_balance')]);
                     }
                     // Deduct from member's balance for prepaid mode
-                    $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
+                    $member->update(['store_balance' => $memberBalanceBefore - $finalOrderTotal]);
+                    // Order is FULLY PAID from wallet balance
+                    // amount_paid = full amount (for store order report)
+                    // Money Box will NOT be created (no new cash received)
+                    $order_inputs['amount_paid'] = $finalOrderTotal; // Order IS paid (from balance)
+                    $order_inputs['amount_remaining'] = 0;
+                    $order_inputs['payment_status'] = 'paid';
                 } else {
-                    // For postpaid mode, allow deduction even if balance goes negative
-                    $member->update(['store_balance' => $member->store_balance - $finalOrderTotal]);
+                    // Postpaid mode - allow negative balance (debt)
+                    $member->update(['store_balance' => $memberBalanceBefore - $finalOrderTotal]);
 
+                    // Check if this creates debt (balance going negative or was already negative)
+                    $newBalance = $memberBalanceBefore - $finalOrderTotal;
+                    if ($newBalance < 0) {
+                        // This is a postpaid/debt purchase
+                        // What was covered by existing positive balance (if any)
+                        $paidFromBalance = max(0, $memberBalanceBefore);
+
+                        // For store order report: show what's been paid vs remaining debt
+                        $order_inputs['amount_paid'] = $paidFromBalance;
+                        $order_inputs['amount_remaining'] = $finalOrderTotal - $paidFromBalance;
+                        $order_inputs['payment_status'] = $order_inputs['amount_remaining'] > 0
+                            ? ($paidFromBalance > 0 ? 'partial' : 'unpaid')
+                            : 'paid';
+                        // Money Box will NOT be created (no new cash - this is debt)
+                    } else {
+                        // Member had enough balance, fully paid from wallet
+                        $order_inputs['amount_paid'] = $finalOrderTotal; // Order IS paid (from balance)
+                        $order_inputs['amount_remaining'] = 0;
+                        $order_inputs['payment_status'] = 'paid';
+                        // Money Box will NOT be created (no new cash received)
+                    }
                 }
-                // Set order amount_paid to 0 as it's paid from balance
-                $order_inputs['amount_paid'] = 0;
-                $order_inputs['amount_remaining'] = 0;
             } else {
-                // If not using store balance, amount_paid is what was submitted, remaining is total - paid
-                $order_inputs['amount_paid'] = $request->amount_paid; // This should come from the form
+                // Not using store balance - normal cash/card payment
+                $order_inputs['amount_paid'] = $request->amount_paid ?? 0;
                 $order_inputs['amount_remaining'] = $finalOrderTotal - $order_inputs['amount_paid'];
+                // Set payment status based on remaining amount
+                if ($order_inputs['amount_remaining'] <= 0) {
+                    $order_inputs['payment_status'] = 'paid';
+                } elseif ($order_inputs['amount_paid'] > 0) {
+                    $order_inputs['payment_status'] = 'partial';
+                } else {
+                    $order_inputs['payment_status'] = 'unpaid';
+                }
             }
         }
 
@@ -523,7 +611,10 @@ class GymStoreOrderFrontController extends GymGenericFrontController
         $is_store_balance = 0;
         if(@$request->store_member_use_balance && @$member){
             $notes = $notes.' - '.trans('sw.use_from_balance');
-            GymMemberCredit::create(['branch_setting_id' => @$this->user_sw->branch_setting_id, 'tenant_id' => @$this->user_sw->tenant_id, 'user_id' => Auth::guard('sw')->user()->id,'member_id' => @$member->id, 'amount' => @$order_inputs['total_amount'],'operation' => 2,'payment_type' => @$order_inputs['payment_type']]);
+            GymMemberCredit::create(['branch_setting_id' => @$this->user_sw->branch_setting_id, 'user_id' => Auth::guard('sw')->user()->id,'member_id' => @$member->id, 'amount' => @$order_inputs['total_amount'],'operation' => 2,'payment_type' => @$order_inputs['payment_type']]);
+            @$order_inputs['amount_paid'] = 0;
+            @$order_inputs['amount_remaining'] = @$order_inputs['total_amount'];
+            @$order_inputs['payment_status'] = 'paid';
 
             if($member->member_balance() >= 0)
                 $is_store_balance = 1;
@@ -534,55 +625,37 @@ class GymStoreOrderFrontController extends GymGenericFrontController
             $member->save();
 
         }
-        $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
-        $amount_after = $amount_box ? GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation) : 0;
+        $swSaleInvoiceId = GymSwInvoiceHelper::forStoreOrder($order, $this->user_sw->branch_setting_id ?? null);
 
-        GymMoneyBox::create([
-            'user_id' => Auth::guard('sw')->user()->id
-            , 'amount' => @$order_inputs['amount_paid']
-            , 'vat' => @$order_inputs['vat']
-            , 'operation' => TypeConstants::Add
-            , 'amount_before' => $amount_after
-            , 'notes' => $notes
-            , 'type' => TypeConstants::CreateStoreOrder
-            , 'member_id' => @$member->id
-            , 'payment_type' => @$order_inputs['payment_type']
-            , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-            , 'tenant_id' => @$this->user_sw->tenant_id
-            , 'store_order_id' => $order_id
-            , 'is_store_balance' => $is_store_balance
-        ]);
+        // ACCOUNTING RULE: Only create Money Box entry for cash sales (NOT when using store balance)
+        // When using store balance (is_store_balance = 1 or 2), the money was already recorded when wallet was topped up
+        // Creating Money Box here would double-count the revenue
+        //if ($is_store_balance == 0) {
+            // Normal cash sale - create Money Box entry (this IS revenue)
+            $amount_box = GymMoneyBox::branch()->latest()->first();
+            $amount_after = $amount_box ? GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation) : 0;
+
+            GymMoneyBox::create([
+                'user_id' => Auth::guard('sw')->user()->id
+                , 'amount' => @$order_inputs['amount_paid']
+                , 'vat' => @$order_inputs['vat']
+                , 'operation' => TypeConstants::Add
+                , 'amount_before' => $amount_after
+                , 'notes' => $notes
+                , 'type' => TypeConstants::CashSale  // Use CashSale type to distinguish from wallet operations
+                , 'member_id' => @$member->id
+                , 'payment_type' => @$order_inputs['payment_type']
+                , 'branch_setting_id' => @$this->user_sw->branch_setting_id
+                , 'store_order_id' => $order_id
+                , 'is_store_balance' => 0
+                , 'invoice_id' => $swSaleInvoiceId
+            ]);
+        //}
+        // When is_store_balance = 1 (prepaid) or 2 (postpaid/debt):
+        // - Invoice is created (revenue)
+        // - Member credit is deducted
+        // - NO Money Box entry (cash flow already recorded when wallet was topped up, or will be recorded when debt is paid)
         $this->userLog($notes, TypeConstants::CreateStoreOrder);
-
-        // ✅ Create ZATCA Invoice if enabled (Phase 2)
-        if (config('sw_billing.zatca_enabled') && config('sw_billing.auto_invoice')) {
-            try {
-                \Log::info('Attempting to create ZATCA invoice', [
-                    'order_id' => $order->id,
-                    'zatca_enabled' => config('sw_billing.zatca_enabled'),
-                    'auto_invoice' => config('sw_billing.auto_invoice'),
-                ]);
-                
-                $invoice = \Modules\Billing\Services\SwBillingService::createInvoiceFromStoreOrder($order);
-                
-                // if ($invoice) {
-                //     \Log::info('ZATCA invoice created successfully', [
-                //         'invoice_id' => $invoice->id,
-                //         'order_id' => $order->id,
-                //     ]);
-                // } else {
-                //     \Log::warning('ZATCA invoice creation returned null', [
-                //         'order_id' => $order->id,
-                //     ]);
-                // }
-            } catch (\Exception $e) {
-                \Log::error('Failed to create ZATCA invoice for store order', [
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-        }
 
         return redirect(route('sw.createStoreOrderPOS'));
     }
@@ -795,6 +868,9 @@ class GymStoreOrderFrontController extends GymGenericFrontController
                     , 'tenant_id' => @$this->user_sw->tenant_id
                     , 'store_order_id' => @$order->id
                 ]);
+
+                GymSwInvoiceHelper::refundStoreOrder($order, $amount, $this->user_sw->branch_setting_id ?? null);
+
                 $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
                 
                 

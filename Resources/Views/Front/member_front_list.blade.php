@@ -35,14 +35,9 @@
 
         /* Actions column styling */
         .actions-column {
-            min-width: 140px !important;
+            min-width: 140px;
+            text-align: right;
             white-space: nowrap;
-            position: relative;
-        }
-
-        .actions-column .actions-menu {
-            min-width: 240px;
-            z-index: 1050;
         }
 
         .actions-column .menu-link {
@@ -55,30 +50,6 @@
             font-size: 1rem;
         }
 
-        .members-table-responsive {
-            overflow-x: auto;
-            overflow-y: visible;
-            position: relative;
-        }
-
-        /* Allow dropdowns to escape the table container on iOS Safari */
-        @supports (-webkit-touch-callout: none) {
-            .members-table-responsive {
-                overflow: visible !important;
-            }
-        }
-
-        @media (max-width: 1200px) {
-            .actions-column {
-                min-width: 120px !important;
-            }
-        }
-
-        @media (max-width: 992px) {
-            .actions-column {
-                min-width: 100px !important;
-            }
-        }
 
         .loader {
             border: 16px solid #f3f3f3;
@@ -157,7 +128,21 @@
             }
         }
 
+
+        .menu.menu-sub-dropdown {
+            z-index: 99999 !important;
+        }
+
+
+        /* For horizontal scroll on small screens, wrap in a scrollable container */
+        @media (max-width: 1200px) {
+            .table-responsive {
+                overflow-x: auto !important;
+                overflow-y: visible !important;
+            }
+        }
     </style>
+    
 
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 @endsection
@@ -379,7 +364,7 @@
         <div id="fingerprint_error_msg" class="alert alert-warning" @if(@$mainSettings->active_zk && @env('APP_ZK_LOCAL_HOST') && ((@$mainSettings->zk_online_at == null) || (\Carbon\Carbon::parse($mainSettings->zk_online_at)->toDateString() < \Carbon\Carbon::now()->subDays(3)->toDateString() ))) style="display: block;" @endif><i class="ki-outline ki-warning fs-6 me-2"></i>  {!! trans('sw.zk_not_connect_msg') !!}</div>
         @if(count($members) > 0)
             <!--begin::Table-->
-            <div class="table-responsive members-table-responsive">
+            <div class="table-responsive">
                 <table class="table align-middle table-row-dashed fs-6 gy-5" id="kt_members_table">
                     <thead>
                         <tr class="text-gray-500 fw-bold fs-7 text-uppercase gs-0">
@@ -635,7 +620,7 @@
                                     {{ trans('admin.actions') }}
                                     <i class="ki-outline ki-down fs-5 ms-1"></i>
                                 </a>
-                                <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold fs-7 w-250px py-4 actions-menu" data-kt-menu="true">
+                                <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold fs-7 w-250px py-4" data-kt-menu="true">
                                     <div class="menu-item px-3">
                                         <a href="javascript:void(0)" class="menu-link px-3 modalProfileBtn"
                                            data-target="#modalProfileMember"
@@ -1047,6 +1032,16 @@
                         <label class="form-label fw-bold">{{ trans('sw.notes')}}</label>
                         <textarea name="credit_notes" placeholder="{{ trans('sw.enter_notes')}}" 
                                   class="form-control form-control-solid" rows="3" id="credit_notes"></textarea>
+                    </div>
+
+                    <!-- Moneybox Option -->
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="credit_add_to_moneybox" name="add_to_moneybox" value="1" checked>
+                            <label class="form-check-label fw-bold" for="credit_add_to_moneybox">
+                                <i class="ki-outline ki-finance-calculator fs-4 me-1"></i>{{ trans('sw.include_in_moneybox_report')}}
+                            </label>
+                        </div>
                     </div>
 
                     <!-- Action Buttons -->
@@ -1994,6 +1989,7 @@
                  'amount_refund': $('#credit_amount_refund').val(),
                  'payment_type': $('#credit_payment_type').val(),
                  'notes': $('#credit_notes').val(),
+                 'add_to_moneybox': $('#credit_add_to_moneybox').is(':checked') ? 1 : 0,
                  "_token": "{{ csrf_token() }}"
              }
 
@@ -2016,6 +2012,7 @@
                             $('#credit_amount_add').val('');
                             $('#credit_amount_refund').val('');
                             $('#credit_notes').val('');
+                            $('#credit_add_to_moneybox').prop('checked', true);
                             $('#form_credit_add_btn').hide();
                             $('#form_credit_refund_btn').hide();
                             $('#credits_balance').val(data);

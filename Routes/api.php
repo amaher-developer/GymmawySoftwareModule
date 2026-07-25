@@ -19,6 +19,7 @@ Route::post('/member-subscription-info', 'Api\WebsiteApiController@memberSubscri
 Route::post('/member-subscription-invoice-info', 'Api\WebsiteApiController@memberSubscriptionInvoiceInfo')->middleware(['api']);
 Route::post('/member-subscription-info-by-phone', 'Api\WebsiteApiController@memberSubscriptionInfoByPhone')->middleware(['api']);
 Route::post('/create-member-subscription', 'Api\WebsiteApiController@createMemberSubscription')->middleware(['api']);
+Route::post('/send-subscription-notification', 'Api\WebsiteApiController@sendSubscriptionNotification')->middleware(['api']);
 Route::post('/member-attendance-info', 'Api\WebsiteApiController@memberAttendanceInfo')->middleware(['api']);
 
 
@@ -37,6 +38,28 @@ Route::name('sw.successfulPayment')->get('/sw-payment/s', 'Api\GymSwPaymentApiCo
 
 Route::name('sw.migration')->get('/gym-migrate', 'Api\GymSettingApiController@migrate')->middleware(['api']);
 Route::name('sw.lastMigration')->get('/gym-last-migrate', 'Api\GymSettingApiController@lastMigrate')->middleware(['api']);
+
+// ── AI Reports ────────────────────────────────────────────────────────────────
+// Prefix:  /api/ai-reports/{report-type}/getter|setter
+// Future:  /api/ai-reports/members/...  /api/ai-reports/attendance/...  etc.
+Route::prefix('ai-reports')->middleware(['api'])->group(function () {
+
+    // ── Executive Performance Report (revenue + members + packages + attendance)
+    Route::prefix('executive')->group(function () {
+        // GETTER: collect KPI data → ChatGPT → save to DB → return { id, report }
+        Route::name('sw.aiReports.executive.getter')
+            ->post('getter', 'Api\GymAiReportApiController@getter');
+
+        // SETTER: load from DB by ID → send email + SMS → update delivery status
+        Route::name('sw.aiReports.executive.setter')
+            ->post('setter', 'Api\GymAiReportApiController@setter');
+
+        // HISTORY: paginated list of past reports
+        Route::name('sw.aiReports.executive.history')
+            ->get('history', 'Api\GymAiReportApiController@history');
+    });
+
+});
 
 Route::prefix('zk')
     ->group(function () {
@@ -62,3 +85,25 @@ Route::name('sw.ptClassActiveMemberAjax')
 foreach (File::allFiles(__DIR__ . '/Api') as $route) {
 require_once $route->getPathname();
 }
+
+// ── GymSw Invoice routes ──────────────────────────────────────────────────────
+Route::prefix('gym-sw-invoices')->middleware(['api'])->group(function () {
+    Route::name('gymSw.invoices.index')
+        ->get('/',                   'Api\GymSwInvoiceController@index');
+    Route::name('gymSw.invoices.storeSales')
+        ->post('sales',              'Api\GymSwInvoiceController@storeSales');
+    Route::name('gymSw.invoices.storePurchase')
+        ->post('purchase',           'Api\GymSwInvoiceController@storePurchase');
+    Route::name('gymSw.invoices.memberInvoices')
+        ->get('member/{memberId}',   'Api\GymSwInvoiceController@memberInvoices');
+    Route::name('gymSw.invoices.show')
+        ->get('{id}',                'Api\GymSwInvoiceController@show');
+    Route::name('gymSw.invoices.creditNote')
+        ->post('{id}/credit-note',   'Api\GymSwInvoiceController@storeCreditNote');
+    Route::name('gymSw.invoices.cancel')
+        ->post('{id}/cancel',        'Api\GymSwInvoiceController@cancel');
+    Route::name('gymSw.invoices.pdf')
+        ->get('{id}/pdf',            'Api\GymSwInvoiceController@downloadPdf');
+    Route::name('gymSw.invoices.payment')
+        ->patch('{id}/payment',      'Api\GymSwInvoiceController@recordPayment');
+});

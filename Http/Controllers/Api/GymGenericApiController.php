@@ -7,7 +7,7 @@ use Modules\Generic\Models\Contact;
 use Modules\Generic\Models\Setting;
 // Firebase integration - optional, loaded dynamically if available
 // use App\Modules\Notification\Http\Controllers\Api\FirebaseApiController;
-use App\Modules\Notification\Models\PushNotification;
+use Modules\Software\Models\GymPushNotification;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Http\Resources\ActivityResource;
 use Modules\Software\Http\Resources\AttendanceResource;
@@ -15,7 +15,9 @@ use Modules\Software\Http\Resources\BannerContentResource;
 use Modules\Software\Http\Resources\BannerResource;
 use Modules\Software\Http\Resources\CategoryWithSubscriptionResource;
 use Modules\Software\Http\Resources\MemberResource;
+use Modules\Software\Http\Resources\NotificationLogResource;
 use Modules\Software\Http\Resources\NotificationResource;
+use Modules\Software\Models\GymMemberNotificationLog;
 use Modules\Software\Http\Resources\PTResource;
 use Modules\Software\Http\Resources\SettingResource;
 use Modules\Software\Http\Resources\StoreResource;
@@ -105,24 +107,34 @@ class GymGenericApiController extends GenericController
 
         $this->checkExpiredToken();
 
-        $app_welcome_member = trans('sw.app_welcome_member', ['name' => @$this->SettingRepository->select('name_ar', 'name_en')->first()->name]);
+        $app_welcome_member = trans('sw.app_welcome_member', ['name' => @Str::limit($this->SettingRepository->select('name_ar', 'name_en')->first()->name, 20)]);
         $app_welcome_msg = trans('sw.app_welcome_msg', ['name' => Auth::guard('api')->user() ? @strtok(@Auth::guard('api')->user()->name, " ").' ' : ' ']);
         $subscriptions = GymSubscription::where('is_mobile', 1)->where('category_id', null)->orderBy('id', 'desc')->limit(5)->get();
         $activities = GymActivity::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
         $stores = GymStoreProduct::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
         $trainings = GymPTClass::where('is_mobile', 1)->with(['pt_subscription.pt_trainers'])->orderBy('id', 'desc')->limit(5)->get();
-        $banners = GymBanner::where('is_mobile', 1)->orderBy('id', 'desc')->limit(5)->get();
+        $banners = GymBanner::where('is_mobile', 1)->where('type', 1)->orderBy('id', 'desc')->limit(10)->get();
+        $offers  = GymBanner::where('is_mobile', 1)->where('type', 4)->orderBy('id', 'desc')->limit(10)->get();
+        $news    = GymBanner::where('is_mobile', 1)->where('type', 3)->orderBy('id', 'desc')->limit(10)->get();
+        $events  = GymBanner::where('is_mobile', 1)->where('type', 2)->orderBy('id', 'desc')->limit(10)->get();
 
         $category_with_subscription = GymCategory::with(['subscriptions' => function ($q) {
             $q->limit(10);
         }])->where('is_subscription', true)->get();
-
+        
+        
 
         $this->return['result']['is_new_notifications'] =  rand(0,1);
         $this->return['result']['welcome_member'] =  $app_welcome_member;
         $this->return['result']['welcome_msg'] =  $app_welcome_msg;
         $this->return['result']['phones'] =  [@Setting::first()->phone];
-        $this->return['result']['banners'] =  $stores ?  BannerResource::collection($banners) : '';
+        $this->return['result']['banners'] =  $banners->isNotEmpty() ? BannerResource::collection($banners) : [];
+        $this->return['result']['is_offers'] =  $offers->isNotEmpty() ? 1 : 0;
+        $this->return['result']['offers'] =  $offers->isNotEmpty() ? BannerResource::collection($offers) : [];
+        $this->return['result']['is_news'] =  $news->isNotEmpty() ? 1 : 0;
+        $this->return['result']['news'] =  $news->isNotEmpty() ? BannerResource::collection($news) : [];
+        $this->return['result']['is_events'] =  $events->isNotEmpty() ? 1 : 0;
+        $this->return['result']['events'] =  $events->isNotEmpty() ? BannerResource::collection($events) : [];
         $this->return['result']['subscriptions'] =  $subscriptions ?  SubscriptionResource::collection($subscriptions) : '';
         $this->return['result']['is_trainings'] =  1;
         $this->return['result']['trainings'] =  $trainings ?  PTResource::collection($trainings) : '';
@@ -133,6 +145,129 @@ class GymGenericApiController extends GenericController
         $this->return['result']['is_category_with_subscription'] =  1;
         $this->return['result']['category_with_subscription'] =  $category_with_subscription ?  CategoryWithSubscriptionResource::collection($category_with_subscription) : '';
 
+        // Gym capacity: max allowed vs current attendees in the last hour
+        $capacitySetting = $this->SettingRepository->select('app_max_capacity_num')->first();
+        $maxCapacity = (int)(@$capacitySetting->app_max_capacity_num ?? 0);
+        $currentAttendance = GymMemberAttendee::where('created_at', '>=', Carbon::now()->subHour())->count();
+        $this->return['result']['app_max_capacity_num']    = $maxCapacity;
+        $this->return['result']['current_attendance_count'] = $currentAttendance;
+        $this->return['result']['is_capacity_available']   = $maxCapacity > 0 ? ($currentAttendance < $maxCapacity ? 1 : 0) : 1;
+
+        // Today's PT classes – scoped to the logged-in member's active PT memberships
+        // Today's PT classes – always return general classes; if logged in also return member's own
+        $todayDayOfWeek = (int) Carbon::now()->dayOfWeek; // 0=Sunday … 6=Saturday
+        $todayStr       = Carbon::today()->toDateString();
+        $authMember     = Auth::guard('api')->user();
+
+        // ── General: all active mobile PT classes scheduled for today (no trainer list) ──
+        $generalPTClasses = GymPTClass::where('is_active', true)
+            ->where('is_mobile', 1)
+            ->with(['pt_subscription', 'activeClassTrainers.trainer'])
+            ->get()
+            ->map(function ($ptClass) use ($todayDayOfWeek) {
+                $workDays = $ptClass->schedule['work_days'] ?? [];
+                $slot = $workDays[$todayDayOfWeek] ?? null;
+                if (!$slot || empty($slot['status'])) return null;
+                $startTime = !empty($slot['start']) ? Carbon::parse($slot['start'])->format('g:i A') : null;
+                $firstTrainer = @$ptClass->activeClassTrainers ? $ptClass->activeClassTrainers->first() : null;
+                return [
+                    'id'         => $ptClass->id,
+                    'name'       => $ptClass->name ?? (@$ptClass->pt_subscription->name ?? '-'),
+                    'image'      => @$ptClass->pt_subscription->image ?? null,
+                    'start_time' => $startTime,
+                    'trainer_name'  => @$firstTrainer->trainer->name ?? '-',
+                    'trainer_image' => @$firstTrainer->trainer->image ?? null,
+                ];
+            })->filter()->values();
+
+        $this->return['result']['is_today_pt_classes'] = $generalPTClasses->isNotEmpty() ? 1 : 0;
+        $this->return['result']['today_pt_classes']    = $generalPTClasses->isNotEmpty() ? $generalPTClasses : [];
+
+        // ── Member-specific: member's own PT classes today with trainer & session info ──
+        $memberPTClasses = collect();
+        if ($authMember) {
+            $ptMembers = \Modules\Software\Models\GymPTMember::with([
+                    'class.activeClassTrainers.trainer',
+                    'class.pt_subscription',
+                    'legacyClass.activeClassTrainers.trainer',
+                    'legacyClass.pt_subscription',
+                    'classTrainer.trainer',
+                    'trainer',
+                ])
+                ->where('member_id', $authMember->id)
+                ->where(function ($q) use ($todayStr) {
+                    $q->whereDate('joining_date', '<=', $todayStr)
+                      ->whereDate('expire_date',  '>=', $todayStr);
+                })
+                ->get();
+
+            $memberPTClasses = $ptMembers->map(function ($ptMember) use ($todayDayOfWeek) {
+                $ptClass = $ptMember->class ?? $ptMember->legacyClass ?? null;
+                if (!$ptClass) return null;
+
+                $workDays = $ptClass->schedule['work_days'] ?? [];
+                $slot = $workDays[$todayDayOfWeek] ?? null;
+                if (!$slot || empty($slot['status'])) return null;
+
+                $startTime = !empty($slot['start']) ? Carbon::parse($slot['start'])->format('g:i A') : null;
+
+                $trainerList = [];
+
+                // 1) Prefer the trainer explicitly assigned to this PT member.
+                if ($ptMember->trainer) {
+                    $trainerList[] = [
+                        'name'  => $ptMember->trainer->name  ?? '-',
+                        'image' => $ptMember->trainer->image ?? null,
+                    ];
+                }
+
+                // 2) If available, use class-trainer assignment for this member.
+                if (empty($trainerList) && @$ptMember->classTrainer && @$ptMember->classTrainer->trainer) {
+                    $trainerList[] = [
+                        'name'  => $ptMember->classTrainer->trainer->name  ?? '-',
+                        'image' => $ptMember->classTrainer->trainer->image ?? null,
+                    ];
+                }
+
+                // 3) Fallback to active class trainers.
+                if (empty($trainerList)) {
+                    $trainers = $ptClass->activeClassTrainers ?? collect([]);
+                    if ($trainers->isNotEmpty()) {
+                        foreach ($trainers as $ct) {
+                            if (@$ct->trainer) {
+                                $trainerList[] = [
+                                    'name'  => $ct->trainer->name  ?? '-',
+                                    'image' => $ct->trainer->image ?? null,
+                                ];
+                            }
+                        }
+                    }
+                }
+
+                $totalSessions     = (int)($ptMember->total_sessions     ?? $ptMember->classes ?? 0);
+                $remainingSessions = (int)($ptMember->remaining_sessions ?? 0);
+                $usedSessions      = $totalSessions - $remainingSessions;
+
+                return [
+                    'id'                 => $ptClass->id,
+                    'name'               => $ptClass->name ?? (@$ptClass->pt_subscription->name ?? '-'),
+                    'image'              => @$ptClass->pt_subscription->image ?? null,
+                    'start_time'         => $startTime,
+                    'trainer_name'       => !empty($trainerList) ? $trainerList[0]['name']  : '-',
+                    'trainer_image'      => !empty($trainerList) ? $trainerList[0]['image'] : null,
+                    'total_sessions'     => $totalSessions,
+                    'used_sessions'      => $usedSessions >= 0 ? $usedSessions : 0,
+                    'remaining_sessions' => $remainingSessions,
+                ];
+            })->filter()->values();
+        }
+
+        $this->return['result']['is_my_today_pt_classes'] = $memberPTClasses->isNotEmpty() ? 1 : 0;
+        $this->return['result']['my_today_pt_classes']    = $memberPTClasses->isNotEmpty() ? $memberPTClasses : [];
+
+        // Feature-toggle flags driven by environment keys
+        $this->return['result']['hide_count_members'] = (int) env('HIDE_COUNT_MEMBERS', 0);
+        $this->return['result']['hide_upgrade']        = (int) env('HIDE_UPGRADE', 0);
 
         if(@request('device_token')) $this->updatePushToken();
         return $this->successResponse();
@@ -147,9 +282,32 @@ class GymGenericApiController extends GenericController
         return $this->successResponse();
     }
     public function banners(){
-        $banners = GymBanner::orderBy("id", "desc")->paginate($this->limit);
-        $this->getPaginateAttribute($banners);
-        $this->return['result']['banners'] =  $banners ?  BannerResource::collection($banners) : [];
+        
+        $member = Auth::guard('api')->user();
+
+        if (!$member && ($deviceToken = @request()->bearerToken())) {
+            $pushToken = GymPushToken::where('token', $deviceToken)->first();
+            if ($pushToken && $pushToken->member_id) {
+                $member = GymMember::find($pushToken->member_id);
+            }
+        }
+        $code = @$member->code;
+
+        $notifications = GymMemberNotificationLog::where(function ($q) use ($code) {
+                $q->where('codes', '')->orWhereNull('codes');
+                if ($code) {
+                    $c = (string) $code;
+                    $q->orWhere('codes', $c)
+                      ->orWhere('codes', 'LIKE', $c . ',%')
+                      ->orWhere('codes', 'LIKE', '%,' . $c . ',%')
+                      ->orWhere('codes', 'LIKE', '%,' . $c);
+                }
+            })
+            ->orderBy('id', 'desc')
+            ->paginate($this->limit);
+
+        $this->getPaginateAttribute($notifications);
+        $this->return['result']['banners'] = $notifications ? NotificationLogResource::collection($notifications) : [];
         return $this->successResponse();
     }
 
@@ -218,14 +376,16 @@ class GymGenericApiController extends GenericController
             ->orderBy('id', 'desc')
             ->get();
 
-        $member = GymMember::with(['member_subscription_info' => function($query) use ($member_subscriptions){
-            if((@count($member_subscriptions) > 1) && (@$member_subscriptions[0]->status  == TypeConstants::Coming))
-                $query->where('id',  $member_subscriptions[1]->id);
-            $query->orderBy('id', 'desc');
+        $member = GymMember::with(['member_subscription_info' => function ($q) {
+            $q->reorder()->orderByRaw('CASE status
+                WHEN ' . TypeConstants::Active  . ' THEN 1
+                WHEN ' . TypeConstants::Freeze  . ' THEN 2
+                WHEN ' . TypeConstants::Coming  . ' THEN 3
+                WHEN ' . TypeConstants::Expired . ' THEN 4
+                ELSE 5 END')->orderBy('id', 'desc');
         }, 'member_attendees' => function ($q) {
             $q->orderBy('id', 'desc')->limit(20);
-        }])//->withCount('member_attendees')
-            ->where(['id' => @Auth::guard('api')->user()->id])->first();
+        }])->where(['id' => @Auth::guard('api')->user()->id])->first();
         $this->return['result']['member'] = new MemberResource($member);
         $this->return['result']['is_attendees'] = 1;
         $this->return['result']['is_training_plans'] = 1;
@@ -247,6 +407,65 @@ class GymGenericApiController extends GenericController
         $attendances = GymMemberAttendee::where('member_id', $member_id)->orderBy('id', 'desc')->paginate($this->limit);
         $this->getPaginateAttribute($attendances);
         $this->return['result']['attendances'] =  $attendances ?  AttendanceResource::collection($attendances) : [];
+        return $this->successResponse();
+    }
+
+    public function previousSubscriptions(){
+        $member_id = @Auth::guard('api')->user()->id;
+        $subscriptions = GymMemberSubscription::with(['subscription' => function($q){ $q->withTrashed(); }])
+            ->where('member_id', $member_id)
+            ->orderBy('id', 'desc')
+            ->get();
+        $result = [];
+        foreach($subscriptions as $sub){
+            $result[] = [
+                'id'           => $sub->id,
+                'name'         => @$sub->subscription ? $sub->subscription->name : ($sub->subscription_id ? '#'.$sub->subscription_id : '-'),
+                'price'        => number_format((float)$sub->price, 2),
+                'duration'     => @$sub->subscription ? $sub->subscription->period . ' ' . trans('sw.days') : '-',
+                'start_date'   => Carbon::parse($sub->joining_date)->translatedFormat('d F Y'),
+                'end_date'     => Carbon::parse($sub->expire_date)->translatedFormat('d F Y'),
+                'status'       => $sub->status_name ?? '-',
+                'status_value' => $sub->status_value ?? 0,
+                'amount_paid'  => number_format((float)($sub->amount_paid ?? $sub->price), 2),
+                'amount_remaining' => number_format((float)($sub->amount_remaining ?? 0), 2),
+            ];
+        }
+        $this->return['result']['subscriptions'] = $result;
+        return $this->successResponse();
+    }
+
+    public function attendanceSummary(){
+        $member_id = @Auth::guard('api')->user()->id;
+        $now = Carbon::now();
+
+        $total = GymMemberAttendee::where('member_id', $member_id)->count();
+        $this_month = GymMemberAttendee::where('member_id', $member_id)
+            ->whereYear('created_at', $now->year)
+            ->whereMonth('created_at', $now->month)
+            ->count();
+        $this_week = GymMemberAttendee::where('member_id', $member_id)
+            ->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])
+            ->count();
+
+        // Monthly chart: last 6 months
+        $monthly_chart = [];
+        for($i = 5; $i >= 0; $i--){
+            $month = $now->copy()->subMonths($i);
+            $count = GymMemberAttendee::where('member_id', $member_id)
+                ->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
+            $monthly_chart[] = [
+                'month' => $month->translatedFormat('M'),
+                'count' => $count,
+            ];
+        }
+
+        $this->return['result']['total']         = $total;
+        $this->return['result']['this_month']    = $this_month;
+        $this->return['result']['this_week']     = $this_week;
+        $this->return['result']['monthly_chart'] = $monthly_chart;
         return $this->successResponse();
     }
 
@@ -277,12 +496,26 @@ class GymGenericApiController extends GenericController
             $device_type = Constants::ANDROID;
 
         $device_token = request('device_token');
+
+        // Resolve member id safely even when this endpoint is called without auth middleware.
+        $memberId = @Auth::guard('api')->user()->id;
+        if (!$memberId) {
+            $token = request()->bearerToken();
+            if (!$token) {
+                $token = request('token');
+            }
+            if ($token) {
+                $token = trim((string) preg_replace('/^Bearer\s+/i', '', (string) $token));
+                $memberId = GymMember::where('api_token', hash('sha256', $token))->value('id');
+            }
+        }
+
         $record = GymPushToken::where('token', $device_token)->first();
         if (!$record) {
             GymPushToken::create([
                 'device_type' => $device_type,
                 'token' => $device_token,
-                'member_id' => @Auth::guard('api')->user()->id
+                'member_id' => $memberId,
             ]);
             
             // Try to add token to Firebase topic if class exists
@@ -295,7 +528,10 @@ class GymGenericApiController extends GenericController
                 \Log::info('Firebase integration not available', ['error' => $e->getMessage()]);
             }
         } else {
-            $record->update(['member_id' => @Auth::guard('api')->user()->id]);
+            // Do not clear existing member binding with null updates.
+            if ($memberId) {
+                $record->update(['member_id' => $memberId]);
+            }
         }
         $this->successResponse();
         return $this->response;
@@ -330,14 +566,14 @@ class GymGenericApiController extends GenericController
 
 
     public function myNotifications(){
-        $member = @\request()->user();
+        $member = @Auth::guard('api')->user();
         if (!empty($member->id)) {
-            $notifications = PushNotification::where('member_id', @$member->id)->orWhere('member_id', null)->orderBy('id', 'desc')->paginate($this->limit);
-            $this->return['notifications'] = $notifications ? NotificationResource::collection($notifications) : [];
-            return $this->successResponse();
+            $notifications = GymPushNotification::where('member_id', $member->id)->orWhere('member_id', null)->orderBy('id', 'desc')->get();
         } else {
-            return $this->falseResponse(trans('auth.failed'));
+            $notifications = GymPushNotification::whereNull('member_id')->orWhere('member_id', 0)->orderBy('id', 'desc')->get();
         }
+        $this->return['notifications'] = $notifications ? NotificationResource::collection($notifications) : [];
+        return $this->successResponse();
     }
 
     public function logErrors(Request $request)
@@ -429,9 +665,18 @@ class GymGenericApiController extends GenericController
 
     public function memberSubscriptionFreeze(){
         $member_id =  @Auth::guard('api')->user()->id;
-        $memberInfo = GymMemberSubscription::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member', 'subscription'])->where('member_id', $member_id)->orderBy('id', 'desc')->first();
-        $is_freeze = $this->SettingRepository->select('is_freeze')->first()->is_freeze;
-        if(@$is_freeze && $memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active) ){
+        $memberInfo = GymMember::with(['member_subscription_info' => function ($q) {
+            $q->reorder()->orderByRaw('CASE status
+                WHEN ' . TypeConstants::Active  . ' THEN 1
+                WHEN ' . TypeConstants::Freeze  . ' THEN 2
+                WHEN ' . TypeConstants::Coming  . ' THEN 3
+                WHEN ' . TypeConstants::Expired . ' THEN 4
+                ELSE 5 END')->orderBy('id', 'desc');
+        }])->where(['id' => $member_id])->first();
+
+        //$memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('member_id', $member_id)->orderBy('id', 'desc')->first();
+        $memberInfo = @$memberInfo->member_subscription_info;
+        if($memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active) ){
             $memberInfo->status = TypeConstants::Freeze;
             $memberInfo->number_times_freeze = ($memberInfo->number_times_freeze - 1);
             $memberInfo->start_freeze_date = Carbon::now();

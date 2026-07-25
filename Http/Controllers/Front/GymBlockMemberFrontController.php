@@ -44,11 +44,11 @@ class GymBlockMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $members = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
+            $members = $this->BlockMemberRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $members = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $members = $this->BlockMemberRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -73,7 +73,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
     }
 
     function exportExcel(){
-        $records = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $records = $this->BlockMemberRepository->get();
         $this->fileName = 'block-clients-' . Carbon::now()->toDateTimeString();
 
 //        $title =  trans('sw.block_list');
@@ -82,7 +82,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_block_members');
         $this->userLog($notes, TypeConstants::ExportBlockMemberExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'phone'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -117,7 +117,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
     }
 
     function exportPDF(){
-        $records = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $records = $this->BlockMemberRepository->get();
         $this->fileName = 'block_members-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name', 'phone'];
@@ -215,14 +215,14 @@ class GymBlockMemberFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $member =$this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $member =$this->BlockMemberRepository->withTrashed()->find($id);
         $title = trans('sw.block_member_edit');
         return view('software::Front.blockmember_front_form', ['member' => $member,'title'=>$title]);
     }
 
     public function update(GymBlockMemberRequest $request, $id)
     {
-        $member = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $member = $this->BlockMemberRepository->withTrashed()->find($id);
         $block_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $member->update($block_member_inputs);
 
@@ -239,7 +239,7 @@ class GymBlockMemberFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $member = $this->BlockMemberRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $member = $this->BlockMemberRepository->withTrashed()->find($id);
         $member->forceDelete();
 //        if($member->trashed())
 //        {
@@ -343,7 +343,6 @@ class GymBlockMemberFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
 //        !$inputs['deleted_at']?$inputs['deleted_at']=null:'';
 

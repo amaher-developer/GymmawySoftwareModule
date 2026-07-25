@@ -40,6 +40,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
         $this->GymSubscriptionRepository = new GymSubscriptionRepository(new Application);
 
+
     }
 
 
@@ -51,11 +52,11 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $subscriptions = $this->GymSubscriptionRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
+            $subscriptions = $this->GymSubscriptionRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $subscriptions = $this->GymSubscriptionRepository->branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $subscriptions = $this->GymSubscriptionRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -81,7 +82,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     }
 
     function exportExcel(){
-        $records = $this->GymSubscriptionRepository->get();
+        $records = $this->GymSubscriptionRepository->branch()->get();
         $this->fileName = 'subscriptions-' . Carbon::now()->toDateTimeString();
 
 //        $title = trans('sw.memberships');
@@ -90,7 +91,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_subscription');
         $this->userLog($notes, TypeConstants::ExportSubscriptionExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price', 'period', 'workouts', 'freeze_limit', 'number_times_freeze'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price', 'period', 'workouts', 'freeze_limit', 'number_times_freeze'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -130,7 +131,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     }
 
     function exportPDF(){
-        $records = $this->GymSubscriptionRepository->get();
+        $records = $this->GymSubscriptionRepository->branch()->get();
         $this->fileName = 'subscriptions-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name', 'price', 'period', 'workouts', 'freeze_limit', 'number_times_freeze'];
@@ -200,8 +201,8 @@ class GymSubscriptionFrontController extends GymGenericFrontController
     public function create()
     {
         $title = trans('sw.subscription_add');
-        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $categories = GymCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_subscription', true)->get();
+        $activities = GymActivity::branch()->get();
+        $categories = GymCategory::branch()->where('is_subscription', true)->get();
         return view('software::Front.subscription_front_form', ['activities' => $activities,'categories' => $categories,'subscription' => new GymSubscription(), 'title' => $title]);
     }
 
@@ -238,13 +239,12 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                     $activity_training_times = is_numeric($value) ? (int)$value : null;
                 }
                 if($activity_id && $activity_training_times && $activity_training_times > 0){
-                    GymActivitySubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('activity_id', $activity_id)->where('subscription_id', @$subscription->id)->forceDelete();
+                    GymActivitySubscription::branch()->where('activity_id', $activity_id)->where('subscription_id', @$subscription->id)->forceDelete();
                     GymActivitySubscription::create([
                         'activity_id' => $activity_id,
                         'subscription_id' => @$subscription->id,
                         'training_times' => $activity_training_times,
-                        'branch_setting_id' => @$this->user_sw->branch_setting_id,
-                        'tenant_id' => @$this->user_sw->tenant_id
+                        'branch_setting_id' => @$this->user_sw->branch_setting_id
                     ]);
                 }
             }
@@ -263,10 +263,10 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     public function edit($id)
     {
-        $subscription = $this->GymSubscriptionRepository->with('activities')->withTrashed()->find($id);
+        $subscription = $this->GymSubscriptionRepository->branch()->with('activities')->withTrashed()->find($id);
         $title = trans('sw.subscription_edit');
-        $activities = GymActivity::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $categories = GymCategory::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('is_subscription', true)->get();
+        $activities = GymActivity::branch()->get();
+        $categories = GymCategory::branch()->where('is_subscription', true)->get();
         return view('software::Front.subscription_front_form', ['activities' => $activities, 'categories' => $categories, 'subscription' => $subscription, 'title' => $title]);
     }
 
@@ -293,7 +293,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
         $subscription_inputs['user_id'] = Auth::guard('sw')->user()->id;
         $subscription_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
 
-        GymActivitySubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('subscription_id', @$subscription->id)->forceDelete();
+        GymActivitySubscription::branch()->where('subscription_id', @$subscription->id)->forceDelete();
         if(is_array($activities) && count($activities) > 0 && @$subscription->id){
             foreach ($activities as $key => $value){
                 $activity_id = null; $activity_training_times = null;
@@ -308,8 +308,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
                         'activity_id' => $activity_id,
                         'subscription_id' => @$subscription->id,
                         'training_times' => $activity_training_times,
-                        'branch_setting_id' => @$this->user_sw->branch_setting_id,
-                        'tenant_id' => @$this->user_sw->tenant_id
+                        'branch_setting_id' => @$this->user_sw->branch_setting_id
                     ]);
                 }
             }
@@ -343,7 +342,7 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
     public function destroy($id)
     {
-        $subscription = GymSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $subscription = GymSubscription::branch()->withTrashed()->find($id);
         if ($subscription->trashed()) {
             $subscription->restore();
         } else {
@@ -390,7 +389,6 @@ class GymSubscriptionFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
         return $inputs;
     }

@@ -166,8 +166,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-toolbar">
-                    <span class="badge 
+                <div class="card-toolbar gap-2">
+                    <span class="badge
                         @if($log->training_type == 'assessment') badge-light-primary
                         @elseif($log->training_type == 'plan') badge-light-success
                         @elseif($log->training_type == 'medicine') badge-light-warning
@@ -178,6 +178,14 @@
                         @endif me-2">
                         {{ ucfirst($log->training_type) }}
                     </span>
+                    @if(in_array('deleteTrainingMemberLog', (array)$swUser->permissions) || $swUser->is_super_user)
+                    <a href="{{ route('sw.deleteTrainingMemberLog', $log->id) }}"
+                       class="confirm_delete btn btn-icon btn-sm btn-light-danger"
+                       title="{{ trans('admin.delete') }}"
+                       onclick="event.stopPropagation();">
+                        <i class="ki-outline ki-trash fs-4"></i>
+                    </a>
+                    @endif
                     <i class="ki-outline ki-down fs-3"></i>
                 </div>
             </div>

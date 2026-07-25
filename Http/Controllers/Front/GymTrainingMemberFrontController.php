@@ -36,7 +36,6 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
         $this->imageManager = new ImageManager(new Driver());
 
         $this->TrainingMemberRepository=new GymTrainingMemberRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -49,11 +48,11 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $members = GymTrainingMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member'  => function ($q){ $q->withTrashed();}])->onlyTrashed()->orderBy('id', 'DESC');
+            $members = GymTrainingMember::branch()->with(['member'  => function ($q){ $q->withTrashed();}])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $members = GymTrainingMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member'  => function ($q){ $q->withTrashed();}])->orderBy('id', 'DESC');
+            $members = GymTrainingMember::branch()->with(['member'  => function ($q){ $q->withTrashed();}])->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -83,7 +82,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     }
 
     function exportExcel(){
-        $records =  GymTrainingMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member')->get();
+        $records =  GymTrainingMember::branch()->with('member')->get();
         $this->fileName = 'training-clients-' . Carbon::now()->toDateTimeString();
 
 //        $title =  trans('sw.training_list');
@@ -92,7 +91,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_training_members');
         $this->userLog($notes, TypeConstants::ExportTrainingMemberExcel);
 
-        return Excel::download(new TrainingMemberExport(['records' => $records, 'keys' => ['barcode', 'name', 'height', 'weight', 'diseases', 'plan_training', 'plan_diet', 'notes'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new TrainingMemberExport(['records' => $records, 'keys' => ['barcode', 'name', 'height', 'weight', 'diseases', 'plan_training', 'plan_diet', 'notes'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -134,7 +133,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     }
 
     function exportPDF(){
-        $records =  GymTrainingMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('member')->get();
+        $records =  GymTrainingMember::branch()->with('member')->get();
         $this->fileName = 'training-clients-' . Carbon::now()->toDateTimeString();
 
         $keys = ['name', 'phone'];
@@ -205,7 +204,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function createTrain()
     {
         $title = trans('sw.add_plan_training');
-        $plans = GymTrainingPlan::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('type', TypeConstants::TRAINING_PLAN_TYPE)->get();
+        $plans = GymTrainingPlan::branch()->where('type', TypeConstants::TRAINING_PLAN_TYPE)->get();
         return view('software::Front.training_member_front_form', [
             'member' => new GymTrainingMember(),'title'=>$title,  'plans' => $plans]);
     }
@@ -213,7 +212,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function storeTrain(GymTrainingMemberRequest $request)
     {
 
-        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $request->barcode)->first();
+        $member = GymMember::branch()->where('code', $request->barcode)->first();
         $training_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $training_member_inputs['user_id'] = $this->user_sw->id;
         $training_member_inputs['member_id'] = $member->id;
@@ -236,7 +235,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function createDiet()
     {
         $title = trans('sw.add_plan_diet');
-        $plans = GymTrainingPlan::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('type', TypeConstants::DIET_PLAN_TYPE)->get();
+        $plans = GymTrainingPlan::branch()->where('type', TypeConstants::DIET_PLAN_TYPE)->get();
         return view('software::Front.training_member_front_form', [
             'member' => new GymTrainingMember(),'title'=>$title, 'plans' => $plans]);
     }
@@ -244,7 +243,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function storeDiet(GymTrainingMemberRequest $request)
     {
 
-        $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $request->barcode)->first();
+        $member = GymMember::branch()->where('code', $request->barcode)->first();
         $training_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $training_member_inputs['user_id'] = $this->user_sw->id;
         $training_member_inputs['member_id'] = $member->id;
@@ -267,15 +266,15 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function edit($id)
     {
         $member = $this->TrainingMemberRepository->withTrashed()->find($id);
-        $plans = GymTrainingPlan::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('type', $member->type)->get();
+        $plans = GymTrainingPlan::branch()->where('type', $member->type)->get();
         $title = trans('sw.training_member_edit');
         return view('software::Front.training_member_front_form', ['member' => $member,'title'=>$title, 'plans' => $plans]);
     }
 
     public function update(GymTrainingMemberRequest $request, $id)
     {
-        $member_detail = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('code', $request->barcode)->first();
-        $member = GymTrainingMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->withTrashed()->find($id);
+        $member_detail = GymMember::branch()->where('code', $request->barcode)->first();
+        $member = GymTrainingMember::branch()->withTrashed()->find($id);
         $training_member_inputs = $this->prepare_inputs($request->except(['_token']));
         $training_member_inputs['user_id'] = $this->user_sw->id;
         $training_member_inputs['member_id'] = $member_detail->id;
@@ -296,7 +295,7 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function destroy($id)
     {
         $member = $this->TrainingMemberRepository->withTrashed()->find($id);
-        $member_detail = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $member->member_id)->first();
+        $member_detail = GymMember::branch()->where('id', $member->member_id)->first();
 
 //        $member->forceDelete();
         if($member->trashed())
@@ -323,14 +322,14 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
     public function memberPlans($info){
         //$encrypted = base64_encode('2'.','.'000000000002');
         $encrypted = base64_encode('558'.','.'000000000558');
-        $setting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select('name_ar', 'name_en', 'logo_ar', 'logo_en',  'phone', 'support_email')->first();
+        $setting = Setting::branch()->select('name_ar', 'name_en', 'logo_ar', 'logo_en',  'phone', 'support_email')->first();
 
         $info_decode = base64_decode($info);
         $info_arr = explode(',', $info_decode);
         if($info_arr[0]){
-            $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $info_arr[0])->first();
-            $member_plans = GymTrainingMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['training_plan', 'diet_plan'])->where('member_id', $info_arr[0])->get();
-            $member_tracks = GymTrainingTrack::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('member_id', $info_arr[0])->get();
+            $member = GymMember::branch()->where('id', $info_arr[0])->first();
+            $member_plans = GymTrainingMember::branch()->with(['training_plan', 'diet_plan'])->where('member_id', $info_arr[0])->get();
+            $member_tracks = GymTrainingTrack::branch()->where('member_id', $info_arr[0])->get();
 
             if (is_array($$member_plans) && count($$member_plans) > 0){
                 return view('software::Web.training_member_profile', [
@@ -427,7 +426,6 @@ class GymTrainingMemberFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
 
 //        !$inputs['deleted_at']?$inputs['deleted_at']=null:'';

@@ -187,7 +187,7 @@
                         </div>
                         <div class="flex-root d-flex flex-column">
                             <span class="text-muted"><i class="ki-outline ki-bill fs-6 me-1"></i>{{ trans('sw.invoice_total_required') }}</span>
-                            <span class="fs-5">{{number_format($order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</span>
+                            <span class="fs-5">{{number_format($order['total_amount'] ?? $order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</span>
                         </div>
                     </div>
                     <!--end::Order details-->
@@ -314,7 +314,7 @@
                                     @endif
                                     <tr>
                                         <td colspan="4" class="text-end">{{ trans('sw.invoice_total') }}</td>
-                                        <td class="text-end">{{number_format(($order['amount_paid'] - @$order['vat']),2)}} {{@trans('sw.app_currency')}}</td>
+                                        <td class="text-end">{{number_format((($order['total_amount'] ?? $order['amount_paid']) - @$order['vat']),2)}} {{@trans('sw.app_currency')}}</td>
                                     </tr>
                                     @if(@$order['vat'])
                                     <tr>
@@ -324,7 +324,7 @@
                                     @endif
                                     <tr>
                                         <td colspan="4" class="fs-3 text-gray-900 fw-bold text-end">{{ trans('sw.invoice_total_required') }}</td>
-                                        <td class="text-gray-900 fs-3 fw-bolder text-end">{{number_format($order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</td>
+                                        <td class="text-gray-900 fs-3 fw-bolder text-end">{{number_format($order['total_amount'] ?? $order['amount_paid'], 2)}} {{@trans('sw.app_currency')}}</td>
                                     </tr>
                                 </tbody>
                             </table>

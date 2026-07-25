@@ -114,6 +114,12 @@ class GymMoneyBox extends GenericModel
         return $this->hasOne(\Modules\Billing\Models\SwBillingInvoice::class, 'money_box_id');
     }
 
+    /** Invoice this payment entry is linked to. */
+    public function invoice()
+    {
+        return $this->belongsTo(GymSwInvoice::class, 'invoice_id');
+    }
+
     public function getOperationNameAttribute()
     {
         $operation = $this->getRawOriginal('operation');
@@ -128,28 +134,7 @@ class GymMoneyBox extends GenericModel
 
     public function getPaymentTypeNameAttribute()
     {
-        $payment_type = $this->getRawOriginal('payment_type');
-        if($payment_type == 0){
-            return trans('sw.payment_cash');
-        }else if($payment_type == 1){
-            return trans('sw.payment_online');
-        }else if($payment_type == 2){
-            return trans('sw.payment_bank_transfer');
-        }
-    }
-
-    /**
-     * Get display-friendly ID for reports
-     * Format: BRANCH-0001, BRANCH-0002, etc.
-     * This provides consistent sequential IDs within each tenant
-     */
-    public function getDisplayIdAttribute()
-    {
-        if ($this->sequence_number) {
-            return sprintf('%d-%04d', $this->branch_setting_id, $this->sequence_number);
-        }
-        // Fallback to regular ID if sequence_number not set
-        return $this->id;
+        return $this->pay_type->name ?? '';
     }
 
     public function toArray()

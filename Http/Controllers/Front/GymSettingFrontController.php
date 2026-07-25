@@ -20,6 +20,8 @@ use Modules\Software\Models\GymPaymentType;
 use Modules\Software\Models\GymSaleChannel;
 use Modules\Software\Models\GymStoreGroup;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -36,11 +38,12 @@ class GymSettingFrontController extends GymGenericFrontController
     public function edit()
     {
 
-        $mainSetting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
+        $mainSettings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+
         $title = trans('sw.settings');
         $smsPoints = $this->formatSmsPoints(0);
         try {
-            if($mainSetting['sms_internal_gateway']){
+            if($mainSettings['sms_internal_gateway']){
                 $sms = new SMSGymmawy();
                 $sms = $sms->getBalance();
             }else{
@@ -58,26 +61,23 @@ class GymSettingFrontController extends GymGenericFrontController
             'title'=>$title,
             'smsPoints' => $smsPoints,
             'max_messages' => $max_messages,
-            'mainSetting' => $mainSetting,
-            'billingSettings' => $mainSetting->billing ?? [],
+            'mainSettings' => $mainSettings,
+            'billingSettings' => $mainSettings->billing ?? [],
             'imagePath' => asset(Setting::$uploads_path.'gyms/'),
+            'paymentsSettings' => $mainSettings->payments ?? [],
+            'appConfig' => $mainSettings->app_config ?? [],
+            'integrationsSettings' => $mainSettings->integrations ?? [],
         ]);
     }
 
     public function update(GymSettingRequest $request)
     {
-        $setting = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
-
+        $setting = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        
         $setting_inputs = $this->prepare_inputs($request->only(['name_ar', 'name_en', 'facebook', 'twitter', 'instagram',  'tiktok',  'snapchat', 'youtube', 'address_ar', 'address_en',
             'latitude', 'longitude', 'phone', 'support_email', 'meta_keywords_ar', 'meta_keywords_en', 'meta_description_ar', 'meta_description_en',
             'about_ar', 'about_en', 'terms_ar', 'terms_en', 'sms_username', 'sms_email', 'sms_sms_sender_id'
             , 'images', 'vat_details', 'reservation_details']));
-
-        // Setting model needs explicit tenant_id/branch_setting_id for updates
-        if(@$this->user_sw->branch_setting_id){
-            $setting_inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $setting_inputs['tenant_id'] = @$this->user_sw->tenant_id;
-        }
 
         $billingInput = $request->input('billing');
         if ($billingInput !== null) {
@@ -112,7 +112,23 @@ class GymSettingFrontController extends GymGenericFrontController
         if (!empty($socialMediaData)) {
             $setting_inputs['social_media'] = $socialMediaData;
         }
-        
+
+        // Payment gateway credentials
+        if ($request->has('payments')) {
+            $setting_inputs['payments'] = $request->input('payments');
+        }
+
+        // App-level configuration
+        if ($request->has('app_config')) {
+            $setting_inputs['app_config'] = $request->input('app_config');
+        }
+
+        // Extended integrations (Telegram, Firebase, Pusher, Facebook, Google, WA)
+        if ($request->has('integrations_extra')) {
+            $existingIntegrations = $setting->integrations ?? [];
+            $setting_inputs['integrations'] = array_merge($existingIntegrations, $request->input('integrations_extra'));
+        }
+
         // Update settings
         $setting->update($setting_inputs);
 
@@ -128,7 +144,55 @@ class GymSettingFrontController extends GymGenericFrontController
             'type' => 'success'
         ]);
         
-        return redirect(route('sw.editSetting',1));
+        return redirect(route('sw.editSetting'));
+    }
+
+    public function editIntegrations()
+    {
+        $mainSettings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+
+        return view('software::Front.integrations', [
+            'title' => trans('sw.integrations_page') ?? 'Integrations',
+            'mainSettings' => $mainSettings,
+            'paymentsSettings' => $mainSettings->payments ?? [],
+            'appConfig' => $mainSettings->app_config ?? [],
+            'integrationsSettings' => $mainSettings->integrations ?? [],
+        ]);
+    }
+
+    public function updateIntegrations(\Illuminate\Http\Request $request)
+    {
+        $setting = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
+        $inputs = [];
+
+        // Payment gateway credentials
+        if ($request->has('payments')) {
+            $inputs['payments'] = $request->input('payments');
+        }
+
+        // App-level configuration
+        if ($request->has('app_config')) {
+            $inputs['app_config'] = $request->input('app_config');
+        }
+
+        // Extended integrations (Telegram, Firebase, Pusher, Facebook, Google, WA)
+        if ($request->has('integrations_extra')) {
+            $existingIntegrations = $setting->integrations ?? [];
+            $inputs['integrations'] = array_merge($existingIntegrations, $request->input('integrations_extra'));
+        }
+
+        $setting->update($inputs);
+
+        SwBillingService::flushSettingsCache();
+        Cache::flush();
+
+        session()->flash('sweet_flash_message', [
+            'title' => trans('admin.done'),
+            'message' => trans('admin.successfully_edited'),
+            'type' => 'success'
+        ]);
+
+        return redirect(route('sw.editIntegrations'));
     }
 
     private function prepare_inputs_addons($inputs){
@@ -234,17 +298,19 @@ class GymSettingFrontController extends GymGenericFrontController
             $inputs['content_en'] = '';
         }
 
-        // Note: tenant_id and branch_setting_id are now automatically set by model creating events
-        // for GymPaymentType, GymGroupDiscount, GymSaleChannel, GymStoreGroup
-        // GymMoneyBoxType is a shared lookup table and doesn't have these columns
-        // Setting model gets these fields added explicitly in its update() method
+
+
+        if(@$this->user_sw->branch_setting_id){
+            $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
+        }
+
         return $inputs;
     }
 
 
     function updateImage()
     {
-        $settings = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
+        $settings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
 //        if(@request('type') == 2){
 //            $setting_images = (array)$settings->cover_images;
 //            $input_file = 'cover_file';
@@ -311,7 +377,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     function updateImageDelete(){
 
-        $settings = Setting::branch(@$this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->first();
+        $settings = Setting::branch($this->user_sw->branch_setting_id ?? 1)->first();
         if(request('type') == 2){ $setting_images = (array)$settings->cover_images;}else{$setting_images = (array)$settings->images;}
         $index = array_search(request('image'),$setting_images);
         if($index !== FALSE){
@@ -340,11 +406,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $payment_types = GymPaymentType::onlyTrashed()->orderBy('id', 'DESC');
+            $payment_types = GymPaymentType::branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $payment_types = GymPaymentType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $payment_types = GymPaymentType::branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -370,15 +436,31 @@ class GymSettingFrontController extends GymGenericFrontController
     public function createPaymentType()
     {
         $title = trans('sw.payment_type_add');
-        return view('software::Front.payment_type_front_form', ['payment_type' => new GymPaymentType(),'title'=>$title]);
+        return view('software::Front.payment_type_front_form', [
+            'payment_type' => new GymPaymentType(),
+            'title' => $title,
+            'gatewayMethods' => $this->availablePaymentMethods(),
+            'selectedPaymentMethods' => [],
+        ]);
     }
 
     public function storePaymentType(GymPaymentTypeRequest $request)
     {
         $prepare_inputs = $this->prepare_inputs($request->except(['_token']));
+
+        $selectedPaymentMethods = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('payment_methods', [])))));
+        if (empty($selectedPaymentMethods) && $request->filled('payment_method')) {
+            $selectedPaymentMethods = [(int) $request->input('payment_method')];
+        }
+
+        // Keep backward compatibility with existing single-column binding.
+        $prepare_inputs['payment_method'] = !empty($selectedPaymentMethods) ? $selectedPaymentMethods[0] : null;
+
         $payment_type = GymPaymentType::create($prepare_inputs);
         $payment_type->payment_id = $payment_type->id - 1;
         $payment_type->save();
+
+        $this->syncPaymentTypeMethods((int) $payment_type->id, $selectedPaymentMethods);
         
         session()->flash('sweet_flash_message', [
             'title' => trans('admin.done'),
@@ -393,17 +475,33 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function editPaymentType($id)
     {
-        $payment_type = GymPaymentType::withTrashed()->find($id);
+        $payment_type = GymPaymentType::branch()->withTrashed()->find($id);
         $title = trans('sw.payment_type_edit');
-        return view('software::Front.payment_type_front_form', ['payment_type' => $payment_type,'title'=>$title]);
+
+        return view('software::Front.payment_type_front_form', [
+            'payment_type' => $payment_type,
+            'title' => $title,
+            'gatewayMethods' => $this->availablePaymentMethods(),
+            'selectedPaymentMethods' => $this->getPaymentTypeMethodIds($payment_type),
+        ]);
     }
 
     public function updatePaymentType(GymPaymentTypeRequest $request, $id)
     {
-        $payment_type = GymPaymentType::withTrashed()->find($id);
+        $payment_type = GymPaymentType::branch()->withTrashed()->find($id);
         $prepare_inputs = $this->prepare_inputs($request->except(['_token']));
+
+        $selectedPaymentMethods = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('payment_methods', [])))));
+        if (empty($selectedPaymentMethods) && $request->filled('payment_method')) {
+            $selectedPaymentMethods = [(int) $request->input('payment_method')];
+        }
+
+        // Keep backward compatibility with existing single-column binding.
+        $prepare_inputs['payment_method'] = !empty($selectedPaymentMethods) ? $selectedPaymentMethods[0] : null;
 //        $prepare_inputs['payment_id'] = $payment_type->id - 1;
         $payment_type->update($prepare_inputs);
+
+        $this->syncPaymentTypeMethods((int) $payment_type->id, $selectedPaymentMethods);
 
         $notes = str_replace(':name', $payment_type['name'], trans('sw.edit_payment_type'));
         $this->userLog($notes, TypeConstants::EditPaymentType);
@@ -418,7 +516,7 @@ class GymSettingFrontController extends GymGenericFrontController
 
     public function destroyPaymentType($id)
     {
-        $payment_type = GymPaymentType::withTrashed()->find($id);
+        $payment_type = GymPaymentType::branch()->withTrashed()->find($id);
         if($payment_type->trashed())
         {
             $payment_type->restore();
@@ -438,6 +536,63 @@ class GymSettingFrontController extends GymGenericFrontController
         return redirect(route('sw.listPaymentType'));
     }
 
+    private function availablePaymentMethods(): array
+    {
+        return [
+            TypeConstants::TABBY_TRANSACTION => 'Tabby',
+            TypeConstants::PAYMOB_TRANSACTION => 'Paymob',
+            TypeConstants::TAMARA_TRANSACTION => 'Tamara',
+            TypeConstants::PAYTABS_TRANSACTION => 'PayTabs',
+        ];
+    }
+
+    private function getPaymentTypeMethodIds(?GymPaymentType $paymentType): array
+    {
+        if (!$paymentType) {
+            return [];
+        }
+
+        if (Schema::hasTable('sw_gym_payment_type_methods')) {
+            $methods = DB::table('sw_gym_payment_type_methods')
+                ->where('payment_type_id', (int) $paymentType->id)
+                ->pluck('payment_method')
+                ->map(fn($v) => (int) $v)
+                ->values()
+                ->all();
+
+            if (!empty($methods)) {
+                return $methods;
+            }
+        }
+
+        return $paymentType->payment_method ? [(int) $paymentType->payment_method] : [];
+    }
+
+    private function syncPaymentTypeMethods(int $paymentTypeId, array $paymentMethods): void
+    {
+        if (!Schema::hasTable('sw_gym_payment_type_methods')) {
+            return;
+        }
+
+        DB::table('sw_gym_payment_type_methods')
+            ->where('payment_type_id', $paymentTypeId)
+            ->delete();
+
+        if (empty($paymentMethods)) {
+            return;
+        }
+
+        $rows = [];
+        foreach ($paymentMethods as $method) {
+            $rows[] = [
+                'payment_type_id' => $paymentTypeId,
+                'payment_method' => (int) $method,
+            ];
+        }
+
+        DB::table('sw_gym_payment_type_methods')->insert($rows);
+    }
+
 
 
 
@@ -451,11 +606,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $group_discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->onlyTrashed()->orderBy('id', 'DESC');
+            $group_discounts = GymGroupDiscount::branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $group_discounts = GymGroupDiscount::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $group_discounts = GymGroupDiscount::branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -557,11 +712,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $sale_channels = GymSaleChannel::onlyTrashed()->orderBy('id', 'DESC');
+            $sale_channels = GymSaleChannel::branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $sale_channels = GymSaleChannel::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $sale_channels = GymSaleChannel::branch()->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -663,11 +818,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $money_box_types = GymMoneyBoxType::onlyTrashed()->orderBy('operation_type', 'DESC');
+            $money_box_types = GymMoneyBoxType::branch()->onlyTrashed()->orderBy('operation_type', 'DESC');
         }
         else
         {
-            $money_box_types = GymMoneyBoxType::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('operation_type', 'DESC');
+            $money_box_types = GymMoneyBoxType::branch()->orderBy('operation_type', 'DESC');
         }
 
         //apply filters
@@ -781,11 +936,11 @@ class GymSettingFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $store_groups = GymStoreGroup::onlyTrashed()->orderBy('id', 'DESC');
+            $store_groups = GymStoreGroup::branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $store_groups = GymStoreGroup::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('id', 'DESC');
+            $store_groups = GymStoreGroup::branch()->orderBy('id', 'DESC');
         }
 
         //apply filters

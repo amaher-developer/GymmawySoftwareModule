@@ -75,15 +75,20 @@
         ];
     })->values()->toArray();
 
+    $ptExpireDate = optional($memberModel->end_date)->format('Y-m-d')
+        ?? (optional($memberModel->expire_date)->format('Y-m-d') ?? null);
+    $ptJoiningDate = optional($memberModel->start_date)->format('Y-m-d')
+        ?? (optional($memberModel->joining_date)->format('Y-m-d') ?? null);
+
     $memberSnapshot = [
         'name'             => optional($memberModel->member)->name,
         'barcode'          => optional($memberModel->member)->code,
         'membership'       => optional($memberSubscription)->name,
-        'expire_date'      => optional($memberInfo)->expire_date ? Carbon::parse($memberInfo->expire_date)->format('Y-m-d') : null,
+        'expire_date'      => $isEdit && $ptExpireDate ? $ptExpireDate : (optional($memberInfo)->expire_date ? Carbon::parse($memberInfo->expire_date)->format('Y-m-d') : null),
         'amount_remaining' => optional($memberInfo)->amount_remaining,
-        'status_name'      => optional($memberInfo)->status_name,
-        'status_code'      => optional($memberInfo)->status,
-        'joining_date'     => optional($memberInfo)->joining_date ? Carbon::parse($memberInfo->joining_date)->format('Y-m-d') : null,
+        'status_name'      => $isEdit ? $memberModel->status_name : optional($memberInfo)->status_name,
+        'status_code'      => $isEdit ? $memberModel->status : optional($memberInfo)->status,
+        'joining_date'     => $isEdit && $ptJoiningDate ? $ptJoiningDate : (optional($memberInfo)->joining_date ? Carbon::parse($memberInfo->joining_date)->format('Y-m-d') : null),
     ];
 
     $invoice = $memberModel->zatcaInvoice ?? null;

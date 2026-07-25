@@ -317,6 +317,11 @@
                                 $total_after_vat = round($order->amount, 2);
                                 $vat = round($order->vat ?? 0, 2);
                                 $total_before_vat = $total_after_vat - $vat;
+                                // Guard: if amount is 0 or subtraction yields negative, zero-out VAT
+                                if ($total_after_vat <= 0 || $total_before_vat < 0) {
+                                    $vat = 0;
+                                    $total_before_vat = $total_after_vat;
+                                }
 
                             @endphp
                             <tr>

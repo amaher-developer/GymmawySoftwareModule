@@ -218,7 +218,10 @@
                                 </div>
                             </td>
                             <td class="pe-0">
-                                <span class="fw-bold text-success">{{ number_format($order->amount_paid, 2) }}</span>
+                                <span class="fw-bold text-success">{{ number_format($order->total_amount ?? $order->amount_paid, 2) }}</span>
+                                @if(($order->amount_remaining ?? 0) > 0)
+                                    <br><small class="text-danger">({{ trans('sw.remaining') }}: {{ number_format($order->amount_remaining, 2) }})</small>
+                                @endif
                             </td>
                             <td class="pe-0">
                                 <span class="fw-bold">{{ $order->member?->name ?? trans('sw.guest') }}</span>
@@ -354,8 +357,11 @@
                                 </div>
                             </div>
                             <div class="text-end">
-                                <div class="fs-4 fw-bold text-success">{{ number_format($order->amount_paid, 2) }} {{ trans('sw.app_currency') }}</div>
+                                <div class="fs-4 fw-bold text-success">{{ number_format($order->total_amount ?? $order->amount_paid, 2) }} {{ trans('sw.app_currency') }}</div>
                                 <div class="fs-7 text-muted">{{ trans('sw.total_amount') }}</div>
+                                @if(($order->amount_remaining ?? 0) > 0)
+                                    <div class="fs-7 text-danger">{{ trans('sw.remaining') }}: {{ number_format($order->amount_remaining, 2) }}</div>
+                                @endif
                             </div>
                         </div>
                         
@@ -411,7 +417,7 @@
                                             <td colspan="5" class="text-center py-8">
                                                 <div class="d-flex flex-column align-items-center">
                                                     <i class="ki-outline ki-information fs-2x text-muted mb-3"></i>
-                                                    <div class="fw-bold text-muted">{{ trans('sw.store_order_p_not_found_msg', ['price'=> number_format($order->amount_paid, 2)]) }}</div>
+                                                    <div class="fw-bold text-muted">{{ trans('sw.store_order_p_not_found_msg', ['price'=> number_format($order->total_amount ?? $order->amount_paid, 2)]) }}</div>
                                                 </div>
                                             </td>
                                         </tr>

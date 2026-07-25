@@ -81,6 +81,16 @@
     <!--begin::Member Edit Form-->
     <form method="post" action="" class="form d-flex flex-column flex-lg-row" enctype="multipart/form-data">
         {{csrf_field()}}
+
+        @if ($errors->any())
+            <div class="alert alert-danger mb-7 w-100">
+                <ul class="mb-0 ps-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         
         <!--begin::Main column-->
         <div class="d-flex flex-column flex-row-fluid gap-7 gap-lg-10">
@@ -122,7 +132,7 @@
                     
                     <!--begin::Identification Code-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.identification_code')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.identification_code')}} <span class="required"></span></label>
                         <div class="col-md-6">
                             <input name="code" onkeydown="return event.key!=='Enter';" value="{{ old('code', $member->code) }}"
                                    type="text" class="form-control" min="0"
@@ -156,7 +166,7 @@
 
                     <!--begin::Name-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.name')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.name')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input name="name" value="{{ old('name', $member->name) }}" type="text" class="form-control"
                                    id="unsubscribedClientInputName" placeholder="{{ trans('sw.enter_name')}}" required>
@@ -166,7 +176,7 @@
 
                     <!--begin::Gender-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.gender')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.gender')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <div class="d-flex gap-5">
                                 <label class="form-check form-check-custom form-check-solid">
@@ -188,7 +198,7 @@
 
                     <!--begin::Phone-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.phone')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.phone')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input name="phone" value="{{ old('phone', $member->phone) }}" type="text" class="form-control"
                                    id="subscribedClientInputPhone"
@@ -220,7 +230,7 @@
 
                     <!--begin::Address-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.address')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.address')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input name="address" value="{{ old('address', $member->address) }}" type="text" class="form-control"
                                    id="subscribedClientInputAddress"
@@ -275,18 +285,6 @@
                     </div>
                     @endif
                     <!--end::Sale Channels-->
-
-                    <!--begin::Invitations-->
-                    <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.invitations_num')}} </label>
-                        <div class="col-md-9">
-                            <input class="form-control" placeholder="{{ trans('sw.invitations_num')}}"
-                                   name="invitations"
-                                   value="{{ old('invitations', $member->invitations) }}"
-                                   type="number">
-                        </div>
-                    </div>
-                    <!--end::Invitations-->
 
                     <!--begin::Additional Info-->
                     <div class="row mb-5">
@@ -366,7 +364,7 @@
                                                 <!--end::Pay-->
                                                 
                                                 <!--begin::Edit-->
-                                                @if(in_array('editMember', (array)$swUser->permissions) || $swUser->is_super_user)
+                                                @if(($key < 2) && (in_array('editMember', (array)$swUser->permissions) || $swUser->is_super_user))
                                                     <a class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
                                                        onclick="edit_member_membership('{{@$member_subscription->id}}')"
                                                        expire_date="{{\Carbon\Carbon::parse(@$member_subscription->expire_date)->toDateString()}}"
@@ -610,11 +608,22 @@
                         <label class="col-md-3 col-form-label">{{ trans('sw.max_freeze_extension_sum')}}</label>
                         <div class="col-md-9">
                             <input id="EditMembershipMaxFreezeExtensionSum" value="" min="0"
-                                   name="max_freeze_extension_sum" type="number" class="form-control" 
+                                   name="max_freeze_extension_sum" type="number" class="form-control"
                                    placeholder="{{ trans('sw.max_freeze_extension_sum')}}">
                         </div>
                     </div>
                     <!--end::Max Freeze+Extension Sum-->
+
+                    <!--begin::Invitations-->
+                    <div class="row mb-5">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.invitations_num')}}</label>
+                        <div class="col-md-9">
+                            <input id="EditMembershipInvitations" value="" min="0"
+                                   name="invitations" type="number" class="form-control"
+                                   placeholder="{{ trans('sw.invitations_num')}}">
+                        </div>
+                    </div>
+                    <!--end::Invitations-->
 
                     <!--begin::Separator-->
                     <div class="separator separator-dashed my-5"></div>
@@ -633,6 +642,14 @@
                         </div>
                     </div>
                     <!--end::Price Display-->
+
+                    <!--begin::Discount Subscription Message-->
+                    <div class="row mb-5">
+                        <div class="col-md-12">
+                            <div id="edit_discount_subscription_message"></div>
+                        </div>
+                    </div>
+                    <!--end::Discount Subscription Message-->
 
                     <!--begin::Discount Section-->
                     <div class="row mb-5" @if((in_array('editMemberDiscount', (array)$swUser->permissions)) || $swUser->is_super_user) style="display: flex" @else style="display: none" @endif>
@@ -677,7 +694,7 @@
 
                     <!--begin::Amount Paid-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_paid')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_paid')}} <span class="required"></span></label>
                         <div class="col-md-9">
                             <input id="create_amount_paid" class="form-control" name="amount_paid" 
                                    value="{{ old('amount_paid', @($member->amount_paid)) }}"
@@ -691,15 +708,16 @@
 
                     <!--begin::Amount Remaining-->
                     <div class="row mb-5">
-                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_remaining')}} <span class="required">*</span></label>
+                        <label class="col-md-3 col-form-label">{{ trans('sw.amount_remaining')}} <span class="required"></span></label>
                         <div class="col-md-9">
-                            <input id="create_amount_remaining" class="form-control" name="amount_remaining" 
+                            <input id="create_amount_remaining" class="form-control" name="amount_remaining"
                                    value="{{@old('amount_remaining', @$member->amount_remaining)}}"
-                                   placeholder="{{ trans('sw.enter_amount_remaining')}}" 
+                                   placeholder="{{ trans('sw.enter_amount_remaining')}}"
                                    disabled type="number" step="0.01" min="0"/>
                         </div>
                     </div>
                     <!--end::Amount Remaining-->
+
 
                     <!--begin::Notes-->
                     <div class="row mb-5">
@@ -733,6 +751,87 @@
                         </div>
                     </div>
                     <!--end::Diff Payment Info-->
+                    
+                    <!--begin::Payment Type-->
+                    <div class="row mb-5" id="payment_type_row" style="display: none;">
+                        <label class="col-md-3 col-form-label">{{ trans('sw.payment_type')}} <span class="required"></span></label>
+                        <div class="col-md-9">
+                            <select id="edit_payment_type" name="payment_type" class="form-control">
+                                @foreach($payment_types as $payment_type)
+                                    <option value="{{$payment_type->payment_id}}">{{$payment_type->name}}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <!--end::Payment Type-->
+
+                    <!--begin::Tabby Payment Option-->
+                    @if(!empty($mainSettings->payments['tabby']['merchant_code'] ?? null))
+                    <div class="row mb-5" id="edit_tabby_payment_row" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.tabby_payment')}}</label>
+                            <div class="form-check form-switch form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="send_tabby_link" id="edit_send_tabby_link" value="1"/>
+                                <label class="form-check-label" for="edit_send_tabby_link">
+                                    {{ trans('sw.send_tabby_payment_link')}}
+                                </label>
+                            </div>
+                            <div class="text-muted fs-7 mt-1">{{ trans('sw.tabby_payment_description')}}</div>
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Tabby Payment Option-->
+
+                    <!--begin::Tamara Payment Option-->
+                    @if(!empty($mainSettings->payments['tamara']['token'] ?? null))
+                    <div class="row mb-5" id="edit_tamara_payment_row" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.tamara_payment')}}</label>
+                            <div class="form-check form-switch form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="send_tamara_link" id="edit_send_tamara_link" value="1"/>
+                                <label class="form-check-label" for="edit_send_tamara_link">
+                                    {{ trans('sw.send_tamara_payment_link')}}
+                                </label>
+                            </div>
+                            <div class="text-muted fs-7 mt-1">{{ trans('sw.tamara_payment_description')}}</div>
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Tamara Payment Option-->
+
+                    <!--begin::Paymob Payment Option-->
+                    @if(!empty($mainSettings->payments['paymob']['api_key'] ?? null))
+                    <div class="row mb-5" id="edit_paymob_payment_row" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.paymob_payment')}}</label>
+                            <div class="form-check form-switch form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="send_paymob_link" id="edit_send_paymob_link" value="1"/>
+                                <label class="form-check-label" for="edit_send_paymob_link">
+                                    {{ trans('sw.send_paymob_payment_link')}}
+                                </label>
+                            </div>
+                            <div class="text-muted fs-7 mt-1">{{ trans('sw.paymob_payment_description')}}</div>
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::Paymob Payment Option-->
+
+                    <!--begin::PayTabs Payment Option-->
+                    @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
+                    <div class="row mb-5" id="edit_paytabs_payment_row" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">{{ trans('sw.paytabs_payment')}}</label>
+                            <div class="form-check form-switch form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="send_paytabs_link" id="edit_send_paytabs_link" value="1"/>
+                                <label class="form-check-label" for="edit_send_paytabs_link">
+                                    {{ trans('sw.send_paytabs_payment_link')}}
+                                </label>
+                            </div>
+                            <div class="text-muted fs-7 mt-1">{{ trans('sw.paytabs_payment_description')}}</div>
+                        </div>
+                    </div>
+                    @endif
+                    <!--end::PayTabs Payment Option-->
 
                 </div>
                 <!--end::Modal body-->
@@ -822,9 +921,9 @@
                         var expire_attr = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
                         var membership_selected = '';
                             if(data.membership[i]['id'] == data.member_membership['subscription_id']){
-                            output += '<option start_date="' + data.member_membership['joining_date'] + '" expire_date="' + data.member_membership['expire_date'] + '" period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '" workouts="' + data.membership[i]['workouts'] + '" freeze_limit="' + data.member_membership['freeze_limit'] + '" number_times_freeze="' + data.member_membership['number_times_freeze'] + '" max_extension_days="' + (data.member_membership['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.member_membership['max_freeze_extension_sum'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  selected="" >' + data.membership[i]['name'] + ' </option>';
+                            output += '<option start_date="' + data.member_membership['joining_date'] + '" expire_date="' + data.member_membership['expire_date'] + '" period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '" workouts="' + data.membership[i]['workouts'] + '" freeze_limit="' + data.member_membership['freeze_limit'] + '" number_times_freeze="' + data.member_membership['number_times_freeze'] + '" max_extension_days="' + (data.member_membership['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.member_membership['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.member_membership['invitations'] ?? 0) + '" discount_type="' + (data.membership[i]['default_discount_type'] || 0) + '" discount_value="' + (data.membership[i]['default_discount_value'] || 0) + '"  value="' + data.membership[i]['id'] + '"  selected="" >' + data.membership[i]['name'] + ' </option>';
                         }else{
-                            output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
+                            output += '<option start_date="' + start_attr + '" expire_date="' + expire_attr + '"  period="' + period + '" IsChangeable="' + data.membership[i]['is_expire_changeable'] + '"  title="' + data.membership[i]['price'] + '" price="' + data.membership[i]['price'] + '"  workouts="' + data.membership[i]['workouts'] + '"  freeze_limit="' + data.membership[i]['freeze_limit'] + '" number_times_freeze="' + data.membership[i]['number_times_freeze'] + '" max_extension_days="' + (data.membership[i]['max_extension_days'] ?? 0) + '" max_freeze_extension_sum="' + (data.membership[i]['max_freeze_extension_sum'] ?? 0) + '" invitations="' + (data.membership[i]['invitations'] ?? 0) + '" discount_type="' + (data.membership[i]['default_discount_type'] || 0) + '" discount_value="' + (data.membership[i]['default_discount_value'] || 0) + '"  value="' + data.membership[i]['id'] + '"  >' + data.membership[i]['name'] + ' </option>';
                         }
                     }
                     $('#EditMembershipSelect').html(output).trigger('change.select2');
@@ -962,6 +1061,7 @@
     var selectedMembershipNumberTimesFreeze = 0;
     var selectedMembershipMaxExtensionDays = 0;
     var selectedMembershipMaxFreezeExtensionSum = 0;
+    var selectedMembershipInvitations = 0;
 
     $("#EditMembershipSelect").select2({
         dropdownParent: $('#modelEditMembership'),
@@ -979,6 +1079,7 @@
             selectedMembershipNumberTimesFreeze = $(this).attr('number_times_freeze');
             selectedMembershipMaxExtensionDays = $(this).attr('max_extension_days');
             selectedMembershipMaxFreezeExtensionSum = $(this).attr('max_freeze_extension_sum');
+            selectedMembershipInvitations = $(this).attr('invitations');
         });
 
         var totalPrice =  Number(record['amount_before_discount']) ;
@@ -1001,8 +1102,11 @@
         $('#EditMembershipNumberTimesFreeze').val(selectedMembershipNumberTimesFreeze);
         $('#EditMembershipMaxExtensionDays').val(selectedMembershipMaxExtensionDays);
         $('#EditMembershipMaxFreezeExtensionSum').val(selectedMembershipMaxFreezeExtensionSum);
+        $('#EditMembershipInvitations').val(selectedMembershipInvitations);
         $('#EditMembershipNotes').val(notes);
-        // document.getElementById("payment_type_"+record['payment_type']).selected = "true";
+        if(record['payment_type']) {
+            $('#edit_payment_type').val(record['payment_type']);
+        }
 
     }
 
@@ -1018,11 +1122,16 @@
          'freeze_limit': $('#EditMembershipFreezeLimit').val(),
          'max_extension_days': $('#EditMembershipMaxExtensionDays').val(),
          'max_freeze_extension_sum': $('#EditMembershipMaxFreezeExtensionSum').val(),
+         'invitations': $('#EditMembershipInvitations').val(),
          'discount_value': $('#discount_value').val(),
          'group_discount_id': $('#group_discount_id').val(),
          'amount_paid': $('#create_amount_paid').val(),
          'notes': $('#EditMembershipNotes').val(),
-         // 'payment_type': $('#edit_payment_type').val(),
+         'payment_type': $('#edit_payment_type').val(),
+         'send_tabby_link': $('#edit_send_tabby_link').is(':checked') ? 1 : 0,
+         'send_tamara_link': $('#edit_send_tamara_link').is(':checked') ? 1 : 0,
+         'send_paymob_link': $('#edit_send_paymob_link').is(':checked') ? 1 : 0,
+         'send_paytabs_link': $('#edit_send_paytabs_link').is(':checked') ? 1 : 0,
          "_token": "{{ csrf_token() }}"
         }
 
@@ -1074,6 +1183,43 @@
         $('#editBarcodeBtn').hide();
     }
 
+    function togglePaymentTypeVisibility() {
+        let diffAmount = parseFloat($('#diff_amount_paid').text()) || 0;
+        if (diffAmount !== 0) {
+            $('#payment_type_row').show();
+        } else {
+            $('#payment_type_row').hide();
+        }
+        // Show Tabby option only when diff amount paid > 0
+        if (diffAmount > 0) {
+            $('#edit_tabby_payment_row').show();
+        } else {
+            $('#edit_tabby_payment_row').hide();
+            $('#edit_send_tabby_link').prop('checked', false);
+        }
+        // Show Tamara option only when diff amount paid > 0
+        if (diffAmount > 0) {
+            $('#edit_tamara_payment_row').show();
+        } else {
+            $('#edit_tamara_payment_row').hide();
+            $('#edit_send_tamara_link').prop('checked', false);
+        }
+        // Show Paymob option only when diff amount paid > 0
+        if (diffAmount > 0) {
+            $('#edit_paymob_payment_row').show();
+        } else {
+            $('#edit_paymob_payment_row').hide();
+            $('#edit_send_paymob_link').prop('checked', false);
+        }
+        // Show PayTabs option only when diff amount paid > 0
+        if (diffAmount > 0) {
+            $('#edit_paytabs_payment_row').show();
+        } else {
+            $('#edit_paytabs_payment_row').hide();
+            $('#edit_send_paytabs_link').prop('checked', false);
+        }
+    }
+
     $("#create_amount_paid").change(function () {
         selectedMembershipPrice = 0;
         $.each($("#EditMembershipSelect option:selected"), function () {
@@ -1097,6 +1243,7 @@
 
         let prev_amount_paid_input = $('#prev_amount_paid_input').val();
         $('#diff_amount_paid').html(Number(valueAmountPaid - prev_amount_paid_input).toFixed(2));
+        togglePaymentTypeVisibility();
     });
 
     $('#EditMembershipSelect').change(function () {
@@ -1123,6 +1270,9 @@
 
         let prev_amount_paid_input = $('#prev_amount_paid_input').val();
         $('#diff_amount_paid').html(Number(selectedMembershipPriceWithVat - prev_amount_paid_input).toFixed(2));
+        togglePaymentTypeVisibility();
+
+        apply_discount_subscription_edit();
     });
 
     $('#start_date_membership').change(function () {
@@ -1172,6 +1322,7 @@
 
         let prev_amount_paid_input = $('#prev_amount_paid_input').val();
         $('#diff_amount_paid').html(Number(parseFloat(priceWithVat).toFixed(2) - prev_amount_paid_input).toFixed(2));
+        togglePaymentTypeVisibility();
     // });
     }
 
@@ -1190,6 +1341,32 @@
             discount_value(result);
         }
     });
+
+    function apply_discount_subscription_edit(){
+        let type = parseInt($('#EditMembershipSelect option:selected').attr('discount_type'));
+        let amount = parseFloat($('#EditMembershipSelect option:selected').attr('discount_value'));
+        let price = parseFloat($('#EditMembershipSelect option:selected').attr('price'));
+        let result = 0;
+        $('#edit_discount_subscription_message').html('');
+        if(amount) {
+            let discount_message = '{{ trans('sw.discount_subscription_message', ['amount'=> ':amount', 'type' => ':type'])}}';
+
+            if (type === 1) {
+                result = parseFloat(Number(price) * (Number(amount) / 100)).toFixed(2);
+                $('#discount_value').val(result);
+                discount_value(result);
+                discount_message = discount_message.replace(':amount', amount);
+                discount_message = discount_message.replace(':type', '% (' + result + ')');
+            } else if (type === 2) {
+                $('#discount_value').val(amount);
+                discount_value(amount);
+                discount_message = discount_message.replace(':amount', amount);
+                discount_message = discount_message.replace(':type', ' ({{ trans('sw.fixed_amount') }})');
+            }
+            $('#edit_discount_subscription_message').html('<div class="alert alert-danger">'+discount_message+'</div>');
+            $('#group_discount_id').val(0);
+        }
+    }
 </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.25/webcam.min.js"></script>

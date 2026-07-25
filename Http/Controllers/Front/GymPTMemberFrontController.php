@@ -24,6 +24,7 @@ use Modules\Software\Repositories\GymPTMemberRepository;
 use Modules\Software\Services\PT\PTCommissionService;
 use Modules\Software\Services\PT\PTEnrollmentService;
 use Modules\Software\Services\PT\PTSessionService;
+use Modules\Software\Services\NotificationService;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Mpdf\Mpdf;
 use Carbon\Carbon;
@@ -54,7 +55,6 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $this->sessionService = $sessionService;
         $this->commissionService = $commissionService;
         $this->MemberRepository=new GymPTMemberRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -152,7 +152,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_pt_members');
         $this->userLog($notes, TypeConstants::ExportActivityExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -437,6 +437,24 @@ class GymPTMemberFrontController extends GymGenericFrontController
         ]);
 
         $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);
+
+        try {
+            $member->loadMissing(['member', 'pt_subscription']);
+            $notifyPhone = @$member->member->phone ?: @$memberSubscription->phone;
+
+            (new NotificationService())->sendEventNotification(
+                'new_pt_member',
+                $member,
+                $notifyPhone,
+                @$member->branch_setting_id
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to send new_pt_member notification', [
+                'pt_member_id' => $member->id,
+                'member_id' => $member->member_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $this->processZatcaInvoiceForPtMember($member, (float) $amount_paid, (float) $vat, $moneyBox);
 
@@ -867,8 +885,10 @@ class GymPTMemberFrontController extends GymGenericFrontController
     public function getPTMemberAjax(){
         $member_id = request('member_id');
         if($member_id){
-            $member = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['member_subscription_info.subscription'])->where('code', $member_id)->first();
-            $member->member_subscription_info->expire_date_str = @Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
+            $member = GymMember::branch()->with(['member_subscription_info.subscription'])->where('code', $member_id)->first();
+            if($member && $member->member_subscription_info){
+                $member->member_subscription_info->expire_date_str = @Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
+            }
             return $member;
         }
         return [];
@@ -892,7 +912,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
             return null;
         }
 
-        $today = Carbon::now();
+        $today = Carbon::now()->toDateString();
         $endDate = $member->end_date ?? ($member->expire_date ? Carbon::parse($member->expire_date) : null);
         if ($endDate && $endDate->lt($today)) {
             return null;
@@ -995,17 +1015,19 @@ class GymPTMemberFrontController extends GymGenericFrontController
             $newTodayCount = GymPTMemberAttendee::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('pt_member_id', $member->id)
                 ->whereBetween('session_date', [$windowStart, $windowEnd])
                 ->count();
-            
+
             // Only update remaining_sessions if a new attendee was actually created
             if ($newTodayCount > $existingTodayCount) {
                 // The adjustRemainingSessions was already called in recordMemberAttendance
                 // Just refresh to ensure we have latest data
                 $member->refresh();
             }
-            
-            $totalSessions = $member->sessions_total ?? $member->total_sessions ?? $member->classes ?? 0;
-            $usedSessions = $member->sessions_used ?? ($totalSessions - ($member->remaining_sessions ?? 0));
-            return $member->pt_subscription->name.' ('.$usedSessions.' / '.$totalSessions.') ';
+
+            $member['expire_date'] = Carbon::parse($member->expire_date)->format('d-m-Y');
+            $sessionsRemaining = $member->remaining_sessions ?? ($member->classes - $member->visits);
+            $member['remain_workouts'] = $sessionsRemaining;
+            $member['amount_remaining'] = number_format($member->amount_remaining, 2);
+            return Response::json(['msg' => '', 'member' => $member, 'status' => true], 200);
         }
         return '';
     }
@@ -1038,10 +1060,13 @@ class GymPTMemberFrontController extends GymGenericFrontController
             $query->orderBy('id', 'desc');
         }, 'pt_subscription'])->withCount(['pt_member_attendees' => function($q){
             $q->whereDate('created_at', Carbon::now()->toDateString());
-        }])->where('id', $code)
+        }])->whereHas('member', function ($q) use ($code){ $q->where('code', $code); })
             ->when(@$enquiry && (strlen(intval($code)) >= 5), function ($q) use ($code){
                 $q->orWhereHas('member', function ($q) use ($code){ $q->where('phone', 'like', '%' . $code . '%');});
             });
+        if($idToUse){
+            $member = $member->where('id', $idToUse);
+        }
         // Apply branch restriction:
         // 1. If allow_member_in_branches is false, always apply for all users
         // 2. If allow_member_in_branches is true but user is not super user, apply branch restriction
@@ -1081,7 +1106,7 @@ class GymPTMemberFrontController extends GymGenericFrontController
                 if(($member->joining_date > Carbon::now()) && ($checkForMemberVisits)){
                     $msg = trans('sw.membership_not_coming');
                 }elseif(($member->classes > 0) && ($member->classes >= $member->visits)
-                    && ($member->expire_date >= Carbon::now()) && ($checkForMemberVisits)){
+                    && (Carbon::parse($member->expire_date)->toDateString() >= Carbon::now()->toDateString()) && ($checkForMemberVisits)){
 
                     // time of membership
                     if(($member->start_time_day) && ($member->end_time_day) &&
@@ -1299,13 +1324,16 @@ class GymPTMemberFrontController extends GymGenericFrontController
 
     }
     public function listPTMemberInClassCalendar($pt_class_id, $pt_trainer_id){
-        $pt_members = GymPTMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->select(['id', 'member_id'])
+        $pt_members = GymPTMember::select([
+                          'id', 'member_id', 'start_date', 'end_date', 'joining_date', 'expire_date',
+                          'total_sessions', 'remaining_sessions', 'classes', 'visits'
+                      ])
                       ->with(['member' => function ($q){$q->select(['id', 'name', 'code']);}])
                       ->where('pt_class_id', $pt_class_id)
                       ->where('pt_trainer_id', $pt_trainer_id)
                       ->whereDate('joining_date', '<=', Carbon::now()->toDateString())
                       ->whereDate('expire_date', '>=', Carbon::now()->toDateString())
-                      ->limit(50)->get();
+                      ->get();
         return Response::json(['result' => $pt_members], 200);
     }
 

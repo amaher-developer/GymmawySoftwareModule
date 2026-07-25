@@ -242,12 +242,12 @@
             </div>
             <div style="clear: both"></div>
             <div class="form-group total_amount_renew_div col-md-12">
-                <label class="col-md-3 control-label">{{ trans('sw.amount_paid')}} <span class="required">*</span></label>
+                <label class="col-md-3 control-label">{{ trans('sw.amount_paid')}} <span class="required"></span></label>
                 <div class="col-md-3">
                     <input id="create_amount_paid" class="form-control" name="amount_paid" value="{{ old('amount_paid', @($member->member_subscription_info->subscription->price - $member->member_subscription_info->amount_remaining)) }}"
                            placeholder="{{ trans('sw.enter_amount_paid')}}" type="number" min="0"/>
                 </div>
-                <label class="col-md-3 control-label">{{ trans('sw.amount_remaining')}} <span class="required">*</span></label>
+                <label class="col-md-3 control-label">{{ trans('sw.amount_remaining')}} <span class="required"></span></label>
                 <div class="col-md-3">
                     <input  id="create_amount_remaining" class="form-control" name="amount_remaining" value="{{@old('amount_remaining', @$member->member_subscription_info->amount_remaining)}}"
                             placeholder="{{ trans('sw.enter_amount_remaining')}}" disabled type="number" min="0"/>

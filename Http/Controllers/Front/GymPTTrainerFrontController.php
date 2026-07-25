@@ -43,7 +43,6 @@ class GymPTTrainerFrontController extends GymGenericFrontController
         parent::__construct();
         $this->imageManager = new ImageManager(new Driver());
         $this->TrainerRepository=new GymPTTrainerRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
         $this->commissionService = app(PTCommissionService::class);
         $this->sessionService = app(PTSessionService::class);
     }
@@ -116,7 +115,8 @@ class GymPTTrainerFrontController extends GymGenericFrontController
             $total = $collection->count();
         }
 
-        $classes = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->orderBy('name_' . $this->lang, 'asc')
+        $classes = GymPTClass::branch()
+            ->orderBy('name_' . $this->lang, 'asc')
             ->get();
 
         return view('software::Front.pt_trainer_front_list', [
@@ -141,7 +141,7 @@ class GymPTTrainerFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_pt_trainers');
         $this->userLog($notes, TypeConstants::ExportActivityExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -286,8 +286,24 @@ class GymPTTrainerFrontController extends GymGenericFrontController
     public function update(GymPTTrainerRequest $request, $id)
     {
         $trainer =$this->TrainerRepository->withTrashed()->find($id);
+        $oldImage = $trainer ? $trainer->getRawOriginal('image') : null;
+        $removeImage = (bool) $request->input('avatar_remove');
+        $hasNewImage = $request->hasFile('image');
+
         $trainer_inputs = $this->prepare_inputs($request->except(['_token']));
+
+        // Explicit remove from edit form should clear DB image when no replacement is uploaded.
+        if ($removeImage && !$hasNewImage) {
+            $trainer_inputs['image'] = null;
+        }
+
         $trainer->update($trainer_inputs);
+
+        // Cleanup old files when image changed or removed.
+        // $newImage = $trainer->getRawOriginal('image');
+        // if ($oldImage && $oldImage !== $newImage) {
+        //     $this->deleteTrainerImageFiles($oldImage);
+        // }
 
         $notes = str_replace(':name', $trainer['name'], trans('sw.edit_activity'));
         $this->userLog($notes, TypeConstants::EditPTTrainer);
@@ -324,6 +340,8 @@ class GymPTTrainerFrontController extends GymGenericFrontController
 
     private function prepare_inputs($inputs)
     {
+        unset($inputs['avatar_remove']);
+
         $input_file = 'image';
         if (request()->hasFile($input_file)) {
             $file = request()->file($input_file);
@@ -354,9 +372,22 @@ class GymPTTrainerFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
         return $inputs;
+    }
+
+    private function deleteTrainerImageFiles(string $imageName): void
+    {
+        $originalPath = base_path(GymPTTrainer::$uploads_path . $imageName);
+        $thumbnailPath = base_path(GymPTTrainer::$thumbnails_uploads_path . $imageName);
+
+        if (File::exists($originalPath)) {
+            File::delete($originalPath);
+        }
+
+        if (File::exists($thumbnailPath)) {
+            File::delete($thumbnailPath);
+        }
     }
 
 
@@ -374,11 +405,9 @@ class GymPTTrainerFrontController extends GymGenericFrontController
             ? Carbon::parse($to)->endOfDay()
             : $rangeStart->copy()->addWeek();
 
-        $trainerAssignments = GymPTClassTrainer::with(['class', 'trainer'])
+        $trainerAssignments = GymPTClassTrainer::branch()
+            ->with(['class', 'trainer'])
             ->where('is_active', true)
-            ->when($branchId, function ($query, $branchId) {
-                $query->where('branch_setting_id', $branchId);
-            })
             ->when($pt_class_id, function ($query) use ($pt_class_id) {
                 $query->where('class_id', $pt_class_id);
             })
@@ -387,7 +416,8 @@ class GymPTTrainerFrontController extends GymGenericFrontController
             })
             ->get();
 
-        $classesWithSchedule = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('pt_subscription')
+        $classesWithSchedule = GymPTClass::branch()
+            ->with('pt_subscription')
             ->when($pt_class_id, function ($query) use ($pt_class_id) {
                 $query->where('id', $pt_class_id);
             })
@@ -446,9 +476,9 @@ class GymPTTrainerFrontController extends GymGenericFrontController
             ];
         })->values()->toArray();
 
-        $pt_trainers = GymPTTrainer::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
-        $subscriptions = GymPTSubscription::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with('pt_classes')->get();
-        $classes = GymPTClass::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->get();
+        $pt_trainers = GymPTTrainer::branch()->get();
+        $subscriptions = GymPTSubscription::branch()->with('pt_classes')->get();
+        $classes = GymPTClass::branch()->get();
         return view('software::Front.pt_trainer_front_reports', [
             'pt_trainers' => $pt_trainers,
             'classes' => $classes,
@@ -614,7 +644,7 @@ class GymPTTrainerFrontController extends GymGenericFrontController
                 ? round(($totalAmount * ($vatPercentage / 100)) / (1 + ($vatPercentage / 100)), 2)
                 : 0;
 
-            $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+            $amount_box = GymMoneyBox::branch()->latest()->first();
             $amount_after = GymMoneyBoxFrontController::amountAfter(
                 (float) optional($amount_box)->amount,
                 (float) optional($amount_box)->amount_before,
@@ -639,7 +669,6 @@ class GymPTTrainerFrontController extends GymGenericFrontController
                 'member_id' => null,
                 'member_pt_subscription_id' => null,
                 'branch_setting_id' => @$this->user_sw->branch_setting_id,
-                'tenant_id' => @$this->user_sw->tenant_id,
             ]);
 
             $this->userLog($notes, TypeConstants::CreateMoneyBoxAdd);

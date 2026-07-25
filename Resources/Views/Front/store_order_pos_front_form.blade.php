@@ -880,7 +880,7 @@
         // Adjust amount_paid if using store balance
         const useStoreBalance = $('#store_member_use_balance').is(':checked');
         if (useStoreBalance && selectedMemberId) {
-            $('#amount_paid').val(0);
+            //$('#amount_paid').val(0);
         }
 
         // Calculate and display estimated loyalty points earning

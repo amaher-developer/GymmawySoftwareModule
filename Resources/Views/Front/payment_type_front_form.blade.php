@@ -77,11 +77,37 @@
                         <label class="required form-label">{{ trans('sw.name_in_english')}}</label>
                         <!--end::Label-->
                         <!--begin::Input-->
-                        <input type="text" name="name_en" class="form-control mb-2" 
-                               placeholder="{{ trans('sw.enter_name_in_english')}}" 
-                               value="{{ old('name_en', $payment_type->name_en) }}" 
+                        <input type="text" name="name_en" class="form-control mb-2"
+                               placeholder="{{ trans('sw.enter_name_in_english')}}"
+                               value="{{ old('name_en', $payment_type->name_en) }}"
                                id="name_en" required />
                         <!--end::Input-->
+                    </div>
+                    <!--end::Input group-->
+
+                    <!--begin::Input group-->
+                    <div class="mb-10 fv-row">
+                        <!--begin::Label-->
+                        <label class="form-label">{{ trans('sw.payment_gateway')}}</label>
+                        <span class="text-muted fs-7 ms-2">{{ trans('sw.payment_method_binding_hint', [], null) ?: '(' . trans('sw.optional') . ')' }}</span>
+                        <!--end::Label-->
+                        <!--begin::Select-->
+                        @php
+                            $selectedMethods = collect(old('payment_methods', $selectedPaymentMethods ?? []))
+                                ->map(fn($v) => (string) $v)
+                                ->values()
+                                ->all();
+                        @endphp
+                        <select name="payment_methods[]" class="form-select form-select-solid @error('payment_methods') is-invalid @enderror" multiple data-control="select2" data-placeholder="{{ trans('sw.select') }}">
+                            @foreach(($gatewayMethods ?? []) as $methodId => $methodLabel)
+                                <option value="{{ $methodId }}" @selected(in_array((string) $methodId, $selectedMethods, true))>{{ $methodLabel }}</option>
+                            @endforeach
+                        </select>
+                        <!--end::Select-->
+                        @error('payment_methods')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <div class="text-muted fs-7 mt-2">{{ trans('sw.payment_method_binding_desc', [], null) ?: 'Select one or more gateways. Any payment from selected gateways will be recorded with this payment type.' }}</div>
                     </div>
                     <!--end::Input group-->
                 </div>

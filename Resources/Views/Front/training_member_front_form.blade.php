@@ -140,7 +140,7 @@
                 <!--begin::Card header-->
                 <div class="card-header">
                     <div class="card-title">
-                        <h3 class="fw-bold">{{ trans('sw.plan')}} <span class="required">*</span></h3>
+                        <h3 class="fw-bold">{{ trans('sw.plan')}} <span class="required"></span></h3>
                     </div>
                 </div>
                 <!--end::Card header-->

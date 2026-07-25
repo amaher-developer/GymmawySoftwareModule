@@ -18,7 +18,6 @@ class GymUserPermissionFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->PermissionRepository = new GymUserPermissionRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
     public function index()
@@ -30,11 +29,11 @@ class GymUserPermissionFrontController extends GymGenericFrontController
         
         if(request('trashed'))
         {
-            $permissions = $this->PermissionRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $permissions = $this->PermissionRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $permissions = $this->PermissionRepository->orderBy('id', 'DESC');
+            $permissions = $this->PermissionRepository->branch()->orderBy('id', 'DESC');
         }
 
         //apply filters

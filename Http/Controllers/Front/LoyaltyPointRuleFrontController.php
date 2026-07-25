@@ -30,9 +30,9 @@ class LoyaltyPointRuleFrontController extends GymGenericFrontController
         $title = trans('sw.loyalty_point_rules_list');
         
         if (request('trashed')) {
-            $rules = $this->loyaltyPointRuleRepository->onlyTrashed()->orderBy('id', 'DESC');
+            $rules = $this->loyaltyPointRuleRepository->branch()->onlyTrashed()->orderBy('id', 'DESC');
         } else {
-            $rules = $this->loyaltyPointRuleRepository->orderBy('id', 'DESC');
+            $rules = $this->loyaltyPointRuleRepository->branch()->orderBy('id', 'DESC');
         }
 
         // Apply filters

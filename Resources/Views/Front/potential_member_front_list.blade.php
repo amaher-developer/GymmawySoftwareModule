@@ -303,7 +303,7 @@
                             <td class="text-end">
                                 <!--begin::Add Member-->
                                 @if(in_array('createMember', (array)$swUser->permissions) || $swUser->is_super_user)
-                                    <a href="{{route('sw.createMember').'?potential_member_id='.$member->id}}"
+                                    <a href="{{route('sw.createMember').'?reservation_id='.$member->id}}"
                                        class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm me-1" title="{{ trans('sw.add_member') }}">
                                         <i class="ki-outline ki-plus-square fs-2"></i>
                                     </a>

@@ -336,7 +336,6 @@
                 <!--end::Purchase Bill Details-->
             @endif
 
-            @if(@$mainSettings->active_mobile)
                 <!--begin::Visibility Settings-->
                 <div class="card card-flush py-4">
                     <!--begin::Card header-->
@@ -380,7 +379,6 @@
                     <!--end::Card body-->
                 </div>
                 <!--end::Visibility Settings-->
-            @endif
 
             <!--begin::Form actions-->
             <div class="d-flex justify-content-end">

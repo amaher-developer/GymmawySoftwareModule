@@ -147,6 +147,26 @@
                     </div>
                     <!--end::Row-->
                     
+                    <!--begin::Input group - Type-->
+                    <div class="mb-10 fv-row">
+                        <label class="required form-label">{{ trans('sw.banner_type') }}</label>
+                        <select name="type" class="form-select" id="banner_type" required>
+                            <option value="1" {{ old('type', @$banner->type ?? 1) == 1 ? 'selected' : '' }}>{{ trans('sw.banner_type_banner') }}</option>
+                            <option value="2" {{ old('type', @$banner->type) == 2 ? 'selected' : '' }}>{{ trans('sw.banner_type_event') }}</option>
+                            <option value="3" {{ old('type', @$banner->type) == 3 ? 'selected' : '' }}>{{ trans('sw.banner_type_news') }}</option>
+                            <option value="4" {{ old('type', @$banner->type) == 4 ? 'selected' : '' }}>{{ trans('sw.banner_type_offer') }}</option>
+                        </select>
+                    </div>
+                    <!--end::Input group - Type-->
+
+                    <!--begin::Input group - Event Date-->
+                    <div class="mb-10 fv-row" id="event_date_group" style="{{ old('type', @$banner->type ?? 1) == 2 ? '' : 'display:none' }}">
+                        <label class="form-label">{{ trans('sw.event_date') }}</label>
+                        <input type="date" name="event_date" class="form-control"
+                               value="{{ old('event_date', @$banner->event_date ? \Carbon\Carbon::parse($banner->event_date)->format('Y-m-d') : '') }}" />
+                    </div>
+                    <!--end::Input group - Event Date-->
+
                     <!--begin::Input group-->
                     <div class="mb-10 fv-row">
                         <!--begin::Label-->
@@ -155,14 +175,14 @@
                         <!--begin::Checkbox group-->
                         <div class="d-flex gap-5">
                             <div class="form-check form-check-custom form-check-solid">
-                                <input class="form-check-input" type="checkbox" id="inlineCheckbox21" 
+                                <input class="form-check-input" type="checkbox" id="inlineCheckbox21"
                                        name="is_mobile" value="1" @if(@$banner->is_mobile) checked @endif />
                                 <label class="form-check-label" for="inlineCheckbox21">
                                     {{ trans('sw.mobile')}}
                                 </label>
                             </div>
                             <div class="form-check form-check-custom form-check-solid">
-                                <input class="form-check-input" type="checkbox" id="inlineCheckbox22" 
+                                <input class="form-check-input" type="checkbox" id="inlineCheckbox22"
                                        name="is_web" value="1" @if(@$banner->is_web) checked @endif />
                                 <label class="form-check-label" for="inlineCheckbox22">
                                     {{ trans('sw.web')}}
@@ -223,6 +243,14 @@
             .catch(error => {
                 console.error(error);
             });
+
+        $('#banner_type').on('change', function () {
+            if ($(this).val() === '2') {
+                $('#event_date_group').show();
+            } else {
+                $('#event_date_group').hide();
+            }
+        });
     });
 </script>
 @endsection

@@ -79,6 +79,16 @@
     <!--begin::Member Create Form-->
     <form method="post" action="" class="form" enctype="multipart/form-data">
         {{csrf_field()}}
+
+        @if ($errors->any())
+            <div class="alert alert-danger mb-7">
+                <ul class="mb-0 ps-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         
         <div class="row g-7">
             <!-- begin::Left Column - Basic Information -->
@@ -113,7 +123,7 @@
                                 <div class="input-group">
                                     <input class="form-control" placeholder="{{ trans('sw.fingerprint_id_data')}}"
                                            name="fp_id" min="0"
-                                           value="{{ (int)$member->fp_id ? old('fp_id', $member->fp_id) : (int)$maxId }}"
+                                           value="{{ old('fp_id', $member->fp_id) }}"
                                            type="text">
                                     <span class="input-group-text">
                                         <i class="material-icons">fingerprint</i>
@@ -229,15 +239,6 @@
                                 </select>
                             </div>
                             @endif
-                            
-                            <!-- Invitations -->
-                            <div class="col-md-6">
-                                <label class="form-label">{{ trans('sw.invitations_num')}}</label>
-                                <input class="form-control" placeholder="{{ trans('sw.invitations_num')}}"
-                                       name="invitations"
-                                       value="{{ old('invitations', $member->invitations) }}"
-                                       type="number">
-                            </div>
                         <!-- Additional Information -->
                         <div class="col-md-12">
                             <label class="form-label">{{ trans('sw.additional_information')}}</label>
@@ -380,7 +381,90 @@
                                     @endforeach
                                 </select>
                             </div>
-                            
+
+                            @php
+                                $hasAnyGateway = !empty($mainSettings->payments['tabby']['merchant_code'] ?? null)
+                                    || !empty($mainSettings->payments['tamara']['token'] ?? null)
+                                    || !empty($mainSettings->payments['paymob']['api_key'] ?? null)
+                                    || (!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null));
+                            @endphp
+                            @if($hasAnyGateway)
+                            <!-- Payment Gateway Cards -->
+                            <div class="col-12" id="payment_gateway_section">
+                                <div class="pgw-section">
+                                    <div class="pgw-section-title">
+                                        <i class="ki-outline ki-send"></i>
+                                        {{ trans('sw.send_payment_link') }}
+                                    </div>
+                                    <div class="pgw-grid">
+
+                                        @if(!empty($mainSettings->payments['tabby']['merchant_code'] ?? null))
+                                        <div class="pgw-card" id="tabby_payment_option">
+                                            <input type="checkbox" name="send_tabby_link" id="send_tabby_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/tabby-logo.webp') }}" alt="Tabby" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <span class="badge badge-light-success fs-8 fw-semibold px-2 py-1">{{ trans('sw.buy_now_pay_later') }}</span>
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.tabby_payment_description') }}</div>
+                                        </div>
+                                        @endif
+
+                                        @if(!empty($mainSettings->payments['tamara']['token'] ?? null))
+                                        <div class="pgw-card" id="tamara_payment_option">
+                                            <input type="checkbox" name="send_tamara_link" id="send_tamara_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/tamara-logo.svg') }}" alt="Tamara" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <span class="badge badge-light-warning fs-8 fw-semibold px-2 py-1">{{ trans('sw.buy_now_pay_later') }}</span>
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.tamara_payment_description') }}</div>
+                                        </div>
+                                        @endif
+
+                                        @if(!empty($mainSettings->payments['paymob']['api_key'] ?? null))
+                                        <div class="pgw-card" id="paymob_payment_option">
+                                            <input type="checkbox" name="send_paymob_link" id="send_paymob_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/paymob.png') }}" alt="Paymob" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.paymob_payment_description') }}</div>
+                                        </div>
+                                        @endif
+
+                                        @if(!empty($mainSettings->payments['paytabs']['profile_id'] ?? null) && !empty($mainSettings->payments['paytabs']['server_key'] ?? null))
+                                        <div class="pgw-card" id="paytabs_payment_option">
+                                            <input type="checkbox" name="send_paytabs_link" id="send_paytabs_link" value="1" class="pgw-checkbox" style="display:none"/>
+                                            <div class="pgw-check"></div>
+                                            <div class="pgw-logo-wrap">
+                                                <img src="{{ asset('resources/assets/new_front/images/paytabs-logo.svg') }}" alt="PayTabs" class="pgw-logo">
+                                            </div>
+                                            <div class="pgw-methods">
+                                                <img src="{{ asset('resources/assets/new_front/images/visa_logo.svg') }}" alt="Visa" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/mada-logo.svg') }}" alt="Mada" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/apple-pay-logo.svg') }}" alt="Apple Pay" class="pgw-method-icon">
+                                                <img src="{{ asset('resources/assets/new_front/images/american_express_logo.svg') }}" alt="Amex" class="pgw-method-icon">
+                                            </div>
+                                            <div class="pgw-desc">{{ trans('sw.paytabs_payment_description') }}</div>
+                                        </div>
+                                        @endif
+
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
+
                             <!-- Notes -->
                             <div class="col-md-12">
                                 <label class="form-label">{{ trans('sw.notes')}}</label>
@@ -504,6 +588,7 @@
         </div>
     </div>
     <!-- Modal Camera with effects-->
+
 @endsection
 
 
@@ -608,7 +693,7 @@
 
             $('#create_amount_remaining').val(Number(selectedMembershipPriceWithVat - valueAmountPaid ).toFixed(2));
             $('#create_amount_paid').attr('max', Number(selectedMembershipPriceWithVat).toFixed(2));
-            
+
             // Calculate loyalty points
             console.log('Calling calculateMemberLoyaltyPoints from amount_paid change');
             calculateMemberLoyaltyPoints();
@@ -637,7 +722,7 @@
             $('#editCustomStartDate').val('{{\Carbon\Carbon::now()->toDateString()}}');
 
             apply_discount_subscription();
-            
+
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
         });
@@ -675,10 +760,9 @@
 
             $('#editCustomExpireDate').val(selectedMembershipExpireDate);
             $('#editCustomStartDate').val('{{\Carbon\Carbon::now()->toDateString()}}');
-            
+
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
-
         }
 
         function editBarCodeInput(){
@@ -717,11 +801,9 @@
             $('#myTotalWithVat').text("{{ trans('sw.including_vat')}} = " + parseFloat(priceWithVat).toFixed(2));
             $('#create_amount_paid').val(parseFloat(priceWithVat).toFixed(2)).attr('max', parseFloat(priceWithVat).toFixed(2));
             $('#create_amount_remaining').val(0);
-            
+
             // Calculate loyalty points
             calculateMemberLoyaltyPoints();
-
-            // });
         }
         $('#group_discount_id').on('change', function (event){
             let discount_id = $(this).find(":selected").val();
@@ -749,17 +831,18 @@
             if(amount) {
                 let discount_message = '{{ trans('sw.discount_subscription_message', ['amount'=> ':amount', 'type' => ':type'])}}';
 
-                if (type === 0) {
-                    $('#discount_value').val(amount);
-                    discount_value(amount);
-                    discount_message = discount_message.replace(':type', '');
-                } else {
+                if (type === 1) {
                     result = parseFloat(Number(price) * (Number(amount) / 100)).toFixed(2);
                     $('#discount_value').val(result);
                     discount_value(result);
-                    discount_message = discount_message.replace(':type', '%');
+                    discount_message = discount_message.replace(':amount', amount);
+                    discount_message = discount_message.replace(':type', '% (' + result + ')');
+                } else if (type === 2) {
+                    $('#discount_value').val(amount);
+                    discount_value(amount);
+                    discount_message = discount_message.replace(':amount', amount);
+                    discount_message = discount_message.replace(':type', ' ({{ trans('sw.fixed_amount') }})');
                 }
-                discount_message = discount_message.replace(':amount', amount);
                 $('#discount_subscription_message').html('<div class="alert alert-danger">'+discount_message+'</div>');
                 $('#group_discount_id').val(0);
             }
@@ -815,6 +898,150 @@
             $('#modalCamera').addClass(effect);
 
         });
+    </script>
+
+    <script>
+        // ===== Payment Gateway Pre-Submit Flow =====
+        var pw_check_status_url = '{{ route('sw.checkMemberPaymentStatus', ':id') }}';
+        var pw_resend_url = '{{ route('sw.resendMemberPaymentLink', ':id') }}';
+        // ===== Payment Gateway Pre-Submit Flow (uses shared pw* functions from master layout) =====
+        function pwGetActiveGateway() {
+            if ($('#send_tabby_link').is(':checked')) return 'tabby';
+            if ($('#send_tamara_link').is(':checked')) return 'tamara';
+            if ($('#send_paymob_link').is(':checked')) return 'paymob';
+            if ($('#send_paytabs_link').is(':checked')) return 'paytabs';
+            return null;
+        }
+
+        function pwHasCommunicationChannel() {
+            var phone = $('input[name="phone"]').val() || '';
+            var email = $('input[name="email"]').val() || '';
+            return (pw_active_wa && phone.trim().length > 0)
+                || (pw_active_sms && phone.trim().length > 0)
+                || email.trim().length > 0;
+        }
+
+        // Phone existence check before form submit
+        var phoneCheckUrl = '{{ route('sw.checkMemberPhoneExists') }}';
+        var phoneAlreadyConfirmed = false;
+
+        function checkPhoneThenSubmit(e, $form) {
+            if (phoneAlreadyConfirmed) return true;
+            var phone = $form.find('input[name="phone"]').val().trim();
+            if (!phone) return true;
+
+            e.preventDefault();
+            $.ajax({
+                url: phoneCheckUrl,
+                type: 'GET',
+                data: { phone: phone },
+                success: function (data) {
+                    if (data.exists) {
+                        swal({
+                            title: '{{ trans('sw.error') }}',
+                            text: '{{ trans('sw.phone_already_exists') }}',
+                            type: 'error',
+                            confirmButtonText: '{{ trans('sw.ok') }}'
+                        });
+                    } else {
+                        phoneAlreadyConfirmed = true;
+                        $form.submit();
+                    }
+                },
+                error: function () {
+                    // If check fails, allow form to proceed
+                    phoneAlreadyConfirmed = true;
+                    $form.submit();
+                }
+            });
+            return false;
+        }
+
+        // Intercept form submit when a payment gateway is checked
+        $('form.form').on('submit', function (e) {
+            var $form = $(this);
+            // Run phone existence check first (only on new member, not edit)
+            @if(!$member->id)
+            if (!phoneAlreadyConfirmed) {
+                return checkPhoneThenSubmit(e, $form);
+            }
+            @endif
+
+            var gateway = pwGetActiveGateway();
+            if (!gateway) return true; // no gateway selected, submit normally
+
+            if (!pwHasCommunicationChannel()) {
+                e.preventDefault();
+                swal({
+                    title: '{{ trans('sw.payment_no_communication_title') }}',
+                    text: '{{ trans('sw.payment_no_communication_desc') }}',
+                    type: 'warning',
+                    confirmButtonText: '{{ trans('sw.payment_continue_without') }}',
+                    showCancelButton: true,
+                    cancelButtonText: '{{ trans('admin.cancel') }}'
+                }).then(function (confirm) {
+                    if (confirm) {
+                        $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paytabs_link').prop('checked', false);
+                        $('form.form').off('submit').submit();
+                    }
+                });
+                return false;
+            }
+
+            // Step 1: send payment link first (no member/subscription created yet)
+            e.preventDefault();
+            var $btn = $form.find('[type=submit]').prop('disabled', true).addClass('disabled');
+
+            var payload = {
+                gateway:         gateway,
+                subscription_id: $form.find('[name=subscription_id]').val(),
+                discount_value:  $form.find('[name=discount_value]').val() || 0,
+                name:            $form.find('[name=name]').val(),
+                phone:           $form.find('[name=phone]').val(),
+                email:           $form.find('[name=email]').val(),
+                city:            $form.find('[name=city]').val(),
+                address:         $form.find('[name=address]').val(),
+                _token:          $form.find('[name=_token]').val()
+            };
+
+            $.ajax({
+                url:  pw_new_member_check_send_url,
+                type: 'POST',
+                data: payload,
+                success: function (data) {
+                    $btn.prop('disabled', false).removeClass('disabled');
+                    if (!data.status) {
+                        swal('{{ trans('sw.error') }}', data.msg || '{{ trans('sw.something_went_wrong') }}', 'warning');
+                        return;
+                    }
+
+                    // Step 2: open waiting modal — poll by invoice ID
+                    pwOpenModal(
+                        data.invoice_id,
+                        data.sent_via,
+                        null,
+                        gateway,
+                        function () {
+                            // Step 3: payment confirmed or "complete" — submit form as normal (no gateway)
+                            $('#send_tabby_link, #send_tamara_link, #send_paymob_link, #send_paytabs_link').prop('checked', false);
+                            $('form.form').off('submit').submit();
+                        },
+                        pw_check_invoice_url
+                    );
+                },
+                error: function () {
+                    $btn.prop('disabled', false).removeClass('disabled');
+                    swal('{{ trans('sw.error') }}', '{{ trans('sw.something_went_wrong') }}', 'error');
+                }
+            });
+
+            return false;
+        });
+
+        // Init payment gateway cards (mutual exclusivity)
+        if (typeof window.initPgwCards === 'function') {
+            window.initPgwCards('#payment_gateway_section');
+        }
     </script>
 
 @endsection

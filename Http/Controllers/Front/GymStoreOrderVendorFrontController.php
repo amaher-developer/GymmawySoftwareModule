@@ -2,6 +2,7 @@
 
 namespace Modules\Software\Http\Controllers\Front;
 
+use Modules\Software\Classes\GymSwInvoiceHelper;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Software\Exports\RecordsExport;
 use Modules\Software\Http\Requests\GymStoreOrderRequest;
@@ -39,7 +40,6 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreOrderVendorRepository=new GymStoreOrderVendorRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
     }
 
 
@@ -51,11 +51,11 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $orders = $this->StoreOrderVendorRepository->with(['product', function ($q){$q->withTrashed();}])->onlyTrashed()->orderBy('id', 'DESC');
+            $orders = $this->StoreOrderVendorRepository->branch()->with(['product', function ($q){$q->withTrashed();}])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $orders = $this->StoreOrderVendorRepository->with(['product'=>function($q){
+            $orders = $this->StoreOrderVendorRepository->branch()->with(['product'=>function($q){
                 $q->withTrashed();
             }])->orderBy('id', 'DESC');
         }
@@ -89,23 +89,16 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
 
 
     function exportStoreOrderVendorExcel(){
-//        $records = $this->StoreOrderRepository->get();
-//        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
-
-//        $title = trans('sw.store_orders');
-//        $records = $this->prepareForExport($records);
-
-
-        $this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
 
-        $this->fileName = 'store_order-vendors-' . Carbon::now()->toDateTimeString();
+        $fileName = 'store_order-vendors-' . Carbon::now()->toDateTimeString();
 
         $notes = trans('sw.export_excel_store_orders');
         $this->userLog($notes, TypeConstants::ExportStoreOrderExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -139,32 +132,81 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
 //        return $result;
 //    }
     function exportStoreOrderVendorPDF(){
-        $this->limit = null;
+        //$this->limit = 300;
         $records = $this->index()->with(\request()->all());
         $records = $records->orders;
-        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
-
-
-//        $records = $this->StoreOrderRepository->get();
-//        $this->fileName = 'store_orders-' . Carbon::now()->toDateTimeString();
+        $fileName = 'store-vendor-orders-' . Carbon::now()->toDateTimeString();
 
         $keys = ['id', 'quantity', 'amount', 'vendor_name', 'vendor_phone', 'vendor_address'];
         if($this->lang == 'ar') $keys = array_reverse($keys);
 
         $title = trans('sw.store_orders');
-        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys]);
+        $customPaper = array(0, 0, 720, 1440);
+
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L',
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records,
+                    'title' => $title,
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+
+                $mpdf->WriteHTML($html);
+
+                $notes = trans('sw.export_pdf_store_orders');
+                $this->userLog($notes, TypeConstants::ExportStoreOrderPDF);
+
+                return response($mpdf->Output($fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $fileName . '.pdf"'
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+
+        $pdf = PDF::loadView('software::Front.export_pdf', [
+            'records' => $records,
+            'title' => $title,
+            'keys' => $keys,
+            'lang' => $this->lang
+        ])
+        ->setPaper($customPaper, 'landscape')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+            'isPhpEnabled' => true,
+            'isJavascriptEnabled' => false
+        ]);
 
         $notes = trans('sw.export_pdf_store_orders');
         $this->userLog($notes, TypeConstants::ExportStoreOrderPDF);
 
-        return $pdf->download($this->fileName.'.pdf');
+        return $pdf->download($fileName.'.pdf');
     }
 
 
     public function show($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrderVendor::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['product' => function($query){
+        $order = GymStoreOrderVendor::branch()->with(['product' => function($query){
             $query->withTrashed();
         }])->where('id', $id)->first();
 
@@ -197,7 +239,7 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
     public function showPOS($id)
     {
         $title = trans('sw.invoice');
-        $order = GymStoreOrderVendor::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['pay_type', 'product'])->where('id', $id)->first();
+        $order = GymStoreOrderVendor::branch()->with(['pay_type', 'product'])->where('id', $id)->first();
 
 
         if(@$this->mainSettings->vat_details['saudi']){
@@ -235,10 +277,10 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
         else
         {
 
-            GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $order->product_id)->decrement('quantity', $order->quantity);
+            GymStoreProduct::where('id', $order->product_id)->decrement('quantity', $order->quantity);
 
             if(\request('refund')){
-                $amount_box = GymMoneyBox::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->latest()->first();
+                $amount_box = GymMoneyBox::branch()->latest()->first();
                 $amount_after = GymMoneyBoxFrontController::amountAfter($amount_box->amount, $amount_box->amount_before, $amount_box->operation);
 
                 $amount = ($order->amount);
@@ -246,20 +288,23 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
                     $amount = (float)\request('amount');
                 }
                 if($amount > 0){
-                    $notes = trans('sw.store_purchase_order_delete', ['id' => $order->id,'amount' => $amount]);
+                    $vatPct = (float) ($this->mainSettings->vat_details['vat_percentage'] ?? 0);
+                    $notes  = trans('sw.store_purchase_order_delete', ['id' => $order->id, 'amount' => $amount]);
                     GymMoneyBox::create([
-                        'user_id' => Auth::guard('sw')->user()->id
-                        , 'amount' => $amount
-                        , 'vat' => ((@$amount * (@$this->mainSettings->vat_details['vat_percentage'] / 100)) / (1 + (@$this->mainSettings->vat_details['vat_percentage'] / 100)))
-                        , 'operation' => TypeConstants::Add
-                        , 'amount_before' => $amount_after
-                        , 'notes' => $notes
-                        , 'type' => TypeConstants::DeleteStorePurchaseOrder
-                        , 'member_id' => @$order->member_id
-                        , 'payment_type' => intval($order->payment_type)
+                        'user_id'          => Auth::guard('sw')->user()->id
+                        , 'amount'         => $amount
+                        , 'vat'            => round(($amount * ($vatPct / 100)) / (1 + ($vatPct / 100)), 2)
+                        , 'operation'      => TypeConstants::Add
+                        , 'amount_before'  => $amount_after
+                        , 'notes'          => $notes
+                        , 'type'           => TypeConstants::DeleteStorePurchaseOrder
+                        , 'member_id'      => @$order->member_id
+                        , 'payment_type'   => intval($order->payment_type)
                         , 'branch_setting_id' => @$this->user_sw->branch_setting_id
-                        , 'tenant_id' => @$this->user_sw->tenant_id
                     ]);
+
+                    GymSwInvoiceHelper::refundVendorOrder($order, $amount, $vatPct, $this->user_sw->branch_setting_id ?? null);
+
                         $this->userLog($notes, TypeConstants::CreateMoneyBoxWithdraw);
                 }
             }
@@ -294,7 +339,6 @@ class GymStoreOrderVendorFrontController extends GymGenericFrontController
 
         if(@$this->user_sw->branch_setting_id){
             $inputs['branch_setting_id'] = @$this->user_sw->branch_setting_id;
-            $inputs['tenant_id'] = @$this->user_sw->tenant_id;
         }
         return $inputs;
     }

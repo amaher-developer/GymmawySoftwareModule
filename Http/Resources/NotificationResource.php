@@ -17,8 +17,9 @@ class NotificationResource extends JsonResource
         return
             [
                 "title" => $this->title,
-                "image" => $this->image,
-                "content" => $this->content
+                "image" => @$this->body['image'] ?: null,
+                "content" => @$this->body['body'] ?: null,
+                "date" => $this->created_at ? $this->created_at->diffForHumans() : null,
             ];
     }
 }

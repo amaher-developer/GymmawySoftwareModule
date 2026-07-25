@@ -344,6 +344,25 @@ class TypeConstants {
     const ExportOnlinePaymentExcel = 183;
     const ExportOnlinePaymentPDF = 184;
 
+    const CreateAttendance = 185;
+    const DeleteAttendance = 186;
+
+    // Money Box types for wallet and debt operations (distinct from sales)
+    const WalletTopUp = 187;      // Advance payment - NOT revenue
+    const DebtPayment = 188;      // Debt settlement - NOT revenue
+    const CashSale = 189;         // Normal cash sale - IS revenue
+
+    // Sales Report exports
+    const ExportSalesReportPDF = 190;
+    const ExportSalesReportExcel = 191;
+
+    // Customer Balances Report exports
+    const ExportCustomerBalancesPDF = 192;
+    const ExportCustomerBalancesExcel = 193;
+
+    // Non-member pay remaining amount
+    const CreateNonMemberPayAmountRemainingForm = 194;
+
     const Add = 0;
     const Sub = 1;
     const SubEarning = 2;
@@ -397,6 +416,7 @@ class TypeConstants {
     const TAX_TRANSACTION_SALES = 1;
     const TAX_TRANSACTION_REFUND = 2;
 
+    const RENEW_MEMBERSHIPS_MAX_NUM_2 = 4;
     const RENEW_MEMBERSHIPS_MAX_NUM = 2;
     const FEMALE = 2;
     const MALE = 1;
@@ -411,8 +431,20 @@ class TypeConstants {
 
     const PAYPAL_TRANSACTION_FEES = 2;
     const PAYMOB_TRANSACTION_FEES = 3;
+    const TABBY_TRANSACTION = 4;
+    const PAYMOB_TRANSACTION = 5;
+    const TAMARA_TRANSACTION = 6;
+    const PAYTABS_TRANSACTION = 8;
+
+    // Payment Channels
+    const CHANNEL_SYSTEM = 1;
+    const CHANNEL_WEBSITE = 2;
+    const CHANNEL_MOBILE_APP = 3;
+
+    const PENDING = 0;
     const SUCCESS = 1;
     const FAILURE = 2;
+    const CANCELLED = 3;
 
     // Payment Transaction Statuses
     const PAYMENT_PENDING = 0;

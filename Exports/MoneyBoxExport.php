@@ -11,19 +11,24 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Modules\Software\Exports\Traits\HasReportHeader;
 
 
 class MoneyBoxExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithEvents, WithTitle
 {
+    use HasReportHeader;
 
     private $lang;
     private $data;
     private $keys;
+    private $settings;
+
     public function __construct($data)
     {
         $this->lang = $data['lang'];
         $this->data = $data['records'];
         $this->keys = $data['keys'];
+        $this->settings = $data['settings'] ?? null;
     }
     public function headings(): array
     {
@@ -63,7 +68,7 @@ class MoneyBoxExport implements FromCollection, WithHeadings, WithMapping, WithS
             else if($key == 'operation')
                 $arr[] = strip_tags($data['operation_name']);
             else if($key == 'payment_type_name')
-                $arr[] = (@$data->member_subscription->payment_type == 0 ? trans('sw.payment_cash') : (@$data->member_subscription->payment_type == 1 ? trans('sw.payment_online') : trans('sw.payment_bank_transfer')));
+                $arr[] = @$data->pay_type->name ?? @$data->member_subscription->pay_type->name ?? '';
             else if($key == 'date')
                 $arr[] = Carbon::parse($data['created_at'])->format('Y-m-d') . ' ' . Carbon::parse($data['created_at'])->format('h:i a');
             else if($key == 'by')
@@ -87,12 +92,14 @@ class MoneyBoxExport implements FromCollection, WithHeadings, WithMapping, WithS
     }
     public function registerEvents(): array
     {
-
         return [
-            AfterSheet::class    => function(AfterSheet $event) {
-                if ($this->lang == 'ar') $rtl = true; else $rtl = false;
-                $event->sheet->getDelegate()
-                    ->setRightToLeft($rtl);
+            AfterSheet::class => function(AfterSheet $event) {
+                $rtl = ($this->lang == 'ar');
+                $event->sheet->getDelegate()->setRightToLeft($rtl);
+
+                if ($this->settings) {
+                    $this->applyReportHeader($event, count($this->keys));
+                }
             }
         ];
     }

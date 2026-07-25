@@ -34,7 +34,7 @@ class GymMemberNotificationFrontController extends GymGenericFrontController
         $members = new MemberNotification();
         $members = $members->getMembersList();
         $members = @$members->subscriptions;
-//        $members = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->all();
+//        $members = GymMember::all();
 
         return view('software::Front.notification_front_create', ['title'=>$title, 'members' => $members]);
     }
@@ -76,7 +76,7 @@ class GymMemberNotificationFrontController extends GymGenericFrontController
     {
         $title = trans('sw.notification_logs');
 
-        $logs = GymMemberNotificationLog::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->with(['user']);
+        $logs = GymMemberNotificationLog::branch()->with(['user']);
         if(!$this->user_sw->is_super_user)
             $logs->where('user_id', $this->user_sw->id);
         $logs->orderBy('id', 'DESC');
@@ -90,9 +90,14 @@ class GymMemberNotificationFrontController extends GymGenericFrontController
         $phones = [];
         $type = request('type');
         if($type == 2){
-            $phones = GymNonMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
+            $phones = GymNonMember::branch()->pluck('phone')->toArray();
         }else if($type == 3){
-            $phones = GymMember::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->pluck('phone')->toArray();
+            $phones = GymMember::branch()->pluck('phone')->toArray();
+        }else if($type == 4){
+            $phones = GymMember::branch()->whereHas('member_subscription_info', function ($q) {
+                //$q->whereRaw('sw_gym_member_subscription.id IN (select MAX(a2.id) from sw_gym_member_subscription as a2 join sw_gym_members as u2 on u2.id = a2.member_id group by u2.id) and sw_gym_member_subscription.status = 1');
+                $q->where('status', TypeConstants::Active);
+            })->pluck('phone')->toArray();
         }
         return implode(', ', $phones);
     }

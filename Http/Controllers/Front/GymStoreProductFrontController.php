@@ -35,7 +35,6 @@ class GymStoreProductFrontController extends GymGenericFrontController
     {
         parent::__construct();
         $this->StoreProductRepository=new GymStoreProductRepository(new Application);
-        // Repository branch filtering removed from constructor - now applied per query
         $this->imageManager = new ImageManager(new Driver());
     }
 
@@ -48,11 +47,11 @@ class GymStoreProductFrontController extends GymGenericFrontController
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
         if(request('trashed'))
         {
-            $products = $this->StoreProductRepository->with(['store_category', 'category'])->onlyTrashed()->orderBy('id', 'DESC');
+            $products = $this->StoreProductRepository->branch()->with(['store_category', 'category'])->onlyTrashed()->orderBy('id', 'DESC');
         }
         else
         {
-            $products = $this->StoreProductRepository->with(['store_category', 'category'])->orderBy('id', 'DESC');
+            $products = $this->StoreProductRepository->branch()->with(['store_category', 'category'])->orderBy('id', 'DESC');
         }
 
         //apply filters
@@ -78,7 +77,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
 
     function exportExcel(){
-        $records = $this->StoreProductRepository->get();
+        $records = $this->StoreProductRepository->branch()->get();
         $this->fileName = 'store_products-' . Carbon::now()->toDateTimeString();
 
 //        $title = trans('sw.store_products');
@@ -88,7 +87,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
         $notes = trans('sw.export_excel_store_products');
         $this->userLog($notes, TypeConstants::ExportStoreProductExcel);
 
-        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang]), $this->fileName.'.xlsx');
+        return Excel::download(new RecordsExport(['records' => $records, 'keys' => ['name', 'price'],'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName.'.xlsx');
 
 //        Excel::create($this->fileName, function($excel) use ($records, $title) {
 //            $excel->setTitle($title);
@@ -130,8 +129,8 @@ class GymStoreProductFrontController extends GymGenericFrontController
 
         $title = trans('sw.store_products');
         $customPaper = array(0,0,550,750);
-        
-        // Try mPDF for better Arabic support
+                
+                // Try mPDF for better Arabic support
         if ($this->lang == 'ar') {
             try {
                 $mpdf = new Mpdf([
@@ -213,10 +212,14 @@ class GymStoreProductFrontController extends GymGenericFrontController
         $product_inputs['is_system'] = request()->has('is_system') ? 1 : 0;
         $product_inputs['user_id'] = $this->user_sw->id;
 
-        $nextCode = str_pad((GymStoreProduct::withTrashed()->max('code') + 1), 14, 0, STR_PAD_LEFT);
         $product_inputs['code'] = $product_inputs['code'] ?? null;
         if (empty($product_inputs['code'])) {
-            $product_inputs['code'] = $nextCode;
+            $maxCode   = GymStoreProduct::branch()->withTrashed()->whereRaw('code REGEXP \'^[0-9]+$\'')->max('code');
+            $candidate = str_pad(((int) $maxCode + 1), 14, '0', STR_PAD_LEFT);
+            while (GymStoreProduct::withTrashed()->where('code', $candidate)->exists()) {
+                $candidate = str_pad(((int) $candidate + 1), 14, '0', STR_PAD_LEFT);
+            }
+            $product_inputs['code'] = $candidate;
         }
 
         $product = $this->StoreProductRepository->create($product_inputs);
@@ -448,7 +451,7 @@ class GymStoreProductFrontController extends GymGenericFrontController
             if($vendor_is_vat){
                 $vat = $this->calculateVat($amount);
             }
-            $product = GymStoreProduct::branch($this->user_sw->branch_setting_id, @$this->user_sw->tenant_id)->where('id', $product_id)->first();
+            $product = GymStoreProduct::branch()->where('id', $product_id)->first();
 
             $product->quantity = (int)$product->quantity + $quantity;
             $product->save();

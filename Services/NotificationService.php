@@ -1,0 +1,493 @@
+<?php
+
+namespace Modules\Software\Services;
+
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Modules\Generic\Models\Setting;
+use Modules\Software\Classes\SMSFactory;
+use Modules\Software\Classes\TypeConstants;
+use Modules\Software\Classes\WA;
+use Modules\Software\Classes\WAUltramsg;
+use Modules\Software\Models\GymEventNotification;
+use Modules\Software\Models\GymMember;
+use Modules\Software\Models\GymMemberSubscription;
+use Modules\Software\Models\GymPTMember;
+
+class NotificationService
+{
+    protected $mainSettings;
+
+    public function __construct()
+    {
+        $this->mainSettings = Setting::first();
+    }
+
+    /**
+     * Send notification for a specific event
+     *
+     * @param string $eventCode The event code (new_member, renew_member, before_expired_member, expired_member, etc.)
+    * @param mixed $membership The member subscription (regular or PT)
+     * @param string|null $phone Override phone number (optional)
+     * @param int|null $branchSettingId Branch setting ID (optional)
+     * @return array Result with success status and messages
+     */
+    public function sendEventNotification(string $eventCode, $membership, ?string $phone = null, ?int $branchSettingId = null): array
+    {
+        $result = [
+            'success' => false,
+            'sms_sent' => false,
+            'wa_sent' => false,
+            'message' => '',
+        ];
+
+        // Get event notification settings
+        $query = GymEventNotification::where('event_code', $eventCode)->where('status', 1);
+        if ($branchSettingId) {
+            $query->where('branch_setting_id', $branchSettingId);
+        }
+        $eventNotification = $query->first();
+
+        if (!$eventNotification) {
+            $result['message'] = "Event notification '{$eventCode}' not found or disabled";
+            return $result;
+        }
+
+        // Get member phone
+        $member = null;
+        if ($membership instanceof GymMemberSubscription || $membership instanceof GymPTMember) {
+            $member = $membership->member;
+        }
+
+        $memberPhone = $phone ?? @$member->phone;
+        if (!$memberPhone) {
+            $result['message'] = 'No phone number available';
+            return $result;
+        }
+
+        // Build the message
+        $msg = $this->dynamicMsg($eventNotification->message, $membership, $this->mainSettings);
+
+        // Send SMS
+        if ($this->mainSettings->active_sms && env('SMS_GATEWAY')) {
+            $result['sms_sent'] = $this->sendSMS($memberPhone, $msg, @$member->id);
+        }
+
+        // Send WhatsApp via Ultramsg
+        if ($this->mainSettings->active_wa && env('WA_GATEWAY') == 'ULTRA') {
+            $result['wa_sent'] = $this->sendWhatsAppUltra($memberPhone, $msg, @$member->id);
+        }
+
+        // Send WhatsApp via WA Token
+        if ($this->mainSettings->active_wa && env('WA_USER_TOKEN')) {
+            $result['wa_sent'] = $this->sendWhatsAppToken($memberPhone, $msg, @$member->id);
+        }
+
+        $result['success'] = $result['sms_sent'] || $result['wa_sent'];
+        $result['message'] = $result['success'] ? 'Notification sent successfully' : 'Failed to send notification';
+
+        return $result;
+    }
+
+    /**
+     * Send SMS message
+     */
+    public function sendSMS(string $phone, string $message, ?int $memberId = null): bool
+    {
+        try {
+            $sms = new SMSFactory(env('SMS_GATEWAY'));
+            $sms->send(trim($phone), $message);
+            Log::info('SMS sent successfully', [
+                'member_id' => $memberId,
+                'phone' => $phone,
+                'message' => $message
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send SMS', [
+                'member_id' => $memberId,
+                'phone' => $phone,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Send WhatsApp message via Ultramsg
+     */
+    public function sendWhatsAppUltra(string $phone, string $message, ?int $memberId = null): bool
+    {
+        try {
+            $wa = new WAUltramsg();
+            $wa->sendText(trim($phone), $message);
+            Log::info('WhatsApp message sent successfully (Ultra)', [
+                'member_id' => $memberId,
+                'phone' => $phone,
+                'message' => $message
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send WhatsApp message (Ultra)', [
+                'member_id' => $memberId,
+                'phone' => $phone,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Send WhatsApp message via WA Token
+     */
+    public function sendWhatsAppToken(string $phone, string $message, ?int $memberId = null): bool
+    {
+        try {
+            $wa = new WA();
+            $wa->sendText(trim($phone), $message);
+            Log::info('WhatsApp message sent successfully (Token)', [
+                'member_id' => $memberId,
+                'phone' => $phone,
+                'message' => $message
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send WhatsApp message (Token)', [
+                'member_id' => $memberId,
+                'phone' => $phone,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Replace dynamic variables in message
+     */
+    public function dynamicMsg(string $msg = '', $membership = null, ?Setting $setting = null): string
+    {
+        if (!$membership) {
+            return $msg;
+        }
+
+        $member = null;
+        $membershipName = '';
+        $startDate = null;
+        $expireDate = null;
+        $amountPaid = 0;
+        $amountRemaining = 0;
+        $ptMembershipName = '';
+        $ptStartDate = null;
+        $ptExpireDate = null;
+        $ptAmountPaid = 0;
+        $ptAmountRemaining = 0;
+        $ptTrainerName = '';
+
+        if ($membership instanceof GymMemberSubscription) {
+            $member = $membership->member;
+            $membershipName = @$membership->subscription->name;
+            $startDate = $membership->joining_date;
+            $expireDate = $membership->expire_date;
+            $amountPaid = $membership->amount_paid ?? 0;
+            $amountRemaining = $membership->amount_remaining ?? 0;
+        } elseif ($membership instanceof GymPTMember) {
+            $member = $membership->member;
+            $membershipName = @$membership->pt_subscription->name ?: @$membership->resolvedClass->name;
+            $startDate = $membership->joining_date ?? $membership->start_date;
+            $expireDate = $membership->expire_date ?? $membership->end_date;
+            $amountPaid = $membership->amount_paid ?? $membership->paid_amount ?? 0;
+            $amountRemaining = $membership->amount_remaining ?? 0;
+
+            $ptMembershipName = $membershipName;
+            $ptStartDate = $startDate;
+            $ptExpireDate = $expireDate;
+            $ptAmountPaid = $amountPaid;
+            $ptAmountRemaining = $amountRemaining;
+
+            // Resolve PT trainer name
+            $ptTrainerName = '';
+            if ($membership->trainer) {
+                $ptTrainerName = @$membership->trainer->name ?? '';
+            } elseif ($membership->pt_trainer_id > 0) {
+                $ptTrainer = \Modules\Software\Models\GymPTTrainer::find($membership->pt_trainer_id);
+                $ptTrainerName = $ptTrainer?->name ?? '';
+            }
+        }
+
+        $dynamic_variables = [
+            '#member_name' => @$member->name ?? '',
+            '#member_code' => (int)(@$member->code ?? 0),
+            '#member_phone' => @$member->phone ?? '',
+            '#membership_start_date' => $startDate ? Carbon::parse($startDate)->addHours(12)->toDateString() : '',
+            '#membership_expire_date' => $expireDate ? Carbon::parse($expireDate)->toDateString() : '',
+            '#membership_resume_date' => $membership->end_freeze_date ? Carbon::parse($membership->end_freeze_date)->toDateString() : '',
+            '#membership_amount_paid' => $amountPaid,
+            '#membership_amount_remaining' => $amountRemaining,
+            '#membership_name' => $membershipName ?? '',
+            '#pt_membership_name' => $ptMembershipName ?? '',
+            '#pt_membership_amount_paid' => $ptAmountPaid,
+            '#pt_membership_amount_remaining' => $ptAmountRemaining,
+            '#pt_membership_start_date' => $ptStartDate ? Carbon::parse($ptStartDate)->addHours(12)->toDateString() : '',
+            '#pt_membership_expire_date' => $ptExpireDate ? Carbon::parse($ptExpireDate)->toDateString() : '',
+            '#pt_days_remaining' => $ptExpireDate ? Carbon::now()->diffInDays(Carbon::parse($ptExpireDate), false) : 0,
+            '#pt_trainer_name' => $ptTrainerName ?? '',
+            '#setting_phone' => $setting->phone ?? '',
+            '#setting_name' => $setting->name ?? '',
+            '#days_remaining' => $expireDate ? Carbon::now()->diffInDays(Carbon::parse($expireDate), false) : 0,
+        ];
+
+        foreach ($dynamic_variables as $key => $value) {
+            $msg = str_replace($key, $value, $msg);
+        }
+
+        return $msg;
+    }
+
+    /**
+     * Get members with expiring memberships within X days
+     */
+    public function getExpiringMemberships(int $days = 3, ?int $branchSettingId = null)
+    {
+        $query = GymMemberSubscription::with(['member', 'subscription'])
+            ->whereDate('expire_date', '=', Carbon::now()->addDays($days)->toDateString())
+            ->where('status', TypeConstants::Active); // Active memberships only
+
+        if ($branchSettingId) {
+            $query->where('branch_setting_id', $branchSettingId);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Get members with expired memberships (expired today)
+     */
+    public function getExpiredMemberships(?int $branchSettingId = null)
+    {
+        $query = GymMemberSubscription::with(['member', 'subscription'])
+            ->whereDate('expire_date', '=', Carbon::now()->subDay()->toDateString())
+            ->where('status', TypeConstants::Active);
+
+        if ($branchSettingId) {
+            $query->where('branch_setting_id', $branchSettingId);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Send notifications to all expiring memberships
+     */
+    public function sendExpiringNotifications(int $days = 3, ?int $branchSettingId = null): array
+    {
+        $memberships = $this->getExpiringMemberships($days, $branchSettingId);
+        $results = [
+            'total' => $memberships->count(),
+            'success' => 0,
+            'failed' => 0,
+            'details' => []
+        ];
+
+        foreach ($memberships as $membership) {
+            $result = $this->sendEventNotification('before_expired_member', $membership, null, $branchSettingId);
+            if ($result['success']) {
+                $results['success']++;
+            } else {
+                $results['failed']++;
+            }
+            $results['details'][] = [
+                'member_id' => $membership->member->id ?? null,
+                'member_name' => $membership->member->name ?? null,
+                'expire_date' => $membership->expire_date,
+                'result' => $result
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Send notifications to all expired memberships and update status to Expired
+     */
+    public function sendExpiredNotifications(?int $branchSettingId = null): array
+    {
+        $memberships = $this->getExpiredMemberships($branchSettingId);
+        $results = [
+            'total' => $memberships->count(),
+            'success' => 0,
+            'failed' => 0,
+            'details' => []
+        ];
+
+        foreach ($memberships as $membership) {
+            $result = $this->sendEventNotification('expired_member', $membership, null, $branchSettingId);
+            if ($result['success']) {
+                $results['success']++;
+                // Update membership status to Expired after successful notification
+                $membership->status = TypeConstants::Expired;
+                $membership->save();
+            } else {
+                $results['failed']++;
+            }
+            $results['details'][] = [
+                'member_id' => $membership->member->id ?? null,
+                'member_name' => $membership->member->name ?? null,
+                'expire_date' => $membership->expire_date,
+                'result' => $result
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get members with active freeze that ends today (to be unfrozen)
+     */
+    public function getUnfreezingMemberships(?int $branchSettingId = null)
+    {
+        $query = GymMemberSubscription::with(['member', 'subscription'])
+            ->whereDate('end_freeze_date', '=', Carbon::now()->toDateString())
+            ->where('status', TypeConstants::Freeze);
+
+        if ($branchSettingId) {
+            $query->where('branch_setting_id', $branchSettingId);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Send birthday notifications to members whose dob matches today
+     */
+    public function sendBirthdayNotifications(?int $branchSettingId = null): array
+    {
+        $today = Carbon::now();
+
+        // Load optional birthday event notification for the custom message template
+        $eventQuery = GymEventNotification::where('event_code', 'birthday_member')->where('status', 1);
+        if ($branchSettingId) {
+            $eventQuery->where('branch_setting_id', $branchSettingId);
+        }
+        $eventNotification = $eventQuery->first();
+
+        // Query members whose birthday is today
+        $memberQuery = GymMember::select('id', 'name', 'phone')
+            ->whereMonth('dob', $today->month)
+            ->whereDay('dob', $today->day)
+            ->whereNotNull('phone');
+        if ($branchSettingId) {
+            $memberQuery->where('branch_setting_id', $branchSettingId);
+        }
+        $members = $memberQuery->get();
+
+        $results = [
+            'total'   => $members->count(),
+            'success' => 0,
+            'failed'  => 0,
+            'details' => [],
+        ];
+
+        foreach ($members as $member) {
+            // Build message: use event notification template if available, else default
+            if ($eventNotification && $eventNotification->message) {
+                $msg = str_replace('#member_name', $member->name ?? '', $eventNotification->message);
+            } else {
+                $gymName = $this->mainSettings->name ?? '';
+                $msg = "Happy Birthday {$member->name}! 🎂 Wishing you a great day. – {$gymName}";
+            }
+
+            $phone = trim($member->phone);
+            $sent  = false;
+
+            if ($this->mainSettings->active_sms && env('SMS_GATEWAY')) {
+                $sent = $this->sendSMS($phone, $msg, $member->id) || $sent;
+            }
+            if ($this->mainSettings->active_wa && env('WA_GATEWAY') == 'ULTRA') {
+                $sent = $this->sendWhatsAppUltra($phone, $msg, $member->id) || $sent;
+            }
+            if ($this->mainSettings->active_wa && env('WA_USER_TOKEN')) {
+                $sent = $this->sendWhatsAppToken($phone, $msg, $member->id) || $sent;
+            }
+
+            if ($sent) {
+                $results['success']++;
+            } else {
+                $results['failed']++;
+            }
+
+            $results['details'][] = [
+                'member_id'   => $member->id,
+                'member_name' => $member->name,
+                'success'     => $sent,
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Send notifications to all unfreezing memberships and update status
+     */
+    public function sendUnfreezeNotifications(?int $branchSettingId = null): array
+    {
+        $memberships = $this->getUnfreezingMemberships($branchSettingId);
+        $results = [
+            'total' => $memberships->count(),
+            'success' => 0,
+            'failed' => 0,
+            'details' => []
+        ];
+
+        foreach ($memberships as $membership) {
+            $result = $this->sendEventNotification('unfreeze_member', $membership, null, $branchSettingId);
+
+            // Update freeze status regardless of notification result
+            // The freeze period has ended, so we need to update the status
+            $membership->end_freeze_date = Carbon::now();
+
+            // Update the active freeze record
+            $activeFreeze = \Modules\Software\Models\GymMemberSubscriptionFreeze::where('member_subscription_id', $membership->id)
+                ->whereIn('status', ['active', 'approved'])
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($activeFreeze) {
+                $activeFreeze->end_date = Carbon::now()->toDateString();
+                $activeFreeze->status = 'completed';
+                $activeFreeze->save();
+            }
+
+            // Update membership status based on expire date
+            $expireDate = Carbon::parse($membership->expire_date)->toDateString();
+            $joiningDate = Carbon::parse($membership->joining_date)->toDateString();
+            $currentDate = Carbon::now()->toDateString();
+
+            if ($expireDate < $currentDate) {
+                $membership->status = TypeConstants::Expired;
+            } elseif ($expireDate >= $currentDate && $joiningDate > $currentDate) {
+                $membership->status = TypeConstants::Coming;
+            } else {
+                $membership->status = TypeConstants::Active;
+            }
+
+            $membership->save();
+
+            if ($result['success']) {
+                $results['success']++;
+            } else {
+                $results['failed']++;
+            }
+
+            $results['details'][] = [
+                'member_id' => $membership->member->id ?? null,
+                'member_name' => $membership->member->name ?? null,
+                'expire_date' => $membership->expire_date,
+                'end_freeze_date' => $membership->end_freeze_date,
+                'new_status' => $membership->status,
+                'result' => $result
+            ];
+        }
+
+        return $results;
+    }
+}
