@@ -134,12 +134,12 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.memberships')}}</label>
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.sort_by') }}</label>
                             <select name="subscription" class="form-select form-select-solid">
-                                <option value="0" @if(request('subscription', '0') == '0') selected="" @endif>{{ trans('sw.from_highest_memberships')}}</option>
-                                <option value="1" @if(request('subscription') == '1') selected="" @endif>{{ trans('sw.from_lowest_memberships')}}</option>
                                 <option value="2" @if(request('subscription') == '2') selected="" @endif>{{ trans('sw.period') }} ({{ trans('sw.highest') }})</option>
                                 <option value="3" @if(request('subscription') == '3') selected="" @endif>{{ trans('sw.period') }} ({{ trans('sw.lowest') }})</option>
+                                <option value="0" @if(request('subscription', '0') == '0') selected="" @endif>{{ trans('sw.memberships_count') }} ({{ trans('sw.highest') }})</option>
+                                <option value="1" @if(request('subscription') == '1') selected="" @endif>{{ trans('sw.memberships_count') }} ({{ trans('sw.lowest') }})</option>
                             </select>
                         </div>
                     </div>
