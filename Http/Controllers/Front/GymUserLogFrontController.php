@@ -381,7 +381,8 @@ class GymUserLogFrontController extends GymGenericFrontController
     public function reportSubscriptionMemberList(){
         $title = trans('sw.report_subscriptions');
         $this->request_array = ['search', 'from', 'to', 'subscription'
-            , 'status', 'remaining_status', 'discount_status', 'joining_date', 'expire_date', 'group_discount_id'];
+            , 'status', 'remaining_status', 'discount_status', 'joining_date', 'expire_date', 'group_discount_id'
+            , 'period_from', 'period_to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
@@ -429,6 +430,10 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->whereDate('joining_date', '=', Carbon::parse($joining_date)->toDateString());
         })->when(($expire_date), function ($query) use ($expire_date) {
             $query->whereDate('expire_date', '=', Carbon::parse($expire_date)->toDateString());
+        })->when(($period_from), function ($query) use ($period_from) {
+            $query->whereDate('expire_date', '>=', Carbon::parse($period_from)->toDateString());
+        })->when(($period_to), function ($query) use ($period_to) {
+            $query->whereDate('joining_date', '<=', Carbon::parse($period_to)->toDateString());
         })->when($search, function ($query) use ($search) {
             $query->whereHas('member', function ($q) use ($search){
                 $q->where('id', '=', (int)$search);
@@ -442,13 +447,16 @@ class GymUserLogFrontController extends GymGenericFrontController
         // ── Statistics (computed on filtered query before paginating) ─────────
         $statsBase = clone $logs;
         $stats = [
-            'total_paid'      => (clone $statsBase)->sum('amount_paid'),
-            'total_remaining' => (clone $statsBase)->sum('amount_remaining'),
-            'total_discount'  => (clone $statsBase)->sum('discount_value'),
-            'count_active'    => (clone $statsBase)->where('status', TypeConstants::Active)->count(),
-            'count_frozen'    => (clone $statsBase)->where('status', TypeConstants::Freeze)->count(),
-            'count_expired'   => (clone $statsBase)->where('status', TypeConstants::Expired)->count(),
-            'count_coming'    => (clone $statsBase)->where('status', TypeConstants::Coming)->count(),
+            'total_paid'        => (clone $statsBase)->sum('amount_paid'),
+            'total_remaining'   => (clone $statsBase)->sum('amount_remaining'),
+            'total_discount'    => (clone $statsBase)->sum('discount_value'),
+            'total_period_days' => (clone $statsBase)->sum(DB::raw('DATEDIFF(expire_date, joining_date) + 1')),
+            'total_workouts'    => (clone $statsBase)->sum('workouts'),
+            'total_visits'      => (clone $statsBase)->sum('visits'),
+            'count_active'      => (clone $statsBase)->where('status', TypeConstants::Active)->count(),
+            'count_frozen'      => (clone $statsBase)->where('status', TypeConstants::Freeze)->count(),
+            'count_expired'     => (clone $statsBase)->where('status', TypeConstants::Expired)->count(),
+            'count_coming'      => (clone $statsBase)->where('status', TypeConstants::Coming)->count(),
         ];
 
         if($this->limit){

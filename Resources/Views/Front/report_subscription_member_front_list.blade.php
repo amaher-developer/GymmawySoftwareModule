@@ -149,7 +149,7 @@
     <!--begin::Card body-->
     <div class="card-body pt-0">
         <!--begin::Filter-->
-        <div class="collapse {{ request()->hasAny(['subscription','status','remaining_status','discount_status','group_discount_id','joining_date','expire_date','from','to']) ? 'show' : '' }}" id="kt_subscription_members_filter_collapse">
+        <div class="collapse {{ request()->hasAny(['subscription','status','remaining_status','discount_status','group_discount_id','joining_date','expire_date','from','to','period_from','period_to']) ? 'show' : '' }}" id="kt_subscription_members_filter_collapse">
             <div class="card card-body mb-5">
                 <form id="form_filter" action="" method="get">
                     <div class="row g-4">
@@ -161,6 +161,16 @@
                                 <input type="text" class="form-control" name="from" value="{{ request('from') }}" placeholder="{{ trans('sw.from')}}" autocomplete="off">
                                 <span class="input-group-text">{{ trans('sw.to')}}</span>
                                 <input type="text" class="form-control" name="to"   value="{{ request('to') }}"   placeholder="{{ trans('sw.to')}}"   autocomplete="off">
+                            </div>
+                        </div>
+
+                        {{-- Subscription Period range (joining_date/expire_date overlap) --}}
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.subscription_period')}}</label>
+                            <div class="input-group date-picker input-daterange">
+                                <input type="text" class="form-control" name="period_from" value="{{ request('period_from') }}" placeholder="{{ trans('sw.from')}}" autocomplete="off">
+                                <span class="input-group-text">{{ trans('sw.to')}}</span>
+                                <input type="text" class="form-control" name="period_to"   value="{{ request('period_to') }}"   placeholder="{{ trans('sw.to')}}"   autocomplete="off">
                             </div>
                         </div>
 
@@ -334,6 +344,54 @@
                         <div>
                             <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.discount')}}</div>
                             <div class="fs-2 fw-bold text-info">{{ number_format($stats['total_discount'], 2) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- Total period days --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-primary border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-primary">
+                                <i class="ki-outline ki-timer fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.period')}}</div>
+                            <div class="fs-2 fw-bold text-primary">{{ number_format($stats['total_period_days']) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- Total workouts --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-success border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-success">
+                                <i class="ki-outline ki-abstract-26 fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.workouts')}}</div>
+                            <div class="fs-2 fw-bold text-success">{{ number_format($stats['total_workouts']) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- Total visits --}}
+            <div class="col-6 col-md-3">
+                <div class="card card-flush h-100 bg-light-warning border-0">
+                    <div class="card-body py-4 px-5 d-flex align-items-center gap-4">
+                        <div class="symbol symbol-50px">
+                            <div class="symbol-label bg-warning">
+                                <i class="ki-outline ki-user-tick fs-2x text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fs-7 text-gray-500 fw-semibold">{{ trans('sw.number_of_visits')}}</div>
+                            <div class="fs-2 fw-bold text-warning">{{ number_format($stats['total_visits']) }}</div>
                         </div>
                     </div>
                 </div>
