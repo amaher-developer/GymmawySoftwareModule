@@ -20,6 +20,7 @@
     <!--end::Breadcrumb-->
 @endsection
 @section('styles')
+    <link rel="stylesheet" type="text/css" href="{{asset('/')}}resources/assets/new_front/global/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.css"/>
     <style>
         .avatar-md {
             width: 48px !important;
@@ -119,15 +120,26 @@
     <!--begin::Card body-->
     <div class="card-body pt-0">
         <!--begin::Filter-->
-        <div class="collapse" id="kt_detail_members_filter_collapse">
+        <div class="collapse {{ request()->hasAny(['subscription','from','to']) ? 'show' : '' }}" id="kt_detail_members_filter_collapse">
             <div class="card card-body mb-5">
                 <form id="form_filter" action="" method="get">
                     <div class="row g-6">
-                        <div class="col-md-12">
+                        {{-- Subscription period (joining_date/expire_date overlap) --}}
+                        <div class="col-md-6">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.subscription_period')}}</label>
+                            <div class="input-group date-picker input-daterange">
+                                <input type="text" class="form-control" name="from" value="{{ request('from') }}" placeholder="{{ trans('sw.from')}}" autocomplete="off">
+                                <span class="input-group-text">{{ trans('sw.to')}}</span>
+                                <input type="text" class="form-control" name="to"   value="{{ request('to') }}"   placeholder="{{ trans('sw.to')}}"   autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.memberships')}}</label>
                             <select name="subscription" class="form-select form-select-solid">
-                                <option value="0" @if(request('subscription') == 0) selected="" @endif>{{ trans('sw.from_highest_memberships')}}</option>
-                                <option value="1" @if(request('subscription') == 1) selected="" @endif>{{ trans('sw.from_lowest_memberships')}}</option>
+                                <option value="0" @if(request('subscription', '0') == '0') selected="" @endif>{{ trans('sw.from_highest_memberships')}}</option>
+                                <option value="1" @if(request('subscription') == '1') selected="" @endif>{{ trans('sw.from_lowest_memberships')}}</option>
+                                <option value="2" @if(request('subscription') == '2') selected="" @endif>{{ trans('sw.period') }} ({{ trans('sw.highest') }})</option>
+                                <option value="3" @if(request('subscription') == '3') selected="" @endif>{{ trans('sw.period') }} ({{ trans('sw.lowest') }})</option>
                             </select>
                         </div>
                     </div>
@@ -146,6 +158,10 @@
         <div class="d-flex align-items-center position-relative my-1 mb-5">
             <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
             <form class="d-flex" action="" method="get" style="max-width: 400px;">
+                {{-- carry all other active filters so search doesn't reset them --}}
+                @foreach(request()->except('search') as $k => $v)
+                    <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                @endforeach
                 <input type="text" name="search" class="form-control form-control-solid ps-12" value="@php echo @strip_tags($_GET['search']) @endphp" placeholder="{{ trans('sw.search_on')}}">
                 <button class="btn btn-primary" type="submit">
                     <i class="ki-outline ki-magnifier fs-3"></i>
@@ -186,6 +202,21 @@
                             <th class="min-w-150px text-nowrap">
                                 <i class="ki-outline ki-sort-numeric-asc fs-6 me-2"></i>{{ trans('sw.memberships_count')}}
                             </th>
+                            <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-timer fs-6 me-2"></i>{{ trans('sw.period')}}
+                            </th>
+                            <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-abstract-26 fs-6 me-2"></i>{{ trans('sw.workouts')}}
+                            </th>
+                            <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-user-tick fs-6 me-2"></i>{{ trans('sw.number_of_visits')}}
+                            </th>
+                            <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.amount_paid')}}
+                            </th>
+                            <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-dollar fs-6 me-2"></i>{{ trans('sw.amount_remaining')}}
+                            </th>
                             <th class="text-end actions-column">
                                 <i class="ki-outline ki-setting-2 fs-6 me-2"></i>{{ trans('admin.actions')}}
                             </th>
@@ -218,12 +249,27 @@
                                 <td>
                                     <span class="fw-bold">{{ (int)@$member->member_subscriptions->count() }}</span>
                                 </td>
+                                <td>
+                                    <span class="fw-bold">{{ (int)($member->total_period_days ?? 0) }} {{ trans('sw.day') }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ (int)($member->total_workouts ?? 0) }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ (int)($member->total_visits ?? 0) }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ number_format($member->total_amount_paid ?? 0, 2) }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ number_format($member->total_amount_remaining ?? 0, 2) }}</span>
+                                </td>
                                 <td class="text-end actions-column">
                                 </td>
                             </tr>
                             @if(count($member->member_subscriptions) > 0)
                             <tr class="collapse" id="details-{{$member->id}}">
-                                <td colspan="5" class="p-0">
+                                <td colspan="9" class="p-0">
                                     <div class="p-4">
                                         <table class="table table-row-dashed">
                                             <thead>
@@ -356,10 +402,25 @@
 @endsection
 
 @section('scripts')
+    <script src="{{asset('resources/assets/new_front/global/plugins/bootstrap-datepicker/js/bootstrap-datepicker.js')}}"
+            type="text/javascript"></script>
     @parent
     <script src="https://code.highcharts.com/highcharts.js"></script>
 
     <script>
+        jQuery(document).ready(function() {
+            var today = new Date();
+            $('.input-daterange').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                todayHighlight: true,
+                clearBtn: true,
+                orientation: 'bottom auto',
+                defaultDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() },
+                defaultViewDate: { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() }
+            });
+        });
+
         $('#container').highcharts({
             title: {
                 text: '{{ trans('sw.memberships')}}',

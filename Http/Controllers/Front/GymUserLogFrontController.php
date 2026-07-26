@@ -381,30 +381,17 @@ class GymUserLogFrontController extends GymGenericFrontController
     public function reportSubscriptionMemberList(){
         $title = trans('sw.report_subscriptions');
         $this->request_array = ['search', 'from', 'to', 'subscription'
-            , 'status', 'remaining_status', 'discount_status', 'joining_date', 'expire_date', 'group_discount_id'
-            , 'period_from', 'period_to'];
+            , 'status', 'remaining_status', 'discount_status', 'joining_date', 'expire_date', 'group_discount_id'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
-        $sort = request('sort');
-
         $subscriptions = GymSubscription::branch()->get();
         $group_discounts = GymGroupDiscount::branch()->where('is_member', 1)->get();
-        $logs = GymMemberSubscription::branch()
-            ->selectRaw('sw_gym_member_subscription.*, (DATEDIFF(expire_date, joining_date) + 1) as period_days')
-            ->with(['member', 'subscription' => function($q){$q->withTrashed();}
+        $logs = GymMemberSubscription::branch()->with(['member', 'subscription' => function($q){$q->withTrashed();}
             ,'member.member_remain_amount_subscriptions.subscription' => function ($q) {
                 $q->withTrashed();
             }
-        ])->whereHas('member', function($q){$q->whereNull('deleted_at');});
-
-        if($sort === 'period_desc'){
-            $logs->orderBy('period_days', 'desc');
-        } elseif($sort === 'period_asc'){
-            $logs->orderBy('period_days', 'asc');
-        } else {
-            $logs->orderBy('id', 'DESC');
-        }
+        ])->whereHas('member', function($q){$q->whereNull('deleted_at');})->orderBy('id', 'DESC');
 
         $logs->when(($from), function ($query) use ($from) {
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));
@@ -430,10 +417,6 @@ class GymUserLogFrontController extends GymGenericFrontController
             $query->whereDate('joining_date', '=', Carbon::parse($joining_date)->toDateString());
         })->when(($expire_date), function ($query) use ($expire_date) {
             $query->whereDate('expire_date', '=', Carbon::parse($expire_date)->toDateString());
-        })->when(($period_from), function ($query) use ($period_from) {
-            $query->whereDate('expire_date', '>=', Carbon::parse($period_from)->toDateString());
-        })->when(($period_to), function ($query) use ($period_to) {
-            $query->whereDate('joining_date', '<=', Carbon::parse($period_to)->toDateString());
         })->when($search, function ($query) use ($search) {
             $query->whereHas('member', function ($q) use ($search){
                 $q->where('id', '=', (int)$search);
@@ -447,16 +430,13 @@ class GymUserLogFrontController extends GymGenericFrontController
         // ── Statistics (computed on filtered query before paginating) ─────────
         $statsBase = clone $logs;
         $stats = [
-            'total_paid'        => (clone $statsBase)->sum('amount_paid'),
-            'total_remaining'   => (clone $statsBase)->sum('amount_remaining'),
-            'total_discount'    => (clone $statsBase)->sum('discount_value'),
-            'total_period_days' => (clone $statsBase)->sum(DB::raw('DATEDIFF(expire_date, joining_date) + 1')),
-            'total_workouts'    => (clone $statsBase)->sum('workouts'),
-            'total_visits'      => (clone $statsBase)->sum('visits'),
-            'count_active'      => (clone $statsBase)->where('status', TypeConstants::Active)->count(),
-            'count_frozen'      => (clone $statsBase)->where('status', TypeConstants::Freeze)->count(),
-            'count_expired'     => (clone $statsBase)->where('status', TypeConstants::Expired)->count(),
-            'count_coming'      => (clone $statsBase)->where('status', TypeConstants::Coming)->count(),
+            'total_paid'      => (clone $statsBase)->sum('amount_paid'),
+            'total_remaining' => (clone $statsBase)->sum('amount_remaining'),
+            'total_discount'  => (clone $statsBase)->sum('discount_value'),
+            'count_active'    => (clone $statsBase)->where('status', TypeConstants::Active)->count(),
+            'count_frozen'    => (clone $statsBase)->where('status', TypeConstants::Freeze)->count(),
+            'count_expired'   => (clone $statsBase)->where('status', TypeConstants::Expired)->count(),
+            'count_coming'    => (clone $statsBase)->where('status', TypeConstants::Coming)->count(),
         ];
 
         if($this->limit){
@@ -749,21 +729,50 @@ class GymUserLogFrontController extends GymGenericFrontController
         $title = trans('sw.logs_detail');
         $this->limit = 5;
 
-        $this->request_array = ['search', 'subscription'];
+        $this->request_array = ['search', 'subscription', 'from', 'to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
-        $members = GymMember::branch()->with(['member_subscriptions'=> function($q){
+
+        // subscriptions overlapping the selected period (joining_date <= to AND expire_date >= from)
+        $periodFilter = function($q) use ($from, $to) {
+            $q->when($from, function ($qq) use ($from) {
+                $qq->whereDate('expire_date', '>=', Carbon::parse($from)->toDateString());
+            })->when($to, function ($qq) use ($to) {
+                $qq->whereDate('joining_date', '<=', Carbon::parse($to)->toDateString());
+            });
+        };
+
+        $members = GymMember::branch()->with(['member_subscriptions'=> function($q) use ($periodFilter){
+            $periodFilter($q);
             $q->orderBy('id', 'desc');
         },'member_subscriptions.subscription' => function($q){$q->withTrashed();}])->when($search, function ($query) use ($search) {
-            $query->where('id', '=', (int)$search);
-            $query->orWhere('code', 'like', "%" . $search . "%");
-            $query->orWhere('name', 'like', "%" . $search . "%");
-            $query->orWhere('phone', 'like', "%" . $search . "%");
-            $query->orWhere('address', 'like', "%" . $search . "%");
+            $query->where(function ($q) use ($search) {
+                $q->where('id', '=', (int)$search);
+                $q->orWhere('code', 'like', "%" . $search . "%");
+                $q->orWhere('name', 'like', "%" . $search . "%");
+                $q->orWhere('phone', 'like', "%" . $search . "%");
+                $q->orWhere('address', 'like', "%" . $search . "%");
+            });
 //            $query->whereRaw(' json_extract(activities->"$[*].name_ar", "'.$search.'")');
-        })->withCount('member_subscriptions');
+        })->when(($from || $to), function ($query) use ($periodFilter) {
+            $query->whereHas('member_subscriptions', $periodFilter);
+        })
+        ->withCount(['member_subscriptions' => $periodFilter])
+        ->withSum(['member_subscriptions as total_workouts' => $periodFilter], 'workouts')
+        ->withSum(['member_subscriptions as total_visits' => $periodFilter], 'visits')
+        ->withSum(['member_subscriptions as total_amount_paid' => $periodFilter], 'amount_paid')
+        ->withSum(['member_subscriptions as total_amount_remaining' => $periodFilter], 'amount_remaining')
+        ->addSelect(['total_period_days' => tap(
+            GymMemberSubscription::selectRaw('COALESCE(SUM(DATEDIFF(expire_date, joining_date) + 1), 0)')
+                ->whereColumn('member_id', 'sw_gym_members.id')
+            , $periodFilter)
+        ]);
 
-        if($subscription == 1)
+        if($subscription == 2)
+            $members->orderBy('total_period_days', 'desc');
+        elseif($subscription == 3)
+            $members->orderBy('total_period_days', 'asc');
+        elseif($subscription == 1)
             $members->orderBy('member_subscriptions_count', 'asc');
         else
             $members->orderBy('member_subscriptions_count', 'desc');
