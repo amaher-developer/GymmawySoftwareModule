@@ -2705,6 +2705,15 @@ class GymMemberFrontController extends GymGenericFrontController
                 $currentDate = Carbon::now()->toDateString();
                 $expireDate = Carbon::parse($member->member_subscription_info->expire_date)->toDateString();
 
+                $hasOpenFreeze = GymMemberSubscriptionFreeze::where('member_subscription_id', $member->member_subscription_info->id)
+                    ->whereIn('status', ['active', 'approved'])
+                    ->exists();
+
+                if (($member->member_subscription_info->status == TypeConstants::Freeze) || $hasOpenFreeze) {
+                    $msg = trans('sw.membership_frozen_msg', ['date_from' => Carbon::parse($member->member_subscription_info->start_freeze_date)->toDateString(), 'date_to' => Carbon::parse($member->member_subscription_info->end_freeze_date)->toDateString()]);
+                    return Response::json(['msg' => $msg, 'member' => $member, 'status' => false, 'renew_status' => $renew_status, 'freeze_status' => true], 200);
+                }
+
                 if ($expireDate < $currentDate) {
                     if(!$enquiry && @$this->mainSettings->member_attendees_expire){
                         $member->member_subscription_info->increment('visits');
@@ -2759,10 +2768,6 @@ class GymMemberFrontController extends GymGenericFrontController
                     $checkForMemberVisits = false;
                 }
 
-                if ($member->member_subscription_info->status == TypeConstants::Freeze) {
-                    $msg = trans('sw.membership_frozen_msg', ['date_from' => Carbon::parse($member->member_subscription_info->start_freeze_date)->toDateString(), 'date_to' => Carbon::parse($member->member_subscription_info->end_freeze_date)->toDateString()]);
-                    return Response::json(['msg' => $msg, 'member' => $member, 'status' => $status, 'renew_status' => $renew_status, 'freeze_status' => true], 200);
-                }
                 /*
                                 if((@$member->member_subscription_info->start_time_day && @$member->member_subscription_info->end_time_day) && (Carbon::parse($member->member_subscription_info->start_time_day) != Carbon::parse($member->member_subscription_info->end_time_day)) &&
                                     ((Carbon::parse($member->member_subscription_info->start_time_day)->toTimeString() > Carbon::now()->toTimeString()) || (Carbon::parse($member->member_subscription_info->end_time_day)->toTimeString() < Carbon::now()->toTimeString()))){

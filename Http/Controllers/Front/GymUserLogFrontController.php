@@ -385,13 +385,25 @@ class GymUserLogFrontController extends GymGenericFrontController
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
+        $sort = request('sort');
+
         $subscriptions = GymSubscription::branch()->get();
         $group_discounts = GymGroupDiscount::branch()->where('is_member', 1)->get();
-        $logs = GymMemberSubscription::branch()->with(['member', 'subscription' => function($q){$q->withTrashed();}
+        $logs = GymMemberSubscription::branch()
+            ->selectRaw('sw_gym_member_subscription.*, (DATEDIFF(expire_date, joining_date) + 1) as period_days')
+            ->with(['member', 'subscription' => function($q){$q->withTrashed();}
             ,'member.member_remain_amount_subscriptions.subscription' => function ($q) {
                 $q->withTrashed();
             }
-        ])->whereHas('member', function($q){$q->whereNull('deleted_at');})->orderBy('id', 'DESC');
+        ])->whereHas('member', function($q){$q->whereNull('deleted_at');});
+
+        if($sort === 'period_desc'){
+            $logs->orderBy('period_days', 'desc');
+        } elseif($sort === 'period_asc'){
+            $logs->orderBy('period_days', 'asc');
+        } else {
+            $logs->orderBy('id', 'DESC');
+        }
 
         $logs->when(($from), function ($query) use ($from) {
             $query->whereDate('created_at', '>=', Carbon::parse($from)->format('Y-m-d'));

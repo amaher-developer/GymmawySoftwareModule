@@ -232,6 +232,16 @@
                             <input type="text" class="form-control form-control-solid date-single" name="expire_date" value="{{ request('expire_date') }}" placeholder="YYYY-MM-DD" autocomplete="off">
                         </div>
 
+                        {{-- Sort by period --}}
+                        <div class="col-md-3">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.sort_by') }}</label>
+                            <select name="sort" class="form-select form-select-solid" data-control="select2" data-hide-search="true">
+                                <option value="">{{ trans('sw.newest') }}</option>
+                                <option value="period_desc" {{ request('sort') == 'period_desc' ? 'selected' : '' }}>{{ trans('sw.period') }} ({{ trans('sw.highest') }})</option>
+                                <option value="period_asc" {{ request('sort') == 'period_asc' ? 'selected' : '' }}>{{ trans('sw.period') }} ({{ trans('sw.lowest') }})</option>
+                            </select>
+                        </div>
+
                     </div>
 
                     <div class="d-flex justify-content-end mt-5">
@@ -423,6 +433,9 @@
                                 <i class="ki-outline ki-calendar-tick fs-6 me-2"></i>{{ trans('sw.expire_date')}}
                             </th>
                             <th class="min-w-100px text-nowrap">
+                                <i class="ki-outline ki-timer fs-6 me-2"></i>{{ trans('sw.period')}}
+                            </th>
+                            <th class="min-w-100px text-nowrap">
                                 <i class="ki-outline ki-status fs-6 me-2"></i>{{ trans('sw.status')}}
                             </th>
                             <th class="min-w-100px text-nowrap">
@@ -468,6 +481,9 @@
                                 </td>
                                 <td>
                                     <span class="fw-bold">{{ @\Carbon\Carbon::parse($log->expire_date)->format('Y-m-d') }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ @$log->period_days }} {{ trans('sw.day') }}</span>
                                 </td>
                                 <td>
                                     <span class="badge @if(@$log->status == \Modules\Software\Classes\TypeConstants::Freeze) badge-light-info @elseif(@$log->status == \Modules\Software\Classes\TypeConstants::Active) badge-light-success @elseif(@$log->status == \Modules\Software\Classes\TypeConstants::Expired) badge-light-danger @else badge-light-primary @endif">{!! @$log->statusName !!}</span>
