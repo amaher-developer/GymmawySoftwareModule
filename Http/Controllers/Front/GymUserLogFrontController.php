@@ -729,7 +729,7 @@ class GymUserLogFrontController extends GymGenericFrontController
         $title = trans('sw.logs_detail');
         $this->limit = 5;
 
-        $this->request_array = ['search', 'subscription', 'from', 'to', 'min_period_days'];
+        $this->request_array = ['search', 'subscription', 'from', 'to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
 
@@ -766,10 +766,7 @@ class GymUserLogFrontController extends GymGenericFrontController
             GymMemberSubscription::selectRaw('COALESCE(SUM(DATEDIFF(expire_date, joining_date) + 1), 0)')
                 ->whereColumn('member_id', 'sw_gym_members.id')
             , $periodFilter)
-        ])
-        ->when(($min_period_days), function ($query) use ($min_period_days) {
-            $query->having('total_period_days', '>=', (int)$min_period_days);
-        });
+        ]);
 
         if($subscription == 2)
             $members->orderBy('total_period_days', 'desc');
