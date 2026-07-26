@@ -311,6 +311,9 @@ class TypeConstants {
     const ExportPTSubscriptionMemberPDF = 156;
     const ExportPTSubscriptionMemberExcel = 157;
 
+    const ExportDetailMemberPDF = 205;
+    const ExportDetailMemberExcel = 206;
+
     const EditEventNotification = 158;
     const AddCreditAmount = 159;
     const RefundCreditAmount = 160;
@@ -391,6 +394,8 @@ class TypeConstants {
     const WA_MAX_USER = 50;
     const WA_MAX_MESSAGE = 1000;
     const WA_ULTRA_MAX_MESSAGE = 100;
+    const WA_ULTRA_BULK_BATCH_SIZE = 20;
+    const WA_ULTRA_BULK_BATCH_DELAY_SECONDS = 2;
 
     const CASH_PAYMENT = 0;
     const ONLINE_PAYMENT = 1;

@@ -47,28 +47,67 @@ class GymWAUltraFrontController extends GymGenericFrontController
         $user_inputs = $request->except(['_token']);
         $message = strip_tags($user_inputs['message']);
         $image = $this->prepare_inputs('image');
-        $phones = explode(',', $user_inputs['phones']);
-        if (is_array($phones) && count($phones) > 0) {
-            foreach ($phones as $phone) {
-                if(($this->consume_message_count < TypeConstants::WA_MAX_MESSAGE)){
-                    $wa = new WAUltramsg();
-                    if($image)
-                        $wa->sendImage(trim($phone), $message, $image);
-                    else
-                        $wa->sendText(trim($phone), $message);
-                }
-            }
-            session()->flash('sweet_flash_message', [
-                'title' => trans('admin.done'),
-                'message' => trans('admin.successfully_send'),
-                'type' => 'success'
-            ]);
-        }else
+        $phones = array_values(array_filter(array_map('trim', explode(',', $user_inputs['phones']))));
+
+        if (empty($phones)) {
             session()->flash('sweet_flash_message', [
                 'title' => 'error',
                 'message' => trans('global.unsuccessfully_send'),
                 'type' => 'error'
             ]);
+            return redirect(route('sw.createWAUltra'));
+        }
+
+        // Bulk sends are throttled in batches to reduce the risk of the
+        // WhatsApp number getting temporarily blocked by the provider.
+        $batchSize = TypeConstants::WA_ULTRA_BULK_BATCH_SIZE;
+        $batchDelay = TypeConstants::WA_ULTRA_BULK_BATCH_DELAY_SECONDS;
+        $batches = array_chunk($phones, $batchSize);
+
+        set_time_limit(0);
+
+        $successCount = 0;
+        $failedPhones = [];
+
+        foreach ($batches as $batchIndex => $batch) {
+            foreach ($batch as $phone) {
+                if ($this->consume_message_count >= TypeConstants::WA_MAX_MESSAGE) {
+                    $failedPhones[] = $phone;
+                    continue;
+                }
+
+                $wa = new WAUltramsg();
+                $result = $image ? $wa->sendImage($phone, $message, $image) : $wa->sendText($phone, $message);
+
+                if (empty(@$result->error)) {
+                    $successCount++;
+                } else {
+                    $failedPhones[] = $phone;
+                }
+            }
+
+            if ($batchIndex < count($batches) - 1) {
+                sleep($batchDelay);
+            }
+        }
+
+        if ($successCount > 0) {
+            $resultMessage = trans('sw.wa_bulk_send_result', ['success' => $successCount, 'total' => count($phones)]);
+            if (!empty($failedPhones)) {
+                $resultMessage .= ' ' . trans('sw.wa_bulk_send_failed_numbers', ['numbers' => implode(', ', $failedPhones)]);
+            }
+            session()->flash('sweet_flash_message', [
+                'title' => trans('admin.done'),
+                'message' => $resultMessage,
+                'type' => empty($failedPhones) ? 'success' : 'warning'
+            ]);
+        } else {
+            session()->flash('sweet_flash_message', [
+                'title' => 'error',
+                'message' => trans('global.unsuccessfully_send'),
+                'type' => 'error'
+            ]);
+        }
 
         return redirect(route('sw.createWAUltra'));
     }

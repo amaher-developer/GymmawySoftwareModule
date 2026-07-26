@@ -1869,6 +1869,16 @@ if(!isset($permission_group->permissions)){
                                                     type="checkbox"> <span>{{ trans('sw.memberships_detail_report') }}</span></label>
                                             </div>
                                             <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportDetailMemberExcel"
+                                                    @if(@in_array('exportDetailMemberExcel', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_excel_detail_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
+                                                <label class="ckbox"><input name="permissions[]" value="exportDetailMemberPDF"
+                                                    @if(@in_array('exportDetailMemberPDF', $permission_group->permissions)) checked @endif
+                                                    type="checkbox"> <span>{{ trans('sw.export_pdf_detail_member_report') }}</span></label>
+                                            </div>
+                                            <div class="col-lg-3 mg-t-20 mg-lg-t-0">
                                                 <label class="ckbox"><input name="permissions[]" value="reportSubscriptionMemberList"
                                                     @if(@in_array('reportSubscriptionMemberList', $permission_group->permissions)) checked @endif
                                                     type="checkbox"> <span>{{ trans('sw.report_subscriptions') }}</span></label>

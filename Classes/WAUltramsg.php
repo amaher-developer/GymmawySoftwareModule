@@ -7,20 +7,19 @@ use Modules\Generic\Models\Setting;
 use Modules\Software\Models\GymWALog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use UltraMsg\WhatsAppApi;
 
 class WAUltramsg {
 
-
-    private $wa_url;
     private $wa_instance;
     private $wa_user_token;
-    private $curl;
     private $setting;
+    private $client;
 
     public function __construct()
     {
         $this->setting = Setting::first();
-        
+
         // Check if setting exists and wa_details is not null
         if ($this->setting && $this->setting->wa_details && is_array($this->setting->wa_details)) {
             $this->wa_instance = $this->setting->wa_details['wa_ultra_instance_id'] ?? null;
@@ -29,157 +28,86 @@ class WAUltramsg {
             $this->wa_instance = null;
             $this->wa_user_token = null;
         }
-        
-        $this->wa_url = "https://api.ultramsg.com/".$this->wa_instance."/messages";
 
-        $this->curl = curl_init();
+        if ($this->wa_instance && $this->wa_user_token) {
+            $this->client = new WhatsAppApi($this->wa_user_token, $this->wa_instance);
+        }
     }
+
     public function statistics()
     {
-        // Check if we have valid configuration
-        if (!$this->wa_instance || !$this->wa_user_token) {
+        if (!$this->client) {
             return (object)['error' => 'WhatsApp configuration not found'];
         }
-        
-        $curl = $this->curl;
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $this->wa_url."/statistics?token=".$this->wa_user_token,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "GET",
-            CURLOPT_HTTPHEADER => array(
-                "content-type: application/x-www-form-urlencoded"
-            ),
-        ));
 
-        $response = curl_exec($curl);
-        $err = curl_error($curl);
-        curl_close($curl);
-
-        if ($err) {
-//            echo "cURL Error #:" . $err;
-            return $err;
-        } else {
-            return json_decode($response);
-        }
+        return $this->toObject($this->client->getMessageStatistics());
     }
 
     public function sendText($phoneNumber, $msg)
     {
-        // Check if we have valid configuration
-        if (!$this->wa_instance || !$this->wa_user_token) {
+        if (!$this->client) {
             return (object)['error' => 'WhatsApp configuration not found'];
         }
-        
-//        if(substr($phoneNumber, 0, 2) == "01") $phone = $this->str_replace_first("01", "201", $phoneNumber);
-//        elseif(substr($phoneNumber, 0, 2) == "05") $phone = $this->str_replace_first("05", "9665", $phoneNumber);
-//        else $phone = $phoneNumber;
+
         $phone = '+'.@env('APP_COUNTRY_CODE').$phoneNumber;
+        $result = $this->toObject($this->client->sendChatMessage($phone, $msg, 1));
 
-        $params=array(
-            'token' => $this->wa_user_token,
-            'to' => $phone,
-            'body' => $msg,
-            'priority' => 1,
-            'referenceId' => ''
-        );
-        $curl = $this->curl;
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $this->wa_url.'/chat',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => http_build_query($params),
-            CURLOPT_HTTPHEADER => array(
-                "content-type: application/x-www-form-urlencoded"
-            ),
-        ));
+        $this->log($phoneNumber, $msg, $result);
 
-        $response = curl_exec($curl);
-        $err = curl_error($curl);
-
-        curl_close($curl);
-        if ($err) {
-//            echo "cURL Error #:" . $err;
-            return "0";
-        } else {
-            return json_decode($response);
-        }
-        // save log to sms log
-//        GymWALog::create([
-//            'user_id' => Auth::guard('sw')->user()->id,
-//            'status' => $message_id ? 1 : 0,
-//            'phone' => $phoneNumber,
-//            "content" => $msg,
-//            "message_id" => $message_id,
-//            "created_at" => Carbon::now(),
-//            "updated_at" => Carbon::now(),
-//        ]);
-//        return $message_id;
+        return $result;
     }
 
     public function sendImage($phoneNumber, $msg, $image)
     {
-        // Check if we have valid configuration
-        if (!$this->wa_instance || !$this->wa_user_token) {
+        if (!$this->client) {
             return (object)['error' => 'WhatsApp configuration not found'];
         }
-        
-//        if(substr($phoneNumber, 0, 2) == "01") $phone = $this->str_replace_first("01", "201", $phoneNumber);
-//        elseif(substr($phoneNumber, 0, 2) == "05") $phone = $this->str_replace_first("05", "9665", $phoneNumber);
-//        else $phone = $phoneNumber;
 
         $phone = '+'.@env('APP_COUNTRY_CODE').$phoneNumber;
+        $result = $this->toObject($this->client->sendImageMessage($phone, $image, $msg, 1));
 
-        $params=array(
-            'token' => $this->wa_user_token,
-            'to' => $phone,
-            'image' => $image,
-            'caption' => $msg,
-            'nocache' => '',
-            'referenceId' => ''
-        );
-        $curl = $this->curl;
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $this->wa_url."/image",
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => http_build_query($params),
-            CURLOPT_HTTPHEADER => array(
-                "content-type: application/x-www-form-urlencoded"
-            ),
-        ));
+        $this->log($phoneNumber, $msg, $result);
 
-
-        $response = curl_exec($curl);
-        $err = curl_error($curl);
-
-        curl_close($curl);
-        if ($err) {
-//            echo "cURL Error #:" . $err;
-            return "0";
-        } else {
-            return json_decode($response);
-        }
-
+        return $result;
     }
 
+    /**
+     * Normalize the SDK's array/JSON response into an object so callers can
+     * keep using property access (e.g. $result->error, $result->id).
+     */
+    private function toObject($data)
+    {
+        $obj = is_array($data) ? json_decode(json_encode($data)) : (is_object($data) ? $data : (object)['raw' => $data]);
+
+        // The SDK returns its own connection-level errors (e.g. instance not
+        // found) under an "Error" key, while the live API uses lowercase
+        // "error" - normalize so callers only need to check one.
+        if (isset($obj->Error) && !isset($obj->error)) {
+            $obj->error = $obj->Error;
+        }
+
+        return $obj;
+    }
+
+    private function log($phoneNumber, $msg, $result)
+    {
+        try {
+            $messageId = @$result->id ?: null;
+            $success = empty(@$result->error);
+
+            GymWALog::create([
+                'branch_setting_id' => $this->setting->id ?? 1,
+                'user_id' => optional(Auth::guard('sw')->user())->id,
+                'status' => $success ? 1 : 0,
+                'phone' => $phoneNumber,
+                'content' => $msg,
+                'message_id' => $messageId,
+            ]);
+        } catch (\Exception $e) {
+            // Never let a logging failure break the actual send flow
+            // (e.g. automated notifications running without an authenticated user).
+        }
+    }
 
     private function str_replace_first($search, $replace, $subject)
     {

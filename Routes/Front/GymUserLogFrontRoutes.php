@@ -50,6 +50,10 @@ Route::prefix('user/log')
         // Detail member report - view permission
         Route::name('sw.reportDetailMemberList')
             ->get('detail', 'Front\GymUserLogFrontController@reportDetailMemberList');
+        Route::name('sw.exportDetailMemberPDF')
+            ->get('/detail-member-pdf', 'Front\GymUserLogFrontController@exportDetailMemberPDF');
+        Route::name('sw.exportDetailMemberExcel')
+            ->get('/detail-member-excel', 'Front\GymUserLogFrontController@exportDetailMemberExcel');
 
         // Today member report - view permission
         Route::name('sw.reportTodayMemberList')

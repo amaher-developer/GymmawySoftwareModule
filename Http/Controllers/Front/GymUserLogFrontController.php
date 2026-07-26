@@ -5,6 +5,7 @@ namespace Modules\Software\Http\Controllers\Front;
 use Modules\Generic\Http\Controllers\Front\GenericFrontController;
 use Modules\Software\Classes\TypeConstants;
 use Modules\Billing\Models\SwBillingInvoice;
+use Modules\Software\Exports\MemberDetailReportExport;
 use Modules\Software\Exports\MembersAttendanceExport;
 use Modules\Software\Exports\MembersExport;
 use Modules\Software\Exports\MoneyBoxExport;
@@ -725,10 +726,8 @@ class GymUserLogFrontController extends GymGenericFrontController
     }
     /* --------------------------------------------------------------------------- */
 
-    public function reportDetailMemberList(){
-        $title = trans('sw.logs_detail');
-        $this->limit = 5;
-
+    private function buildDetailMemberListQuery()
+    {
         $this->request_array = ['search', 'subscription', 'from', 'to'];
         $request_array = $this->request_array;
         foreach ($request_array as $item) $$item = request()->has($item) ? request()->$item : false;
@@ -778,11 +777,134 @@ class GymUserLogFrontController extends GymGenericFrontController
             $members->orderBy('member_subscriptions_count', 'desc');
 
         $members->orderBy('id', 'DESC');
+
+        return $members;
+    }
+
+    public function reportDetailMemberList(){
+        $title = trans('sw.logs_detail');
+        $this->limit = 5;
+
+        $members = $this->buildDetailMemberListQuery();
         $members = $members->paginate($this->limit)->onEachSide(1);
         $total = $members->total();
         $search_query = request()->query();
 
         return view('software::Front.report_detail_member_front_list', compact('search_query', 'members','title', 'total'));
+    }
+
+    function exportDetailMemberExcel()
+    {
+        $limit = request('limits') ?? 600;
+        $members = $this->buildDetailMemberListQuery()->limit($limit)->get();
+
+        $records = [];
+        foreach ($members as $member) {
+            $records[] = [
+                'barcode'           => $member->code,
+                'name'              => $member->name,
+                'phone'             => $member->phone,
+                'memberships_count' => (int)($member->member_subscriptions_count ?? 0),
+                'period'            => (int)($member->total_period_days ?? 0),
+                'workouts'          => (int)($member->total_workouts ?? 0),
+                'visits'            => (int)($member->total_visits ?? 0),
+                'amount_paid'       => number_format($member->total_amount_paid ?? 0, 2),
+                'amount_remaining'  => number_format($member->total_amount_remaining ?? 0, 2),
+            ];
+        }
+
+        $this->fileName = 'members-detail-' . Carbon::now()->toDateTimeString();
+
+        $notes = trans('sw.export_excel_members');
+        $this->userLog($notes, TypeConstants::ExportDetailMemberExcel);
+
+        return Excel::download(new MemberDetailReportExport(['records' => $records, 'keys' => [
+            'barcode', 'name', 'phone', 'memberships_count', 'period', 'workouts', 'visits', 'amount_paid', 'amount_remaining'
+        ], 'lang' => $this->lang, 'settings' => $this->mainSettings]), $this->fileName . '.xlsx');
+    }
+
+    function exportDetailMemberPDF()
+    {
+        $limit = request('limits') ?? 600;
+        $members = $this->buildDetailMemberListQuery()->limit($limit)->get();
+
+        $keys = ['barcode', 'name', 'phone', 'memberships_count', 'period', 'workouts', 'visits', 'amount_paid', 'amount_remaining'];
+        if ($this->lang == 'ar') $keys = array_reverse($keys);
+
+        $records = [];
+        foreach ($members as $member) {
+            $records[] = [
+                'barcode'           => $member->code,
+                'name'              => $member->name,
+                'phone'             => str_replace('+', '00', $member->phone),
+                'memberships_count' => (int)($member->member_subscriptions_count ?? 0),
+                'period'            => (int)($member->total_period_days ?? 0),
+                'workouts'          => (int)($member->total_workouts ?? 0),
+                'visits'            => (int)($member->total_visits ?? 0),
+                'amount_paid'       => number_format($member->total_amount_paid ?? 0, 2),
+                'amount_remaining'  => number_format($member->total_amount_remaining ?? 0, 2),
+            ];
+        }
+
+        $this->fileName = 'members-detail-' . Carbon::now()->toDateTimeString();
+        $title = trans('sw.logs_detail');
+        $customPaper = array(0, 0, 720, 1440);
+
+        // Try mPDF for better Arabic support
+        if ($this->lang == 'ar') {
+            try {
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4-L', // Landscape
+                    'orientation' => 'L',
+                    'margin_left' => 15,
+                    'margin_right' => 15,
+                    'margin_top' => 16,
+                    'margin_bottom' => 16,
+                    'margin_header' => 9,
+                    'margin_footer' => 9,
+                    'default_font' => 'dejavusans',
+                    'default_font_size' => 10
+                ]);
+
+                $html = view('software::Front.export_pdf', [
+                    'records' => $records,
+                    'title' => $title,
+                    'keys' => $keys,
+                    'lang' => $this->lang
+                ])->render();
+
+                $mpdf->WriteHTML($html);
+
+                $notes = trans('sw.export_pdf_members');
+                $this->userLog($notes, TypeConstants::ExportDetailMemberPDF);
+
+                return response($mpdf->Output($this->fileName.'.pdf', 'D'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $this->fileName . '.pdf"'
+                ]);
+
+            } catch (\Exception $e) {
+                // Fallback to DomPDF if mPDF fails
+                \Log::error('mPDF failed, falling back to DomPDF: ' . $e->getMessage());
+            }
+        }
+
+        // Configure PDF for Arabic text using DomPDF
+        $pdf = PDF::loadView('software::Front.export_pdf', ['records' => $records, 'title' => $title, 'keys' => $keys])
+        ->setPaper($customPaper, 'landscape')
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'defaultFont' => 'DejaVu Sans',
+            'isPhpEnabled' => true,
+            'isJavascriptEnabled' => false
+        ]);
+
+        $notes = trans('sw.export_pdf_members');
+        $this->userLog($notes, TypeConstants::ExportDetailMemberPDF);
+
+        return $pdf->download($this->fileName . '.pdf');
     }
 
 

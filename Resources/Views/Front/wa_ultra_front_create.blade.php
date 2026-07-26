@@ -159,6 +159,16 @@
                         </div>
                     </div>
                     <div class="card-body pt-0">
+                        <!-- Bulk send / blocking risk warning -->
+                        <div class="notice d-flex bg-light-warning rounded border-warning border border-dashed p-6 mb-8">
+                            <i class="ki-outline ki-shield-search fs-2tx text-warning me-4"></i>
+                            <div class="d-flex flex-stack flex-grow-1">
+                                <div class="fw-semibold">
+                                    <h4 class="text-gray-900 fw-bold">{{ trans('sw.wa_bulk_block_warning_title') }}</h4>
+                                    <div class="fs-6 text-gray-700">{{ trans('sw.wa_bulk_block_warning_desc', ['batch_size' => \Modules\Software\Classes\TypeConstants::WA_ULTRA_BULK_BATCH_SIZE]) }}</div>
+                                </div>
+                            </div>
+                        </div>
                         <!-- Client Type -->
                         <div class="fv-row mb-10">
                             <label class="form-label required">{{ trans('sw.clients')}}</label>
@@ -191,6 +201,7 @@
                                  </div>
                             </div>
                             <div class="form-text">01234567890, 01234567891, 01234567892 ...</div>
+                            <div class="form-text mt-2" id="phones-counter"></div>
                         </div>
                         <!-- Message -->
                         <div class="fv-row mb-10">
@@ -249,7 +260,29 @@
             $('#message').on('keyup input', function() {
                 $('#char-count').text($(this).val().length);
             });
+
+            // Bulk phones / batch counter logic
+            $('#phones').on('keyup input change', function() {
+                updatePhonesCounter();
+            });
+            updatePhonesCounter();
         });
+
+        const waBulkBatchSize = {{ \Modules\Software\Classes\TypeConstants::WA_ULTRA_BULK_BATCH_SIZE }};
+
+        function updatePhonesCounter() {
+            const raw = $('#phones').val() || '';
+            const count = raw.split(',').map(function (v) { return v.trim(); }).filter(function (v) { return v.length > 0; }).length;
+            if (count > 0) {
+                const batches = Math.ceil(count / waBulkBatchSize);
+                $('#phones-counter').text('{{ trans('sw.wa_bulk_numbers_count', ['count' => '__COUNT__', 'batches' => '__BATCHES__', 'batch_size' => '__SIZE__']) }}'
+                    .replace('__COUNT__', count)
+                    .replace('__BATCHES__', batches)
+                    .replace('__SIZE__', waBulkBatchSize));
+            } else {
+                $('#phones-counter').text('');
+            }
+        }
 
         function client_type(id) {
             if (id) {
@@ -263,6 +296,7 @@
                         $('#phones').val(response);
                         $('#spinner').hide();
                         $('#phones').prop('disabled', false);
+                        updatePhonesCounter();
                     },
                     error: function (request, error) {
                         swal("{{ trans('admin.operation_failed')}}", "{{ trans('admin.something_wrong')}}", "error");
