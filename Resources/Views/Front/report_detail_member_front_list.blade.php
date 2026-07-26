@@ -120,12 +120,12 @@
     <!--begin::Card body-->
     <div class="card-body pt-0">
         <!--begin::Filter-->
-        <div class="collapse {{ request()->hasAny(['subscription','from','to']) ? 'show' : '' }}" id="kt_detail_members_filter_collapse">
+        <div class="collapse {{ request()->hasAny(['subscription','from','to','min_period_days']) ? 'show' : '' }}" id="kt_detail_members_filter_collapse">
             <div class="card card-body mb-5">
                 <form id="form_filter" action="" method="get">
                     <div class="row g-6">
                         {{-- Subscription period (joining_date/expire_date overlap) --}}
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.subscription_period')}}</label>
                             <div class="input-group date-picker input-daterange">
                                 <input type="text" class="form-control" name="from" value="{{ request('from') }}" placeholder="{{ trans('sw.from')}}" autocomplete="off">
@@ -133,7 +133,12 @@
                                 <input type="text" class="form-control" name="to"   value="{{ request('to') }}"   placeholder="{{ trans('sw.to')}}"   autocomplete="off">
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        {{-- Minimum total period days --}}
+                        <div class="col-md-4">
+                            <label class="form-label fs-6 fw-semibold">{{ trans('sw.min_total_days')}}</label>
+                            <input type="number" min="0" class="form-control form-control-solid" name="min_period_days" value="{{ request('min_period_days') }}" placeholder="{{ trans('sw.min_total_days')}}">
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label fs-6 fw-semibold">{{ trans('sw.memberships')}}</label>
                             <select name="subscription" class="form-select form-select-solid">
                                 <option value="0" @if(request('subscription', '0') == '0') selected="" @endif>{{ trans('sw.from_highest_memberships')}}</option>
