@@ -752,6 +752,7 @@
                             <div class="separator separator-dashed my-6"></div>
 
                             {{-- Quick link to AI Employee --}}
+                            @if(\Illuminate\Support\Facades\Route::has('sw.ai_employee.index'))
                             <div class="d-flex align-items-center gap-3">
                                 <a href="{{ route('sw.ai_employee.index') }}" class="btn btn-light-primary btn-sm">
                                     <i class="ki-outline ki-robot fs-4 me-1"></i>
@@ -766,6 +767,7 @@
                                     المحادثات
                                 </a>
                             </div>
+                            @endif
 
                         </div>
                     </div>
