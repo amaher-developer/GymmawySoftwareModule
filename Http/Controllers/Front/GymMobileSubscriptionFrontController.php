@@ -3566,6 +3566,14 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
         ])->find($id);
 
         if (!$ptSubscription) {
+            Log::warning('pt-subscription-mobile 404', [
+                'pt_subscription_id' => $id,
+                'host' => $request->getHost(),
+                'db_database' => DB::connection()->getDatabaseName(),
+                'resolved_member_id' => $currentUser->id ?? null,
+                'exists_with_trashed' => \Modules\Software\Models\GymPTSubscription::withTrashed()->where('id', $id)->exists(),
+                'query' => $request->query(),
+            ]);
             return abort(404);
         }
 
