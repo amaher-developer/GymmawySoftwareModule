@@ -38,7 +38,7 @@ class TrainingMedicineExport implements FromCollection, WithHeadings, WithMappin
     }
     public function collection()
     {
-        return $this->data;
+        return collect($this->data);
     }
 
     public function map($record): array

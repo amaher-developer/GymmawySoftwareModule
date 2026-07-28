@@ -38,7 +38,7 @@ class TrainingTaskExport implements FromCollection, WithHeadings, WithMapping, W
     }
     public function collection()
     {
-        return $this->data;
+        return collect($this->data);
     }
 
     public function map($record): array

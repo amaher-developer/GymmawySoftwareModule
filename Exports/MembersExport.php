@@ -39,7 +39,7 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     public function collection()
     {
-        return $this->data;
+        return collect($this->data);
     }
 
     public function map($record): array
