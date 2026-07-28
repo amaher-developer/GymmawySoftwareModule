@@ -27,9 +27,9 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
         $this->service = new GymSwInvoiceService();
     }
 
-    /** Allowed page-size choices for the invoices list; 'all' returns every matching row. */
-    private const INVOICES_PER_PAGE_OPTIONS = [20, 50, 100, 250];
-    private const INVOICES_PER_PAGE_DEFAULT = 100;
+    /** Allowed page-size choices for the invoices list. */
+    private const INVOICES_PER_PAGE_OPTIONS = [20, 50, 100];
+    private const INVOICES_PER_PAGE_DEFAULT = 20;
     private const INVOICES_PER_PAGE_SESSION_KEY = 'gym_sw_invoices_per_page';
 
     public function index(Request $request)
@@ -46,12 +46,8 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
         if ($request->filled('date_from')) $query->whereDate('issued_at', '>=', $request->date_from);
         if ($request->filled('date_to'))   $query->whereDate('issued_at', '<=', $request->date_to);
 
-        // 'all' still goes through the paginator (page size = total matching rows) so the
-        // view, links and firstItem()/lastItem()/total() helpers keep working unmodified.
-        $paginateSize = $perPage === 'all' ? max((clone $query)->count(), 1) : $perPage;
-
         $invoices = $query->with('zatcaBillingInvoice')->latest()
-            ->paginate($paginateSize)
+            ->paginate($perPage)
             ->appends(array_merge($request->except('page'), ['per_page' => $perPage]));
 
         $perPageOptions = self::INVOICES_PER_PAGE_OPTIONS;
@@ -65,14 +61,15 @@ class GymSwInvoiceFrontController extends GymGenericFrontController
      * session value, then the default. Persists the resolved value back to the
      * session so it's remembered on the next visit without a `per_page` param.
      */
-    private function resolveInvoicesPerPage(Request $request): int|string
+    private function resolveInvoicesPerPage(Request $request): int
     {
         $requested = $request->input('per_page');
 
         if ($requested === null) {
-            $perPage = session(self::INVOICES_PER_PAGE_SESSION_KEY, self::INVOICES_PER_PAGE_DEFAULT);
-        } elseif (strtolower((string) $requested) === 'all') {
-            $perPage = 'all';
+            $perPage = (int) session(self::INVOICES_PER_PAGE_SESSION_KEY, self::INVOICES_PER_PAGE_DEFAULT);
+            if (!in_array($perPage, self::INVOICES_PER_PAGE_OPTIONS, true)) {
+                $perPage = self::INVOICES_PER_PAGE_DEFAULT;
+            }
         } elseif (in_array((int) $requested, self::INVOICES_PER_PAGE_OPTIONS, true)) {
             $perPage = (int) $requested;
         } else {

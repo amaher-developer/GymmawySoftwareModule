@@ -490,7 +490,6 @@
                         @foreach($perPageOptions as $option)
                             <option value="{{ $option }}" {{ (string) $perPage === (string) $option ? 'selected' : '' }}>{{ $option }}</option>
                         @endforeach
-                        <option value="all" {{ $perPage === 'all' ? 'selected' : '' }}>{{ trans('sw.all') }}</option>
                     </select>
                 </div>
             </div>
