@@ -141,6 +141,7 @@
                         $currencyEnVal = $appConfig['currency_en'] ?? env('APP_CURRENCY_EN');
                         $timezoneVal = $appConfig['timezone'] ?? env('APP_TIMEZONE');
                         $timezoneDbVal = $appConfig['timezone_db'] ?? env('APP_TIMEZONE_DB');
+                        $maxJoiningMonthsVal = $appConfig['max_joining_months'] ?? 12;
 
                         $countryCodeOptions = [
                             '966' => 'Saudi Arabia (+966)',
@@ -234,6 +235,11 @@
                                     <option value="{{ $timezoneDbVal }}" selected>{{ $timezoneDbVal }}</option>
                                 @endif
                             </select>
+                        </div>
+                        <div class="col-md-3 fv-row">
+                            <label class="form-label">{{ trans('sw.app_max_joining_months') ?? 'Max Future Joining Date (months)' }}</label>
+                            <input type="number" min="0" class="form-control form-control-solid"
+                                   name="app_config[max_joining_months]" value="{{ $maxJoiningMonthsVal }}">
                         </div>
                     </div>
                     <!--end::Row-->
