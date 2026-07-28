@@ -3559,11 +3559,25 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 ->exists();
         }
 
+        $ptSubscriptionClasses = function ($q) {
+            $q->where('is_active', true)->where('is_mobile', true)->with(['activeClassTrainers.trainer']);
+        };
+
         $ptSubscription = \Modules\Software\Models\GymPTSubscription::with([
-            'classes' => function ($q) {
-                $q->where('is_active', true)->where('is_mobile', true)->with(['activeClassTrainers.trainer']);
-            }
+            'classes' => $ptSubscriptionClasses,
         ])->find($id);
+
+        // PTResource (used by the mobile "trainings" list/detail endpoints) exposes the PT
+        // *class* id, not the subscription id - the mobile app links here with that class id.
+        // Fall back to resolving the parent subscription from a class id before giving up.
+        if (!$ptSubscription) {
+            $ptClass = \Modules\Software\Models\GymPTClass::find($id);
+            if ($ptClass && $ptClass->pt_subscription_id) {
+                $ptSubscription = \Modules\Software\Models\GymPTSubscription::with([
+                    'classes' => $ptSubscriptionClasses,
+                ])->find($ptClass->pt_subscription_id);
+            }
+        }
 
         if (!$ptSubscription) {
             Log::warning('pt-subscription-mobile 404', [
