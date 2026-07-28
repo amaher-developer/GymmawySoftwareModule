@@ -475,16 +475,27 @@
         <!--end::Table-->
 
         <!--begin::Pagination-->
-        <div class="d-flex flex-stack flex-wrap pt-10">
-            <div class="fs-6 fw-semibold text-gray-700">
-                {{ trans('sw.showing_entries', [
-                    'from'  => $invoices->firstItem() ?? 0,
-                    'to'    => $invoices->lastItem() ?? 0,
-                    'total' => $invoices->total(),
-                ]) }}
+        <div class="d-flex flex-stack flex-wrap pt-10 gap-3">
+            <div class="d-flex align-items-center gap-5">
+                <div class="fs-6 fw-semibold text-gray-700">
+                    {{ trans('sw.showing_entries', [
+                        'from'  => $invoices->firstItem() ?? 0,
+                        'to'    => $invoices->lastItem() ?? 0,
+                        'total' => $invoices->total(),
+                    ]) }}
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="kt_invoices_per_page" class="fs-7 text-gray-600 mb-0">{{ trans('sw.per_page') }}</label>
+                    <select id="kt_invoices_per_page" class="form-select form-select-sm form-select-solid w-auto">
+                        @foreach($perPageOptions as $option)
+                            <option value="{{ $option }}" {{ (string) $perPage === (string) $option ? 'selected' : '' }}>{{ $option }}</option>
+                        @endforeach
+                        <option value="all" {{ $perPage === 'all' ? 'selected' : '' }}>{{ trans('sw.all') }}</option>
+                    </select>
+                </div>
             </div>
             <ul class="pagination">
-                {!! $invoices->appends(request()->query())->render() !!}
+                {!! $invoices->render() !!}
             </ul>
         </div>
         <!--end::Pagination-->
@@ -521,6 +532,14 @@
                 todayHighlight: true,
                 clearBtn: true,
                 orientation: 'bottom auto'
+            });
+
+            // ── Per-page selector ────────────────────────────────────────────
+            $('#kt_invoices_per_page').on('change', function () {
+                var url = new URL(window.location.href);
+                url.searchParams.set('per_page', $(this).val());
+                url.searchParams.delete('page');
+                window.location.href = url.toString();
             });
 
             @if(config('sw_billing.zatca_enabled'))
