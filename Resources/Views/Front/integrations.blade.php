@@ -592,6 +592,25 @@
                         </div>
                     </div>
 
+                    {{-- MOBILE SETTINGS --}}
+                    <div class="card card-bordered mb-8">
+                        <div class="card-header min-h-50px">
+                            <h3 class="card-title fw-bold text-dark">
+                                <i class="ki-outline ki-phone fs-2 me-2 text-primary"></i>{{ trans('sw.mobile_settings') }}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-5">
+                                <div class="col-md-4 fv-row">
+                                    <label class="form-label">{{ trans('sw.app_max_joining_months') }}</label>
+                                    <input type="number" min="0" class="form-control form-control-solid"
+                                           name="app_config[max_joining_months]"
+                                           value="{{ $appConfig['max_joining_months'] ?? 12 }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- PUSHER --}}
                     <div class="card card-bordered mb-8">
                         <div class="card-header min-h-50px">
