@@ -43,7 +43,7 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
 
     public function map($record): array
-    {
+    {dd($record);
         $record = $this->prepareForExcelValue($record);
         return [
             $record
