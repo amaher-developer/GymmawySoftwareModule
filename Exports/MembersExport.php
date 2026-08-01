@@ -25,7 +25,6 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
 
     public function __construct($data)
     {
-        var_dump($data);
         $this->lang = $data['lang'];
         $this->data = $data['records'];
         $this->keys = $data['keys'];
