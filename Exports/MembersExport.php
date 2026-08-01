@@ -60,7 +60,6 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     private function prepareForExcelValue($data)
     {
-    var_dump($data);
         if (is_scalar($data) || is_null($data)) {
             return array_fill(0, count($this->keys), null);
         }
@@ -92,6 +91,7 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
             else
                 $arr[] = $data[$key] ?? null;
         }
+        dd($arr);
         return $arr;
     }
     public function styles(Worksheet $sheet)
