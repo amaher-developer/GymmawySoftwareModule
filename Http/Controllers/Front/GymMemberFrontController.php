@@ -421,8 +421,20 @@ class GymMemberFrontController extends GymGenericFrontController
         //        $records = $this->MemberRepository->with(['member_subscription_info.subscription'])->get();
         $this->fileName = 'members-' . Carbon::now()->toDateTimeString();
 
-//        $title = trans('sw.subscribed_clients');
-//        $records = $this->prepareForExport($records);
+        foreach ($records as $key => $record) {
+            $records[$key]['barcode']          = $record['code'];
+            $records[$key]['phone']            = str_replace('+', '00', $record['phone'] ?? '');
+            $records[$key]['membership']       = $record['member_subscription_info']['subscription']['name'] ?? null;
+            $records[$key]['workouts']         = $record['member_subscription_info']['workouts'] ?? null;
+            $records[$key]['number_of_visits'] = $record['member_subscription_info']['visits'] ?? null;
+            $records[$key]['amount_remaining'] = $record['member_subscription_info']['amount_remaining'] ?? null;
+            $records[$key]['store_balance']    = $record['store_balance'] ?? null;
+            $records[$key]['joining_date']     = $record['member_subscription_info']['joining_date']
+                ? Carbon::parse($record['member_subscription_info']['joining_date'])->toDateString() : null;
+            $records[$key]['expire_date']      = $record['member_subscription_info']['expire_date']
+                ? Carbon::parse($record['member_subscription_info']['expire_date'])->toDateString() : null;
+            $records[$key]['status']           = $record['member_subscription_info']['status_name'] ?? null;
+        }
 
         $notes = trans('sw.export_excel_members');
         $this->userLog($notes, TypeConstants::ExportMemberExcel);
