@@ -51,7 +51,6 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     private function prepareForExcelHeader()
     {
-        var_dump($this->keys);
         foreach($this->keys as $row) {
             $arr[] = trans('sw.'.$row);
         }
@@ -59,38 +58,34 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     private function prepareForExcelValue($data)
     {
-        if (is_scalar($data) || is_null($data)) {
-            return array_fill(0, count($this->keys), null);
-        }
         foreach($this->keys as $key) {
             if($key == 'barcode')
-                $arr[] = $data['barcode'] ?? $data['code'] ?? null;
+                $arr[] = $data['code'];
             else if($key == 'membership')
-                $arr[] = $data['membership'] ?? null;
+                $arr[] = @$data['member_subscription_info']['subscription']['name'];
             else if($key == 'dob')
-                $arr[] = $data['dob'] ?? null;
+                $arr[] = $data['dob'];
             else if($key == 'national_id')
-                $arr[] = $data['national_id'] ?? null;
+                $arr[] = $data['national_id'];
             else if($key == 'workouts')
-                $arr[] = $data['workouts'] ?? null;
+                $arr[] = @$data['member_subscription_info']['workouts'];
             else if($key == 'number_of_visits')
-                $arr[] = $data['number_of_visits'] ?? null;
+                $arr[] = @$data['member_subscription_info']['visits'];
             else if($key == 'amount_remaining')
-                $arr[] = $data['amount_remaining'] ?? null;
+                $arr[] = @$data['member_subscription_info']['amount_remaining'];
             else if($key == 'store_balance')
-                $arr[] = $data['store_balance'] ?? null;
+                $arr[] = $data['store_balance'];
             else if($key == 'joining_date')
-                $arr[] = $data['joining_date'] ?? null;
+                $arr[] = Carbon::parse(@$data['member_subscription_info']['joining_date'])->toDateString();
             else if($key == 'expire_date')
-                $arr[] = $data['expire_date'] ?? null;
+                $arr[] = Carbon::parse(@$data['member_subscription_info']['expire_date'])->toDateString();
             else if($key == 'status')
-                $arr[] = $data['status'] ?? null;
+                $arr[] = @$data['member_subscription_info']['status_name'];
             else if($key == 'created_at')
-                $arr[] = isset($data['created_at']) ? Carbon::parse($data['created_at'])->toDateString() : null;
+                $arr[] =  Carbon::parse($data['created_at'])->toDateString();
             else
-                $arr[] = $data[$key] ?? null;
+                $arr[] = @$data[$key];
         }
-        dd($arr);
         return $arr;
     }
     public function styles(Worksheet $sheet)
