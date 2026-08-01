@@ -38,12 +38,12 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
         ];
     }
     public function collection()
-    {
+    {dd($this->data);
         return collect($this->data);
     }
 
     public function map($record): array
-    {dd($record);
+    {
         $record = $this->prepareForExcelValue($record);
         return [
             $record
