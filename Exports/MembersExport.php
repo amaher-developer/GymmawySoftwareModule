@@ -58,6 +58,9 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     private function prepareForExcelValue($data)
     {
+        if (!is_array($data)) {
+            return array_fill(0, count($this->keys), null);
+        }
         foreach($this->keys as $key) {
             if($key == 'barcode')
                 $arr[] = $data['code'];
