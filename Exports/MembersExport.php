@@ -53,6 +53,7 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     private function prepareForExcelHeader()
     {
+        var_dump($this->keys);
         foreach($this->keys as $row) {
             $arr[] = trans('sw.'.$row);
         }
@@ -60,6 +61,7 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     private function prepareForExcelValue($data)
     {
+    var_dump($data);
         if (is_scalar($data) || is_null($data)) {
             return array_fill(0, count($this->keys), null);
         }
