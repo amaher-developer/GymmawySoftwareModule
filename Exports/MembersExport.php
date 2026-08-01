@@ -63,31 +63,31 @@ class MembersExport implements FromCollection, WithHeadings, WithMapping, WithSt
         }
         foreach($this->keys as $key) {
             if($key == 'barcode')
-                $arr[] = $data['code'];
+                $arr[] = $data['code'] ?? null;
             else if($key == 'membership')
-                $arr[] = @$data['member_subscription_info']['subscription']['name'];
+                $arr[] = $data['member_subscription_info']['subscription']['name'] ?? null;
             else if($key == 'dob')
-                $arr[] = $data['dob'];
+                $arr[] = $data['dob'] ?? null;
             else if($key == 'national_id')
-                $arr[] = $data['national_id'];
+                $arr[] = $data['national_id'] ?? null;
             else if($key == 'workouts')
-                $arr[] = @$data['member_subscription_info']['workouts'];
+                $arr[] = $data['member_subscription_info']['workouts'] ?? null;
             else if($key == 'number_of_visits')
-                $arr[] = @$data['member_subscription_info']['visits'];
+                $arr[] = $data['member_subscription_info']['visits'] ?? null;
             else if($key == 'amount_remaining')
-                $arr[] = @$data['member_subscription_info']['amount_remaining'];
+                $arr[] = $data['member_subscription_info']['amount_remaining'] ?? null;
             else if($key == 'store_balance')
-                $arr[] = $data['store_balance'];
+                $arr[] = $data['store_balance'] ?? null;
             else if($key == 'joining_date')
-                $arr[] = Carbon::parse(@$data['member_subscription_info']['joining_date'])->toDateString();
+                $arr[] = isset($data['member_subscription_info']['joining_date']) ? Carbon::parse($data['member_subscription_info']['joining_date'])->toDateString() : null;
             else if($key == 'expire_date')
-                $arr[] = Carbon::parse(@$data['member_subscription_info']['expire_date'])->toDateString();
+                $arr[] = isset($data['member_subscription_info']['expire_date']) ? Carbon::parse($data['member_subscription_info']['expire_date'])->toDateString() : null;
             else if($key == 'status')
-                $arr[] = @$data['member_subscription_info']['status_name'];
+                $arr[] = $data['member_subscription_info']['status_name'] ?? null;
             else if($key == 'created_at')
-                $arr[] =  Carbon::parse($data['created_at'])->toDateString();
+                $arr[] = isset($data['created_at']) ? Carbon::parse($data['created_at'])->toDateString() : null;
             else
-                $arr[] = @$data[$key];
+                $arr[] = $data[$key] ?? null;
         }
         return $arr;
     }
