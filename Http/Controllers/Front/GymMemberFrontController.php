@@ -417,6 +417,9 @@ class GymMemberFrontController extends GymGenericFrontController
         $this->limit = request('limits') ?? 600;
         $records = $this->index()->with(\request()->all());
         $records = $records->members;
+        if ($records instanceof \Illuminate\Contracts\Pagination\Paginator) {
+            $records = $records->getCollection();
+        }
 
         //        $records = $this->MemberRepository->with(['member_subscription_info.subscription'])->get();
         $this->fileName = 'members-' . Carbon::now()->toDateTimeString();
