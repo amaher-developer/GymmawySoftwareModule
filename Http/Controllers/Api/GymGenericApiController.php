@@ -1035,11 +1035,37 @@ class GymGenericApiController extends GenericController
         //$memberInfo = GymMemberSubscription::branch()->with(['member', 'subscription'])->where('member_id', $member_id)->orderBy('id', 'desc')->first();
         $memberInfo = @$memberInfo->member_subscription_info;
         if($memberInfo && ($memberInfo->number_times_freeze > 0) && ($memberInfo->status == TypeConstants::Active) ){
+            $freeze_days = (int) $memberInfo->freeze_limit;
+
+            // Enforce the same total freeze+extension cap used in member_front_list (freezeMember()).
+            if ($memberInfo->max_freeze_extension_sum > 0) {
+                $usedFreezeDays = GymMemberSubscriptionFreeze::where('member_subscription_id', $memberInfo->id)
+                    ->whereIn('status', ['completed', 'active', 'approved'])
+                    ->get()
+                    ->sum(function ($freeze) {
+                        $start = Carbon::parse($freeze->start_date);
+                        $end = Carbon::parse($freeze->end_date);
+                        return $start->diffInDays($end);
+                    });
+
+                $remainingDays = $memberInfo->max_freeze_extension_sum - $usedFreezeDays;
+
+                if ($freeze_days > $remainingDays) {
+                    $this->falseResponse(trans('sw.freeze_total_exceeded', [
+                        'used_days' => $usedFreezeDays,
+                        'remaining_days' => $remainingDays,
+                        'requested_days' => $freeze_days,
+                        'max_days' => $memberInfo->max_freeze_extension_sum,
+                    ]));
+                    return $this->response;
+                }
+            }
+
             $memberInfo->status = TypeConstants::Freeze;
             $memberInfo->number_times_freeze = ($memberInfo->number_times_freeze - 1);
             $memberInfo->start_freeze_date = Carbon::now();
-            $memberInfo->end_freeze_date = Carbon::now()->addDays((int)$memberInfo->freeze_limit);
-            $memberInfo->expire_date = Carbon::parse($memberInfo->expire_date)->addDays((int)$memberInfo->freeze_limit);
+            $memberInfo->end_freeze_date = Carbon::now()->addDays($freeze_days);
+            $memberInfo->expire_date = Carbon::parse($memberInfo->expire_date)->addDays($freeze_days);
 
             $memberInfo->save();
 
