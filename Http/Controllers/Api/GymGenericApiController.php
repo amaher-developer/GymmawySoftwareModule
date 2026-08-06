@@ -897,6 +897,11 @@ class GymGenericApiController extends GenericController
             return $this->falseResponse(trans('sw.required_fields'));
         }
 
+        $activity = GymActivity::find($activityId);
+        if (!$activity) {
+            return $this->falseResponse(trans('sw.not_found'));
+        }
+
         // 1. Verify the member has an active subscription that has this activity in its own selected set
         $activeSubscription = GymMemberSubscription::where('member_id', $member->id)
             ->where('expire_date', '>=', Carbon::today())
@@ -937,19 +942,71 @@ class GymGenericApiController extends GenericController
             }
         }
 
-        \Modules\Software\Models\GymReservation::unguarded(function () use ($member, $activityId, $date, $startTime, $endTime, $notes) {
-            \Modules\Software\Models\GymReservation::create([
-                'client_type'       => 'member',
-                'member_id'         => $member->id,
-                'activity_id'       => $activityId,
-                'reservation_date'  => Carbon::parse($date)->format('Y-m-d'),
-                'start_time'        => $startTime,
-                'end_time'          => $endTime,
-                'status'            => 'confirmed',
-                'notes'             => $notes,
-                'branch_setting_id' => $member->branch_setting_id,
-            ]);
+        // 3. Verify the requested slot falls within the activity's configured working hours for that day
+        $dateStr    = Carbon::parse($date)->format('Y-m-d');
+        $dayOfWeek  = Carbon::parse($dateStr)->dayOfWeek;
+        $startNorm  = substr($startTime, 0, 5);
+        $endNorm    = substr($endTime, 0, 5);
+
+        $reservationDetails = $activity->reservation_details;
+        if ($reservationDetails && isset($reservationDetails['work_days'][$dayOfWeek])) {
+            $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
+            if (empty($dayConfig['status'])) {
+                return $this->falseResponse(trans('sw.activity_day_not_available'));
+            }
+            $dayStart = substr($dayConfig['start'] ?? '08:00', 0, 5);
+            $dayEnd   = substr($dayConfig['end'] ?? '20:00', 0, 5);
+            if ($startNorm < $dayStart || $endNorm > $dayEnd) {
+                return $this->falseResponse(trans('sw.activity_time_not_available'));
+            }
+        }
+
+        // 4. Re-check capacity and create the reservation atomically to prevent overbooking a full slot.
+        $reservationLimit = (int) ($activity->reservation_limit ?? 0);
+        $reservation = null;
+
+        DB::transaction(function () use (
+            &$reservation, $member, $activityId, $dateStr, $startTime, $endTime,
+            $startNorm, $endNorm, $notes, $reservationLimit
+        ) {
+            $existing = \Modules\Software\Models\GymReservation::where('activity_id', $activityId)
+                ->whereDate('reservation_date', $dateStr)
+                ->whereNotIn('status', ['cancelled', 'missed'])
+                ->lockForUpdate()
+                ->get(['start_time', 'end_time']);
+
+            if ($reservationLimit > 0) {
+                $overlapCount = 0;
+                foreach ($existing as $ex) {
+                    $exStart = substr($ex->start_time, 0, 5);
+                    $exEnd   = substr($ex->end_time, 0, 5);
+                    if ($startNorm < $exEnd && $endNorm > $exStart) {
+                        $overlapCount++;
+                    }
+                }
+                if ($overlapCount >= $reservationLimit) {
+                    return;
+                }
+            }
+
+            $reservation = \Modules\Software\Models\GymReservation::unguarded(function () use ($member, $activityId, $dateStr, $startTime, $endTime, $notes) {
+                return \Modules\Software\Models\GymReservation::create([
+                    'client_type'       => 'member',
+                    'member_id'         => $member->id,
+                    'activity_id'       => $activityId,
+                    'reservation_date'  => $dateStr,
+                    'start_time'        => $startTime,
+                    'end_time'          => $endTime,
+                    'status'            => 'confirmed',
+                    'notes'             => $notes,
+                    'branch_setting_id' => $member->branch_setting_id,
+                ]);
+            });
         });
+
+        if (!$reservation) {
+            return $this->falseResponse(trans('sw.activity_slot_full'));
+        }
 
         $this->message = trans('sw.reserved_success_msg');
         return $this->successResponse();

@@ -165,6 +165,16 @@ class GymReservationFrontController extends GymGenericFrontController
         if (@$this->user_sw->branch_setting_id)
             $inputs['branch_setting_id'] = $this->user_sw->branch_setting_id;
 
+        $error = $this->validateReservationSlot($inputs);
+        if ($error) {
+            session()->flash('sweet_flash_message', [
+                'title'   => trans('admin.operation_failed'),
+                'message' => $error,
+                'type'    => 'error'
+            ]);
+            return redirect()->back()->withInput();
+        }
+
         $this->ReservationRepository->create($inputs);
 
         session()->flash('sweet_flash_message', [
@@ -174,6 +184,80 @@ class GymReservationFrontController extends GymGenericFrontController
         ]);
 
         return redirect()->route('sw.listReservation');
+    }
+
+    /**
+     * Shared server-side guard for the plain create/edit form (store()/update()), mirroring the
+     * day-availability + reservation_limit checks already enforced in ajaxCreate()/ajaxUpdate().
+     * Returns a translated error message if the slot is invalid/full, or null if it's OK to book.
+     */
+    private function validateReservationSlot(array $inputs, ?int $excludeId = null): ?string
+    {
+        if (empty($inputs['activity_id']) || empty($inputs['reservation_date']) || empty($inputs['start_time']) || empty($inputs['end_time'])) {
+            return null; // let existing field-level validation handle missing data
+        }
+
+        $activity = GymActivity::find($inputs['activity_id']);
+        if (!$activity) {
+            return trans('sw.activity_not_found');
+        }
+
+        $dayOfWeek = Carbon::parse($inputs['reservation_date'])->dayOfWeek;
+        $reservationDetails = $activity->reservation_details ?? null;
+
+        if ($reservationDetails !== null && isset($reservationDetails['work_days']) && is_array($reservationDetails['work_days']) && count($reservationDetails['work_days']) > 0) {
+            if (!isset($reservationDetails['work_days'][$dayOfWeek])) {
+                return trans('sw.day_not_available_for_reservation');
+            }
+            $dayConfig = $reservationDetails['work_days'][$dayOfWeek];
+            if (!isset($dayConfig['status']) || $dayConfig['status'] != 1) {
+                return trans('sw.day_not_available_for_reservation');
+            }
+            if (isset($dayConfig['start']) && isset($dayConfig['end'])) {
+                $startTime = substr($inputs['start_time'], 0, 5);
+                $endTime   = substr($inputs['end_time'], 0, 5);
+                $dayStart  = substr($dayConfig['start'], 0, 5);
+                $dayEnd    = substr($dayConfig['end'], 0, 5);
+                if ($startTime < $dayStart || $endTime > $dayEnd || $startTime >= $dayEnd) {
+                    return trans('sw.time_outside_working_hours', ['start' => $dayStart, 'end' => $dayEnd]);
+                }
+            }
+        }
+
+        $reservationLimit = (int) ($activity->reservation_limit ?? 0);
+        if ($reservationLimit > 0) {
+            $query = GymReservation::where('activity_id', $inputs['activity_id'])
+                ->whereDate('reservation_date', $inputs['reservation_date'])
+                ->whereNotIn('status', ['cancelled', 'missed']);
+            if ($excludeId) {
+                $query->where('id', '!=', $excludeId);
+            }
+
+            $overlapCount = $query->get(['start_time', 'end_time'])
+                ->filter(function ($r) use ($inputs) {
+                    $s = substr($inputs['start_time'], 0, 5);
+                    $e = substr($inputs['end_time'], 0, 5);
+                    $rStart = substr($r->start_time ?? '', 0, 5);
+                    $rEnd   = substr($r->end_time ?? '', 0, 5);
+                    if (!$rStart || !$rEnd) return false;
+
+                    try {
+                        $aStart = Carbon::createFromFormat('H:i', $rStart);
+                        $aEnd   = Carbon::createFromFormat('H:i', $rEnd);
+                        $sTime  = Carbon::createFromFormat('H:i', $s);
+                        $eTime  = Carbon::createFromFormat('H:i', $e);
+                        return $sTime->lt($aEnd) && $eTime->gt($aStart);
+                    } catch (\Exception $e) {
+                        return false;
+                    }
+                })->count();
+
+            if ($overlapCount >= $reservationLimit) {
+                return trans('sw.reservation_limit_reached', ['limit' => $reservationLimit]);
+            }
+        }
+
+        return null;
     }
 
     public function edit($id)
@@ -289,6 +373,16 @@ class GymReservationFrontController extends GymGenericFrontController
 
         $reservation = $this->ReservationRepository->withTrashed()->find($id);
         $inputs = $request->except(['_token']);
+
+        $error = $this->validateReservationSlot($inputs, (int) $id);
+        if ($error) {
+            session()->flash('sweet_flash_message', [
+                'title'   => trans('admin.operation_failed'),
+                'message' => $error,
+                'type'    => 'error'
+            ]);
+            return redirect()->back()->withInput();
+        }
 
         $reservation->update($inputs);
 
