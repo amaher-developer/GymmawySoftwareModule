@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Modules\Generic\Http\Controllers\Front\PaymobFrontController;
@@ -2400,9 +2401,82 @@ class GymMobileSubscriptionFrontController extends GymGenericFrontController
                 ]);
             }
 
+            // Send invoice email if the payer provided an email address
+            if ($memberSub && !empty($invoice->email)) {
+                $this->sendSubscriptionInvoiceEmail($invoice, $memberSub);
+            }
+
             return $memberSub;
         } finally {
             DB::selectOne('SELECT RELEASE_LOCK(?)', [$lockKey]);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Invoice email — sent after successful payment when an email is provided
+    // ─────────────────────────────────────────────────────────────────────────
+
+    protected function sendSubscriptionInvoiceEmail(GymOnlinePaymentInvoice $invoice, GymMemberSubscription $memberSub): void
+    {
+        try {
+            $toEmail = filter_var($invoice->email, FILTER_VALIDATE_EMAIL);
+            if (!$toEmail) {
+                return;
+            }
+
+            $settings   = $this->mainSettings;
+            $isArabic   = app()->getLocale() === 'ar';
+            $currency   = trans('front.pound_unit');
+            $logoFile   = $settings ? $settings->getRawOriginal('logo_ar') : null;
+            $termsContent = $settings
+                ? ($isArabic
+                    ? ($settings->terms_ar ?? $settings->terms_en ?? '')
+                    : ($settings->terms_en ?? $settings->terms_ar ?? ''))
+                : '';
+
+            $memberName      = optional($memberSub->member)->name ?: ($invoice->name ?? '');
+            $subscriptionName = optional($memberSub->subscription)->name ?? '';
+            $invoiceId       = $memberSub->id;
+
+            $subject = str_replace(':id', $invoiceId, trans('front.invoice_email_subject'));
+
+            $emailData = [
+                'subject'           => $subject,
+                'is_arabic'         => $isArabic,
+                'member_name'       => $memberName,
+                'invoice_id'        => $invoiceId,
+                'subscription_name' => $subscriptionName,
+                'joining_date'      => \Carbon\Carbon::parse($memberSub->joining_date)->format('Y-m-d'),
+                'expire_date'       => \Carbon\Carbon::parse($memberSub->expire_date)->format('Y-m-d'),
+                'amount'            => (float) $invoice->amount,
+                'vat'               => (float) ($invoice->vat ?? 0),
+                'vat_percentage'    => (float) ($invoice->vat_percentage ?? 0),
+                'currency'          => $currency,
+                'gym_name'          => $settings ? ($settings->title ?? env('APP_NAME', 'Gym')) : env('APP_NAME', 'Gym'),
+                'gym_logo'          => $logoFile,
+                'gym_phone'         => $settings ? ($settings->phone ?? '') : '',
+                'gym_email'         => $settings ? ($settings->email ?? '') : '',
+                'terms_content'     => $termsContent,
+            ];
+
+            $fromAddress = $settings ? ($settings->email ?? env('MAIL_FROM_ADDRESS', 'noreply@gym.com')) : env('MAIL_FROM_ADDRESS', 'noreply@gym.com');
+            $fromName    = $settings ? ($settings->title ?? env('APP_NAME', 'Gym')) : env('APP_NAME', 'Gym');
+
+            Mail::send(
+                'software::emails.subscription_invoice_email',
+                $emailData,
+                function ($mail) use ($toEmail, $memberName, $subject, $fromAddress, $fromName) {
+                    $mail->from($fromAddress, $fromName);
+                    $mail->to($toEmail, $memberName);
+                    $mail->subject($subject);
+                }
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send subscription invoice email', [
+                'invoice_id' => $invoice->id,
+                'email'      => $invoice->email,
+                'error'      => $e->getMessage(),
+            ]);
         }
     }
 

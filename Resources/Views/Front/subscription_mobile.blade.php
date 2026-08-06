@@ -192,6 +192,65 @@
         .activity-item-sub { display: block; font-size: 12px; color: #888; }
         .activity-input:disabled { accent-color: #ccc; }
 
+        .email-section { margin-bottom: 12px; }
+        .terms-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: #fff8f2;
+            border: 1px solid #f97d04;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .terms-row input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; accent-color: #f97d04; margin-top: 1px; }
+        .terms-row label { font-size: 13px; color: #444; line-height: 1.5; }
+        .terms-row a { color: #f97d04; text-decoration: underline; cursor: pointer; }
+        /* Terms modal */
+        .terms-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 9999;
+            align-items: flex-end;
+        }
+        .terms-modal-overlay.open { display: flex; }
+        .terms-modal {
+            background: #fff;
+            border-radius: 14px 14px 0 0;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .terms-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            font-size: 15px;
+        }
+        .terms-modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #888;
+            line-height: 1;
+            padding: 0 4px;
+        }
+        .terms-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.7;
+            color: #333;
+        }
         @media (max-width: 420px) {
             .payment-option {
                 padding: 10px;
@@ -264,6 +323,7 @@
             <div class="highlight-text">
                 <input type="text"  name="name"    class="form-control" placeholder="{{ trans('front.name') }}"  value="{{ old('name') }}"  required>
                 <input type="text"  name="phone"   class="form-control" placeholder="{{ trans('front.phone') }}" value="{{ old('phone') }}" required>
+                <input type="email" name="email"   class="form-control" placeholder="{{ trans('front.email_placeholder') }}" value="{{ old('email') }}">
                 <div class="gender-row">
                     <input type="radio" name="gender" value="1" id="male_m"
                         {{ old('gender') == 1 ? 'checked' : '' }} required>
@@ -282,6 +342,15 @@
             <input type="hidden" name="gender"  value="{{ $currentUser->gender }}">
             <input type="hidden" name="dob"     value="{{ $currentUser->dob ? \Carbon\Carbon::parse($currentUser->dob)->format('Y-m-d') : '' }}">
             <input type="hidden" name="address" value="{{ $currentUser->address }}">
+            {{-- Pass existing email or let member provide one --}}
+            @if($currentUser->email)
+                <input type="hidden" name="email" value="{{ $currentUser->email }}">
+            @else
+                <div class="email-section">
+                    <h5 class="section-title">{{ trans('front.email_for_invoice') }}:</h5>
+                    <input type="email" name="email" class="form-control" placeholder="{{ trans('front.email_placeholder') }}" value="{{ old('email') }}">
+                </div>
+            @endif
             {{-- Show member identity to confirm who is paying --}}
             <div style="background:#f0f7ff;border:1px solid #b8d4ef;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
                 <div style="font-size:13px;color:#555;margin-bottom:4px;">{{ trans('front.member_name') }}</div>
@@ -462,9 +531,41 @@
         </div>
         <button type="button" class="btn-pay" disabled style="opacity:0.5;cursor:not-allowed;">{{ trans('front.pay_now') }}</button>
         @else
+        {{-- Terms acceptance --}}
+        @php
+            $termsContent = app()->getLocale() === 'ar'
+                ? ($mainSettings->terms_ar ?? $mainSettings->terms_en ?? '')
+                : ($mainSettings->terms_en ?? $mainSettings->terms_ar ?? '');
+        @endphp
+        <div class="terms-row">
+            <input type="checkbox" id="accept_terms_m" name="accept_terms" value="1" {{ old('accept_terms') ? 'checked' : '' }}>
+            <label for="accept_terms_m">
+                {{ trans('front.accept_terms_msg') }}
+                @if(trim(strip_tags($termsContent ?? '')))
+                    <a href="#" id="open-terms-m">{{ trans('front.terms_conditions') }}</a>
+                @else
+                    <span>{{ trans('front.terms_conditions') }}</span>
+                @endif
+            </label>
+        </div>
         <button type="submit" class="btn-pay">{{ trans('front.pay_now') }}</button>
         @endif
     </form>
+
+    {{-- Terms modal --}}
+    @if(trim(strip_tags($termsContent ?? '')))
+    <div class="terms-modal-overlay" id="terms-modal-overlay-m">
+        <div class="terms-modal" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title-m">
+            <div class="terms-modal-header">
+                <span id="terms-modal-title-m">{{ trans('front.terms_conditions') }}</span>
+                <button class="terms-modal-close" id="close-terms-m" aria-label="{{ trans('front.close') }}">&#x2715;</button>
+            </div>
+            <div class="terms-modal-body">
+                {!! $termsContent !!}
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div style="padding-bottom: 60px;"></div>
 
@@ -677,6 +778,46 @@
         // Also show error from URL ?error= param (after gateway redirect back)
         var qError = new URLSearchParams(window.location.search).get('error');
         if (qError) toastr.error(decodeURIComponent(qError));
+    </script>
+
+    {{-- Terms modal + checkbox validation --}}
+    <script>
+    (function () {
+        // Terms modal
+        var overlay  = document.getElementById('terms-modal-overlay-m');
+        var openBtn  = document.getElementById('open-terms-m');
+        var closeBtn = document.getElementById('close-terms-m');
+
+        if (openBtn && overlay) {
+            openBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                overlay.classList.add('open');
+            });
+        }
+        if (closeBtn && overlay) {
+            closeBtn.addEventListener('click', function () {
+                overlay.classList.remove('open');
+            });
+        }
+        if (overlay) {
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) overlay.classList.remove('open');
+            });
+        }
+
+        // Validate terms checkbox on form submit
+        var form     = document.querySelector('form');
+        var checkbox = document.getElementById('accept_terms_m');
+        if (form && checkbox) {
+            form.addEventListener('submit', function (e) {
+                if (!checkbox.checked) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    toastr.error('{{ trans('front.terms_required') }}');
+                }
+            });
+        }
+    })();
     </script>
 </body>
 </html>
